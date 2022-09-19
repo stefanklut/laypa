@@ -1,0 +1,20 @@
+name: layout-analysis
+channels:
+  - default
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3
+  - pytorch 
+  - torchvision 
+  - torchaudio 
+  - cudatoolkit=11.6
+  - numpy
+  - opencv
+  - pillow
+  - shapely
+  - matplotlib
+  - scipy
+  - pip
+  - pip:
+    - 'git+https://github.com/facebookresearch/detectron2.git'
