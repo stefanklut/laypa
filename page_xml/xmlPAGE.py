@@ -10,7 +10,7 @@ import re
 import datetime
 
 
-class pageData:
+class PageData:
     """ Class to process PAGE xml files"""
 
     def __init__(self, filepath, logger=None, creator=None):

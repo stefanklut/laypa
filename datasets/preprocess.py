@@ -166,8 +166,8 @@ def _processData(params):
             pickle.dump(label, fh, -1)
         
         # TODO Should this be used instead?
-        new_label_image_path = os.path.join(out_folder, img_id + ".png")
-        cv2.imwrite(new_label_image_path, label)
+        # new_label_image_path = os.path.join(out_folder, img_id + ".png")
+        # cv2.imwrite(new_label_image_path, label)
             
         return (new_img_path, new_label_path, xml_path,out_size)
     return (new_img_path, None, None,out_size)
