@@ -1,0 +1,16 @@
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+  META_ARCHITECTURE: "SemanticSegmentor"
+  WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
+  RESNETS:
+    DEPTH: 50
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 2
+DATASETS:
+  TRAIN: ("pagexml_train",)
+  TEST: ("pagexml_val",)
+INPUT:
+  MIN_SIZE_TRAIN: (640, 672, 704, 736, 768, 800)
+
+SOLVER:
+  IMS_PER_BATCH: 4

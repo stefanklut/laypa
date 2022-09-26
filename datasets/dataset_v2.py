@@ -16,8 +16,47 @@ def get_arguments():
     args = parser.parse_args()
     return args
 
-def create_data(paths):
-    pass
+
+def create_data(input_data):
+    image_path, mask_path, output_size = input_data
+
+    # Data existence check
+    if not image_path.is_file():
+        raise FileNotFoundError(f"Image path missing ({image_path})")
+    if not mask_path.is_file():
+        raise FileNotFoundError(f"Mask path missing ({mask_path})")
+
+    # Data_ids check
+    if image_path.stem != mask_path.stem:
+        raise ValueError(
+            f"Image id should match mask id ({image_path.stem} vs {mask_path.stem}")
+
+    # IDEA Include the pageXML file and get the segmentation for them for regions, maybe even baselines (for instance prediction)
+
+    # objects = [["bbox": list[float],
+    #            "bbox_mode": int,
+    #            "category_id": int,
+    #            "segmentation": list[list[float]],
+    #            "keypoints": list[float],
+    #            "iscrowd": 0 or 1,
+    #            ] for anno in pagexml]
+
+    # panos = [{"id": int,
+    #           "category_id": int,
+    #           "iscrowd": 0 or 1} for pano in pagexml
+    #          ]
+
+    data = {"file_name": str(image_path),
+            "height": output_size[0],
+            "width": output_size[1],
+            "image_id": image_path.stem,
+            # "annotations": objects
+            "sem_seg_file_name": str(mask_path),
+            # "pan_seg_file_name": str,
+            # "segments_info": panos
+            }
+    return data
+
 
 def dataset_dict_loader(dataset_dir: str | Path):
     if isinstance(dataset_dir, str):
@@ -37,35 +76,29 @@ def dataset_dict_loader(dataset_dir: str | Path):
             f"Output sizes is missing ({output_sizes_list})")
 
     with open(image_list, mode='r') as f:
-        image_paths = [Path(line) for line in f.readlines()]
+        image_paths = [Path(line.strip()) for line in f.readlines()]
 
     with open(mask_list, mode='r') as f:
-        mask_paths = [Path(line) for line in f.readlines()]
+        mask_paths = [Path(line.strip()) for line in f.readlines()]
 
     with open(output_sizes_list, mode='r') as f:
         output_sizes = f.readlines()
         output_sizes = [ast.literal_eval(output_size)
                         for output_size in output_sizes]
-        print(output_sizes)
 
     # Data formatting check
     if not (len(image_paths) == len(mask_paths) == len(output_sizes)):
         raise ValueError(
             "expecting the images, mask and output_sizes to be the same lenght")
-    
-    print(zip(image_paths, mask_paths))
 
-    for image_path, mask_path in zip(image_paths, mask_paths):
-        # Data existence check
-        if not image_path.is_file():
-            raise FileNotFoundError(f"Image path missing ({image_path})")
-        if not mask_path.is_file():
-            raise FileNotFoundError(f"Mask path missing ({mask_path})")
+    # Single Thread
+    input_dicts = []
+    for image_path, mask_path, output_size in zip(image_paths, mask_paths, output_sizes):
+        input_dicts.append(create_data((image_path, mask_path, output_size)))
 
-        # Data_ids check
-        if image_path.stem != mask_path.stem:
-            raise ValueError(
-                f"Image id should match mask id ({image_path.stem} vs {mask_path.stem}")
+    # TODO Multi Thread?
+
+    return input_dicts
 
 
 def main(args):
