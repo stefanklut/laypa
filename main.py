@@ -1,5 +1,5 @@
 import argparse
-from typing import Optional
+from typing import List, Optional
 import torch
 
 
@@ -20,7 +20,10 @@ from datasets.dataset_v2 import dataset_dict_loader
 from detectron2.evaluation import SemSegEvaluator
 from detectron2.utils.events import EventStorage
 from detectron2.data import transforms as T
-from detectron2.data.detection_utils import build_augmentation
+from detectron2.data.transforms import Augmentation, Transform
+
+
+from datasets.transforms_v2 import RandomElastic, Affine, RandomFlip
 
 # TODO Replace with LazyConfig
 
@@ -56,6 +59,40 @@ def setup_cfg(args, cfg: Optional[CfgNode]=None) -> CfgNode:
     cfg.freeze()
     
     return cfg
+
+def build_augmentation(cfg, is_train) -> List[Augmentation | Transform]:
+    if is_train:
+        min_size = cfg.INPUT.MIN_SIZE_TRAIN
+        max_size = cfg.INPUT.MAX_SIZE_TRAIN
+        sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
+    else:
+        min_size = cfg.INPUT.MIN_SIZE_TEST
+        max_size = cfg.INPUT.MAX_SIZE_TEST
+        sample_style = "choice"
+    augmentation: List[Augmentation | Transform] = [T.ResizeShortestEdge(min_size, max_size, sample_style)]
+    
+    if not is_train:
+        return augmentation
+    
+    if cfg.INPUT.RANDOM_FLIP != "none":    
+        if cfg.INPUT.RANDOM_FLIP == "horizontal" or cfg.INPUT.RANDOM_FLIP == "both":
+            augmentation.append(
+                RandomFlip(
+                    horizontal=True,
+                    vertical=False,
+                )
+            )
+        if cfg.INPUT.RANDOM_FLIP == "vertical" or cfg.INPUT.RANDOM_FLIP == "both":
+            augmentation.append(
+                RandomFlip(
+                    horizontal=False,
+                    vertical=True,
+                )
+            )
+        
+    augmentation.append(RandomElastic(prob=0.5, alpha=34, stdv=4))
+    # print(augmentation)
+    return augmentation
     
 class Trainer(DefaultTrainer):
     
@@ -63,29 +100,29 @@ class Trainer(DefaultTrainer):
     def build_evaluator(cls, cfg, dataset_name):
         evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
         if evaluator_type =="sem_seg":
-            SemSegEvaluator(
+            evaluator = SemSegEvaluator(
                 dataset_name=dataset_name,
                 distributed=True,
                 output_dir=cfg.OUTPUT_DIR
             )
         else:
             raise NotImplementedError(f"Current evaluator type {evaluator_type} not supported")
+        
+        return evaluator
     
     @classmethod    
     def build_train_loader(cls, cfg):
         if "SemanticSegmentor" in cfg.MODEL.META_ARCHITECTURE:
-            mapper = DatasetMapper(cfg, is_train=True, augmentations=build_sem_seg_train_aug(cls, cfg))
+            mapper = DatasetMapper(is_train=True, 
+                                   augmentations=build_augmentation(cfg, is_train=True), 
+                                   image_format=cfg.INPUT.FORMAT,
+                                   use_instance_mask=cfg.MODEL.MASK_ON,
+                                   instance_mask_format=cfg.INPUT.MASK_FORMAT,
+                                   use_keypoint=cfg.MODEL.KEYPOINT_ON)
         else:
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
+        
         return build_detection_train_loader(cfg, mapper=mapper)
-    
-    @classmethod 
-    def build_sem_seg_train_aug(cls, cfg, is_train):
-        augs = build_augmentation(cfg, is_train)
-        return augs
-
-
-
 
 def main(args):
     
@@ -100,6 +137,7 @@ def main(args):
     MetadataCatalog.get("pagexml_train").set(stuff_classes=["backgroud", "baseline"])
     MetadataCatalog.get("pagexml_train").set(stuff_colors=[(0,0,0), (255,255,255)])
     MetadataCatalog.get("pagexml_train").set(evaluator_type="sem_seg")
+    MetadataCatalog.get("pagexml_train").set(ignore_label=255)
     
     DatasetCatalog.register(
         name="pagexml_val",
@@ -108,9 +146,9 @@ def main(args):
     MetadataCatalog.get("pagexml_val").set(stuff_classes=["backgroud", "baseline"])
     MetadataCatalog.get("pagexml_val").set(stuff_colors=[(0,0,0), (255,255,255)])
     MetadataCatalog.get("pagexml_val").set(evaluator_type="sem_seg")
+    MetadataCatalog.get("pagexml_val").set(ignore_label=255)
     
-    trainer = DefaultTrainer(cfg=cfg)
-    print(cfg.OUTPUT_DIR)
+    trainer = Trainer(cfg=cfg)
     trainer.resume_or_load(resume=False)
     
     # print(trainer.model)
