@@ -6,6 +6,8 @@ import ast
 
 from pathlib import Path
 
+from detectron2.data import DatasetCatalog, MetadataCatalog
+
 
 def get_arguments():
     parser = argparse.ArgumentParser(
@@ -99,6 +101,26 @@ def dataset_dict_loader(dataset_dir: str | Path):
     # TODO Multi Thread?
 
     return input_dicts
+
+def register(train=None, val=None):
+    if train is not None and train != "":
+        DatasetCatalog.register(
+            name="pagexml_train",
+            func=lambda path=train: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get("pagexml_train").set(stuff_classes=["backgroud", "baseline"])
+        MetadataCatalog.get("pagexml_train").set(stuff_colors=[(0,0,0), (255,255,255)])
+        MetadataCatalog.get("pagexml_train").set(evaluator_type="sem_seg")
+        MetadataCatalog.get("pagexml_train").set(ignore_label=255)
+    if val is not None and val != "":
+        DatasetCatalog.register(
+            name="pagexml_val",
+            func=lambda path=val: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get("pagexml_val").set(stuff_classes=["backgroud", "baseline"])
+        MetadataCatalog.get("pagexml_val").set(stuff_colors=[(0,0,0), (255,255,255)])
+        MetadataCatalog.get("pagexml_val").set(evaluator_type="sem_seg")
+        MetadataCatalog.get("pagexml_val").set(ignore_label=255)
 
 
 def main(args):

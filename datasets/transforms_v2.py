@@ -320,7 +320,7 @@ class RandomTranslation(T.Augmentation):
             # Translation
             matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2)  * np.asarray([w,h]) * self.t_stdv
             
-            print(matrix)
+            # print(matrix)
             
             return AffineTransform(matrix)
             
@@ -339,12 +339,12 @@ class RandomRotation(T.Augmentation):
             center = np.eye(3)
             center[:2, 2:] = np.asarray([w,h])[:, None] / 2
             
-            print(center)
+            # print(center)
             
             uncenter = np.eye(3)
             uncenter[:2, 2:] = -1 * np.asarray([w,h])[:, None] / 2
             
-            print(uncenter)
+            # print(uncenter)
             
             matrix = np.eye(3)
             
@@ -354,12 +354,12 @@ class RandomRotation(T.Augmentation):
             rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)],
                              [-np.sin(theta), np.cos(theta)]]
 
-            print(rot)
+            # print(rot)
             
             # matrix = uncenter @ rot @ center @ matrix
             matrix = matrix @ center @ rot @ uncenter
             
-            print(matrix)
+            # print(matrix)
             
             return AffineTransform(matrix)
             

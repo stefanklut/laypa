@@ -2,6 +2,8 @@ import argparse
 from typing import List, Optional
 import torch
 
+import datasets.dataset_v2 as dataset
+
 
 from detectron2.data import (
     MetadataCatalog,
@@ -9,21 +11,24 @@ from detectron2.data import (
     build_detection_train_loader,
     DatasetMapper
 )
-from detectron2.checkpoint import DetectionCheckpointer
-from detectron2.model_zoo import get, get_checkpoint_url
-from detectron2.modeling import build_model
 from detectron2.engine import DefaultTrainer
-from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.config import get_cfg
 from detectron2.config import CfgNode
-from datasets.dataset_v2 import dataset_dict_loader
 from detectron2.evaluation import SemSegEvaluator
 from detectron2.utils.events import EventStorage
 from detectron2.data import transforms as T
 from detectron2.data.transforms import Augmentation, Transform
 
 
-from datasets.transforms_v2 import RandomElastic, Affine, RandomFlip
+from datasets.transforms_v2 import (
+    RandomElastic, 
+    RandomAffine, 
+    RandomFlip, 
+    RandomTranslation, 
+    RandomRotation, 
+    RandomShear, 
+    RandomScale
+)
 
 # TODO Replace with LazyConfig
 
@@ -89,8 +94,14 @@ def build_augmentation(cfg, is_train) -> List[Augmentation | Transform]:
                     vertical=True,
                 )
             )
-        
+    
+    # TODO Give these a proper argument in the config
     augmentation.append(RandomElastic(prob=0.5, alpha=34, stdv=4))
+    
+    augmentation.append(RandomTranslation(prob=0.5, t_stdv=0.02))
+    augmentation.append(RandomRotation(prob=0.5, r_kappa=30))
+    augmentation.append(RandomShear(prob=0.5, sh_kappa=20))
+    augmentation.append(RandomScale(prob=0.5, sc_stdv=0.12))
     # print(augmentation)
     return augmentation
     
@@ -123,6 +134,20 @@ class Trainer(DefaultTrainer):
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
         
         return build_detection_train_loader(cfg, mapper=mapper)
+    
+    @classmethod
+    def build_test_loader(cls, cfg):
+        if "SemanticSegmentor" in cfg.MODEL.META_ARCHITECTURE:
+            mapper = DatasetMapper(is_train=False,
+                                   augmentations=build_augmentation(cfg, is_train=False), 
+                                   image_format=cfg.INPUT.FORMAT,
+                                   use_instance_mask=cfg.MODEL.MASK_ON,
+                                   instance_mask_format=cfg.INPUT.MASK_FORMAT,
+                                   use_keypoint=cfg.MODEL.KEYPOINT_ON)
+        else:
+            raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
+        
+        return build_detection_test_loader(cfg, mapper=mapper)
 
 def main(args):
     
@@ -130,23 +155,7 @@ def main(args):
     
     cfg = setup_cfg(args)
     
-    DatasetCatalog.register(
-        name="pagexml_train",
-        func=lambda path=args.train: dataset_dict_loader(path)
-    )
-    MetadataCatalog.get("pagexml_train").set(stuff_classes=["backgroud", "baseline"])
-    MetadataCatalog.get("pagexml_train").set(stuff_colors=[(0,0,0), (255,255,255)])
-    MetadataCatalog.get("pagexml_train").set(evaluator_type="sem_seg")
-    MetadataCatalog.get("pagexml_train").set(ignore_label=255)
-    
-    DatasetCatalog.register(
-        name="pagexml_val",
-        func=lambda path=args.val: dataset_dict_loader(path)
-    )
-    MetadataCatalog.get("pagexml_val").set(stuff_classes=["backgroud", "baseline"])
-    MetadataCatalog.get("pagexml_val").set(stuff_colors=[(0,0,0), (255,255,255)])
-    MetadataCatalog.get("pagexml_val").set(evaluator_type="sem_seg")
-    MetadataCatalog.get("pagexml_val").set(ignore_label=255)
+    dataset.register(args.train, args.val)
     
     trainer = Trainer(cfg=cfg)
     trainer.resume_or_load(resume=False)
