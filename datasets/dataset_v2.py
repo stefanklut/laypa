@@ -8,6 +8,7 @@ from pathlib import Path
 
 from detectron2.data import DatasetCatalog, MetadataCatalog
 
+# IDEA Add the baseline generation and regions in the dataloader so they can scale with the images
 
 def get_arguments():
     parser = argparse.ArgumentParser(
