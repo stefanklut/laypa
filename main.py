@@ -17,7 +17,6 @@ from detectron2.config import CfgNode
 from detectron2.evaluation import SemSegEvaluator
 from detectron2.utils.events import EventStorage
 from detectron2.data import transforms as T
-from detectron2.data.transforms import Augmentation, Transform
 
 
 from datasets.transforms_v2 import (
@@ -59,13 +58,12 @@ def setup_cfg(args, cfg: Optional[CfgNode]=None) -> CfgNode:
         cfg = get_cfg()
     cfg.merge_from_file(args.config)
     cfg.merge_from_list(args.opts)
-    # cfg.MODEL.ROI_HEADS.CLS_AGNOSTIC_MASK = True
     
     cfg.freeze()
     
     return cfg
 
-def build_augmentation(cfg, is_train) -> List[Augmentation | Transform]:
+def build_augmentation(cfg, is_train) -> List[T.Augmentation | T.Transform]:
     if is_train:
         min_size = cfg.INPUT.MIN_SIZE_TRAIN
         max_size = cfg.INPUT.MAX_SIZE_TRAIN
@@ -74,7 +72,7 @@ def build_augmentation(cfg, is_train) -> List[Augmentation | Transform]:
         min_size = cfg.INPUT.MIN_SIZE_TEST
         max_size = cfg.INPUT.MAX_SIZE_TEST
         sample_style = "choice"
-    augmentation: List[Augmentation | Transform] = [T.ResizeShortestEdge(min_size, max_size, sample_style)]
+    augmentation: List[T.Augmentation | T.Transform] = [T.ResizeShortestEdge(min_size, max_size, sample_style)]
     
     if not is_train:
         return augmentation
@@ -102,6 +100,8 @@ def build_augmentation(cfg, is_train) -> List[Augmentation | Transform]:
     augmentation.append(RandomRotation(prob=0.5, r_kappa=30))
     augmentation.append(RandomShear(prob=0.5, sh_kappa=20))
     augmentation.append(RandomScale(prob=0.5, sc_stdv=0.12))
+    # TODO color augmentation (also convert to black and white)
+    # TODO Add random crop
     # print(augmentation)
     return augmentation
     
