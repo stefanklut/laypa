@@ -3,6 +3,7 @@ from typing import List, Optional
 import torch
 
 import datasets.dataset_v2 as dataset
+from configs.extra_defaults import _C
 
 
 from detectron2.data import (
@@ -56,11 +57,15 @@ def get_arguments() -> argparse.Namespace:
 def setup_cfg(args, cfg: Optional[CfgNode]=None) -> CfgNode:
     if cfg is None:
         cfg = get_cfg()
+    
+    cfg.set_new_allowed(True)
+    cfg.merge_from_other_cfg(_C)
+    cfg.set_new_allowed(False)
+    
     cfg.merge_from_file(args.config)
     cfg.merge_from_list(args.opts)
     
     cfg.freeze()
-    
     return cfg
 
 def build_augmentation(cfg, is_train) -> List[T.Augmentation | T.Transform]:
@@ -158,7 +163,12 @@ def main(args):
     dataset.register(args.train, args.val)
     
     trainer = Trainer(cfg=cfg)
-    trainer.resume_or_load(resume=False)
+    if cfg.MODEL.RESUME:
+        if not cfg.TRAIN.WEIGHTS:
+            trainer.resume_or_load(resume=True)
+        else:
+            trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
+            trainer.start_iter = trainer.iter + 1
     
     # print(trainer.model)
     

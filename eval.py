@@ -26,8 +26,11 @@ def get_arguments() -> argparse.Namespace:
     
     return args
 
+
+
 def main(args):
     cfg = setup_cfg(args)
+    print(cfg.MODEL.RESUME)
     
     dataset.register(train=args.train,
                      val=args.val)

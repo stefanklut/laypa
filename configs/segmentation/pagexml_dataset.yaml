@@ -7,8 +7,9 @@ MODEL:
     NUM_CLASSES: 2
 
   PIXEL_MEAN: [103.530, 116.280, 123.675]
+  PIXEL_STD: [57.375, 57.120, 58.395]
   
-  WEIGHTS: ./output/run1/model_final.pth
+  WEIGHTS: 
 DATASETS:
   TRAIN: ("pagexml_train",)
   TEST: ("pagexml_val",)
