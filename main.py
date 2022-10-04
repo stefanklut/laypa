@@ -133,10 +133,10 @@ class Trainer(DefaultTrainer):
         else:
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
         
-        return build_detection_train_loader(cfg, mapper=mapper)
+        return build_detection_train_loader(cfg=cfg, mapper=mapper)
     
     @classmethod
-    def build_test_loader(cls, cfg):
+    def build_test_loader(cls, cfg, dataset_name):
         if "SemanticSegmentor" in cfg.MODEL.META_ARCHITECTURE:
             mapper = DatasetMapper(is_train=False,
                                    augmentations=build_augmentation(cfg, is_train=False), 
@@ -147,7 +147,7 @@ class Trainer(DefaultTrainer):
         else:
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
         
-        return build_detection_test_loader(cfg, mapper=mapper)
+        return build_detection_test_loader(cfg=cfg, mapper=mapper, dataset_name=dataset_name)
 
 def main(args):
     
