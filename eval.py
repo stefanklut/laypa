@@ -2,7 +2,9 @@ import argparse
 from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
-import datasets.dataset_v2 as dataset
+from detectron2.checkpoint import DetectionCheckpointer
+import detectron2.data.transforms as T
+import datasets.dataset as dataset
 import matplotlib.pyplot as plt
 import cv2
 import numpy as np
@@ -26,16 +28,26 @@ def get_arguments() -> argparse.Namespace:
     
     return args
 
-
+class Predictor(DefaultPredictor):
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        
+        checkpointer = DetectionCheckpointer(self.model)
+        checkpointer.load(cfg.TEST.WEIGHTS)
+        
+        self.aug = T.ResizeShortestEdge(
+            [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST
+        )
+    def __call__(self, original_image):
+        return super().__call__(original_image)
 
 def main(args):
     cfg = setup_cfg(args)
-    print(cfg.MODEL.RESUME)
     
     dataset.register(train=args.train,
                      val=args.val)
     
-    predictor = DefaultPredictor(cfg=cfg)
+    predictor = Predictor(cfg=cfg)
     
     train_loader = dataset.dataset_dict_loader(args.train)
     val_loader = dataset.dataset_dict_loader(args.val)
@@ -43,7 +55,7 @@ def main(args):
     
     metadata = MetadataCatalog.get("pagexml_train")
     
-    for inputs in np.random.choice(val_loader, 3):    
+    for inputs in np.random.choice(val_loader, 3):
         im = cv2.imread(inputs["file_name"])
         gt = cv2.imread(inputs["sem_seg_file_name"], cv2.IMREAD_GRAYSCALE)
         outputs = predictor(im)

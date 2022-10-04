@@ -2,7 +2,7 @@ import argparse
 from typing import List, Optional
 import torch
 
-import datasets.dataset_v2 as dataset
+import datasets.dataset as dataset
 from configs.extra_defaults import _C
 
 
@@ -20,7 +20,7 @@ from detectron2.utils.events import EventStorage
 from detectron2.data import transforms as T
 
 
-from datasets.transforms_v2 import (
+from datasets.transforms import (
     RandomElastic, 
     RandomAffine, 
     RandomFlip, 

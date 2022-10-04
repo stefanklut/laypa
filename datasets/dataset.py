@@ -1,145 +1,134 @@
-# Taken from P2PaLA
-
 import os
 
 import numpy as np
-from torch.utils.data import Dataset
+import argparse
+import ast
 
-import cv2
+from pathlib import Path
 
-import logging
+from detectron2.data import DatasetCatalog, MetadataCatalog
 
-import pickle
+# IDEA Add the baseline generation and regions in the dataloader so they can scale with the images
+
+def get_arguments():
+    parser = argparse.ArgumentParser(
+        description="Preprocessing an annotated dataset of documents with pageXML")
+    parser.add_argument("-i", "--input", help="Input folder",
+                        required=True, type=str)
+
+    args = parser.parse_args()
+    return args
 
 
-class HTRDataset(Dataset):
-    """
-    Class to handle HTR dataset feeding
-    """
+def create_data(input_data):
+    image_path, mask_path, output_size = input_data
 
-    def __init__(self, img_lst, label_lst=None, transform=None, logger=None, opts=None, out_sizes=None):
-        """
-        Args:
-            img_lst (string): Path to the list of images to be processed
-            label_lst (string): Path to the list of label files to be processed
-            transform (callable, optional): Optional transform to be applied
-                on a sample.
-        """
-        self.logger = logger or logging.getLogger(__name__)
-        self.transform = transform
-        # --- save all paths into a single dic
-        if type(img_lst) is list:
-            self.img_paths = img_lst
-        else:
-            self.img_paths = open(img_lst, "r").readlines()
-            self.img_paths = [x.rstrip() for x in self.img_paths]
-        self.build_label = False
-        # --- Labels will be loaded only if label_lst exists
-        if label_lst != None:
-            self.label_paths = open(label_lst, "r").readlines()
-            self.label_paths = [x.rstrip() for x in self.label_paths]
-            self.build_label = True
-            # --- pre-compute per class weigths
-            # --- one count is added per class in order to avoid zero prob.
-            # --- weights will be restrict to the interval [1/log(1+c), 1/log(c)]
-            # --- for the default c=1.02 => [50.49,1.42]
-            temp_index = np.indices(opts.img_size)
-            if opts.out_mode == "L":
-                self.w = np.ones(2, dtype=np.float)
-                
-                for l in self.label_paths:
-                    with open(l, "rb") as fh:
-                        label = pickle.load(fh)
-                    self.w += np.bincount(label.flatten(), minlength=2)
-                    
-                self.w = self.w / ((len(self.label_paths) * opts.img_size.sum()) + 2)
-                self.w = 1 / np.log(opts.weight_const + self.w)
-                
-            if opts.out_mode == "LR":
-                self.w = [
-                    np.ones(2, dtype=np.float),
-                    np.ones(len(opts.regions) + 1, dtype=np.float),
-                ]
-                
-                for l in self.label_paths:
-                    with open(l, "rb") as fh:
-                        label = pickle.load(fh)
-                    self.w[0] += np.bincount(label[0].flatten(), minlength=2)
-                    
-                    self.w[1] += np.bincount(
-                        label[1].flatten(), minlength=len(opts.regions) + 1
-                    )
-                    
-                self.w[0] = self.w[0] / (
-                    (len(self.label_paths) * opts.img_size.sum()) + 2
-                )
-                self.w[1] = self.w[1] / (
-                    (len(self.label_paths) * opts.img_size.sum())
-                    + len(opts.regions)
-                    + 1
-                )
-                self.w[0] = 1 / np.log(opts.weight_const + self.w[0])
-                self.w[1] = 1 / np.log(opts.weight_const + self.w[1])
-                
-            if opts.out_mode == "R":
-                self.w = np.ones(len(opts.regions) + 1, dtype=np.float)
-                
-                for l in self.label_paths:
-                    with open(l, "rb") as fh:
-                        label = pickle.load(fh)
-                    self.w += np.bincount(
-                        label.flatten(), minlength=len(opts.regions) + 1
-                    )
-                    
-                self.w = self.w / (
-                    (len(self.label_paths) * opts.img_size.sum())
-                    + len(opts.regions)
-                    + 1
-                )
-                self.w = 1 / np.log(opts.weight_const + self.w)
+    # Data existence check
+    if not image_path.is_file():
+        raise FileNotFoundError(f"Image path missing ({image_path})")
+    if not mask_path.is_file():
+        raise FileNotFoundError(f"Mask path missing ({mask_path})")
 
-        self.img_ids = [
-            os.path.splitext(os.path.basename(x))[0] for x in self.img_paths
-        ]
-        self.opts = opts
+    # Data_ids check
+    if image_path.stem != mask_path.stem:
+        raise ValueError(
+            f"Image id should match mask id ({image_path.stem} vs {mask_path.stem}")
 
-    def __len__(self):
-        return len(self.img_paths)
+    # IDEA Include the pageXML file and get the segmentation for them for regions, maybe even baselines (for instance prediction)
 
-    def __getitem__(self, idx):
-        image = cv2.imread(self.img_paths[idx])
-        # --- swap color axis because
-        # --- cv2 image: H x W x C
-        # --- torch image: C X H X W
-        # ---Keep arrays on float32 format for GPU compatibility
-        # --- Normalize to [-1,1] range
-        # --- TODO: Move norm comp and transforms to GPU
-        if not self.build_label:
-            # --- resize image in-situ, so no need to save it to disk
-            image = cv2.resize(
-                image,
-                (self.opts.img_size[1], self.opts.img_size[0]),
-                interpolation=cv2.INTER_CUBIC,
-            )
+    # objects = [["bbox": list[float],
+    #            "bbox_mode": int,
+    #            "category_id": int,
+    #            "segmentation": list[list[float]],
+    #            "keypoints": list[float],
+    #            "iscrowd": 0 or 1,
+    #            ] for anno in pagexml]
 
-        image = (((2 / 255) * image.transpose((2, 0, 1))) - 1).astype(np.float32)
-        if self.build_label:
-            with open(self.label_paths[idx], "rb") as fh:
-                label = pickle.load(fh)
-                # --- TODO: change to opts.net+out_type == C
-                if self.opts.do_class:
-                    # --- convert labels to np.int for compatibility to NLLLoss
-                    label = label.astype(np.int)
-                else:
-                    # --- norm to [-1,1]
-                    label = (((2 / 255) * label) - 1).astype(np.float32)
-                    # --- force array to be a 3D tensor as needed by conv2d
-                    if label.ndim == 2:
-                        label = np.expand_dims(label, 0)
-            sample = {"image": image, "label": label, "id": self.img_ids[idx]}
-        else:
-            sample = {"image": image, "id": self.img_ids[idx]}
-        if self.transform:
-            sample = self.transform(sample)
+    # panos = [{"id": int,
+    #           "category_id": int,
+    #           "iscrowd": 0 or 1} for pano in pagexml
+    #          ]
 
-        return sample
+    data = {"file_name": str(image_path),
+            "height": output_size[0],
+            "width": output_size[1],
+            "image_id": image_path.stem,
+            # "annotations": objects
+            "sem_seg_file_name": str(mask_path),
+            # "pan_seg_file_name": str,
+            # "segments_info": panos
+            }
+    return data
+
+
+def dataset_dict_loader(dataset_dir: str | Path):
+    if isinstance(dataset_dir, str):
+        dataset_dir = Path(dataset_dir)
+
+    image_list = dataset_dir.joinpath("image_list.txt")
+    if not image_list.is_file():
+        raise FileNotFoundError(f"Image list is missing ({image_list})")
+
+    mask_list = dataset_dir.joinpath("mask_list.txt")
+    if not mask_list.is_file():
+        raise FileNotFoundError(f"Mask list is missing ({mask_list})")
+
+    output_sizes_list = dataset_dir.joinpath("output_sizes.txt")
+    if not output_sizes_list.is_file():
+        raise FileNotFoundError(
+            f"Output sizes is missing ({output_sizes_list})")
+
+    with open(image_list, mode='r') as f:
+        image_paths = [Path(line.strip()) for line in f.readlines()]
+
+    with open(mask_list, mode='r') as f:
+        mask_paths = [Path(line.strip()) for line in f.readlines()]
+
+    with open(output_sizes_list, mode='r') as f:
+        output_sizes = f.readlines()
+        output_sizes = [ast.literal_eval(output_size)
+                        for output_size in output_sizes]
+
+    # Data formatting check
+    if not (len(image_paths) == len(mask_paths) == len(output_sizes)):
+        raise ValueError(
+            "expecting the images, mask and output_sizes to be the same lenght")
+
+    # Single Thread
+    input_dicts = []
+    for image_path, mask_path, output_size in zip(image_paths, mask_paths, output_sizes):
+        input_dicts.append(create_data((image_path, mask_path, output_size)))
+
+    # TODO Multi Thread?
+
+    return input_dicts
+
+def register(train=None, val=None):
+    if train is not None and train != "":
+        DatasetCatalog.register(
+            name="pagexml_train",
+            func=lambda path=train: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get("pagexml_train").set(stuff_classes=["backgroud", "baseline"])
+        MetadataCatalog.get("pagexml_train").set(stuff_colors=[(0,0,0), (255,255,255)])
+        MetadataCatalog.get("pagexml_train").set(evaluator_type="sem_seg")
+        MetadataCatalog.get("pagexml_train").set(ignore_label=255)
+    if val is not None and val != "":
+        DatasetCatalog.register(
+            name="pagexml_val",
+            func=lambda path=val: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get("pagexml_val").set(stuff_classes=["backgroud", "baseline"])
+        MetadataCatalog.get("pagexml_val").set(stuff_colors=[(0,0,0), (255,255,255)])
+        MetadataCatalog.get("pagexml_val").set(evaluator_type="sem_seg")
+        MetadataCatalog.get("pagexml_val").set(ignore_label=255)
+
+
+def main(args):
+    results = dataset_dict_loader(args.input)
+    print(results)
+
+
+if __name__ == "__main__":
+    args = get_arguments()
+    main(args)

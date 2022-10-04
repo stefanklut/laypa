@@ -1,294 +1,494 @@
 # Taken from P2PaLA
 
+import argparse
 import numpy as np
 import torch
 
-import torchvision
+import detectron2.data.transforms as T
 
-from scipy.ndimage.interpolation import map_coordinates
-from scipy.ndimage.interpolation import affine_transform
-from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage import map_coordinates
+from scipy.ndimage import affine_transform
+from scipy.ndimage import gaussian_filter
 
 # TODO Check if there is a benefit for using scipy instead of the standard torchvision
+    
+class HFlipTransform(T.Transform):
+    """
+    Perform horizontal flip. Taken from fvcore
+    """
 
-def build_transforms(opts, train=True):
-    tr = []
-    if train:
-        # --- add flip transformation
-        if opts.flip_img:
-            tr.append(RandomFlip(axis=1, prob=opts.trans_prob))
-        # --- add affine transformation
-        if opts.affine_trans:
-            tr.append(
-                Affine(
-                    prob=opts.trans_prob,
-                    t_stdv=opts.t_stdv,
-                    r_kappa=opts.r_kappa,
-                    sc_stdv=opts.sc_stdv,
-                    sh_kappa=opts.sh_kappa,
-                )
-            )
-        # --- add elastic deformation
-        if opts.elastic_def:
-            tr.append(
-                Elastic(prob=opts.trans_prob, alpha=opts.e_alpha, stdv=opts.e_stdv)
-            )
+    def __init__(self, width: int):
+        super().__init__()
+        self.width = width
 
-    # --- transform data(ndarrays) to tensor
-    tr.append(ToTensor())
-    # --- Normalize to 0-mean, 1-var
-    tr.append(NormalizeTensor(mean=None, std=None))
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Flip the image(s).
 
-    # --- add all trans to que tranf queue
-    return torchvision.transforms.Compose(tr)
+        Args:
+            img (ndarray): of shape HxW, HxWxC, or NxHxWxC. The array can be
+                of type uint8 in range [0, 255], or floating point in range
+                [0, 1] or [0, 255].
+        Returns:
+            ndarray: the flipped image(s).
+        """
+        # NOTE: opencv would be faster:
+        # https://github.com/pytorch/pytorch/issues/16424#issuecomment-580695672
+        if img.ndim <= 3:  # HxW, HxWxC
+            return np.flip(img, axis=1)
+        else:
+            return np.flip(img, axis=-2)
 
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Flip the coordinates.
 
-class ToTensor(object):
-    """Convert dataset sample (ndarray) to tensor"""
+        Args:
+            coords (ndarray): floating point array of shape Nx2. Each row is
+                (x, y).
+        Returns:
+            ndarray: the flipped coordinates.
 
-    def __call__(self, sample):
-        # for k, v in sample.iteritems():
-        for k, v in list(sample.items()):
-            if type(v) is np.ndarray:
-                # --- by default float arrays will be converted to float tensors
-                # --- and int arrays to long tensor.
-                sample[k] = torch.from_numpy(v)
-        return sample
+        Note:
+            The inputs are floating point coordinates, not pixel indices.
+            Therefore they are flipped by `(W - x, H - y)`, not
+            `(W - 1 - x, H - 1 - y)`.
+        """
+        coords[:, 0] = self.width - coords[:, 0]
+        return coords
 
+    def inverse(self) -> T.Transform:
+        """
+        The inverse is to flip again
+        """
+        return self
+    
+class VFlipTransform(T.Transform):
+    """
+    Perform vertical flip.
+    """
 
-class RandomFlip(object):
-    """randomly flip image in a sample"""
+    def __init__(self, height: int):
+        super().__init__()
+        self.height = height
 
-    def __init__(self, axis=1, prob=0.5):
-        self.axis = axis
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Flip the image(s).
+
+        Args:
+            img (ndarray): of shape HxW, HxWxC, or NxHxWxC. The array can be
+                of type uint8 in range [0, 255], or floating point in range
+                [0, 1] or [0, 255].
+        Returns:
+            ndarray: the flipped image(s).
+        """
+        # NOTE: opencv would be faster:
+        # https://github.com/pytorch/pytorch/issues/16424#issuecomment-580695672
+        if img.ndim <= 3:  # HxW, HxWxC
+            return np.flip(img, axis=0)
+        else:
+            return np.flip(img, axis=-3)
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Flip the coordinates.
+
+        Args:
+            coords (ndarray): floating point array of shape Nx2. Each row is
+                (x, y).
+        Returns:
+            ndarray: the flipped coordinates.
+
+        Note:
+            The inputs are floating point coordinates, not pixel indices.
+            Therefore they are flipped by `(W - x, H - y)`, not
+            `(W - 1 - x, H - 1 - y)`.
+        """
+        coords[:, 1] = self.height - coords[:, 1]
+        return coords
+
+    def inverse(self) -> T.Transform:
+        """
+        The inverse is to flip again
+        """
+        return self
+    
+        
+class RandomFlip(T.Augmentation):
+    """
+    Flip the image horizontally or vertically with the given probability.
+    """
+
+    def __init__(self, prob=0.5, horizontal=True, vertical=False) -> None:
+        """
+        Args:
+            prob (float): probability of flip.
+            horizontal (boolean): whether to apply horizontal flipping
+            vertical (boolean): whether to apply vertical flipping
+        """
+        super().__init__()
+
+        if horizontal and vertical:
+            raise ValueError("Cannot do both horiz and vert. Please use two Flip instead.")
+        if not horizontal and not vertical:
+            raise ValueError("At least one of horiz or vert has to be True!")
         self.prob = prob
+        self.horizontal = horizontal
+        self.vertical = vertical
 
-    def __call__(self, sample):
-        if torch.rand(1)[0] < self.prob:
-            # --- TODO: Check why is a must to copy the array here
-            # --- if not error raises: RuntimeError: some of the strides of a
-            # ---    given numpy array are negative. This is currently not
-            # ---    supported, but will be added in future releases.
-            # for k, v in sample.iteritems():
-            for k, v in list(sample.items()):
-                if type(v) is np.ndarray:
-                    sample[k] = np.flip(v, self.axis).copy()
-            return sample
+    def get_transform(self, image) -> T.Transform:
+        h, w = image.shape[:2]
+        if self._rand_range() < self.prob:
+            if self.horizontal:
+                return HFlipTransform(w)
+            elif self.vertical:
+                return VFlipTransform(h)
+        return T.NoOpTransform()
+        
+
+class WarpField(T.Transform):
+    def __init__(self, warpfield: np.ndarray) -> None:
+        """
+        Args:
+            warpfield (np.ndarray): flow of pixels in the image
+        """
+        super().__init__()
+        self.warpfield = warpfield
+    
+    @staticmethod
+    def generate_grid(img: np.ndarray, warpfield: np.ndarray):
+        if img.ndim == 2:
+            x, y = np.meshgrid(np.arange(img.shape[0]), np.arange(img.shape[1]), indexing="ij")
+            indices = np.reshape(x + warpfield[..., 0], (-1, 1)), np.reshape(y + warpfield[..., 1], (-1, 1))
+            return np.asarray(indices)
+        elif img.ndim == 3:
+            x, y, z = np.meshgrid(np.arange(img.shape[0]), np.arange(img.shape[1]), np.arange(img.shape[2]), indexing="ij")
+            indices = np.reshape(x + warpfield[..., 0, None], (-1, 1)), np.reshape(y + warpfield[..., 1, None], (-1, 1)), np.reshape(z, (-1,1))
+            return np.asarray(indices)
         else:
-            return sample
+            raise NotImplementedError("No support for multi dimensions (NxHxWxC) right now")
 
+    
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        indices = self.generate_grid(img, self.warpfield)
+        sampled_img = map_coordinates(img, indices, order=1, mode="constant", cval=0).reshape(img.shape)
+        
+        return sampled_img
+    
+    def apply_coords(self, coords: np.ndarray):
+        raise NotImplementedError
+    
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        indices = self.generate_grid(segmentation, self.warpfield)
+        sampled_segmentation = map_coordinates(segmentation, indices, order=0, mode="constant", cval=255).reshape(segmentation.shape)
+        
+        return sampled_segmentation
+    
+    def inverse(self) -> T.Transform:
+        raise NotImplementedError
 
-class NormalizeTensor(object):
-    """Normalize tensor to given meand and std, or its mean and std per 
-    channel"""
-
-    def __init__(self, mean=None, std=None):
-        self.mean = mean
-        self.std = std
-
-    def __call__(self, sample):
-        if torch.is_tensor(sample["image"]):
-            if self.mean is None or self.std is None:
-                self.mean = []
-                self.std = []
-                for t in sample["image"]:
-                    self.mean.append(t.mean())
-                    self.std.append(t.std())
-            if (
-                not len(self.mean) == sample["image"].shape[0]
-                or not len(self.std) == sample["image"].shape[0]
-            ):
-                raise ValueError(
-                    "mean and std size must be equal to the number of channels of the input tensor."
-                )
-            for i, t in enumerate(sample["image"]):
-                t.sub_(self.mean[i]).div_(self.std[i])
-        else:
-            raise TypeError(
-                "Input image is not a tensor, make sure to queue this after toTensor transform"
-            )
-        return sample
-
-
-class NormalizeArray(object):
-    """Normalize array to given meand and std, or its mean and std per 
-    channel"""
-
-    def __init__(self, mean=None, std=None):
-        self.mean = mean
-        self.std = std
-
-    def __call__(self, sample):
-        if type(sample["image"]) is np.ndarray:
-            if self.mean is None or self.std is None:
-                self.mean = []
-                self.std = []
-                for t in sample["image"]:
-                    self.mean.append(t.mean())
-                    self.std.append(t.std())
-            if (
-                not len(self.mean) == sample["image"].shape[0]
-                or not len(self.std) == sample["image"].shape[0]
-            ):
-                raise ValueError(
-                    "mean and std size must be equal to the number of channels of the input array."
-                )
-            for i, t in enumerate(sample["image"]):
-                t.add(-self.mean[i]).divide(self.std[i])
-        else:
-            raise TypeError(
-                "Input image is not a ndarray, make sure to queue this before toTensor transform"
-            )
-        return sample
-
-
-class Elastic(object):
-    """
-    Elastric deformation over an array.
-    Based on:
-    @inproceedings{Simard03,
-        author = {Simard, Patrice Y. and Steinkraus, Dave and Platt, John},
-        title = {Best Practices for Convolutional Neural Networks Applied to Visual Document Analysis},
-        booktitle = {},
-        year = {2003},
-        month = {August},
-        publisher = {Institute of Electrical and Electronics Engineers, Inc.},
-        url = {https://www.microsoft.com/en-us/research/publication/best-practices-for-convolutional-neural-networks-applied-to-visual-document-analysis/},
-    }
-    """
-
-    def __init__(self, alpha=34, stdv=4, prob=0.5):
+class RandomElastic(T.Augmentation):
+    def __init__(self, prob=0.5, alpha=34, stdv=4) -> None:
+        super().__init__()
+        self.prob = prob
         self.alpha = alpha
         self.stdv = stdv
-        self.prob = prob
-
-    def __call__(self, sample):
+    
+    def get_transform(self, image) -> T.Transform:
+        if self._rand_range() < self.prob:
+            h, w = image.shape[:2]
+            warpfield = np.zeros((h, w, 2))
+            dx = gaussian_filter(((np.random.rand(h,w) * 2) - 1), self.stdv, mode="constant", cval=0)
+            dy = gaussian_filter(((np.random.rand(h,w) * 2) - 1), self.stdv, mode="constant", cval=0)
+            warpfield[..., 0] = dx * self.alpha
+            warpfield[..., 1] = dy * self.alpha
+            
+            return WarpField(warpfield)
+            
+        return T.NoOpTransform()
+    
+class AffineTransform(T.Transform):
+    def __init__(self, matrix: np.ndarray) -> None:
         """
+        Args:
+            warpfield (np.ndarray): flow of pixels in the image
         """
-        if torch.rand(1)[0] < self.prob:
-            shape = sample["image"][0].shape
-            dmin = min(shape)
-            # dx = gaussian_filter((self.rnd.rand(*shape) * 2 - 1), self.sigma, mode="constant", cval=0) * self.alpha
-            # dy = gaussian_filter((self.rnd.rand(*shape) * 2 - 1), self.sigma, mode="constant", cval=0) * self.alpha
-            # --- if stdv is too small (0.0x) the displacement field looks random, and if stdv is too large (stdv > 8)
-            # --- the displacement field looks like translations. Since normally we perform translations as affine transf
-            # --- a intermediate value of stdv will suffice, from [Simard03] stdv=4 is a good option.
-            dx = (
-                gaussian_filter(
-                    (torch.rand(shape) * 2 - 1), self.stdv, mode="constant", cval=0
-                )
-                * dmin
-                * self.alpha
-            )
-            dy = (
-                gaussian_filter(
-                    (torch.rand(shape) * 2 - 1), self.stdv, mode="constant", cval=0
-                )
-                * dmin
-                * self.alpha
-            )
-            x, y = np.meshgrid(np.arange(shape[0]), np.arange(shape[1]), indexing="ij")
-            indices = np.reshape(x + dx, (-1, 1)), np.reshape(y + dy, (-1, 1))
-            if np.ndim(sample["image"]) > 2:
-                for t in sample["image"]:
-                    t[:] = map_coordinates(t, indices, order=1).reshape(shape)
-            else:
-                sample["image"] = map_coordinates(
-                    sample["image"], indices, order=1
-                ).reshape(shape)
-            if np.ndim(sample["label"]) > 2:
-                for t in sample["label"]:
-                    t[:] = map_coordinates(t, indices, order=1).reshape(shape)
-            else:
-                sample["label"] = map_coordinates(
-                    sample["label"], indices, order=1
-                ).reshape(shape)
+        super().__init__()
+        self.matrix = matrix
+        
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        
+        if img.ndim == 2:
+            return affine_transform(img, self.matrix, order=1, mode='constant', cval=0)
+        elif img.ndim == 3:
+            transformed_img = np.empty_like(img)
+            for i in range(img.shape[-1]): # HxWxC
+                transformed_img[..., i] = affine_transform(img[..., i], self.matrix, order=1, mode='constant', cval=0)
+            return transformed_img
+        else:
+            raise NotImplementedError("No support for multi dimensions (NxHxWxC) right now")
+        
+    
+    def apply_coords(self, coords: np.ndarray):
+        return super().apply_coords(coords)
+    
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        return affine_transform(segmentation, self.matrix, order=0, mode='constant', cval=255)
 
-        return sample
-
-
-class Affine(object):
-    """
-    Perform affine transformations over the input array
-    [translation, rotation, shear, scale]
-    """
-
-    def __init__(self, prob=0.5, t_stdv=0.02, r_kappa=30, sc_stdv=0.12, sh_kappa=20):
+    def inverse(self) -> T.Transform:
+        raise NotImplementedError
+    
+class RandomAffine(T.Augmentation):
+    def __init__(self, prob=0.5, t_stdv=0.02, r_kappa=30, sh_kappa=20, sc_stdv=0.12) -> None:
+        super().__init__()
         self.prob = prob
         self.t_stdv = t_stdv
         self.r_kappa = r_kappa
         self.sh_kappa = sh_kappa
         self.sc_stdv = sc_stdv
-
-    def __call__(self, sample):
-        # --- transf must follow this order:
-        # --- translate -> rotate -> shear -> scale
-        ch, H, W = sample["image"].shape
-        # --- centering mat
-        C, Cm = np.eye(3), np.eye(3)
-        C[0, 2] = W / 2
-        C[1, 2] = H / 2
-        Cm[0, 2] = -W / 2
-        Cm[1, 2] = -H / 2
-        T = np.eye(3, 3)
-
-        # --- Translate:
-        if np.random.rand() < self.prob:
-            # --- normal distribution is used to translate the data, an small
-            # --- stdv is recomended in order to keep the data inside the image
-            # --- [0.001 < stdv < 0.02 is recomended]
-            T[0:2, 2] = np.random.rand(2) * [W, H] * self.t_stdv
-        # --- rotate
-        if torch.rand(1)[0] < self.prob:
-            # --- r_kappa value controls von mises "concentration", so to kepp
-            # --- the rotation under controlled parameters r_kappa=30 keeps
-            # --- theta around +-pi/8 (if mu=0.0)
-            D = np.eye(3)
+        
+    def get_transform(self, image) -> T.Transform:
+        if self._rand_range() < self.prob:
+            h, w = image.shape[:2]
+            
+            center = np.eye(3)
+            center[:2, 2:] = np.asarray([w,h])[:, None] / 2 
+            
+            uncenter = np.eye(3)
+            uncenter[:2, 2:] = -1 * np.asarray([w,h])[:, None] / 2
+            
+            matrix = np.eye(3)
+            
+            # Translation
+            matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2)  * np.asarray([w,h]) * self.t_stdv
+            
+            # Rotation
+            rot = np.eye(3)
             theta = np.random.vonmises(0.0, self.r_kappa)
-            D[0:2, 0:2] = [
-                [np.cos(theta), np.sin(theta)],
-                [-np.sin(theta), np.cos(theta)],
-            ]
-            T = np.dot(np.dot(np.dot(T, C), D), Cm)
-        # --- Shear (vert and Horz)
-        if np.random.rand() < self.prob:
-            # --- under -pi/8 < theta < pi/8 range tan(theta) ~ theta, then
-            # --- computation of tan(theta) is ignored. kappa will be
-            # --- selected to comply this restriction [kappa ~> 20 is a good value]
-            theta = np.random.vonmises(0.0, self.sh_kappa)
-            D = np.eye(3)
-            D[0, 1] = theta
-            T = np.dot(np.dot(np.dot(T, C), D), Cm)
-        if np.random.rand() < self.prob:
-            theta = np.random.vonmises(0.0, self.sh_kappa)
-            D = np.eye(3)
-            D[1, 0] = theta
-            T = np.dot(np.dot(np.dot(T, C), D), Cm)
-        # --- scale
-        if np.random.rand() < self.prob:
-            # --- Use log_normal distribution with mu=0.0 to perform scale,
-            # --- since scale factor must be > 0, stdv is used to control the
-            # --- deviation from 1 [0.1 < stdv < 0.5 is recomended]
-            D = np.eye(3)
-            D[0, 0], D[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
-            T = np.dot(np.dot(np.dot(T, C), D), Cm)
+            rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)],
+                             [-np.sin(theta), np.cos(theta)]]
+            
+            # print(rot)
+            
+            matrix = matrix @ center @ rot @ uncenter
+            
+            # Shear1
+            theta1 = np.random.vonmises(0.0, self.sh_kappa)
+            
+            shear1 = np.eye(3)
+            shear1[0, 1] = theta1
+            
+            # print(shear1)
+                        
+            matrix = matrix @ center @ shear1 @ uncenter
+            
+            # Shear2
+            theta2 = np.random.vonmises(0.0, self.sh_kappa)
+            
+            shear2 = np.eye(3)
+            shear2[1, 0] = theta2
+            
+            # print(shear2)
+                        
+            matrix = matrix @ center @ shear2 @ uncenter
+            
+            # Scale
+            scale = np.eye(3)
+            scale[0, 0], scale[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
+            
+            # print(scale)
+            
+            matrix = matrix @ center @ scale @ uncenter
+            
+            return AffineTransform(matrix)
+            
+        return T.NoOpTransform()
+    
+class RandomTranslation(T.Augmentation):
+    def __init__(self, prob=0.5, t_stdv=0.02) -> None:
+        super().__init__()
+        self.prob = prob
+        self.t_stdv = t_stdv
+        
+    def get_transform(self, image) -> T.Transform:
+        if self._rand_range() < self.prob:
+            h, w = image.shape[:2]
+            
+            matrix = np.eye(3)
+            
+            # Translation
+            matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2)  * np.asarray([w,h]) * self.t_stdv
+            
+            # print(matrix)
+            
+            return AffineTransform(matrix)
+            
+        return T.NoOpTransform()
+    
+class RandomRotation(T.Augmentation):
+    def __init__(self, prob=0.5, r_kappa=30) -> None:
+        super().__init__()
+        self.prob = prob
+        self.r_kappa = r_kappa
+        
+    def get_transform(self, image) -> T.Transform:
+        if self._rand_range() < self.prob:
+            h, w = image.shape[:2]
+            
+            center = np.eye(3)
+            center[:2, 2:] = np.asarray([w,h])[:, None] / 2
+            
+            # print(center)
+            
+            uncenter = np.eye(3)
+            uncenter[:2, 2:] = -1 * np.asarray([w,h])[:, None] / 2
+            
+            # print(uncenter)
+            
+            matrix = np.eye(3)
+            
+            # Rotation
+            rot = np.eye(3)
+            theta = np.random.vonmises(0.0, self.r_kappa)
+            rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)],
+                             [-np.sin(theta), np.cos(theta)]]
 
-        if (T == np.eye(3)).all():
-            return sample
-        else:
-            if np.ndim(sample["image"]) > 2:
-                for t in sample["image"]:
-                    t[:] = affine_transform(t, T)
-            else:
-                sample["image"] = affine_transform(sample["image"], T)
-            if np.ndim(sample["label"]) > 2:
-                # --- affine transform over label must keep values in the matrix
-                # --- then, no interpolation or adding is performed
-                for t in sample["label"]:
-                    t[:] = affine_transform(t, T, mode="nearest", order=0)
-            else:
-                sample["label"] = affine_transform(
-                    sample["label"], T, mode="nearest", order=0
-                )
+            # print(rot)
+            
+            # matrix = uncenter @ rot @ center @ matrix
+            matrix = matrix @ center @ rot @ uncenter
+            
+            # print(matrix)
+            
+            return AffineTransform(matrix)
+            
+        return T.NoOpTransform()
+    
+class RandomShear(T.Augmentation):
+    def __init__(self, prob=0.5, sh_kappa=20) -> None:
+        super().__init__()
+        self.prob = prob
+        self.sh_kappa = sh_kappa
+        
+    def get_transform(self, image) -> T.Transform:
+        if self._rand_range() < self.prob:
+            h, w = image.shape[:2]
+            
+            center = np.eye(3)
+            center[:2, 2:] = np.asarray([w,h])[:, None] / 2 
+            
+            uncenter = np.eye(3)
+            uncenter[:2, 2:] = -1 * np.asarray([w,h])[:, None] / 2
+            
+            matrix = np.eye(3)
+            
+            # Shear1
+            theta1 = np.random.vonmises(0.0, self.sh_kappa)
+            
+            shear1 = np.eye(3)
+            shear1[0, 1] = theta1
+            
+            # print(shear1)
+                        
+            matrix = matrix @ center @ shear1 @ uncenter
+            
+            # Shear2
+            theta2 = np.random.vonmises(0.0, self.sh_kappa)
+            
+            shear2 = np.eye(3)
+            shear2[1, 0] = theta2
+            
+            # print(shear2)
+                        
+            matrix = matrix @ center @ shear2 @ uncenter
+            
+            return AffineTransform(matrix)
+            
+        return T.NoOpTransform()
+    
+class RandomScale(T.Augmentation):
+    def __init__(self, prob=0.5, sc_stdv=0.12) -> None:
+        super().__init__()
+        self.prob = prob
+        self.sc_stdv = sc_stdv
+        
+    def get_transform(self, image) -> T.Transform:
+        if self._rand_range() < self.prob:
+            h, w = image.shape[:2]
+            
+            center = np.eye(3)
+            center[:2, 2:] = np.asarray([w,h])[:, None] / 2 
+            
+            uncenter = np.eye(3)
+            uncenter[:2, 2:] = -1 * np.asarray([w,h])[:, None] / 2
+            
+            matrix = np.eye(3)
+            
+            # Scale
+            scale = np.eye(3)
+            scale[0, 0], scale[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
+            
+            # print(scale)
+            
+            matrix = matrix @ center @ scale @ uncenter
+            
+            return AffineTransform(matrix)
+            
+        return T.NoOpTransform()
 
-            return sample
+def get_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Testing the image augmentation and ")
+    parser.add_argument("-i", "--input", help="Input file",
+                        required=True, type=str)
+    
+    args = parser.parse_args()
+    return args
+
+
+def test(args) -> None:
+    import cv2
+    from pathlib import Path
+    from PIL import Image
+    
+    input_path = Path(args.input)
+    
+    if not input_path.is_file():
+        raise FileNotFoundError(f"Image {input_path} not found")
+    
+    print(f"Loading image {input_path}")
+    image = cv2.imread(str(input_path))
+    
+    resize = T.ResizeShortestEdge((640, 672, 704, 736, 768, 800), max_size=1333, sample_style="choice", interp=Image.BICUBIC)
+    elastic = RandomElastic(prob=1)
+    
+    affine = RandomAffine(prob=1)
+    translation = RandomTranslation(prob=1)
+    rotation = RandomRotation(prob=1)
+    shear = RandomShear(prob=1)
+    scale = RandomScale(prob=1)
+    
+    # augs = T.AugmentationList([resize, elastic, affine])
+    
+    # augs = T.AugmentationList([translation, rotation, shear, scale])
+    augs = T.AugmentationList([affine])
+    # augs = T.AugmentationList([translation])
+    # augs = T.AugmentationList([rotation])
+    # augs = T.AugmentationList([shear])
+    # augs = T.AugmentationList([scale])
+    
+    input_augs = T.AugInput(image)
+    
+    transforms = augs(input_augs)
+    
+    im = Image.fromarray(image)
+    im.show("Original")
+    
+    im = Image.fromarray(input_augs.image)
+    im.show("Transformed")
+    
+        
+if __name__ == "__main__":
+    args = get_arguments()
+    test(args)
