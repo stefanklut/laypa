@@ -143,7 +143,7 @@ def register_region(train=None, val=None):
         MetadataCatalog.get("pagexml_region_val").set(evaluator_type="sem_seg")
         MetadataCatalog.get("pagexml_region_val").set(ignore_label=255)
 
-def main(args):
+def main(args) -> None:
     results = dataset_dict_loader(args.input)
     print(results)
 

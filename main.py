@@ -154,7 +154,7 @@ class Trainer(DefaultTrainer):
         
         return build_detection_test_loader(cfg=cfg, mapper=mapper, dataset_name=dataset_name)
 
-def main(args):
+def main(args) -> None:
     
     # get("../configs/Misc/semantic_R_50_FPN_1x.yaml")
     

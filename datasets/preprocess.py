@@ -359,7 +359,7 @@ class Preprocess:
                 f.write(f"{output_size[0]}, {output_size[1]}\n")
 
 
-def main(args):
+def main(args) -> None:
     process = Preprocess(input_dir=args.input,
                          output_dir=args.output,
                          mode=args.mode,

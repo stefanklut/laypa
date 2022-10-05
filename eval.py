@@ -41,7 +41,7 @@ class Predictor(DefaultPredictor):
     def __call__(self, original_image):
         return super().__call__(original_image)
 
-def main(args):
+def main(args) -> None:
     cfg = setup_cfg(args)
     
     # IDEA Make this happen inside a function?
