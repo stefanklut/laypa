@@ -4,6 +4,7 @@ _C = CN()
 
 _C.MODEL = CN()
 _C.MODEL.RESUME = False
+_C.MODEL.MODE = ""
 
 _C.TRAIN = CN()
 _C.TRAIN.WEIGHTS = ""

@@ -1,18 +1,20 @@
 _BASE_: "../Base-RCNN-FPN.yaml"
 MODEL:
   META_ARCHITECTURE: "SemanticSegmentor"
+  MODE: region
+
   RESNETS:
     DEPTH: 50
   SEM_SEG_HEAD:
-    NUM_CLASSES: 2
+    NUM_CLASSES: 7
 
   PIXEL_MEAN: [103.530, 116.280, 123.675]
   PIXEL_STD: [57.375, 57.120, 58.395]
   
   WEIGHTS: 
 DATASETS:
-  TRAIN: ("pagexml_train",)
-  TEST: ("pagexml_val",)
+  TRAIN: ("pagexml_baseline_train",)
+  TEST: ("pagexml_baseline_val",)
 DATALOADER:
   NUM_WORKERS: 8
 INPUT:
@@ -25,8 +27,12 @@ INPUT:
   MIN_SIZE_TEST: 1024
   MAX_SIZE_TEST: 2048
 
+TRAIN:
+  WEIGHTS:
+
 TEST:
   EVAL_PERIOD: 20000
+  WEIGHTS: ./output/run2/model_final.pth
 
 SOLVER:
   IMS_PER_BATCH: 4

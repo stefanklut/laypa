@@ -1,0 +1,45 @@
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+  META_ARCHITECTURE: "SemanticSegmentor"
+  MODE: baseline
+
+  RESNETS:
+    DEPTH: 50
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 2
+
+  PIXEL_MEAN: [103.530, 116.280, 123.675]
+  PIXEL_STD: [57.375, 57.120, 58.395]
+  
+  WEIGHTS: 
+DATASETS:
+  TRAIN: ("pagexml_baseline_train",)
+  TEST: ("pagexml_baseline_val",)
+DATALOADER:
+  NUM_WORKERS: 8
+INPUT:
+  MIN_SIZE_TRAIN_SAMPLING: choice
+  MIN_SIZE_TRAIN: (832, 896, 960, 1024)
+  MAX_SIZE_TRAIN: 2048
+  RANDOM_FLIP: both
+
+  # FIXME Have the Min size adjustable
+  MIN_SIZE_TEST: 1024
+  MAX_SIZE_TEST: 2048
+
+TRAIN:
+  WEIGHTS:
+
+TEST:
+  EVAL_PERIOD: 20000
+  WEIGHTS: ./output/run2/model_final.pth
+
+SOLVER:
+  IMS_PER_BATCH: 4
+  CHECKPOINT_PERIOD: 5000
+  BASE_LR: 0.02
+  STEPS: (60000, 80000)
+  MAX_ITER: 90000
+  
+
+OUTPUT_DIR: ./output

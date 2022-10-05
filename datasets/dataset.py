@@ -103,26 +103,45 @@ def dataset_dict_loader(dataset_dir: str | Path):
 
     return input_dicts
 
-def register(train=None, val=None):
+def register_baseline(train=None, val=None):
     if train is not None and train != "":
         DatasetCatalog.register(
-            name="pagexml_train",
+            name="pagexml_baseline_train",
             func=lambda path=train: dataset_dict_loader(path)
         )
-        MetadataCatalog.get("pagexml_train").set(stuff_classes=["backgroud", "baseline"])
-        MetadataCatalog.get("pagexml_train").set(stuff_colors=[(0,0,0), (255,255,255)])
-        MetadataCatalog.get("pagexml_train").set(evaluator_type="sem_seg")
-        MetadataCatalog.get("pagexml_train").set(ignore_label=255)
+        MetadataCatalog.get("pagexml_baseline_train").set(stuff_classes=["backgroud", "baseline"])
+        MetadataCatalog.get("pagexml_baseline_train").set(stuff_colors=[(0,0,0), (255,255,255)])
+        MetadataCatalog.get("pagexml_baseline_train").set(evaluator_type="sem_seg")
+        MetadataCatalog.get("pagexml_baseline_train").set(ignore_label=255)
     if val is not None and val != "":
         DatasetCatalog.register(
-            name="pagexml_val",
+            name="pagexml_baseline_val",
             func=lambda path=val: dataset_dict_loader(path)
         )
-        MetadataCatalog.get("pagexml_val").set(stuff_classes=["backgroud", "baseline"])
-        MetadataCatalog.get("pagexml_val").set(stuff_colors=[(0,0,0), (255,255,255)])
-        MetadataCatalog.get("pagexml_val").set(evaluator_type="sem_seg")
-        MetadataCatalog.get("pagexml_val").set(ignore_label=255)
+        MetadataCatalog.get("pagexml_baseline_val").set(stuff_classes=["backgroud", "baseline"])
+        MetadataCatalog.get("pagexml_baseline_val").set(stuff_colors=[(0,0,0), (255,255,255)])
+        MetadataCatalog.get("pagexml_baseline_val").set(evaluator_type="sem_seg")
+        MetadataCatalog.get("pagexml_baseline_val").set(ignore_label=255)
 
+def register_region(train=None, val=None):
+    if train is not None and train != "":
+        DatasetCatalog.register(
+            name="pagexml_region_train",
+            func=lambda path=train: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get("pagexml_region_train").set(stuff_classes=["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"])
+        MetadataCatalog.get("pagexml_region_train").set(stuff_colors=[(0,0,0), (3,3,228), (0,140,255), (0,237,255), (38,128,0), (255,77,0), (135,7,117)])
+        MetadataCatalog.get("pagexml_region_train").set(evaluator_type="sem_seg")
+        MetadataCatalog.get("pagexml_region_train").set(ignore_label=255)
+    if val is not None and val != "":
+        DatasetCatalog.register(
+            name="pagexml_region_val",
+            func=lambda path=val: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get("pagexml_region_val").set(stuff_classes=["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"])
+        MetadataCatalog.get("pagexml_region_val").set(stuff_colors=[(0,0,0), (3,3,228), (0,140,255), (0,237,255), (38,128,0), (255,77,0), (135,7,117)])
+        MetadataCatalog.get("pagexml_region_val").set(evaluator_type="sem_seg")
+        MetadataCatalog.get("pagexml_region_val").set(ignore_label=255)
 
 def main(args):
     results = dataset_dict_loader(args.input)

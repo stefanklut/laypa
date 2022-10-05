@@ -54,13 +54,33 @@ class Preprocess:
                  line_width=5,
                  line_color=1,
                  ) -> None:
+        
         self.input_dir: Optional[Path] = None
+        if input_dir is not None:
+            self.set_input_dir(input_dir)
+        
         self.output_dir: Optional[Path] = None
+        if output_dir is not None:
+            self.set_output_dir(output_dir)
+        
+        
         self.line_width = line_width
         self.line_color = line_color
+        self.regions = ["marginalia", "page-number", "resolution", "date", "index", "attendance", "Resumption", "resumption", "Insertion", "insertion"]
+        self.merge_regions: Optional[list] = ["resolution:Resumption,resumption,Insertion,insertion"]
+        self.region_type: Optional[list] = None
+        
+        self.region_classes = self._build_class_regions()
+        self.region_types = self._build_region_types()
+        self.merged_regions = self._build_merged_regions()
+        if self.merged_regions is not None:
+            for parent, childs in self.merged_regions.items():
+                for child in childs:
+                    self.region_classes[child] = self.region_classes[parent]
         
         # self.total_size = 2048*2048
         self.mode = mode
+        
         # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
         self.image_formats = [".bmp", ".dib",
                               ".jpeg", ".jpg", ".jpe",
@@ -73,6 +93,7 @@ class Preprocess:
                               ".tiff", ".tif",
                               ".exr",
                               ".hdr", ".pic"]
+        
         self.resize = resize
         self.resize_mode = resize_mode
         self.min_size = min_size
@@ -87,10 +108,64 @@ class Preprocess:
         else:
             raise NotImplementedError("Only \"choice\" and \"range\" are accepted values")
 
-        if input_dir is not None:
-            self.set_input_dir(input_dir)
-        if output_dir is not None:
-            self.set_output_dir(output_dir)
+        
+            
+    def _build_class_regions(self) -> dict:
+        """given a list of regions assign a equaly separated class to each one"""
+        class_dic = {}
+        
+        for c, r in enumerate(self.regions):
+            class_dic[r] = c + 1
+        return class_dic
+        
+
+    def _build_merged_regions(self) -> Optional[dict]:
+        """build dic of regions to be merged into a single class"""
+        if self.merge_regions is None:
+            return None
+        to_merge = {}
+        msg = ""
+        for c in self.merge_regions:
+            try:
+                parent, childs = c.split(":")
+                if parent in self.regions:
+                    to_merge[parent] = childs.split(",")
+                else:
+                    msg = '\nRegion "{}" to merge is not defined as region'.format(
+                        parent
+                    )
+                    raise
+            except:
+                raise argparse.ArgumentTypeError(
+                    "Malformed argument {}".format(c) + msg
+                )
+
+        return to_merge
+
+    def _build_region_types(self) -> Optional[dict]:
+        """ build a dic of regions and their respective type"""
+        reg_type = {"full_page": "TextRegion"}
+        if self.region_type is None:
+            for reg in self.regions:
+                reg_type[reg] = "TextRegion"
+            return reg_type
+        msg = ""
+        for c in self.region_type:
+            try:
+                parent, childs = c.split(":")
+                regs = childs.split(",")
+                for reg in regs:
+                    if reg in self.regions:
+                        reg_type[reg] = parent
+                    else:
+                        msg = '\nCannot assign region "{0}" to any type. {0} not defined as region'.format(
+                            reg
+                        )
+            except:
+                raise argparse.ArgumentTypeError(
+                    "Malformed argument {}".format(c) + msg
+                )
+        return reg_type
 
     def set_input_dir(self, input_dir: str | Path) -> None:
         if isinstance(input_dir, str):
@@ -147,13 +222,12 @@ class Preprocess:
                 raise PermissionError(
                     f"No access to {xml_path} for read operations")
 
-    @staticmethod
-    def resize_image_old(image, total_size=0) -> np.ndarray:
+    def resize_image_old(self, image) -> np.ndarray:
         old_height, old_width, channels = image.shape
         counter = 1
         height = np.ceil(old_height / (256 * counter)) * 256
         width = np.ceil(old_width / (256 * counter)) * 256
-        while height*width > total_size:
+        while height*width > self.min_size[-1] * self.max_size:
             height = np.ceil(old_height / (256 * counter)) * 256
             width = np.ceil(old_width / (256 * counter)) * 256
             counter += 1
@@ -162,6 +236,7 @@ class Preprocess:
                                interpolation=cv2.INTER_CUBIC)
 
         return res_image
+    
     def resize_image(self, image) -> np.ndarray:
         old_height, old_width, channels = image.shape
         if self.resize_mode == "range":
@@ -229,7 +304,7 @@ class Preprocess:
                 image_shape, color=self.line_color, line_width=self.line_width)
             mask = baseline_mask
         elif self.mode == "region":
-            region_mask = gt_data.build_mask(image_shape, node_types, classes)
+            region_mask = gt_data.build_mask(image_shape, set(self.region_types.values()), self.region_classes)
             mask = region_mask
         else:
             raise NotImplementedError

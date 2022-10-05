@@ -83,7 +83,7 @@ class PageData:
             e_type = None
             self.logger.warning(
                 "No region type defined for {} at {}".format(
-                    self.get_id(element), self.name
+                    self.get_id(element), self.filepath
                 )
             )
         return e_type
@@ -138,15 +138,11 @@ class PageData:
                 # --- get element type
                 e_type = self.get_region_type(node)
                 if e_type == None or e_type not in color_dic:
-                    e_color = 175
+                    # FIXME Make this deal with unknown values (ignore would be 0, no loss is 255)
+                    e_color = 255
                     self.logger.warning(
-                        'Element type "{}"undefined on color dic, set to default=175'.format(
-                            e_type
-                        )
-                    )
-                    print(
-                        'Element type "{}"undefined on color dic, set to default=175'.format(
-                            e_type
+                       'Element type "{}" undefined on color dic, set to default={} {}'.format(
+                            e_type, e_color, self.filepath
                         )
                     )
                     continue
@@ -154,11 +150,11 @@ class PageData:
                     e_color = color_dic[e_type]
                 # --- get element coords
                 coords = self.get_coords(node)
-                coords = (coords * np.flip(scale_factor, 0)).astype(np.int)
-                cv2.fillConvexPoly(mask, coords, e_color)
+                coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
+                cv2.fillPoly(mask, [coords], e_color)
         if not mask.any():
             self.logger.warning(
-                    "File {} do not contains regions".format(self.name)
+                    "File {} does not contains regions".format(self.filepath)
                     )
         return mask
 
@@ -176,12 +172,12 @@ class PageData:
         for element in self.root.findall("".join([".//", self.base, "Baseline"])):
             # --- get element coords
             str_coords = element.attrib.get("points").split()
-            coords = np.array([i.split(",") for i in str_coords]).astype(np.int)
-            coords = (coords * np.flip(scale_factor, 0)).astype(np.int)
+            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
+            coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
             cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, color, line_width)
         if not mask.any():
             self.logger.warning(
-                    "File {} do not contains baselines".format(self.name)
+                    "File {} does not contains baselines".format(self.filepath)
                     )
         return mask
 
@@ -202,7 +198,7 @@ class PageData:
             if text_data == None:
                 self.logger.warning(
                     "No text found in line {} at {}".format(
-                        self.get_id(element), self.name
+                        self.get_id(element), self.filepath
                     )
                 )
                 return ""

@@ -44,8 +44,13 @@ class Predictor(DefaultPredictor):
 def main(args):
     cfg = setup_cfg(args)
     
-    dataset.register(train=args.train,
-                     val=args.val)
+    # IDEA Make this happen inside a function?
+    if cfg.MODEL.MODE == "baseline":
+        dataset.register_baseline(args.train, args.val)
+    elif cfg.MODEL.MODE == "region":
+        dataset.register_region(args.train, args.val)
+    else:
+        raise NotImplementedError(f"Only have \"baseline\" and \"region\", given {cfg.MODEL.MODE}")
     
     predictor = Predictor(cfg=cfg)
     
@@ -53,7 +58,7 @@ def main(args):
     val_loader = dataset.dataset_dict_loader(args.val)
     
     
-    metadata = MetadataCatalog.get("pagexml_train")
+    metadata = MetadataCatalog.get("pagexml_region_train")
     
     for inputs in np.random.choice(val_loader, 3):
         im = cv2.imread(inputs["file_name"])
