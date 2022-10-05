@@ -13,8 +13,8 @@ MODEL:
   
   WEIGHTS: 
 DATASETS:
-  TRAIN: ("pagexml_baseline_train",)
-  TEST: ("pagexml_baseline_val",)
+  TRAIN: ("pagexml_region_train",)
+  TEST: ("pagexml_region_val",)
 DATALOADER:
   NUM_WORKERS: 8
 INPUT:
