@@ -32,7 +32,7 @@ TRAIN:
 
 TEST:
   EVAL_PERIOD: 20000
-  WEIGHTS: ./output/run2/model_final.pth
+  WEIGHTS: ./output/run3-region/model_final.pth
 
 SOLVER:
   IMS_PER_BATCH: 4

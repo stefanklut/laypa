@@ -107,6 +107,7 @@ def build_augmentation(cfg, is_train) -> List[T.Augmentation | T.Transform]:
     augmentation.append(RandomScale(prob=0.5, sc_stdv=0.12))
     # TODO color augmentation (also convert to black and white)
     # TODO Add random crop
+    # TODO 90 degree rotation
     # print(augmentation)
     return augmentation
     

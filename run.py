@@ -21,8 +21,10 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args.add_argument("--opts", nargs=argparse.REMAINDER, help="optional args to change", default=[])
     
     other_args = parser.add_argument_group("other")
-    other_args.add_argument("-t", "--train", help="Train input folder", type=str)
-    other_args.add_argument("-v", "--val", help="Validation input folder", type=str)
+    # other_args.add_argument("-t", "--train", help="Train input folder", type=str)
+    # other_args.add_argument("-v", "--val", help="Validation input folder", type=str)
+    
+    other_args.add_argument("-i", "--input", help="Validation input folder", type=str)
     
     args = parser.parse_args()
     
@@ -66,7 +68,7 @@ def main(args) -> None:
         outputs["sem_seg"] = torch.argmax(outputs["sem_seg"], dim=-3)
         print(inputs["file_name"])
         vis_im = Visualizer(im[:, :, ::-1].copy(),
-                    metadata=metadata, 
+                    metadata=metadata,
                     scale=1
         )
         vis_im_gt = Visualizer(im[:, :, ::-1].copy(),
