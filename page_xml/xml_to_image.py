@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
-from xmlPAGE import PageData
+
+from .xmlPAGE import PageData
 from typing import Optional
 
 
@@ -150,7 +151,7 @@ class XMLImage:
                 )
         return reg_type
 
-    def process(self, xml_path, image_shape=None):
+    def run(self, xml_path, image_shape=None):
         gt_data = PageData(xml_path)
         gt_data.parse()
 

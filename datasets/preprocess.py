@@ -17,8 +17,15 @@ from multiprocessing import Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xmlPAGE import PageData
+from page_xml.xml_to_image import XMLImage
 
 def get_arguments() -> argparse.Namespace:
+    # HACK hardcoded regions if none are given
+    republic_regions = ["marginalia", "page-number", "resolution", "date",
+                        "index", "attendance", "Resumption", "resumption", "Insertion", "insertion"]
+    republic_merge_regions = [
+        "resolution:Resumption,resumption,Insertion,insertion"]
+    
     parser = argparse.ArgumentParser(
         description="Preprocessing an annotated dataset of documents with pageXML")
     parser.add_argument("-i", "--input", help="Input folder",
@@ -41,6 +48,34 @@ def get_arguments() -> argparse.Namespace:
                         help="Used line width", type=int, default=5)
     parser.add_argument("-c", "--line_color", help="Used line color",
                         choices=list(range(256)), type=int, metavar="{0-255}", default=1)
+    
+    parser.add_argument(
+        "--regions",
+        default=republic_regions,
+        nargs="+",
+        type=str,
+        help="""List of regions to be extracted. 
+                            Format: --regions r1 r2 r3 ...""",
+    )
+    parser.add_argument(
+        "--merge_regions",
+        default=republic_merge_regions,
+        nargs="+",
+        type=str,
+        help="""Merge regions on PAGE file into a single one.
+                            Format --merge_regions r1:r2,r3 r4:r5, then r2 and r3
+                            will be merged into r1 and r5 into r4""",
+    )
+    parser.add_argument(
+        "--region_type",
+        default=None,
+        nargs="+",
+        type=str,
+        help="""Type of region on PAGE file.
+                            Format --region_type t1:r1,r3 t2:r5, then type t1
+                            will assigned to regions r1 and r3 and type t2 to
+                            r5 and so on...""",
+    )
 
     args = parser.parse_args()
     return args
@@ -54,8 +89,11 @@ class Preprocess:
                  resize_mode="choice",
                  min_size=[800],
                  max_size=1333,
-                 line_width=5,
-                 line_color=1,
+                 line_width=None,
+                 line_color=None,
+                 regions=None,
+                 merge_regions=None,
+                 region_type=None
                  ) -> None:
 
         self.input_dir: Optional[Path] = None
@@ -66,21 +104,16 @@ class Preprocess:
         if output_dir is not None:
             self.set_output_dir(output_dir)
 
-        self.line_width = line_width
-        self.line_color = line_color
-        self.regions = ["marginalia", "page-number", "resolution", "date", "index",
-                        "attendance", "Resumption", "resumption", "Insertion", "insertion"]
-        self.merge_regions: Optional[list] = [
-            "resolution:Resumption,resumption,Insertion,insertion"]
-        self.region_type: Optional[list] = None
+        self.mode = mode
 
-        self.region_classes = self._build_class_regions()
-        self.region_types = self._build_region_types()
-        self.merged_regions = self._build_merged_regions()
-        if self.merged_regions is not None:
-            for parent, childs in self.merged_regions.items():
-                for child in childs:
-                    self.region_classes[child] = self.region_classes[parent]
+        self.xml_to_image = XMLImage(
+                                mode=self.mode,
+                                line_width=line_width,
+                                line_color=line_color,
+                                regions=regions,
+                                merge_regions=merge_regions,
+                                region_type=region_type
+                            )
 
         # self.total_size = 2048*2048
         self.mode = mode
@@ -113,62 +146,6 @@ class Preprocess:
         else:
             raise NotImplementedError(
                 "Only \"choice\" and \"range\" are accepted values")
-
-    def _build_class_regions(self) -> dict:
-        """given a list of regions assign a equaly separated class to each one"""
-        class_dic = {}
-
-        for c, r in enumerate(self.regions):
-            class_dic[r] = c + 1
-        return class_dic
-
-    def _build_merged_regions(self) -> Optional[dict]:
-        """build dic of regions to be merged into a single class"""
-        if self.merge_regions is None:
-            return None
-        to_merge = {}
-        msg = ""
-        for c in self.merge_regions:
-            try:
-                parent, childs = c.split(":")
-                if parent in self.regions:
-                    to_merge[parent] = childs.split(",")
-                else:
-                    msg = '\nRegion "{}" to merge is not defined as region'.format(
-                        parent
-                    )
-                    raise
-            except:
-                raise argparse.ArgumentTypeError(
-                    "Malformed argument {}".format(c) + msg
-                )
-
-        return to_merge
-
-    def _build_region_types(self) -> dict:
-        """ build a dic of regions and their respective type"""
-        reg_type = {"full_page": "TextRegion"}
-        if self.region_type is None:
-            for reg in self.regions:
-                reg_type[reg] = "TextRegion"
-            return reg_type
-        msg = ""
-        for c in self.region_type:
-            try:
-                parent, childs = c.split(":")
-                regs = childs.split(",")
-                for reg in regs:
-                    if reg in self.regions:
-                        reg_type[reg] = parent
-                    else:
-                        msg = '\nCannot assign region "{0}" to any type. {0} not defined as region'.format(
-                            reg
-                        )
-            except:
-                raise argparse.ArgumentTypeError(
-                    "Malformed argument {}".format(c) + msg
-                )
-        return reg_type
 
     def set_input_dir(self, input_dir: str | Path) -> None:
         if isinstance(input_dir, str):
@@ -304,21 +281,7 @@ class Preprocess:
 
         cv2.imwrite(out_image_path, image)
 
-        gt_data = PageData(xml_path)
-        gt_data.parse()
-
-        if self.mode == "baseline":
-            baseline_mask = gt_data.build_baseline_mask(image_shape,
-                                                        color=self.line_color,
-                                                        line_width=self.line_width)
-            mask = baseline_mask
-        elif self.mode == "region":
-            region_mask = gt_data.build_mask(image_shape,
-                                             set(self.region_types.values()),
-                                             self.region_classes)
-            mask = region_mask
-        else:
-            raise NotImplementedError
+        mask = self.xml_to_image.run(xml_path, image_shape=image_shape)
 
         out_mask_path = str(self.output_dir.joinpath(
             "ground_truth", image_stem)) + ".png"
@@ -380,7 +343,10 @@ def main(args) -> None:
         min_size=args.min_size,
         max_size=args.max_size,
         line_width=args.line_width,
-        line_color=args.line_color
+        line_color=args.line_color,
+        regions=args.regions,
+        merge_regions=args.merge_regions,
+        region_type=args.region_type
     )
     process.run()
 
