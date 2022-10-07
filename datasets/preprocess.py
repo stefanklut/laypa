@@ -1,4 +1,3 @@
-
 from tqdm import tqdm
 import argparse
 import glob
@@ -19,21 +18,25 @@ from multiprocessing import Pool
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xmlPAGE import PageData
 
-
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Preprocessing an annotated dataset of documents with pageXML")
     parser.add_argument("-i", "--input", help="Input folder",
                         required=True, type=str)
-    parser.add_argument("-o", "--output", help="Output folder", required=True, type=str)
+    parser.add_argument(
+        "-o", "--output", help="Output folder", required=True, type=str)
     parser.add_argument("-m", "--mode", help="Output mode",
                         choices=["baseline", "region", "both"], default="baseline", type=str)
-    
-    parser.add_argument("-r", "--resize", help="Resize input images", action="store_true")
-    parser.add_argument("--resize_mode", help="How to select the size when resizing", type=str, choices=["range", "choice"], default="choice")
-    parser.add_argument("--min_size", help="Min resize shape", nargs="*", type=int, default=[1024])
-    parser.add_argument("--max_size", help="Max resize shape", type=int, default=2048)
-    
+
+    parser.add_argument(
+        "-r", "--resize", help="Resize input images", action="store_true")
+    parser.add_argument("--resize_mode", help="How to select the size when resizing",
+                        type=str, choices=["range", "choice"], default="choice")
+    parser.add_argument("--min_size", help="Min resize shape",
+                        nargs="*", type=int, default=[1024])
+    parser.add_argument(
+        "--max_size", help="Max resize shape", type=int, default=2048)
+
     parser.add_argument("-w", "--line_width",
                         help="Used line width", type=int, default=5)
     parser.add_argument("-c", "--line_color", help="Used line color",
@@ -44,7 +47,7 @@ def get_arguments() -> argparse.Namespace:
 
 
 class Preprocess:
-    def __init__(self, input_dir=None, 
+    def __init__(self, input_dir=None,
                  output_dir=None,
                  mode="baseline",
                  resize=False,
@@ -54,22 +57,23 @@ class Preprocess:
                  line_width=5,
                  line_color=1,
                  ) -> None:
-        
+
         self.input_dir: Optional[Path] = None
         if input_dir is not None:
             self.set_input_dir(input_dir)
-        
+
         self.output_dir: Optional[Path] = None
         if output_dir is not None:
             self.set_output_dir(output_dir)
-        
-        
+
         self.line_width = line_width
         self.line_color = line_color
-        self.regions = ["marginalia", "page-number", "resolution", "date", "index", "attendance", "Resumption", "resumption", "Insertion", "insertion"]
-        self.merge_regions: Optional[list] = ["resolution:Resumption,resumption,Insertion,insertion"]
+        self.regions = ["marginalia", "page-number", "resolution", "date", "index",
+                        "attendance", "Resumption", "resumption", "Insertion", "insertion"]
+        self.merge_regions: Optional[list] = [
+            "resolution:Resumption,resumption,Insertion,insertion"]
         self.region_type: Optional[list] = None
-        
+
         self.region_classes = self._build_class_regions()
         self.region_types = self._build_region_types()
         self.merged_regions = self._build_merged_regions()
@@ -77,10 +81,10 @@ class Preprocess:
             for parent, childs in self.merged_regions.items():
                 for child in childs:
                     self.region_classes[child] = self.region_classes[parent]
-        
+
         # self.total_size = 2048*2048
         self.mode = mode
-        
+
         # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
         self.image_formats = [".bmp", ".dib",
                               ".jpeg", ".jpg", ".jpe",
@@ -93,31 +97,30 @@ class Preprocess:
                               ".tiff", ".tif",
                               ".exr",
                               ".hdr", ".pic"]
-        
+
         self.resize = resize
         self.resize_mode = resize_mode
         self.min_size = min_size
         self.max_size = max_size
-        
+
         if self.resize_mode == "choice":
             if len(self.min_size) < 1:
-                raise ValueError("Must specify at least one choice when using the choice option.")
+                raise ValueError(
+                    "Must specify at least one choice when using the choice option.")
         elif self.resize_mode == "range":
             if len(self.min_size) != 2:
                 raise ValueError("Must have two int to set the range")
         else:
-            raise NotImplementedError("Only \"choice\" and \"range\" are accepted values")
+            raise NotImplementedError(
+                "Only \"choice\" and \"range\" are accepted values")
 
-        
-            
     def _build_class_regions(self) -> dict:
         """given a list of regions assign a equaly separated class to each one"""
         class_dic = {}
-        
+
         for c, r in enumerate(self.regions):
             class_dic[r] = c + 1
         return class_dic
-        
 
     def _build_merged_regions(self) -> Optional[dict]:
         """build dic of regions to be merged into a single class"""
@@ -142,7 +145,7 @@ class Preprocess:
 
         return to_merge
 
-    def _build_region_types(self) -> Optional[dict]:
+    def _build_region_types(self) -> dict:
         """ build a dic of regions and their respective type"""
         reg_type = {"full_page": "TextRegion"}
         if self.region_type is None:
@@ -212,7 +215,8 @@ class Preprocess:
     @staticmethod
     def check_pageXML_exists(image_paths: list[Path]) -> None:
         # FIXME  This path is terrible
-        xml_paths = [image_path.parent.joinpath("page", ".".join(str(image_path.name).split('.')[:-1]) + ".xml") for image_path in image_paths]
+        xml_paths = [image_path.parent.joinpath("page", ".".join(
+            str(image_path.name).split('.')[:-1]) + ".xml") for image_path in image_paths]
 
         for xml_path, image_path in zip(xml_paths, image_paths):
             if not xml_path.is_file():
@@ -236,25 +240,29 @@ class Preprocess:
                                interpolation=cv2.INTER_CUBIC)
 
         return res_image
-    
+
     def resize_image(self, image) -> np.ndarray:
         old_height, old_width, channels = image.shape
         if self.resize_mode == "range":
-            short_edge_length = np.random.randint(self.min_size[0], self.min_size[1] + 1)
+            short_edge_length = np.random.randint(
+                self.min_size[0], self.min_size[1] + 1)
         elif self.resize_mode == "choice":
             short_edge_length = np.random.choice(self.min_size)
         else:
-            raise NotImplementedError("Only \"choice\" and \"range\" are accepted values")
-        
+            raise NotImplementedError(
+                "Only \"choice\" and \"range\" are accepted values")
+
         if short_edge_length == 0:
             return image
-        
-        height, width = self.get_output_shape(old_height, old_width, short_edge_length, self.max_size)
-        
-        res_image = cv2.resize(image, np.asarray([width, height]).astype(np.int32), interpolation=cv2.INTER_CUBIC)
-        
+
+        height, width = self.get_output_shape(
+            old_height, old_width, short_edge_length, self.max_size)
+
+        res_image = cv2.resize(image, np.asarray([width, height]).astype(
+            np.int32), interpolation=cv2.INTER_CUBIC)
+
         return res_image
-    
+
     @staticmethod
     def get_output_shape(old_height: int, old_width: int, short_edge_length: int, max_size: int) -> tuple[int, int]:
         """
@@ -269,11 +277,11 @@ class Preprocess:
             scale = max_size * 1.0 / max(height, width)
             height = height * scale
             width = width * scale
-        
+
         height = int(height + 0.5)
         width = int(width + 0.5)
         return (height, width)
-    
+
     def process_single_file(self, image_path: Path) -> tuple[str, str, np.ndarray]:
         if self.input_dir is None:
             raise ValueError("Cannot run when the input dir is not set")
@@ -300,11 +308,14 @@ class Preprocess:
         gt_data.parse()
 
         if self.mode == "baseline":
-            baseline_mask = gt_data.build_baseline_mask(
-                image_shape, color=self.line_color, line_width=self.line_width)
+            baseline_mask = gt_data.build_baseline_mask(image_shape,
+                                                        color=self.line_color,
+                                                        line_width=self.line_width)
             mask = baseline_mask
         elif self.mode == "region":
-            region_mask = gt_data.build_mask(image_shape, set(self.region_types.values()), self.region_classes)
+            region_mask = gt_data.build_mask(image_shape,
+                                             set(self.region_types.values()),
+                                             self.region_classes)
             mask = region_mask
         else:
             raise NotImplementedError
@@ -360,15 +371,17 @@ class Preprocess:
 
 
 def main(args) -> None:
-    process = Preprocess(input_dir=args.input,
-                         output_dir=args.output,
-                         mode=args.mode,
-                         resize=args.resize,
-                         resize_mode=args.resize_mode,
-                         min_size=args.min_size,
-                         max_size=args.max_size,
-                         line_width=args.line_width,
-                         line_color=args.line_color)
+    process = Preprocess(
+        input_dir=args.input,
+        output_dir=args.output,
+        mode=args.mode,
+        resize=args.resize,
+        resize_mode=args.resize_mode,
+        min_size=args.min_size,
+        max_size=args.max_size,
+        line_width=args.line_width,
+        line_color=args.line_color
+    )
     process.run()
 
 
