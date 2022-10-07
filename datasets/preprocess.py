@@ -192,8 +192,7 @@ class Preprocess:
     @staticmethod
     def check_pageXML_exists(image_paths: list[Path]) -> None:
         # FIXME  This path is terrible
-        xml_paths = [image_path.parent.joinpath("page", ".".join(
-            str(image_path.name).split('.')[:-1]) + ".xml") for image_path in image_paths]
+        xml_paths = [image_path.parent.joinpath("page", image_path.stem + ".xml") for image_path in image_paths]
 
         for xml_path, image_path in zip(xml_paths, image_paths):
             if not xml_path.is_file():
@@ -265,9 +264,8 @@ class Preprocess:
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
 
-        image_stem = Path(".".join(str(image_path.name).split('.')[:-1]))
-        xml_path = self.input_dir.joinpath(
-            "page", str(image_stem) + '.xml')
+        image_stem = image_path.stem
+        xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
 
         image = cv2.imread(str(image_path))
 

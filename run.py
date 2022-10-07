@@ -1,4 +1,8 @@
 import argparse
+from multiprocessing import Pool
+import os
+from pathlib import Path
+from typing import Optional
 from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
@@ -11,6 +15,9 @@ import numpy as np
 from main import setup_cfg
 import torch.nn.functional as F
 import torch
+from tqdm import tqdm
+
+from natsort import os_sorted
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Main file for Layout Analysis")
@@ -24,7 +31,8 @@ def get_arguments() -> argparse.Namespace:
     # other_args.add_argument("-t", "--train", help="Train input folder", type=str)
     # other_args.add_argument("-v", "--val", help="Validation input folder", type=str)
     
-    other_args.add_argument("-i", "--input", help="Validation input folder", type=str)
+    other_args.add_argument("-i", "--input", help="Input folder", type=str)
+    other_args.add_argument("-o", "--output", help="Output folder", type=str)
     
     args = parser.parse_args()
     
@@ -43,47 +51,115 @@ class Predictor(DefaultPredictor):
     def __call__(self, original_image):
         return super().__call__(original_image)
 
+class SavePredictor(Predictor):
+    def __init__(self, cfg, input_dir, output_dir):
+        super().__init__(cfg)
+        
+        self.input_dir: Optional[Path] = None
+        if input_dir is not None:
+            self.set_input_dir(input_dir)
+        
+        self.output_dir: Optional[Path] = None
+        if output_dir is not None:
+            self.set_output_dir(output_dir)
+            
+        # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
+        self.image_formats = [".bmp", ".dib",
+                              ".jpeg", ".jpg", ".jpe",
+                              ".jp2",
+                              ".png",
+                              ".webp",
+                              ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
+                              ".pfm",
+                              ".sr", ".ras",
+                              ".tiff", ".tif",
+                              ".exr",
+                              ".hdr", ".pic"]
+        
+    def set_input_dir(self, input_dir: str | Path) -> None:
+        if isinstance(input_dir, str):
+            input_dir = Path(input_dir)
+
+        if not input_dir.exists():
+            raise FileNotFoundError(f"Input dir ({input_dir}) is not found")
+
+        if not input_dir.is_dir():
+            raise NotADirectoryError(
+                f"Input path ({input_dir}) is not a directory")
+
+        if not os.access(path=input_dir, mode=os.R_OK):
+            raise PermissionError(
+                f"No access to {input_dir} for read operations")
+
+        page_dir = input_dir.joinpath("page")
+        if not input_dir.joinpath("page").exists():
+            raise FileNotFoundError(f"Sub page dir ({page_dir}) is not found")
+
+        if not os.access(path=page_dir, mode=os.R_OK):
+            raise PermissionError(
+                f"No access to {page_dir} for read operations")
+
+        self.input_dir = input_dir.resolve()
+        
+    def set_output_dir(self, output_dir: str | Path) -> None:
+        if isinstance(output_dir, str):
+            output_dir = Path(output_dir)
+
+        if not output_dir.is_dir():
+            print(
+                f"Could not find output dir ({output_dir}), creating one at specified location")
+            output_dir.mkdir(parents=True)
+
+        self.output_dir = output_dir.resolve()
+    
+    def save_prediction(self, input_path: Path | str):
+        if self.output_dir is None:
+            raise ValueError("Cannot run when the output dir is not set")
+        
+        if isinstance(input_path, str):
+            input_path = Path(input_path)
+        image = cv2.imread(str(input_path))
+        outputs = super().__call__(image)
+        output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
+        output_path = self.output_dir.joinpath(input_path.stem + '.png')
+        
+        cv2.imwrite(str(output_path), output_image)
+        
+        return output_path
+    
+    def process(self):
+        if self.input_dir is None:
+            raise ValueError("Cannot run when the input dir is not set")
+        if self.output_dir is None:
+            raise ValueError("Cannot run when the output dir is not set")
+        
+        image_paths = os_sorted([image_path.resolve() for image_path in self.input_dir.glob("*")
+                                 if image_path.suffix in self.image_formats])
+        # Single thread
+        for inputs in tqdm(image_paths):
+            self.save_prediction(inputs)
+        
+        # Multithread <- does not work with cuda
+        # with Pool(os.cpu_count()) as pool:
+        #     results = list(tqdm(pool.imap_unordered(
+        #         self.save_prediction, image_paths), total=len(image_paths)))
+    
 def main(args) -> None:
     cfg = setup_cfg(args)
     
     # IDEA Make this happen inside a function?
-    if cfg.MODEL.MODE == "baseline":
-        dataset.register_baseline(args.train, args.val)
-        metadata = MetadataCatalog.get("pagexml_baseline_train")
-    elif cfg.MODEL.MODE == "region":
-        dataset.register_region(args.train, args.val)
-        metadata = MetadataCatalog.get("pagexml_region_train")
-    else:
-        raise NotImplementedError(f"Only have \"baseline\" and \"region\", given {cfg.MODEL.MODE}")
+    # if cfg.MODEL.MODE == "baseline":
+    #     dataset.register_baseline(None, args.val)
+    #     metadata = MetadataCatalog.get("pagexml_baseline_val")
+    # elif cfg.MODEL.MODE == "region":
+    #     dataset.register_region(None, args.input)
+    #     metadata = MetadataCatalog.get("pagexml_region_val")
+    # else:
+    #     raise NotImplementedError(f"Only have \"baseline\" and \"region\", given {cfg.MODEL.MODE}")
     
-    predictor = Predictor(cfg=cfg)
+    predictor = SavePredictor(cfg=cfg, input_dir=args.input, output_dir=args.output)
     
-    train_loader = dataset.dataset_dict_loader(args.train)
-    val_loader = dataset.dataset_dict_loader(args.val)
-    
-    for inputs in np.random.choice(val_loader, 3):
-        im = cv2.imread(inputs["file_name"])
-        gt = cv2.imread(inputs["sem_seg_file_name"], cv2.IMREAD_GRAYSCALE)
-        outputs = predictor(im)
-        outputs["sem_seg"] = torch.argmax(outputs["sem_seg"], dim=-3)
-        print(inputs["file_name"])
-        vis_im = Visualizer(im[:, :, ::-1].copy(),
-                    metadata=metadata,
-                    scale=1
-        )
-        vis_im_gt = Visualizer(im[:, :, ::-1].copy(),
-                    metadata=metadata, 
-                    scale=1
-        )
-        vis_im = vis_im.draw_sem_seg(outputs["sem_seg"].to("cpu"))
-        vis_im_gt = vis_im_gt.draw_sem_seg(gt)
-        f, ax = plt.subplots(1, 2)
-        ax[0].imshow(vis_im.get_image()[:, :, ::-1])
-        ax[0].axis('off')
-        ax[1].imshow(vis_im_gt.get_image()[:, :, ::-1])
-        ax[1].axis('off')
-        # f.title(inputs["file_name"])
-        plt.show()
+    results = predictor.process()
 
 if __name__ == "__main__":
     args = get_arguments()

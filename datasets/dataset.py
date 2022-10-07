@@ -103,6 +103,7 @@ def dataset_dict_loader(dataset_dir: str | Path):
 
     return input_dicts
 
+# IDEA register dataset for inference aswell
 def register_baseline(train=None, val=None):
     if train is not None and train != "":
         DatasetCatalog.register(
