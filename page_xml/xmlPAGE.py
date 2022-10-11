@@ -163,6 +163,7 @@ class PageData:
         Builds a "image" mask of Baselines on XML-PAGE
         """
         size = self.get_size()[::-1]
+        out_size = np.asarray(out_size)
         # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
         # --- is better to keep mask as np.uint8 to save disk space, then change it
         # --- to np.int @ dataloader only if NNLLoss is going to be used.

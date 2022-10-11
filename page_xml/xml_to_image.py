@@ -80,9 +80,9 @@ class XMLImage:
             # regions: list of type names
             # merge_regions: regions to be merged. r1:r2,r3  -> r2 and r3 become region r1
             # region_type: type per_region. t1:r1,r2  -> r1 and r2 become type t1
-            self.regions: list[str] = regions
-            self.merge_regions: Optional[list[str]] = merge_regions
-            self.region_type: Optional[list] = region_type
+            self._regions: list[str] = regions
+            self._merge_regions: Optional[list[str]] = merge_regions
+            self._region_type: Optional[list] = region_type
 
             self.region_classes = self._build_class_regions()
             self.region_types = self._build_region_types()
@@ -99,20 +99,20 @@ class XMLImage:
 
         class_dic = {}
 
-        for c, r in enumerate(self.regions):
+        for c, r in enumerate(self._regions):
             class_dic[r] = c + 1
         return class_dic
 
     def _build_merged_regions(self) -> Optional[dict]:
         """build dic of regions to be merged into a single class"""
-        if self.merge_regions is None:
+        if self._merge_regions is None:
             return None
         to_merge = {}
         msg = ""
-        for c in self.merge_regions:
+        for c in self._merge_regions:
             try:
                 parent, childs = c.split(":")
-                if parent in self.regions:
+                if parent in self._regions:
                     to_merge[parent] = childs.split(",")
                 else:
                     msg = '\nRegion "{}" to merge is not defined as region'.format(
@@ -129,17 +129,17 @@ class XMLImage:
     def _build_region_types(self) -> dict:
         """ build a dic of regions and their respective type"""
         reg_type = {"full_page": "TextRegion"}
-        if self.region_type is None:
-            for reg in self.regions:
+        if self._region_type is None:
+            for reg in self._regions:
                 reg_type[reg] = "TextRegion"
             return reg_type
         msg = ""
-        for c in self.region_type:
+        for c in self._region_type:
             try:
                 parent, childs = c.split(":")
                 regs = childs.split(",")
                 for reg in regs:
-                    if reg in self.regions:
+                    if reg in self._regions:
                         reg_type[reg] = parent
                     else:
                         msg = '\nCannot assign region "{0}" to any type. {0} not defined as region'.format(
@@ -150,6 +150,19 @@ class XMLImage:
                     "Malformed argument {}".format(c) + msg
                 )
         return reg_type
+    
+    def get_regions(self) -> list:
+        remaining_regions = ["background"]
+        if self.mode == 'region':
+            if self.merged_regions is None:
+                raise ValueError("merged_regions is not set")
+            remaining_regions.extend(region for region in self._regions if not region in self.merged_regions.keys())
+        else:
+            remaining_regions.extend(["baseline"])
+        
+        return remaining_regions
+        
+            
 
     def run(self, xml_path, image_shape=None):
         gt_data = PageData(xml_path)
@@ -172,6 +185,7 @@ class XMLImage:
             raise NotImplementedError
 
         return mask
+
 
 
 if __name__ == "__main__":
