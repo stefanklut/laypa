@@ -132,13 +132,14 @@ class PageData:
         """
         size = self.get_size()[::-1]
         mask = np.zeros(out_size, np.uint8)
+        out_size = np.asarray(out_size)
         scale_factor = out_size / size
         for element in element_name:
             for node in self.root.findall("".join([".//", self.base, element])):
                 # --- get element type
                 e_type = self.get_region_type(node)
                 if e_type == None or e_type not in color_dic:
-                    # FIXME Make this deal with unknown values (ignore would be 0, no loss is 255)
+                    # ignore would be 0, no loss is 255
                     e_color = 255
                     self.logger.warning(
                        'Element type "{}" undefined on color dic, set to default={} {}'.format(

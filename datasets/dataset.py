@@ -1,3 +1,4 @@
+from multiprocessing import Pool
 import os
 
 import numpy as np
@@ -99,7 +100,10 @@ def dataset_dict_loader(dataset_dir: str | Path):
     for image_path, mask_path, output_size in zip(image_paths, mask_paths, output_sizes):
         input_dicts.append(create_data((image_path, mask_path, output_size)))
 
-    # TODO Multi Thread?
+    # Multi Thread
+    with Pool(os.cpu_count()) as pool:
+        input_dicts = pool.imap_unordered(
+            create_data, list(zip(image_paths, mask_paths, output_sizes)))
 
     return input_dicts
 

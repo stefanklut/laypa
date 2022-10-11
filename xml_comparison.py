@@ -2,7 +2,7 @@
 
 import argparse
 from collections import OrderedDict
-from multiprocessing import Pool
+from multiprocessing import Pool, Value
 import os
 from pathlib import Path
 import numpy as np
@@ -121,21 +121,29 @@ class XMLEvaluator:
 
             input_i[input_i == self._ignore_label] = self._num_classes
 
-            self._conf_matrix += np.bincount(
+            _conf_matrix = np.bincount(
                 (self._num_classes + 1) *
                 output_i.reshape(-1) + input_i.reshape(-1),
                 minlength=self._conf_matrix.size,
             ).reshape(self._conf_matrix.shape)
 
+            self._conf_matrix += _conf_matrix
+            
             if self._compute_boundary_iou:
                 b_gt = self._mask_to_boundary(input_i.astype(np.uint8))
                 b_pred = self._mask_to_boundary(output_i.astype(np.uint8))
 
-                self._b_conf_matrix += np.bincount(
+                _b_conf_matrix = np.bincount(
                     (self._num_classes + 1) *
                     b_pred.reshape(-1) + b_gt.reshape(-1),
                     minlength=self._conf_matrix.size,
                 ).reshape(self._conf_matrix.shape)
+                
+                self._b_conf_matrix += _b_conf_matrix
+                
+    def process_output(self):
+        #TODO create and output the numpy arrays to combine them in the Pool function
+        return
 
     def evaluate(self):
         """
@@ -248,13 +256,14 @@ class EvalWrapper:
     
     def run(self, xml_list1, xml_list2):
         # #Single thread
-        # for xml_i_1, xml_i_2 in tqdm(zip(xml_list1, xml_list2), total=len(xml_list1)):
-        #     self.compare_xml((xml_i_1, xml_i_2))
+        for xml_i_1, xml_i_2 in tqdm(zip(xml_list1, xml_list2), total=len(xml_list1)):
+            self.compare_xml((xml_i_1, xml_i_2))
         
+        # FIXME Breaks with numpy array within evaluator being changed
         # Multi thread
-        with Pool(os.cpu_count()) as pool:
-            results = list(tqdm(pool.imap_unordered(
-                self.compare_xml, list(zip(xml_list1, xml_list2))), total=len(xml_list1)))
+        # with Pool(os.cpu_count()) as pool:
+        #     results = list(tqdm(pool.imap_unordered(
+        #         self.compare_xml, list(zip(xml_list1, xml_list2))), total=len(xml_list1)))
     
 
 def main(args):

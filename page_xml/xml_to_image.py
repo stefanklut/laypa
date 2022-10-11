@@ -156,7 +156,10 @@ class XMLImage:
         if self.mode == 'region':
             if self.merged_regions is None:
                 raise ValueError("merged_regions is not set")
-            remaining_regions.extend(region for region in self._regions if not region in self.merged_regions.keys())
+            removed_regions = set()
+            for values in self.merged_regions.values():
+                removed_regions = removed_regions.union(set(values))
+            remaining_regions.extend(region for region in self._regions if not region in removed_regions)
         else:
             remaining_regions.extend(["baseline"])
         
