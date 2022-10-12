@@ -117,7 +117,7 @@ class XMLEvaluator:
         if self._num_classes is None:
             raise ValueError
         
-        for i, (input_i, output_i) in enumerate(zip(inputs, outputs)):
+        for input_i, output_i in zip(inputs, outputs):
 
             input_i[input_i == self._ignore_label] = self._num_classes
 
@@ -141,9 +141,43 @@ class XMLEvaluator:
                 
                 self._b_conf_matrix += _b_conf_matrix
                 
-    def process_output(self):
-        #TODO create and output the numpy arrays to combine them in the Pool function
-        return
+    def process_output(self, inputs, outputs):
+        # Does not update the internal confusion matrix
+        if self._conf_matrix is None:
+            raise ValueError("Must set/reset the confusion matrix")
+        if self._b_conf_matrix is None:
+            raise ValueError("Must set/reset the boundry confusion matrix")
+        if self._num_classes is None:
+            raise ValueError
+        
+        full_conf_matrix = np.zeros_like(self._b_conf_matrix)
+        full_b_conf_matrix = np.zeros_like(self._b_conf_matrix)
+        
+        for input_i, output_i in zip(inputs, outputs):
+
+            input_i[input_i == self._ignore_label] = self._num_classes
+
+            _conf_matrix = np.bincount(
+                (self._num_classes + 1) *
+                output_i.reshape(-1) + input_i.reshape(-1),
+                minlength=self._conf_matrix.size,
+            ).reshape(self._conf_matrix.shape)
+            
+            full_conf_matrix += _conf_matrix
+            
+            if self._compute_boundary_iou:
+                b_gt = self._mask_to_boundary(input_i.astype(np.uint8))
+                b_pred = self._mask_to_boundary(output_i.astype(np.uint8))
+
+                _b_conf_matrix = np.bincount(
+                    (self._num_classes + 1) *
+                    b_pred.reshape(-1) + b_gt.reshape(-1),
+                    minlength=self._conf_matrix.size,
+                ).reshape(self._conf_matrix.shape)
+                
+                full_b_conf_matrix += _b_conf_matrix
+        
+        return full_conf_matrix, full_b_conf_matrix
 
     def evaluate(self):
         """
@@ -254,16 +288,37 @@ class EvalWrapper:
         
         self.evaluator.process([image_i_1], [image_i_2])
     
+    def compare_xml_output(self, info):
+        xml_i_1, xml_i_2 = info
+        
+        if xml_i_1.stem != xml_i_2.stem:
+            raise ValueError(f"XMLs {xml_i_1} & {xml_i_2} do not match")
+    
+        image_i_1 = self.xml_to_image.run(xml_i_1)
+        image_i_2 = self.xml_to_image.run(xml_i_2)
+        
+        confusion_matrix  = self.evaluator.process_output([image_i_1], [image_i_2])
+        
+        return confusion_matrix
+    
     def run(self, xml_list1, xml_list2):
         # #Single thread
-        for xml_i_1, xml_i_2 in tqdm(zip(xml_list1, xml_list2), total=len(xml_list1)):
-            self.compare_xml((xml_i_1, xml_i_2))
+        # for xml_i_1, xml_i_2 in tqdm(zip(xml_list1, xml_list2), total=len(xml_list1)):
+        #     self.compare_xml((xml_i_1, xml_i_2))
+            
+        # return self.evaluator.evaluate()
         
-        # FIXME Breaks with numpy array within evaluator being changed
+        
         # Multi thread
-        # with Pool(os.cpu_count()) as pool:
-        #     results = list(tqdm(pool.imap_unordered(
-        #         self.compare_xml, list(zip(xml_list1, xml_list2))), total=len(xml_list1)))
+        with Pool(os.cpu_count()) as pool:
+            results = list(tqdm(pool.imap_unordered(
+                self.compare_xml_output, list(zip(xml_list1, xml_list2))), total=len(xml_list1)))
+        
+        results = np.asarray(results)
+        self.evaluator._conf_matrix = np.sum(results[:, 0], axis=0)
+        self.evaluator._b_conf_matrix = np.sum(results[:, 1], axis=0)
+        
+        return self.evaluator.evaluate()
     
 
 def main(args):
@@ -287,9 +342,6 @@ def main(args):
     
     eval_runner = EvalWrapper(xml_to_image, evaluator)
     eval_runner.run(xml_list1, xml_list2)
-    
-    evaluator = eval_runner.evaluator
-    evaluator.evaluate()
 
 if __name__ == "__main__":
     args = get_arguments()
