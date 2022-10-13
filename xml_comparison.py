@@ -273,6 +273,7 @@ def clean_input(input_list: list[str]):
     return path_list
 
 class EvalWrapper:
+    # TODO Add compare images directly
     def __init__(self, xml_to_image, evaluator) -> None:
         self.evaluator: XMLEvaluator = evaluator
         self.xml_to_image: XMLImage = xml_to_image
@@ -301,12 +302,34 @@ class EvalWrapper:
         
         return confusion_matrix
     
-    def run(self, xml_list1, xml_list2):
+    def compare_images(self, info):
+        image_path_i_1, image_path_i_2 = info
+        
+        if image_path_i_1.stem != image_path_i_2.stem:
+            raise ValueError(f"Images {image_path_i_1} & {image_path_i_2} do not match")
+    
+        image_i_1 = cv2.imread(image_path_i_1, cv2.IMREAD_GRAYSCALE)
+        image_i_2 = cv2.imread(image_path_i_2, cv2.IMREAD_GRAYSCALE)
+        
+        self.evaluator.process([image_i_1], [image_i_2])
+    
+    def compare_images_output(self, info):
+        image_path_i_1, image_path_i_2 = info
+        
+        if image_path_i_1.stem != image_path_i_2.stem:
+            raise ValueError(f"Images {image_path_i_1} & {image_path_i_2} do not match")
+    
+        image_i_1 = cv2.imread(image_path_i_1, cv2.IMREAD_GRAYSCALE)
+        image_i_2 = cv2.imread(image_path_i_2, cv2.IMREAD_GRAYSCALE)
+        
+        confusion_matrix = self.evaluator.process_output([image_i_1], [image_i_2])
+        
+        return confusion_matrix
+    
+    def run_xml(self, xml_list1, xml_list2):
         # #Single thread
         # for xml_i_1, xml_i_2 in tqdm(zip(xml_list1, xml_list2), total=len(xml_list1)):
         #     self.compare_xml((xml_i_1, xml_i_2))
-            
-        # return self.evaluator.evaluate()
         
         
         # Multi thread
@@ -315,11 +338,26 @@ class EvalWrapper:
                 self.compare_xml_output, list(zip(xml_list1, xml_list2))), total=len(xml_list1)))
         
         results = np.asarray(results)
-        self.evaluator._conf_matrix = np.sum(results[:, 0], axis=0)
-        self.evaluator._b_conf_matrix = np.sum(results[:, 1], axis=0)
+        self.evaluator._conf_matrix += np.sum(results[:, 0], axis=0)
+        self.evaluator._b_conf_matrix += np.sum(results[:, 1], axis=0)
         
-        return self.evaluator.evaluate()
+    def run_images(self, image_path_list1, image_path_list2):
+        # #Single thread
+        # for image_path_i_1, image_path_i_2 in tqdm(zip(image_path_list1, image_path_list2), total=len(image_path_list1)):
+        #     self.compare_images((image_path_i_1, image_path_i_2))
+        
+        
+        # Multi thread
+        with Pool(os.cpu_count()) as pool:
+            results = list(tqdm(pool.imap_unordered(
+                self.compare_images_output, list(zip(image_path_list1, image_path_list2))), total=len(image_path_list1)))
+        
+        results = np.asarray(results)
+        self.evaluator._conf_matrix += np.sum(results[:, 0], axis=0)
+        self.evaluator._b_conf_matrix += np.sum(results[:, 1], axis=0)
     
+    def evaluate(self):
+        return self.evaluator.evaluate()
 
 def main(args):
     xml_list1 = clean_input(args.input1)
@@ -341,7 +379,8 @@ def main(args):
                              class_names=xml_to_image.get_regions())
     
     eval_runner = EvalWrapper(xml_to_image, evaluator)
-    eval_runner.run(xml_list1, xml_list2)
+    eval_runner.run_xml(xml_list1, xml_list2)
+    eval_runner.evaluate()
 
 if __name__ == "__main__":
     args = get_arguments()

@@ -13,6 +13,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 def main(args) -> None:
+    # TODO Create viewer
     pass
 
 if __name__ == "__main__":

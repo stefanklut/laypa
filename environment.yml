@@ -15,6 +15,7 @@ dependencies:
   - shapely
   - matplotlib
   - scipy
+  - scikit-learn
   - pip
   - tensorboard
   - pip:

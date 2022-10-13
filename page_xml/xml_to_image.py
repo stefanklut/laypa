@@ -77,7 +77,7 @@ class XMLImage:
         elif self.mode == "region":
             assert regions is not None
 
-            # regions: list of type names
+            # regions: list of type names (required for lookup)
             # merge_regions: regions to be merged. r1:r2,r3  -> r2 and r3 become region r1
             # region_type: type per_region. t1:r1,r2  -> r1 and r2 become type t1
             self._regions: list[str] = regions
