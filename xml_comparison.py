@@ -24,9 +24,9 @@ def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Preprocessing an annotated dataset of documents with pageXML")
     
-    parser.add_argument("-i1", "--input1", help="Input folder/files", nargs="+", default=[],
+    parser.add_argument("-g", "--gt", help="Input folder/files GT", nargs="+", default=[],
                         required=True, type=str)
-    parser.add_argument("-i2", "--input2", help="Input folder/files", nargs="+", default=[],
+    parser.add_argument("-i", "--input", help="Input folder/files", nargs="+", default=[],
                         required=True, type=str)
     
     parser.add_argument("-m", "--mode", help="Output mode",
@@ -273,12 +273,11 @@ def clean_input(input_list: list[str]):
     return path_list
 
 class EvalWrapper:
-    # TODO Add compare images directly
-    def __init__(self, xml_to_image, evaluator) -> None:
-        self.evaluator: XMLEvaluator = evaluator
+    def __init__(self, xml_to_image: XMLImage, evaluator: XMLEvaluator) -> None:
         self.xml_to_image: XMLImage = xml_to_image
+        self.evaluator: XMLEvaluator = evaluator
     
-    def compare_xml(self, info):
+    def compare_xml(self, info: tuple[Path, Path]):
         xml_i_1, xml_i_2 = info
         
         if xml_i_1.stem != xml_i_2.stem:
@@ -289,7 +288,7 @@ class EvalWrapper:
         
         self.evaluator.process([image_i_1], [image_i_2])
     
-    def compare_xml_output(self, info):
+    def compare_xml_output(self, info: tuple[Path, Path]):
         xml_i_1, xml_i_2 = info
         
         if xml_i_1.stem != xml_i_2.stem:
@@ -302,7 +301,7 @@ class EvalWrapper:
         
         return confusion_matrix
     
-    def compare_images(self, info):
+    def compare_images(self, info: tuple[Path, Path]):
         image_path_i_1, image_path_i_2 = info
         
         if image_path_i_1.stem != image_path_i_2.stem:
@@ -313,7 +312,7 @@ class EvalWrapper:
         
         self.evaluator.process([image_i_1], [image_i_2])
     
-    def compare_images_output(self, info):
+    def compare_images_output(self, info: tuple[Path, Path]):
         image_path_i_1, image_path_i_2 = info
         
         if image_path_i_1.stem != image_path_i_2.stem:
@@ -360,8 +359,8 @@ class EvalWrapper:
         return self.evaluator.evaluate()
 
 def main(args):
-    xml_list1 = clean_input(args.input1)
-    xml_list2 = clean_input(args.input2)
+    xml_list1 = clean_input(args.gt)
+    xml_list2 = clean_input(args.input)
     
     if len(xml_list1) != len(xml_list2):
         raise ValueError("Number of xml files does not match")

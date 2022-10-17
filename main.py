@@ -18,6 +18,7 @@ from detectron2.config import CfgNode
 from detectron2.evaluation import SemSegEvaluator
 from detectron2.utils.events import EventStorage
 from detectron2.data import transforms as T
+from detectron2.engine import hooks
 
 
 from datasets.transforms import (
@@ -119,6 +120,18 @@ def build_augmentation(cfg, is_train) -> List[T.Augmentation | T.Transform]:
 
 
 class Trainer(DefaultTrainer):
+    
+    def __init__(self, cfg):
+        super().__init__(cfg)
+        
+        
+        best_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
+                                                   checkpointer=self.checkpointer,
+                                                   val_metric="sem_seg/mIoU",
+                                                   mode='max',
+                                                   file_prefix='model_best_mIOU')
+        
+        self.register_hooks([best_checkpointer])
 
     @classmethod
     def build_evaluator(cls, cfg, dataset_name):

@@ -191,7 +191,7 @@ class Preprocess:
 
     @staticmethod
     def check_pageXML_exists(image_paths: list[Path]) -> None:
-        xml_paths = [image_path.parent.joinpath("page", image_path.stem + ".xml") for image_path in image_paths]
+        xml_paths = [image_path.resolve().parent.joinpath("page", image_path.stem + ".xml") for image_path in image_paths]
 
         for xml_path, image_path in zip(xml_paths, image_paths):
             if not xml_path.is_file():

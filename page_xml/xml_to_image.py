@@ -164,15 +164,13 @@ class XMLImage:
             remaining_regions.extend(["baseline"])
         
         return remaining_regions
-        
-            
 
     def run(self, xml_path, image_shape=None):
         gt_data = PageData(xml_path)
         gt_data.parse()
 
         if image_shape is None:
-            image_shape = gt_data.get_size()
+            image_shape = gt_data.get_size()[::-1]
 
         if self.mode == "baseline":
             baseline_mask = gt_data.build_baseline_mask(image_shape,
