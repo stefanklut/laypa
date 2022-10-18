@@ -106,15 +106,22 @@ def build_augmentation(cfg, is_train) -> List[T.Augmentation | T.Transform]:
             )
 
     # TODO Give these a proper argument in the config
-    augmentation.append(RandomElastic(prob=0.5, alpha=34, stdv=4))
-
-    augmentation.append(RandomTranslation(prob=0.5, t_stdv=0.02))
-    augmentation.append(RandomRotation(prob=0.5, r_kappa=30))
-    augmentation.append(RandomShear(prob=0.5, sh_kappa=20))
-    augmentation.append(RandomScale(prob=0.5, sc_stdv=0.12))
+    
     # TODO color augmentation (also convert to black and white)
     # TODO Add random crop
     # TODO 90 degree rotation
+    
+    augmentation.append(RandomElastic(prob=0.5, alpha=34, stdv=4))
+    augmentation.append(RandomAffine(prob=0.5,
+                                     t_stdv=0.02,
+                                     r_kappa=30,
+                                     sh_kappa=20,
+                                     sc_stdv=0.12))
+    # augmentation.append(RandomTranslation(prob=0.5, t_stdv=0.02))
+    # augmentation.append(RandomRotation(prob=0.5, r_kappa=30))
+    # augmentation.append(RandomShear(prob=0.5, sh_kappa=20))
+    # augmentation.append(RandomScale(prob=0.5, sc_stdv=0.12))
+    
     # print(augmentation)
     return augmentation
 

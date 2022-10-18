@@ -1,8 +1,11 @@
 # Taken from P2PaLA
 
 import argparse
+from collections import Counter
 import numpy as np
 import torch
+import torchvision
+import cv2
 
 import detectron2.data.transforms as T
 
@@ -11,6 +14,93 @@ from scipy.ndimage import affine_transform
 from scipy.ndimage import gaussian_filter
 
 # TODO Check if there is a benefit for using scipy instead of the standard torchvision
+
+
+class ResizeTransform(T.Transform):
+
+    def __init__(self, height, width, new_height, new_width) -> None:
+        super().__init__()
+        self.height = height
+        self.width = width
+        self.new_height = new_height
+        self.new_width = new_width
+
+    def apply_image(self, image) -> np.ndarray:
+        old_height, old_width, channels = image.shape
+        assert (old_height, old_width) == (self.height,
+                                           self.width), "Input dims do not match specified dims"
+
+        res_image = cv2.resize(image, np.asarray([self.new_width, self.new_height]).astype(
+            np.int32), interpolation=cv2.INTER_CUBIC)
+
+        return res_image
+
+    def apply_coords(self, coords):
+        coords[:, 0] = coords[:, 0] * (self.new_width * 1.0 / self.width)
+        coords[:, 1] = coords[:, 1] * (self.new_height * 1.0 / self.height)
+        return coords
+
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        old_height, old_width = segmentation.shape
+        assert (old_height, old_width) == (self.height,
+                                           self.width), "Input dims do not match specified dims"
+
+        res_segmentation = cv2.resize(segmentation, np.asarray([self.new_width, self.new_height]).astype(
+            np.int32), interpolation=cv2.INTER_NEAREST)
+
+        return res_segmentation
+
+    def inverse(self) -> T.Transform:
+        return ResizeTransform(self.new_height, self.new_width, self.height, self.width)
+
+
+class ResizeShortEdge(T.Augmentation):
+    def __init__(self, resize_mode, min_size, max_size) -> None:
+        super().__init__()
+        self.resize_mode = resize_mode
+        self.min_size = min_size
+        self.max_size = max_size
+
+    @staticmethod
+    def get_output_shape(old_height: int, old_width: int, short_edge_length: int, max_size: int) -> tuple[int, int]:
+        """
+        Compute the output size given input size and target short edge length.
+        """
+        scale = float(short_edge_length) / min(old_height, old_width)
+        if old_height < old_width:
+            height, width = short_edge_length, scale * old_width
+        else:
+            height, width = scale * old_height, short_edge_length
+        if max(height, width) > max_size:
+            scale = max_size * 1.0 / max(height, width)
+            height = height * scale
+            width = width * scale
+
+        height = int(height + 0.5)
+        width = int(width + 0.5)
+        return (height, width)
+
+    def get_transform(self, image) -> T.Transform:
+        old_height, old_width, channels = image.shape
+
+        if self.resize_mode == "range":
+            short_edge_length = np.random.randint(
+                self.min_size[0], self.min_size[1] + 1)
+        elif self.resize_mode == "choice":
+            short_edge_length = np.random.choice(self.min_size)
+        else:
+            raise NotImplementedError(
+                "Only \"choice\" and \"range\" are accepted values")
+
+        if short_edge_length == 0:
+            return image
+
+        height, width = self.get_output_shape(
+            old_height, old_width, short_edge_length, self.max_size)
+        if (old_height, old_width) == (height, width):
+            return T.NoOpTransform()
+
+        return ResizeTransform(old_height, old_width, height, width)
 
 
 class HFlipTransform(T.Transform):
@@ -142,15 +232,22 @@ class RandomFlip(T.Augmentation):
 
     def get_transform(self, image) -> T.Transform:
         h, w = image.shape[:2]
-        if self._rand_range() < self.prob:
-            if self.horizontal:
-                return HFlipTransform(w)
-            elif self.vertical:
-                return VFlipTransform(h)
-        return T.NoOpTransform()
+        if self._rand_range() >= self.prob:
+            return T.NoOpTransform()
+
+        if self.horizontal:
+            return HFlipTransform(w)
+        elif self.vertical:
+            return VFlipTransform(h)
+        else:
+            raise ValueError("At least one of horiz or vert has to be True!")
 
 
-class WarpField(T.Transform):
+class WarpFieldTransform(T.Transform):
+    """
+    Apply a warp field (optical flow) to an image
+    """
+
     def __init__(self, warpfield: np.ndarray) -> None:
         """
         Args:
@@ -206,31 +303,36 @@ class RandomElastic(T.Augmentation):
         self.stdv = stdv
 
     def get_transform(self, image) -> T.Transform:
-        if self._rand_range() < self.prob:
-            h, w = image.shape[:2]
-            warpfield = np.zeros((h, w, 2))
-            dx = gaussian_filter(
-                ((np.random.rand(h, w) * 2) - 1), self.stdv, mode="constant", cval=0)
-            dy = gaussian_filter(
-                ((np.random.rand(h, w) * 2) - 1), self.stdv, mode="constant", cval=0)
-            warpfield[..., 0] = dx * self.alpha
-            warpfield[..., 1] = dy * self.alpha
+        if self._rand_range() >= self.prob:
+            return T.NoOpTransform()
 
-            return WarpField(warpfield)
+        h, w = image.shape[:2]
+        warpfield = np.zeros((h, w, 2))
+        dx = gaussian_filter(
+            ((np.random.rand(h, w) * 2) - 1), self.stdv, mode="constant", cval=0)
+        dy = gaussian_filter(
+            ((np.random.rand(h, w) * 2) - 1), self.stdv, mode="constant", cval=0)
+        warpfield[..., 0] = dx * self.alpha
+        warpfield[..., 1] = dy * self.alpha
 
-        return T.NoOpTransform()
+        return WarpFieldTransform(warpfield)
 
 
 class AffineTransform(T.Transform):
+    """
+    Apply an affine transformation to an image
+    """
+
     def __init__(self, matrix: np.ndarray) -> None:
         """
         Args:
-            warpfield (np.ndarray): flow of pixels in the image
+            matrix (np.ndarray): affine matrix applied to the pixels in image
         """
         super().__init__()
         self.matrix = matrix
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
+        # TODO Change to float32
 
         if img.ndim == 2:
             return affine_transform(img, self.matrix, order=1, mode='constant', cval=0)
@@ -264,62 +366,64 @@ class RandomAffine(T.Augmentation):
         self.sc_stdv = sc_stdv
 
     def get_transform(self, image) -> T.Transform:
-        if self._rand_range() < self.prob:
-            h, w = image.shape[:2]
+        
+        # TODO Separate prob for each sub-operation
+        if self._rand_range() >= self.prob:
+            return T.NoOpTransform()
 
-            center = np.eye(3)
-            center[:2, 2:] = np.asarray([w, h])[:, None] / 2
+        h, w = image.shape[:2]
 
-            uncenter = np.eye(3)
-            uncenter[:2, 2:] = -1 * np.asarray([w, h])[:, None] / 2
+        center = np.eye(3)
+        center[:2, 2:] = np.asarray([w, h])[:, None] / 2
 
-            matrix = np.eye(3)
+        uncenter = np.eye(3)
+        uncenter[:2, 2:] = -1 * np.asarray([w, h])[:, None] / 2
 
-            # Translation
-            matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2) * \
-                np.asarray([w, h]) * self.t_stdv
+        matrix = np.eye(3)
 
-            # Rotation
-            rot = np.eye(3)
-            theta = np.random.vonmises(0.0, self.r_kappa)
-            rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)],
-                             [-np.sin(theta), np.cos(theta)]]
+        # Translation
+        matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2) * \
+            np.asarray([w, h]) * self.t_stdv
 
-            # print(rot)
+        # Rotation
+        rot = np.eye(3)
+        theta = np.random.vonmises(0.0, self.r_kappa)
+        rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)],
+                         [-np.sin(theta), np.cos(theta)]]
 
-            matrix = matrix @ center @ rot @ uncenter
+        # print(rot)
 
-            # Shear1
-            theta1 = np.random.vonmises(0.0, self.sh_kappa)
+        matrix = matrix @ center @ rot @ uncenter
 
-            shear1 = np.eye(3)
-            shear1[0, 1] = theta1
+        # Shear1
+        theta1 = np.random.vonmises(0.0, self.sh_kappa)
 
-            # print(shear1)
+        shear1 = np.eye(3)
+        shear1[0, 1] = theta1
 
-            matrix = matrix @ center @ shear1 @ uncenter
+        # print(shear1)
 
-            # Shear2
-            theta2 = np.random.vonmises(0.0, self.sh_kappa)
+        matrix = matrix @ center @ shear1 @ uncenter
 
-            shear2 = np.eye(3)
-            shear2[1, 0] = theta2
+        # Shear2
+        theta2 = np.random.vonmises(0.0, self.sh_kappa)
 
-            # print(shear2)
+        shear2 = np.eye(3)
+        shear2[1, 0] = theta2
 
-            matrix = matrix @ center @ shear2 @ uncenter
+        # print(shear2)
 
-            # Scale
-            scale = np.eye(3)
-            scale[0, 0], scale[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
+        matrix = matrix @ center @ shear2 @ uncenter
 
-            # print(scale)
+        # Scale
+        scale = np.eye(3)
+        scale[0, 0], scale[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
 
-            matrix = matrix @ center @ scale @ uncenter
+        # print(scale)
 
-            return AffineTransform(matrix)
+        matrix = matrix @ center @ scale @ uncenter
 
-        return T.NoOpTransform()
+        return AffineTransform(matrix)
 
 
 class RandomTranslation(T.Augmentation):
@@ -329,20 +433,20 @@ class RandomTranslation(T.Augmentation):
         self.t_stdv = t_stdv
 
     def get_transform(self, image) -> T.Transform:
-        if self._rand_range() < self.prob:
-            h, w = image.shape[:2]
+        if self._rand_range() >= self.prob:
+            return T.NoOpTransform()
 
-            matrix = np.eye(3)
+        h, w = image.shape[:2]
 
-            # Translation
-            matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2) * \
-                np.asarray([w, h]) * self.t_stdv
+        matrix = np.eye(3)
 
-            # print(matrix)
+        # Translation
+        matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2) * \
+            np.asarray([w, h]) * self.t_stdv
 
-            return AffineTransform(matrix)
+        # print(matrix)
 
-        return T.NoOpTransform()
+        return AffineTransform(matrix)
 
 
 class RandomRotation(T.Augmentation):
@@ -352,37 +456,37 @@ class RandomRotation(T.Augmentation):
         self.r_kappa = r_kappa
 
     def get_transform(self, image) -> T.Transform:
-        if self._rand_range() < self.prob:
-            h, w = image.shape[:2]
+        if self._rand_range() >= self.prob:
+            return T.NoOpTransform()
 
-            center = np.eye(3)
-            center[:2, 2:] = np.asarray([w, h])[:, None] / 2
+        h, w = image.shape[:2]
 
-            # print(center)
+        center = np.eye(3)
+        center[:2, 2:] = np.asarray([w, h])[:, None] / 2
 
-            uncenter = np.eye(3)
-            uncenter[:2, 2:] = -1 * np.asarray([w, h])[:, None] / 2
+        # print(center)
 
-            # print(uncenter)
+        uncenter = np.eye(3)
+        uncenter[:2, 2:] = -1 * np.asarray([w, h])[:, None] / 2
 
-            matrix = np.eye(3)
+        # print(uncenter)
 
-            # Rotation
-            rot = np.eye(3)
-            theta = np.random.vonmises(0.0, self.r_kappa)
-            rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)],
-                             [-np.sin(theta), np.cos(theta)]]
+        matrix = np.eye(3)
 
-            # print(rot)
+        # Rotation
+        rot = np.eye(3)
+        theta = np.random.vonmises(0.0, self.r_kappa)
+        rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)],
+                         [-np.sin(theta), np.cos(theta)]]
 
-            # matrix = uncenter @ rot @ center @ matrix
-            matrix = matrix @ center @ rot @ uncenter
+        # print(rot)
 
-            # print(matrix)
+        # matrix = uncenter @ rot @ center @ matrix
+        matrix = matrix @ center @ rot @ uncenter
 
-            return AffineTransform(matrix)
+        # print(matrix)
 
-        return T.NoOpTransform()
+        return AffineTransform(matrix)
 
 
 class RandomShear(T.Augmentation):
@@ -392,40 +496,40 @@ class RandomShear(T.Augmentation):
         self.sh_kappa = sh_kappa
 
     def get_transform(self, image) -> T.Transform:
-        if self._rand_range() < self.prob:
-            h, w = image.shape[:2]
+        if self._rand_range() >= self.prob:
+            return T.NoOpTransform()
 
-            center = np.eye(3)
-            center[:2, 2:] = np.asarray([w, h])[:, None] / 2
+        h, w = image.shape[:2]
 
-            uncenter = np.eye(3)
-            uncenter[:2, 2:] = -1 * np.asarray([w, h])[:, None] / 2
+        center = np.eye(3)
+        center[:2, 2:] = np.asarray([w, h])[:, None] / 2
 
-            matrix = np.eye(3)
+        uncenter = np.eye(3)
+        uncenter[:2, 2:] = -1 * np.asarray([w, h])[:, None] / 2
 
-            # Shear1
-            theta1 = np.random.vonmises(0.0, self.sh_kappa)
+        matrix = np.eye(3)
 
-            shear1 = np.eye(3)
-            shear1[0, 1] = theta1
+        # Shear1
+        theta1 = np.random.vonmises(0.0, self.sh_kappa)
 
-            # print(shear1)
+        shear1 = np.eye(3)
+        shear1[0, 1] = theta1
 
-            matrix = matrix @ center @ shear1 @ uncenter
+        # print(shear1)
 
-            # Shear2
-            theta2 = np.random.vonmises(0.0, self.sh_kappa)
+        matrix = matrix @ center @ shear1 @ uncenter
 
-            shear2 = np.eye(3)
-            shear2[1, 0] = theta2
+        # Shear2
+        theta2 = np.random.vonmises(0.0, self.sh_kappa)
 
-            # print(shear2)
+        shear2 = np.eye(3)
+        shear2[1, 0] = theta2
 
-            matrix = matrix @ center @ shear2 @ uncenter
+        # print(shear2)
 
-            return AffineTransform(matrix)
+        matrix = matrix @ center @ shear2 @ uncenter
 
-        return T.NoOpTransform()
+        return AffineTransform(matrix)
 
 
 class RandomScale(T.Augmentation):
@@ -435,28 +539,96 @@ class RandomScale(T.Augmentation):
         self.sc_stdv = sc_stdv
 
     def get_transform(self, image) -> T.Transform:
-        if self._rand_range() < self.prob:
-            h, w = image.shape[:2]
+        # IDEA Replace this with random apply
+        if self._rand_range() >= self.prob:
+            return T.NoOpTransform()
 
-            center = np.eye(3)
-            center[:2, 2:] = np.asarray([w, h])[:, None] / 2
+        h, w = image.shape[:2]
 
-            uncenter = np.eye(3)
-            uncenter[:2, 2:] = -1 * np.asarray([w, h])[:, None] / 2
+        center = np.eye(3)
+        center[:2, 2:] = np.asarray([w, h])[:, None] / 2
 
-            matrix = np.eye(3)
+        uncenter = np.eye(3)
+        uncenter[:2, 2:] = -1 * np.asarray([w, h])[:, None] / 2
 
-            # Scale
-            scale = np.eye(3)
-            scale[0, 0], scale[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
+        matrix = np.eye(3)
 
-            # print(scale)
+        # Scale
+        scale = np.eye(3)
+        scale[0, 0], scale[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
 
-            matrix = matrix @ center @ scale @ uncenter
+        # print(scale)
 
-            return AffineTransform(matrix)
+        matrix = matrix @ center @ scale @ uncenter
 
-        return T.NoOpTransform()
+        return AffineTransform(matrix)
+
+
+class GrayscaleTransform(T.Transform):
+    """
+    Convert an image to grascale
+    """
+
+    def __init__(self, image_format="RGB") -> None:
+        super().__init__()
+        
+        rgb_weights = np.asarray([0.299, 0.587, 0.114])
+        
+        if image_format == "RGB":
+            self.weights = rgb_weights
+        elif image_format == "BGR":
+            self.weights = rgb_weights[::-1]
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        grayscale = np.tile(img.dot(self.weights),
+                            (3, 1, 1)).transpose((1, 2, 0))
+        print(grayscale.shape)
+        return grayscale
+
+    def apply_coords(self, coords: np.ndarray):
+        return super().apply_coords(coords)
+
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        return segmentation
+
+    def inverse(self) -> T.Transform:
+        raise NotImplementedError
+
+
+class RandomGrayscale(T.Augmentation):
+    def __init__(self, prob=0.5) -> None:
+        super().__init__()
+        self.prob = prob
+
+    def get_transform(self, image) -> T.Transform:
+        if self._rand_range() >= self.prob:
+            return T.NoOpTransform()
+
+        return GrayscaleTransform()
+    
+class RandomSaturation(T.Augmentation):
+    def __init__(self, intensity_min, intensity_max, image_format="RGB") -> None:
+        super().__init__()
+        
+        self.intensity_min = intensity_min
+        
+        self.intensity_max = intensity_max
+        
+        rgb_weights = np.asarray([0.299, 0.587, 0.114])
+        
+        if image_format == "RGB":
+            self.weights = rgb_weights
+        elif image_format == "BGR":
+            self.weights = rgb_weights[::-1]
+    
+    def get_transform(self, image) -> T.Transform:
+        grayscale = np.tile(image.dot(self.weights),
+                            (3, 1, 1)).transpose((1, 2, 0))
+        
+        w = np.random.uniform(self.intensity_min, self.intensity_max)
+        
+        return T.BlendTransform(grayscale, src_weight=1 - w, dst_weight=w)
+
 
 
 def get_arguments() -> argparse.Namespace:
@@ -481,6 +653,7 @@ def test(args) -> None:
 
     print(f"Loading image {input_path}")
     image = cv2.imread(str(input_path))
+    print(image.dtype)
 
     resize = T.ResizeShortestEdge((640, 672, 704, 736, 768, 800),
                                   max_size=1333, sample_style="choice", interp=Image.BICUBIC)
@@ -491,6 +664,7 @@ def test(args) -> None:
     rotation = RandomRotation(prob=1)
     shear = RandomShear(prob=1)
     scale = RandomScale(prob=1)
+    grayscale = RandomGrayscale(prob=1)
 
     # augs = T.AugmentationList([resize, elastic, affine])
 
@@ -500,15 +674,20 @@ def test(args) -> None:
     # augs = T.AugmentationList([rotation])
     # augs = T.AugmentationList([shear])
     # augs = T.AugmentationList([scale])
+    # augs = T.AugmentationList([grayscale])
 
     input_augs = T.AugInput(image)
 
     transforms = augs(input_augs)
 
-    im = Image.fromarray(image)
+    output_im = input_augs.image
+    print(np.unique(output_im))
+    print(output_im.dtype)
+
+    im = Image.fromarray(image[..., ::-1])
     im.show("Original")
 
-    im = Image.fromarray(input_augs.image)
+    im = Image.fromarray(output_im[..., ::-1])
     im.show("Transformed")
 
 
