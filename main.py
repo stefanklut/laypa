@@ -21,14 +21,21 @@ from detectron2.data import transforms as T
 from detectron2.engine import hooks
 
 
-from datasets.transforms import (
+from datasets.augmentations import (
     RandomElastic,
     RandomAffine,
-    RandomFlip,
+    Flip,
     RandomTranslation,
     RandomRotation,
     RandomShear,
-    RandomScale
+    RandomScale,
+    ResizeShortestEdge,
+    RandomBrightness,
+    RandomContrast,
+    RandomSaturation,
+    RandomGaussianFilter,
+    RandomApply,
+    Grayscale
 )
 
 # TODO Replace with LazyConfig
@@ -84,7 +91,7 @@ def build_augmentation(cfg, is_train) -> List[T.Augmentation | T.Transform]:
         max_size = cfg.INPUT.MAX_SIZE_TEST
         sample_style = "choice"
     augmentation: List[T.Augmentation | T.Transform] = [
-        T.ResizeShortestEdge(min_size, max_size, sample_style)]
+        ResizeShortestEdge(min_size, max_size, sample_style)]
 
     if not is_train:
         return augmentation
@@ -92,35 +99,55 @@ def build_augmentation(cfg, is_train) -> List[T.Augmentation | T.Transform]:
     if cfg.INPUT.RANDOM_FLIP != "none":
         if cfg.INPUT.RANDOM_FLIP == "horizontal" or cfg.INPUT.RANDOM_FLIP == "both":
             augmentation.append(
-                RandomFlip(
+                RandomApply(Flip(
                     horizontal=True,
                     vertical=False,
-                )
+                ), prob=0.5)
             )
         if cfg.INPUT.RANDOM_FLIP == "vertical" or cfg.INPUT.RANDOM_FLIP == "both":
             augmentation.append(
-                RandomFlip(
+                RandomApply(Flip(
                     horizontal=False,
                     vertical=True,
-                )
+                ), prob=0.5)
             )
 
     # TODO Give these a proper argument in the config
     
-    # TODO color augmentation (also convert to black and white)
     # TODO Add random crop
     # TODO 90 degree rotation
     
-    augmentation.append(RandomElastic(prob=0.5, alpha=34, stdv=4))
-    augmentation.append(RandomAffine(prob=0.5,
-                                     t_stdv=0.02,
-                                     r_kappa=30,
-                                     sh_kappa=20,
-                                     sc_stdv=0.12))
-    # augmentation.append(RandomTranslation(prob=0.5, t_stdv=0.02))
-    # augmentation.append(RandomRotation(prob=0.5, r_kappa=30))
-    # augmentation.append(RandomShear(prob=0.5, sh_kappa=20))
-    # augmentation.append(RandomScale(prob=0.5, sc_stdv=0.12))
+    augmentation.append(RandomApply(Grayscale(image_format=cfg.INPUT.FORMAT), 
+                                    prob=0.2))
+    
+    augmentation.append(RandomApply(RandomBrightness(intensity_min=0.5, 
+                                                     intensity_max=1.5), 
+                                    prob=0.2))
+    augmentation.append(RandomApply(RandomContrast(intensity_min=0.5, 
+                                                   intensity_max=1.5), 
+                                    prob=0.2))
+    augmentation.append(RandomApply(RandomSaturation(intensity_min=0.5, 
+                                                     intensity_max=1.5), 
+                                    prob=0.2))
+    augmentation.append(RandomApply(RandomGaussianFilter(min_sigma=0, 
+                                                         max_sigma=3), 
+                                    prob=0.2))
+    
+    
+    augmentation.append(RandomApply(RandomElastic(alpha=34, 
+                                                  stdv=4), 
+                                    prob=0.5))
+    augmentation.append(RandomApply(RandomAffine(t_stdv=0.02,
+                                                 r_kappa=30,
+                                                 sh_kappa=20,
+                                                 sc_stdv=0.12),
+                                    prob=0.5))
+    # augmentation.append(RandomTranslation(t_stdv=0.02))
+    # augmentation.append(RandomRotation(r_kappa=30))
+    # augmentation.append(RandomShear(sh_kappa=20))
+    # augmentation.append(RandomScale(sc_stdv=0.12))
+    
+    
     
     # print(augmentation)
     return augmentation

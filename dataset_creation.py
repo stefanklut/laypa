@@ -137,7 +137,6 @@ def main(args):
     
     val_paths, test_paths = train_test_split(val_test_paths, test_size=0.5)
     
-    #FIXME Less images copied compared to the ones found?
     print("Number of train images:", len(train_paths))
     print("Number of validation images:", len(val_paths))
     print("Number of test images:", len(test_paths))
