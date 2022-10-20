@@ -1,4 +1,7 @@
 import argparse
+from datetime import datetime
+import os
+from pathlib import Path
 from typing import List, Optional
 import torch
 
@@ -13,8 +16,11 @@ from detectron2.data import (
     DatasetMapper
 )
 from detectron2.engine import DefaultTrainer
-from detectron2.config import get_cfg
-from detectron2.config import CfgNode
+from detectron2.checkpoint import DetectionCheckpointer
+from detectron2.config import (
+    get_cfg,
+    CfgNode
+)
 from detectron2.evaluation import SemSegEvaluator
 from detectron2.utils.events import EventStorage
 from detectron2.data import transforms as T
@@ -76,6 +82,10 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
 
     cfg.merge_from_file(args.config)
     cfg.merge_from_list(args.opts)
+    
+    if cfg.OUTPUT_DIR and cfg.RUN_DIR and not cfg.MODEL.RESUME:
+        now = datetime.now()
+        cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, f"RUN_({now:%Y-%m-%d|%H:%M:%S})")
 
     cfg.freeze()
     return cfg
@@ -158,6 +168,9 @@ class Trainer(DefaultTrainer):
     def __init__(self, cfg):
         super().__init__(cfg)
         
+        self.checkpointer.save_dir = os.path.join(cfg.OUTPUT_DIR, "checkpoints")
+        os.makedirs(self.checkpointer.save_dir, exist_ok=True)
+        
         
         best_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
                                                    checkpointer=self.checkpointer,
@@ -169,12 +182,13 @@ class Trainer(DefaultTrainer):
 
     @classmethod
     def build_evaluator(cls, cfg, dataset_name):
+        sem_seg_output_dir = os.path.join(cfg.OUTPUT_DIR, "semantic_segmentation")
         evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
         if evaluator_type == "sem_seg":
             evaluator = SemSegEvaluator(
                 dataset_name=dataset_name,
                 distributed=True,
-                output_dir=cfg.OUTPUT_DIR
+                output_dir=sem_seg_output_dir
             )
         else:
             raise NotImplementedError(
@@ -228,7 +242,7 @@ def main(args) -> None:
     else:
         raise NotImplementedError(
             f"Only have \"baseline\" and \"region\", given {cfg.MODEL.MODE}")
-
+    
     trainer = Trainer(cfg=cfg)
     if cfg.MODEL.RESUME:
         if not cfg.TRAIN.WEIGHTS:

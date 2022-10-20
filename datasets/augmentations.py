@@ -8,7 +8,7 @@ import torchvision
 import cv2
 
 import detectron2.data.transforms as T
-from transforms import (ResizeTransform,
+from .transforms import (ResizeTransform,
                         VFlipTransform,
                         HFlipTransform,
                         WarpFieldTransform,
@@ -67,7 +67,7 @@ class ResizeShortestEdge(T.Augmentation):
         width = int(width + 0.5)
         return (height, width)
 
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
         old_height, old_width, channels = image.shape
 
         if self.resize_mode == "range":
@@ -80,7 +80,7 @@ class ResizeShortestEdge(T.Augmentation):
                 "Only \"choice\" and \"range\" are accepted values")
 
         if short_edge_length == 0:
-            return image
+            return T.NoOpTransform()
 
         height, width = self.get_output_shape(
             old_height, old_width, short_edge_length, self.max_size)
@@ -95,7 +95,7 @@ class Flip(T.Augmentation):
     Flip the image horizontally or vertically with the given probability.
     """
 
-    def __init__(self, horizontal=True, vertical=False) -> None:
+    def __init__(self, horizontal: bool=True, vertical: bool=False) -> None:
         """
         Flip the image, XOR for horizonal or vertical
         
@@ -113,7 +113,7 @@ class Flip(T.Augmentation):
         self.horizontal = horizontal
         self.vertical = vertical
 
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
 
         if self.horizontal:
@@ -124,7 +124,7 @@ class Flip(T.Augmentation):
             raise ValueError("At least one of horiz or vert has to be True!")
 
 class RandomElastic(T.Augmentation):
-    def __init__(self, alpha=34, stdv=4) -> None:
+    def __init__(self, alpha: float=34, stdv: float=4) -> None:
         """
         Args:
             alpha (int, optional): scale factor of the warpfield (sets max value). Defaults to 34.
@@ -134,7 +134,7 @@ class RandomElastic(T.Augmentation):
         self.alpha = alpha
         self.stdv = stdv
 
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
         
         warpfield = np.zeros((h, w, 2))
@@ -149,14 +149,14 @@ class RandomElastic(T.Augmentation):
 
 
 class RandomAffine(T.Augmentation):
-    def __init__(self, t_stdv=0.02, r_kappa=30, sh_kappa=20, sc_stdv=0.12) -> None:
+    def __init__(self, t_stdv: float=0.02, r_kappa: float=30, sh_kappa: float=20, sc_stdv: float=0.12) -> None:
         super().__init__()
         self.t_stdv = t_stdv
         self.r_kappa = r_kappa
         self.sh_kappa = sh_kappa
         self.sc_stdv = sc_stdv
 
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
         
         # TODO Separate prob for each sub-operation
 
@@ -216,11 +216,11 @@ class RandomAffine(T.Augmentation):
 
 
 class RandomTranslation(T.Augmentation):
-    def __init__(self, t_stdv=0.02) -> None:
+    def __init__(self, t_stdv: float=0.02) -> None:
         super().__init__()
         self.t_stdv = t_stdv
 
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
 
         matrix = np.eye(3)
@@ -235,11 +235,11 @@ class RandomTranslation(T.Augmentation):
 
 
 class RandomRotation(T.Augmentation):
-    def __init__(self, r_kappa=30) -> None:
+    def __init__(self, r_kappa: float=30) -> None:
         super().__init__()
         self.r_kappa = r_kappa
 
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
 
         h, w = image.shape[:2]
 
@@ -272,11 +272,11 @@ class RandomRotation(T.Augmentation):
 
 
 class RandomShear(T.Augmentation):
-    def __init__(self, sh_kappa=20) -> None:
+    def __init__(self, sh_kappa: float=20) -> None:
         super().__init__()
         self.sh_kappa = sh_kappa
 
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
 
         center = np.eye(3)
@@ -311,11 +311,11 @@ class RandomShear(T.Augmentation):
 
 
 class RandomScale(T.Augmentation):
-    def __init__(self, sc_stdv=0.12) -> None:
+    def __init__(self, sc_stdv: float=0.12) -> None:
         super().__init__()
         self.sc_stdv = sc_stdv
 
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
 
         center = np.eye(3)
@@ -345,7 +345,7 @@ class Grayscale(T.Augmentation):
         super().__init__()
         self.image_format = image_format
 
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
         return GrayscaleTransform(image_format=self.image_format)
     
 class RandomGaussianFilter(T.Augmentation):
@@ -359,7 +359,7 @@ class RandomGaussianFilter(T.Augmentation):
         self.order = order
         self.iterations = iterations
     
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
         sigma = np.random.uniform(self.min_sigma, self.max_sigma)
         return GaussianFilterTransform(sigma=sigma,
                                        order=self.order,
@@ -395,9 +395,9 @@ class RandomSaturation(T.Augmentation):
         else:
             raise NotImplementedError
     
-    def get_transform(self, image) -> T.Transform:
+    def get_transform(self, image: np.ndarray) -> T.Transform:
         grayscale = np.tile(image.dot(self.weights),
-                            (3, 1, 1)).transpose((1, 2, 0)).astype(np.float64)
+                            (3, 1, 1)).transpose((1, 2, 0)).astype(np.float32)
         
         w = np.random.uniform(self.intensity_min, self.intensity_max)
         
@@ -428,7 +428,7 @@ class RandomContrast(T.Augmentation):
 
     def get_transform(self, image):
         w = np.random.uniform(self.intensity_min, self.intensity_max)
-        return BlendTransform(src_image=image.mean().astype(np.float64), src_weight=1 - w, dst_weight=w)
+        return BlendTransform(src_image=image.mean().astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
 class RandomBrightness(T.Augmentation):
@@ -456,7 +456,7 @@ class RandomBrightness(T.Augmentation):
 
     def get_transform(self, image):
         w = np.random.uniform(self.intensity_min, self.intensity_max)
-        return BlendTransform(src_image=np.asarray(0).astype(np.float64), src_weight=1 - w, dst_weight=w)
+        return BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
 

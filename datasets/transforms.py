@@ -37,7 +37,7 @@ class ResizeTransform(T.Transform):
         Returns:
             np.ndarray: resized images
         """
-        img = img.astype(np.float64)
+        img = img.astype(np.float32)
         old_height, old_width, channels = img.shape
         assert (old_height, old_width) == (self.height,
                                            self.width), "Input dims do not match specified dims"
@@ -110,7 +110,7 @@ class HFlipTransform(T.Transform):
         """
         # NOTE: opencv would be faster:
         # https://github.com/pytorch/pytorch/issues/16424#issuecomment-580695672
-        img = img.astype(np.float64)
+        img = img.astype(np.float32)
         if img.ndim <= 3:  # HxW, HxWxC
             return np.flip(img, axis=1)
         else:
@@ -163,7 +163,7 @@ class VFlipTransform(T.Transform):
         """
         # NOTE: opencv would be faster:
         # https://github.com/pytorch/pytorch/issues/16424#issuecomment-580695672
-        img = img.astype(np.float64)
+        img = img.astype(np.float32)
         if img.ndim <= 3:  # HxW, HxWxC
             return np.flip(img, axis=0)
         else:
@@ -248,7 +248,7 @@ class WarpFieldTransform(T.Transform):
         Returns:
             np.ndarray: _description_
         """
-        img = img.astype(np.float64)
+        img = img.astype(np.float32)
         indices = self.generate_grid(img, self.warpfield)
         sampled_img = map_coordinates(
             img, indices, order=1, mode="constant", cval=0).reshape(img.shape)
@@ -283,7 +283,7 @@ class AffineTransform(T.Transform):
         self.matrix = matrix
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
-        img = img.astype(np.float64)
+        img = img.astype(np.float32)
         if img.ndim == 2:
             return affine_transform(img, self.matrix, order=1, mode='constant', cval=0)
         elif img.ndim == 3:
@@ -297,7 +297,7 @@ class AffineTransform(T.Transform):
                 "No support for multi dimensions (NxHxWxC) right now")
 
     def apply_coords(self, coords: np.ndarray):
-        coords = coords.astype(np.float64)
+        coords = coords.astype(np.float32)
         return cv2.transform(coords[:,None,:], self.matrix)[:,0,:2]
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
@@ -315,7 +315,7 @@ class GrayscaleTransform(T.Transform):
     def __init__(self, image_format: str = "RGB") -> None:
         super().__init__()
 
-        rgb_weights = np.asarray([0.299, 0.587, 0.114])
+        rgb_weights = np.asarray([0.299, 0.587, 0.114]).astype(np.float32)
 
         if image_format == "RGB":
             self.weights = rgb_weights
@@ -323,7 +323,7 @@ class GrayscaleTransform(T.Transform):
             self.weights = rgb_weights[::-1]
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
-        img = img.astype(np.float64)
+        img = img.astype(np.float32)
         grayscale = np.tile(img.dot(self.weights),
                             (3, 1, 1)).transpose((1, 2, 0))
         return grayscale
@@ -356,7 +356,7 @@ class GaussianFilterTransform(T.Transform):
         self.iterations = iterations
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
-        img = img.astype(np.float64)
+        img = img.astype(np.float32)
         for _ in range(self.iterations):
             transformed_img = np.empty_like(img)
             for i in range(img.shape[-1]):  # HxWxC
@@ -407,7 +407,7 @@ class BlendTransform(T.Transform):
         Returns:
             ndarray: blended image(s).
         """
-        img = img.astype(np.float64)
+        img = img.astype(np.float32)
         return self.src_weight * self.src_image + self.dst_weight * img
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
