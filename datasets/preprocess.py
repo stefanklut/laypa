@@ -257,7 +257,7 @@ class Preprocess:
         width = int(width + 0.5)
         return (height, width)
 
-    def process_single_file(self, image_path: Path) -> tuple[str, str, np.ndarray]:
+    def process_single_file(self, image_path: Path) -> tuple[Path, Path, np.ndarray]:
         if self.input_dir is None:
             raise ValueError("Cannot run when the input dir is not set")
         if self.output_dir is None:
@@ -273,17 +273,17 @@ class Preprocess:
 
         image_shape = np.asarray(image.shape[:2])
 
-        out_image_path = str(self.output_dir.joinpath(
-            "original", image_stem)) + ".png"
+        out_image_path = self.output_dir.joinpath(
+            "original", image_stem + ".png")
 
-        cv2.imwrite(out_image_path, image)
+        cv2.imwrite(str(out_image_path), image)
 
         mask = self.xml_to_image.run(xml_path, image_shape=image_shape)
 
-        out_mask_path = str(self.output_dir.joinpath(
-            "ground_truth", image_stem)) + ".png"
+        out_mask_path = self.output_dir.joinpath(
+            "ground_truth", image_stem + ".png")
 
-        cv2.imwrite(out_mask_path, mask)
+        cv2.imwrite(str(out_mask_path), mask)
 
         return out_image_path, out_mask_path, image_shape
 
@@ -315,15 +315,19 @@ class Preprocess:
             results = list(tqdm(pool.imap_unordered(
                 self.process_single_file, image_paths), total=len(image_paths)))
 
-        image_list, mask_list, output_sizes = zip(*results)
+        zipped_results: tuple[list[Path], list[Path], list[np.ndarray]] = tuple(zip(*results))
+         
+        image_list, mask_list, output_sizes = zipped_results
 
         with open(self.output_dir.joinpath("image_list.txt"), mode='w') as f:
             for new_image_path in image_list:
-                f.write(f"{new_image_path}\n")
+                relative_new_image_path = new_image_path.relative_to(self.output_dir)
+                f.write(f"{relative_new_image_path}\n")
 
         with open(self.output_dir.joinpath("mask_list.txt"), mode='w') as f:
             for new_mask_path in mask_list:
-                f.write(f"{new_mask_path}\n")
+                relative_new_mask_path = new_mask_path.relative_to(self.output_dir)
+                f.write(f"{relative_new_mask_path}\n")
 
         with open(self.output_dir.joinpath("output_sizes.txt"), mode='w') as f:
             for output_size in output_sizes:

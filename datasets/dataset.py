@@ -80,10 +80,10 @@ def dataset_dict_loader(dataset_dir: str | Path):
             f"Output sizes is missing ({output_sizes_list})")
 
     with open(image_list, mode='r') as f:
-        image_paths = [Path(line.strip()) for line in f.readlines()]
+        image_paths = [dataset_dir.joinpath(line.strip()) for line in f.readlines()]
 
     with open(mask_list, mode='r') as f:
-        mask_paths = [Path(line.strip()) for line in f.readlines()]
+        mask_paths = [dataset_dir.joinpath(line.strip()) for line in f.readlines()]
 
     with open(output_sizes_list, mode='r') as f:
         output_sizes = f.readlines()
