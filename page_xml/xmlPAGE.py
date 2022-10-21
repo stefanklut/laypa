@@ -8,19 +8,20 @@ import xml.etree.ElementTree as ET
 import cv2
 import re
 import datetime
+from pathlib import Path
 
 
 class PageData:
     """ Class to process PAGE xml files"""
 
-    def __init__(self, filepath, logger=None, creator=None):
+    def __init__(self, filepath: Path, logger=None, creator=None):
         """
         Args:
             filepath (string): Path to PAGE-xml file.
         """
         self.logger = logging.getLogger(__name__) if logger == None else logger
         self.filepath = filepath
-        self.name = os.path.splitext(os.path.basename(self.filepath))[0]
+        self.name = self.filepath.stem
         self.creator = "P2PaLA-PRHLT" if creator == None else creator
         self.XMLNS = {
             "xmlns": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15",

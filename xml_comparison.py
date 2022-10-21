@@ -312,6 +312,9 @@ class EvalWrapper:
         return confusion_matrix
     
     def run_xml(self, xml_list1: list[Path], xml_list2: list[Path]):
+        if len(xml_list1) != len(xml_list2):
+            raise ValueError("Number of xml files does not match")
+        
         # #Single thread
         # for xml_i_1, xml_i_2 in tqdm(zip(xml_list1, xml_list2), total=len(xml_list1)):
         #     self.compare_xml((xml_i_1, xml_i_2))
@@ -327,6 +330,8 @@ class EvalWrapper:
         self.evaluator._b_conf_matrix += np.sum(results[:, 1], axis=0)
         
     def run_images(self, image_path_list1: list[Path], image_path_list2: list[Path]):
+        if len(image_path_list1) != len(image_path_list2):
+            raise ValueError("Number of image paths does not match")
         # #Single thread
         # for image_path_i_1, image_path_i_2 in tqdm(zip(image_path_list1, image_path_list2), total=len(image_path_list1)):
         #     self.compare_images((image_path_i_1, image_path_i_2))
@@ -347,9 +352,6 @@ class EvalWrapper:
 def main(args):
     xml_list1 = clean_input(args.gt, suffixes=[".xml"])
     xml_list2 = clean_input(args.input, suffixes=[".xml"])
-    
-    if len(xml_list1) != len(xml_list2):
-        raise ValueError("Number of xml files does not match")
     
     xml_to_image = XMLImage(
         mode=args.mode,
