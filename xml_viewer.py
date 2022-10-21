@@ -11,6 +11,7 @@ from detectron2.data import MetadataCatalog, Metadata
 from detectron2.utils.visualizer import Visualizer
 
 from page_xml.xml_to_image import XMLImage
+from utils.path import clean_input
 
 def get_arguments() -> argparse.Namespace:
     
@@ -67,22 +68,6 @@ def get_arguments() -> argparse.Namespace:
 
     args = parser.parse_args()
     return args
-
-def clean_input(input_list: list[str]):
-    if len(input_list) == 0:
-        raise ValueError("Must set the input")
-    path_list: list[Path] = [Path(path) for path in input_list]
-    
-    if len(path_list) == 1 and path_list[0].is_dir():
-        path_list = [path for path in path_list[0].glob("*")]
-        
-    path_list = os_sorted([path for path in path_list if path.is_file() and path.suffix == '.xml'])
-    
-    if len(path_list) == 0:
-        raise FileNotFoundError("No valid xml files found in input")
-    
-    return path_list
-    
 class Viewer:
     def __init__(self, xml_to_image: XMLImage, output_dir: str|Path, mode='gray') -> None:
         
@@ -184,7 +169,7 @@ class Viewer:
                 self.save_function, cleaned_xml_list), total=len(cleaned_xml_list)))
         
 def main(args) -> None:
-    xml_list = clean_input(args.input)
+    xml_list = clean_input(args.input, suffixes=[".xml"])
     
     xml_to_image = XMLImage(
         mode=args.mode,

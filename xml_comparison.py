@@ -13,6 +13,7 @@ import logging
 from natsort import os_sorted
 from page_xml.xml_to_image import XMLImage
 from tqdm import tqdm
+from utils.path import clean_input
 
 def get_arguments() -> argparse.Namespace:
     
@@ -109,7 +110,7 @@ class XMLEvaluator:
             (self._num_classes + 1, self._num_classes + 1), dtype=np.int64
         )
 
-    def process(self, inputs, outputs) -> None:
+    def process(self, inputs: list[np.ndarray], outputs: list[np.ndarray]) -> None:
         if self._conf_matrix is None:
             raise ValueError("Must set/reset the confusion matrix")
         if self._b_conf_matrix is None:
@@ -141,7 +142,7 @@ class XMLEvaluator:
                 
                 self._b_conf_matrix += _b_conf_matrix
                 
-    def process_output(self, inputs, outputs):
+    def process_output(self, inputs: list[np.ndarray], outputs: list[np.ndarray]):
         # Does not update the internal confusion matrix
         if self._conf_matrix is None:
             raise ValueError("Must set/reset the confusion matrix")
@@ -257,21 +258,6 @@ class XMLEvaluator:
         boundary = mask - eroded_mask
         return boundary
 
-def clean_input(input_list: list[str]):
-    if len(input_list) == 0:
-        raise ValueError("Must set the input")
-    path_list: list[Path] = [Path(path) for path in input_list]
-    
-    if len(path_list) == 1 and path_list[0].is_dir():
-        path_list = [path for path in path_list[0].glob("*")]
-        
-    path_list = os_sorted([path for path in path_list if path.is_file() and path.suffix == '.xml'])
-    
-    if len(path_list) == 0:
-        raise FileNotFoundError("No valid xml files found in input")
-    
-    return path_list
-
 class EvalWrapper:
     def __init__(self, xml_to_image: XMLImage, evaluator: XMLEvaluator) -> None:
         self.xml_to_image: XMLImage = xml_to_image
@@ -288,7 +274,7 @@ class EvalWrapper:
         
         self.evaluator.process([image_i_1], [image_i_2])
     
-    def compare_xml_output(self, info: tuple[Path, Path]):
+    def compare_xml_output(self, info: tuple[Path, Path]) -> tuple[np.ndarray, np.ndarray]:
         xml_i_1, xml_i_2 = info
         
         if xml_i_1.stem != xml_i_2.stem:
@@ -312,7 +298,7 @@ class EvalWrapper:
         
         self.evaluator.process([image_i_1], [image_i_2])
     
-    def compare_images_output(self, info: tuple[Path, Path]):
+    def compare_images_output(self, info: tuple[Path, Path]) -> tuple[np.ndarray, np.ndarray]:
         image_path_i_1, image_path_i_2 = info
         
         if image_path_i_1.stem != image_path_i_2.stem:
@@ -325,7 +311,7 @@ class EvalWrapper:
         
         return confusion_matrix
     
-    def run_xml(self, xml_list1, xml_list2):
+    def run_xml(self, xml_list1: list[Path], xml_list2: list[Path]):
         # #Single thread
         # for xml_i_1, xml_i_2 in tqdm(zip(xml_list1, xml_list2), total=len(xml_list1)):
         #     self.compare_xml((xml_i_1, xml_i_2))
@@ -340,7 +326,7 @@ class EvalWrapper:
         self.evaluator._conf_matrix += np.sum(results[:, 0], axis=0)
         self.evaluator._b_conf_matrix += np.sum(results[:, 1], axis=0)
         
-    def run_images(self, image_path_list1, image_path_list2):
+    def run_images(self, image_path_list1: list[Path], image_path_list2: list[Path]):
         # #Single thread
         # for image_path_i_1, image_path_i_2 in tqdm(zip(image_path_list1, image_path_list2), total=len(image_path_list1)):
         #     self.compare_images((image_path_i_1, image_path_i_2))
@@ -359,8 +345,8 @@ class EvalWrapper:
         return self.evaluator.evaluate()
 
 def main(args):
-    xml_list1 = clean_input(args.gt)
-    xml_list2 = clean_input(args.input)
+    xml_list1 = clean_input(args.gt, suffixes=[".xml"])
+    xml_list2 = clean_input(args.input, suffixes=[".xml"])
     
     if len(xml_list1) != len(xml_list2):
         raise ValueError("Number of xml files does not match")

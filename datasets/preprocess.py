@@ -201,7 +201,7 @@ class Preprocess:
                 raise PermissionError(
                     f"No access to {xml_path} for read operations")
 
-    def resize_image_old(self, image) -> np.ndarray:
+    def resize_image_old(self, image: np.ndarray) -> np.ndarray:
         old_height, old_width, channels = image.shape
         counter = 1
         height = np.ceil(old_height / (256 * counter)) * 256
@@ -216,7 +216,7 @@ class Preprocess:
 
         return res_image
 
-    def resize_image(self, image) -> np.ndarray:
+    def resize_image(self, image: np.ndarray) -> np.ndarray:
         old_height, old_width, channels = image.shape
         if self.resize_mode == "range":
             short_edge_length = np.random.randint(

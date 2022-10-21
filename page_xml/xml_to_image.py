@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import numpy as np
 
 from .xmlPAGE import PageData
 from typing import Optional
@@ -14,10 +15,10 @@ def get_arguments() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(
         description="Preprocessing an annotated dataset of documents with pageXML")
-    parser.add_argument("-i", "--input", help="Input folder",
+    parser.add_argument("-i", "--input", help="Input file",
                         required=True, type=str)
     parser.add_argument(
-        "-o", "--output", help="Output folder", required=True, type=str)
+        "-o", "--output", help="Output file", required=True, type=str)
     parser.add_argument("-m", "--mode", help="Output mode",
                         choices=["baseline", "region", "both"], default="baseline", type=str)
 
@@ -59,6 +60,7 @@ def get_arguments() -> argparse.Namespace:
 
 
 class XMLImage:
+    # IDEA Make region and related function a separate class (also used in GenPage)
     def __init__(self,
                  mode,
                  line_width=None,
@@ -165,7 +167,7 @@ class XMLImage:
         
         return remaining_regions
 
-    def run(self, xml_path, image_shape=None):
+    def run(self, xml_path: Path, image_shape=None) -> np.ndarray:
         gt_data = PageData(xml_path)
         gt_data.parse()
 

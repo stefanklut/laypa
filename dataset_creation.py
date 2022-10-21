@@ -8,6 +8,8 @@ import shutil
 from sklearn.model_selection import train_test_split
 from natsort import os_sorted
 from datetime import datetime
+from utils.copy import copy_mode
+from utils.path import get_page_xml
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -20,55 +22,6 @@ def get_arguments() -> argparse.Namespace:
     
     args = parser.parse_args()
     return args
-
-def get_page_xml(path: Path):
-    xml_path = path.parent.joinpath("page", path.stem + '.xml')
-    if not xml_path.exists():
-        raise FileNotFoundError(f"No {xml_path} found")
-    if not xml_path.is_file():
-        raise IsADirectoryError(f"{xml_path} should be a file not directory")
-        
-    return path.parent.joinpath("page", path.stem + '.xml')
-
-def symlink_force(path, destination):
-    # --- from https://stackoverflow.com/questions/8299386/modifying-a-symlink-in-python
-    try:
-        os.symlink(path, destination)
-    except OSError as e:
-        if e.errno == errno.EEXIST:
-            os.remove(destination)
-            os.symlink(path, destination)
-        else:
-            raise e
-        
-def link_force(path, destination):
-    # --- from https://stackoverflow.com/questions/8299386/modifying-a-symlink-in-python
-    try:
-        os.link(path, destination)
-    except OSError as e:
-        if e.errno == errno.EEXIST:
-            os.remove(destination)
-            os.link(path, destination)
-        else:
-            raise e
-        
-def copy(path, destination):
-    try:
-        shutil.copy(path, destination)
-    except shutil.SameFileError:
-        # code when Exception occur
-        pass
-
-def copy_mode(path, destination, mode="copy"):
-    if mode == "copy":
-        copy(path, destination)
-    elif mode == "link":
-        link_force(path, destination)
-    elif mode == "symlink":
-        symlink_force(path, destination)
-    else:
-        raise NotImplementedError
-    
 def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
     print(len(paths))
     if not output_dir.is_dir():
