@@ -2,20 +2,24 @@
 
 import argparse
 from collections import Counter
+from pathlib import Path
+import sys
 import numpy as np
 import torch
 import torchvision
 import cv2
 
 import detectron2.data.transforms as T
-from .transforms import (ResizeTransform,
-                        VFlipTransform,
-                        HFlipTransform,
-                        WarpFieldTransform,
-                        AffineTransform,
-                        GrayscaleTransform,
-                        GaussianFilterTransform,
-                        BlendTransform)
+
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from datasets.transforms import (ResizeTransform,
+                                 VFlipTransform,
+                                 HFlipTransform,
+                                 WarpFieldTransform,
+                                 AffineTransform,
+                                 GrayscaleTransform,
+                                 GaussianFilterTransform,
+                                 BlendTransform)
 
 
 
@@ -24,6 +28,7 @@ from scipy.ndimage import affine_transform
 from scipy.ndimage import gaussian_filter
 
 # Linking already implemented methods
+# TODO RandomApply __repr__ and __str__ functions
 from detectron2.data.transforms import RandomApply
 
 # TODO Check if there is a benefit for using scipy instead of the standard torchvision
@@ -487,29 +492,30 @@ def test(args) -> None:
     resize = ResizeShortestEdge(min_size=(640, 672, 704, 736, 768, 800),
                                 max_size=1333, 
                                 resize_mode="choice")
-    elastic = RandomElastic()
+    # elastic = RandomElastic()
 
-    affine = RandomAffine()
-    translation = RandomTranslation()
-    rotation = RandomRotation()
-    shear = RandomShear()
-    scale = RandomScale()
-    grayscale = Grayscale()
+    # affine = RandomAffine()
+    # translation = RandomTranslation()
+    # rotation = RandomRotation()
+    # shear = RandomShear()
+    # scale = RandomScale()
+    # grayscale = Grayscale()
     
-    gaussian = RandomGaussianFilter(min_sigma=5, max_sigma=5)
-    contrast = RandomContrast()
-    brightness = RandomBrightness()
-    saturation = RandomSaturation()
+    # gaussian = RandomGaussianFilter(min_sigma=5, max_sigma=5)
+    # contrast = RandomContrast()
+    # brightness = RandomBrightness()
+    # saturation = RandomSaturation()
     
     augs = []
 
     # augs = T.AugmentationList([resize, elastic, affine])
 
+    augs.append(resize)
     # augs.append(grayscale)
     # augs.append(contrast)
     # augs.append(brightness)
     # augs.append(saturation)
-    augs.append(gaussian)
+    # augs.append(gaussian)
     # augs.append(affine)
     # augs.append(translation)
     # augs.append(rotation)

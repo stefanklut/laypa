@@ -43,6 +43,7 @@ from datasets.augmentations import (
     RandomApply,
     Grayscale
 )
+from utils.path import unique_path
 
 # TODO Replace with LazyConfig
 
@@ -82,12 +83,20 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
 
     cfg.merge_from_file(args.config)
     cfg.merge_from_list(args.opts)
+    now = datetime.now()
+    cfg.SETUP_TIME = f"{now:%Y-%m-%d|%H:%M:%S}"
     
     if cfg.OUTPUT_DIR and cfg.RUN_DIR and not cfg.MODEL.RESUME:
-        now = datetime.now()
         cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, f"RUN_({now:%Y-%m-%d|%H:%M:%S})")
 
     cfg.freeze()
+    os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+    cfg_output_path = Path(cfg.OUTPUT_DIR).joinpath("config.yaml")
+    
+    cfg_output_path = unique_path(cfg_output_path)
+    
+    with open(cfg_output_path, mode="w") as f:
+        f.write(cfg.dump())
     return cfg
 
 
@@ -127,35 +136,39 @@ def build_augmentation(cfg, is_train) -> List[T.Augmentation | T.Transform]:
     # TODO Add random crop
     # TODO 90 degree rotation
     
-    augmentation.append(RandomApply(Grayscale(image_format=cfg.INPUT.FORMAT), 
-                                    prob=0.2))
+    # augmentation.append(RandomApply(Grayscale(image_format=cfg.INPUT.FORMAT), 
+    #                                 prob=0.2))
     
-    augmentation.append(RandomApply(RandomBrightness(intensity_min=0.5, 
-                                                     intensity_max=1.5), 
-                                    prob=0.2))
-    augmentation.append(RandomApply(RandomContrast(intensity_min=0.5, 
-                                                   intensity_max=1.5), 
-                                    prob=0.2))
-    augmentation.append(RandomApply(RandomSaturation(intensity_min=0.5, 
-                                                     intensity_max=1.5), 
-                                    prob=0.2))
-    augmentation.append(RandomApply(RandomGaussianFilter(min_sigma=0, 
-                                                         max_sigma=3), 
-                                    prob=0.2))
+    # augmentation.append(RandomApply(RandomBrightness(intensity_min=0.5, 
+    #                                                  intensity_max=1.5), 
+    #                                 prob=0.2))
+    # augmentation.append(RandomApply(RandomContrast(intensity_min=0.5, 
+    #                                                intensity_max=1.5), 
+    #                                 prob=0.2))
+    # augmentation.append(RandomApply(RandomSaturation(intensity_min=0.5, 
+    #                                                  intensity_max=1.5), 
+    #                                 prob=0.2))
+    # augmentation.append(RandomApply(RandomGaussianFilter(min_sigma=0, 
+    #                                                      max_sigma=3), 
+    #                                 prob=0.2))
     
     
     augmentation.append(RandomApply(RandomElastic(alpha=34, 
                                                   stdv=4), 
                                     prob=0.5))
-    augmentation.append(RandomApply(RandomAffine(t_stdv=0.02,
-                                                 r_kappa=30,
-                                                 sh_kappa=20,
-                                                 sc_stdv=0.12),
+    # augmentation.append(RandomApply(RandomAffine(t_stdv=0.02,
+    #                                              r_kappa=30,
+    #                                              sh_kappa=20,
+    #                                              sc_stdv=0.12),
+    #                                 prob=0.5))
+    augmentation.append(RandomApply(RandomTranslation(t_stdv=0.02),
                                     prob=0.5))
-    # augmentation.append(RandomTranslation(t_stdv=0.02))
-    # augmentation.append(RandomRotation(r_kappa=30))
-    # augmentation.append(RandomShear(sh_kappa=20))
-    # augmentation.append(RandomScale(sc_stdv=0.12))
+    augmentation.append(RandomApply(RandomRotation(r_kappa=30),
+                                    prob=0.5))
+    augmentation.append(RandomApply(RandomShear(sh_kappa=20),
+                                    prob=0.5))
+    augmentation.append(RandomApply(RandomScale(sc_stdv=0.12),
+                                    prob=0.5))
     
     
     
@@ -258,5 +271,6 @@ def main(args) -> None:
 
 
 if __name__ == "__main__":
+    # TODO Add lauch for multiple gpus
     args = get_arguments()
     main(args)

@@ -11,7 +11,7 @@ from detectron2.data import DatasetCatalog, MetadataCatalog
 
 # IDEA Add the baseline generation and regions in the dataloader so they can scale with the images
 
-def get_arguments():
+def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Preprocessing an annotated dataset of documents with pageXML")
     parser.add_argument("-i", "--input", help="Input folder",
@@ -21,7 +21,7 @@ def get_arguments():
     return args
 
 
-def create_data(input_data):
+def create_data(input_data) -> dict:
     image_path, mask_path, output_size = input_data
 
     # Data existence check
@@ -62,7 +62,7 @@ def create_data(input_data):
     return data
 
 
-def dataset_dict_loader(dataset_dir: str | Path):
+def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
     if isinstance(dataset_dir, str):
         dataset_dir = Path(dataset_dir)
 

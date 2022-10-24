@@ -23,7 +23,7 @@ class XMLRegions:
         elif self.mode == "region":
             assert regions is not None
             assert merge_regions is not None
-            assert region_type is not None
+            # assert region_type is not None
             
             # regions: list of type names (required for lookup)
             # merge_regions: regions to be merged. r1:r2,r3  -> r2 and r3 become region r1
@@ -38,6 +38,46 @@ class XMLRegions:
             self.merge_classes()
         else:
             raise NotImplementedError
+    
+    #REVIEW is this the best place for this
+    @classmethod
+    def get_parser(cls) -> argparse.ArgumentParser:
+        # HACK hardcoded regions if none are given
+        republic_regions = ["marginalia", "page-number", "resolution", "date",
+                            "index", "attendance", "Resumption", "resumption", "Insertion", "insertion"]
+        republic_merge_regions = ["resolution:Resumption,resumption,Insertion,insertion"]
+        parser = argparse.ArgumentParser(add_help=False)
+        
+        region_args = parser.add_argument_group("regions")
+        region_args.add_argument(
+        "--regions",
+        default=republic_regions,
+        nargs="+",
+        type=str,
+        help="""List of regions to be extracted. 
+                            Format: --regions r1 r2 r3 ...""",
+        )
+        region_args.add_argument(
+            "--merge_regions",
+            default=republic_merge_regions,
+            nargs="?",
+            const=[],
+            type=str,
+            help="""Merge regions on PAGE file into a single one.
+                                Format --merge_regions r1:r2,r3 r4:r5, then r2 and r3
+                                will be merged into r1 and r5 into r4""",
+        )
+        region_args.add_argument(
+            "--region_type",
+            default=None,
+            nargs="+",
+            type=str,
+            help="""Type of region on PAGE file.
+                                Format --region_type t1:r1,r3 t2:r5, then type t1
+                                will assigned to regions r1 and r3 and type t2 to
+                                r5 and so on...""",
+        )
+        return parser
         
     def merge_classes(self) -> None:
         if self.merged_regions is None:

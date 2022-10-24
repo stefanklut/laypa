@@ -8,13 +8,7 @@ from typing import Optional
 
 
 def get_arguments() -> argparse.Namespace:
-    # HACK hardcoded regions if none are given
-    republic_regions = ["marginalia", "page-number", "resolution", "date",
-                        "index", "attendance", "Resumption", "resumption", "Insertion", "insertion"]
-    republic_merge_regions = [
-        "resolution:Resumption,resumption,Insertion,insertion"]
-
-    parser = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()],
         description="Preprocessing an annotated dataset of documents with pageXML")
     parser.add_argument("-i", "--input", help="Input file",
                         required=True, type=str)
@@ -27,34 +21,6 @@ def get_arguments() -> argparse.Namespace:
                         help="Used line width", type=int, default=5)
     parser.add_argument("-c", "--line_color", help="Used line color",
                         choices=list(range(256)), type=int, metavar="{0-255}", default=1)
-
-    parser.add_argument(
-        "--regions",
-        default=republic_regions,
-        nargs="+",
-        type=str,
-        help="""List of regions to be extracted. 
-                            Format: --regions r1 r2 r3 ...""",
-    )
-    parser.add_argument(
-        "--merge_regions",
-        default=republic_merge_regions,
-        nargs="+",
-        type=str,
-        help="""Merge regions on PAGE file into a single one.
-                            Format --merge_regions r1:r2,r3 r4:r5, then r2 and r3
-                            will be merged into r1 and r5 into r4""",
-    )
-    parser.add_argument(
-        "--region_type",
-        default=None,
-        nargs="+",
-        type=str,
-        help="""Type of region on PAGE file.
-                            Format --region_type t1:r1,r3 t2:r5, then type t1
-                            will assigned to regions r1 and r3 and type t2 to
-                            r5 and so on...""",
-    )
 
     args = parser.parse_args()
     return args

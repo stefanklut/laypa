@@ -34,7 +34,7 @@ TRAIN:
 
 TEST:
   EVAL_PERIOD: 10000
-  WEIGHTS: ./output/run3-region/model_final.pth
+  WEIGHTS: output/RUN_(2022-10-20|16:19:13)/checkpoints/model_best_mIOU.pth
 
 SOLVER:
   IMS_PER_BATCH: 4

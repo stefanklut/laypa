@@ -42,8 +42,7 @@ class ResizeTransform(T.Transform):
         assert (old_height, old_width) == (self.height,
                                            self.width), "Input dims do not match specified dims"
 
-        res_image = cv2.resize(img, np.asarray([self.new_width, self.new_height]).astype(
-            np.int32), interpolation=cv2.INTER_CUBIC)
+        res_image = cv2.resize(img, np.asarray([self.new_width, self.new_height]).astype(np.int32), interpolation=cv2.INTER_CUBIC)
 
         return res_image
 
@@ -76,8 +75,7 @@ class ResizeTransform(T.Transform):
         assert (old_height, old_width) == (self.height,
                                            self.width), "Input dims do not match specified dims"
 
-        res_segmentation = cv2.resize(segmentation, np.asarray([self.new_width, self.new_height]).astype(
-            np.int32), interpolation=cv2.INTER_NEAREST)
+        res_segmentation = cv2.resize(segmentation, np.asarray([self.new_width, self.new_height]).astype(np.int32), interpolation=cv2.INTER_NEAREST)
 
         return res_segmentation
 
@@ -357,10 +355,10 @@ class GaussianFilterTransform(T.Transform):
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
         img = img.astype(np.float32)
+        transformed_img = img.copy()
         for _ in range(self.iterations):
-            transformed_img = np.empty_like(img)
             for i in range(img.shape[-1]):  # HxWxC
-                transformed_img[..., i] = gaussian_filter(img[..., i], sigma=self.sigma, order=self.order)
+                transformed_img[..., i] = gaussian_filter(transformed_img[..., i], sigma=self.sigma, order=self.order)
         return transformed_img
     
     def apply_coords(self, coords: np.ndarray):

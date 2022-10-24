@@ -18,15 +18,10 @@ from multiprocessing import Pool
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xmlPAGE import PageData
 from page_xml.xml_to_image import XMLImage
+from utils.path import image_path_to_xml_path
 
-def get_arguments() -> argparse.Namespace:
-    # HACK hardcoded regions if none are given
-    republic_regions = ["marginalia", "page-number", "resolution", "date",
-                        "index", "attendance", "Resumption", "resumption", "Insertion", "insertion"]
-    republic_merge_regions = [
-        "resolution:Resumption,resumption,Insertion,insertion"]
-    
-    parser = argparse.ArgumentParser(
+def get_arguments() -> argparse.Namespace:    
+    parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
         description="Preprocessing an annotated dataset of documents with pageXML")
     parser.add_argument("-i", "--input", help="Input folder",
                         required=True, type=str)
@@ -49,34 +44,6 @@ def get_arguments() -> argparse.Namespace:
     parser.add_argument("-c", "--line_color", help="Used line color",
                         choices=list(range(256)), type=int, metavar="{0-255}", default=1)
     
-    parser.add_argument(
-        "--regions",
-        default=republic_regions,
-        nargs="+",
-        type=str,
-        help="""List of regions to be extracted. 
-                            Format: --regions r1 r2 r3 ...""",
-    )
-    parser.add_argument(
-        "--merge_regions",
-        default=republic_merge_regions,
-        nargs="+",
-        type=str,
-        help="""Merge regions on PAGE file into a single one.
-                            Format --merge_regions r1:r2,r3 r4:r5, then r2 and r3
-                            will be merged into r1 and r5 into r4""",
-    )
-    parser.add_argument(
-        "--region_type",
-        default=None,
-        nargs="+",
-        type=str,
-        help="""Type of region on PAGE file.
-                            Format --region_type t1:r1,r3 t2:r5, then type t1
-                            will assigned to regions r1 and r3 and type t2 to
-                            r5 and so on...""",
-    )
-
     args = parser.parse_args()
     return args
 
@@ -191,15 +158,7 @@ class Preprocess:
 
     @staticmethod
     def check_pageXML_exists(image_paths: list[Path]) -> None:
-        xml_paths = [image_path.resolve().parent.joinpath("page", image_path.stem + ".xml") for image_path in image_paths]
-
-        for xml_path, image_path in zip(xml_paths, image_paths):
-            if not xml_path.is_file():
-                raise FileNotFoundError(
-                    f"Input image path ({image_path}), has no corresponding pageXML file ({xml_path})")
-            if not os.access(path=xml_path, mode=os.R_OK):
-                raise PermissionError(
-                    f"No access to {xml_path} for read operations")
+        _ = [image_path_to_xml_path(image_path) for image_path in image_paths]
 
     def resize_image_old(self, image: np.ndarray) -> np.ndarray:
         old_height, old_width, channels = image.shape
