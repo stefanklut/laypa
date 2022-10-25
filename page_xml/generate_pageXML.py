@@ -107,6 +107,7 @@ class GenPage(XMLRegions):
                 region_coords = region_coords.strip()
                 
                 uuid = str(np.random.choice(self.valid_uuid_values) for _ in range(4))
+                # TODO start with region_ actual UUID
                 text_reg = page.add_element(
                     region_type, f"r{uuid}_{region_id}", region, region_coords
                 )

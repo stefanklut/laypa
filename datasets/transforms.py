@@ -12,7 +12,7 @@ from scipy.ndimage import map_coordinates
 from scipy.ndimage import affine_transform
 from scipy.ndimage import gaussian_filter
 
-# TODO Check if there is a benefit for using scipy instead of the standard torchvision
+# REVIEW Check if there is a benefit for using scipy instead of the standard torchvision
 
 
 class ResizeTransform(T.Transform):

@@ -40,7 +40,7 @@ class XMLImage(XMLRegions):
         region_args = parser.add_argument_group("XML image")
         
         region_args.add_argument("-m", "--mode", help="Output mode",
-                        choices=["baseline", "region", "both"], default="baseline", type=str)
+                        choices=["baseline", "region", "both"], default="region", type=str)
 
         region_args.add_argument("-w", "--line_width",
                             help="Used line width", type=int, default=5)
