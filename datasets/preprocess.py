@@ -23,12 +23,11 @@ from utils.path import image_path_to_xml_path
 def get_arguments() -> argparse.Namespace:    
     parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
         description="Preprocessing an annotated dataset of documents with pageXML")
-    parser.add_argument("-i", "--input", help="Input folder",
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument("-i", "--input", help="Input folder",
                         required=True, type=str)
-    parser.add_argument(
+    io_args.add_argument(
         "-o", "--output", help="Output folder", required=True, type=str)
-    parser.add_argument("-m", "--mode", help="Output mode",
-                        choices=["baseline", "region", "both"], default="baseline", type=str)
 
     parser.add_argument(
         "-r", "--resize", help="Resize input images", action="store_true")
@@ -39,11 +38,6 @@ def get_arguments() -> argparse.Namespace:
     parser.add_argument(
         "--max_size", help="Max resize shape", type=int, default=2048)
 
-    parser.add_argument("-w", "--line_width",
-                        help="Used line width", type=int, default=5)
-    parser.add_argument("-c", "--line_color", help="Used line color",
-                        choices=list(range(256)), type=int, metavar="{0-255}", default=1)
-    
     args = parser.parse_args()
     return args
 

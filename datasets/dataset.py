@@ -14,7 +14,8 @@ from detectron2.data import DatasetCatalog, MetadataCatalog
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Preprocessing an annotated dataset of documents with pageXML")
-    parser.add_argument("-i", "--input", help="Input folder",
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument("-i", "--input", help="Input folder",
                         required=True, type=str)
 
     args = parser.parse_args()

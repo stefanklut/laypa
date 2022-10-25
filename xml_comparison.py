@@ -19,18 +19,11 @@ def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
         description="Preprocessing an annotated dataset of documents with pageXML")
     
-    parser.add_argument("-g", "--gt", help="Input folder/files GT", nargs="+", default=[],
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument("-g", "--gt", help="Input folder/files GT", nargs="+", default=[],
                         required=True, type=str)
-    parser.add_argument("-i", "--input", help="Input folder/files", nargs="+", default=[],
+    io_args.add_argument("-i", "--input", help="Input folder/files", nargs="+", default=[],
                         required=True, type=str)
-    
-    parser.add_argument("-m", "--mode", help="Output mode",
-                        choices=["baseline", "region", "both"], default="baseline", type=str)
-
-    parser.add_argument("-w", "--line_width",
-                        help="Used line width", type=int, default=5)
-    parser.add_argument("-c", "--line_color", help="Used line color",
-                        choices=list(range(256)), type=int, metavar="{0-255}", default=1)
 
     args = parser.parse_args()
     return args
@@ -205,7 +198,7 @@ class XMLEvaluator:
             res[f"ACC-{name}"] = 100 * acc[i]
 
         results = OrderedDict({"sem_seg": res})
-        self._logger.info(results)
+        # self._logger.info(results)
         return results
 
     def _mask_to_boundary(self, mask: np.ndarray, dilation_ratio=0.02):
@@ -313,6 +306,16 @@ class EvalWrapper:
     
     def evaluate(self):
         return self.evaluator.evaluate()
+    
+def pretty_print(input_dict: dict[str, float], n_decimals=3):
+    len_names = max(len(key) for key in input_dict.keys())+1
+    len_values = max(len(f"{value:.{n_decimals}f}") for value in input_dict.values())+1
+    
+    output_string = ""
+    for key, value in input_dict.items():
+        output_string += f"{key:<{len_names}}: {value:<{len_values}.{n_decimals}f}\n"
+        
+    print(output_string)
 
 def main(args):
     xml_list1 = clean_input(args.gt, suffixes=[".xml"])
@@ -332,9 +335,8 @@ def main(args):
     
     eval_runner = EvalWrapper(xml_to_image, evaluator)
     eval_runner.run_xml(xml_list1, xml_list2)
-    results = eval_runner.evaluate()
-    # TODO Pretty print
-    print(results)
+    results = eval_runner.evaluate()["sem_seg"]
+    pretty_print(results)
 
 if __name__ == "__main__":
     args = get_arguments()

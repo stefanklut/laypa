@@ -1,26 +1,24 @@
 import argparse
 from pathlib import Path
+import sys
 import numpy as np
 
-from .xmlPAGE import PageData
-from .xml_regions import XMLRegions
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from page_xml.xmlPAGE import PageData
+from page_xml.xml_regions import XMLRegions
 from typing import Optional
 
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()],
+    parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
         description="Preprocessing an annotated dataset of documents with pageXML")
-    parser.add_argument("-i", "--input", help="Input file",
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument("-i", "--input", help="Input file",
                         required=True, type=str)
-    parser.add_argument(
+    io_args.add_argument(
         "-o", "--output", help="Output file", required=True, type=str)
-    parser.add_argument("-m", "--mode", help="Output mode",
-                        choices=["baseline", "region", "both"], default="baseline", type=str)
-
-    parser.add_argument("-w", "--line_width",
-                        help="Used line width", type=int, default=5)
-    parser.add_argument("-c", "--line_color", help="Used line color",
-                        choices=list(range(256)), type=int, metavar="{0-255}", default=1)
+    
+    
 
     args = parser.parse_args()
     return args
@@ -34,6 +32,22 @@ class XMLImage(XMLRegions):
                  merge_regions: Optional[list[str]] = None, 
                  region_type: Optional[list[str]] = None) -> None:
         super().__init__(mode, line_width, line_color, regions, merge_regions, region_type)
+
+    @classmethod
+    def get_parser(cls):    
+        parser = argparse.ArgumentParser(parents=[super().get_parser()], add_help=False)
+        
+        region_args = parser.add_argument_group("XML image")
+        
+        region_args.add_argument("-m", "--mode", help="Output mode",
+                        choices=["baseline", "region", "both"], default="baseline", type=str)
+
+        region_args.add_argument("-w", "--line_width",
+                            help="Used line width", type=int, default=5)
+        region_args.add_argument("-c", "--line_color", help="Used line color",
+                            choices=list(range(256)), type=int, metavar="{0-255}", default=1)
+        
+        return parser
 
     def run(self, xml_path: Path, image_shape=None) -> np.ndarray:
         gt_data = PageData(xml_path)

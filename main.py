@@ -2,6 +2,7 @@ import argparse
 from datetime import datetime
 import os
 from pathlib import Path
+import sys
 from typing import List, Optional
 import torch
 
@@ -24,7 +25,7 @@ from detectron2.config import (
 from detectron2.evaluation import SemSegEvaluator
 from detectron2.utils.events import EventStorage
 from detectron2.data import transforms as T
-from detectron2.engine import hooks
+from detectron2.engine import hooks, launch
 
 
 from datasets.augmentations import (
@@ -47,7 +48,6 @@ from utils.path import unique_path
 
 # TODO Replace with LazyConfig
 
-
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Main file for Layout Analysis")
@@ -59,14 +59,33 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args.add_argument(
         "--opts", nargs=argparse.REMAINDER, help="optional args to change", default=[])
 
-    other_args = parser.add_argument_group("other")
-    other_args.add_argument("-t", "--train", help="Train input folder",
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument("-t", "--train", help="Train input folder",
                             required=True, type=str)
-    other_args.add_argument("-v", "--val", help="Validation input folder",
+    io_args.add_argument("-v", "--val", help="Validation input folder",
                             required=True, type=str)
     # other_args.add_argument("--img_list", help="List with location of images")
     # other_args.add_argument("--label_list", help="List with location of labels")
     # other_args.add_argument("--out_size_list", help="List with sizes of images")
+    
+    # From detectron2.engine.defaults
+    gpu_args = parser.add_argument_group("GPU Launch")
+    gpu_args.add_argument("--num-gpus", type=int, default=1, help="number of gpus *per machine*")
+    gpu_args.add_argument("--num-machines", type=int, default=1, help="total number of machines")
+    gpu_args.add_argument(
+        "--machine-rank", type=int, default=0, help="the rank of this machine (unique per machine)"
+    )
+
+    # PyTorch still may leave orphan processes in multi-gpu training.
+    # Therefore we use a deterministic way to obtain port,
+    # so that users are aware of orphan processes by seeing the port occupied.
+    port = 2**15 + 2**14 + hash(os.getuid() if sys.platform != "win32" else 1) % 2**14
+    gpu_args.add_argument(
+        "--dist-url",
+        default="tcp://127.0.0.1:{}".format(port),
+        help="initialization URL for pytorch distributed backend. See "
+        "https://pytorch.org/docs/stable/distributed.html for details.",
+    )
 
     args = parser.parse_args()
 
@@ -267,10 +286,18 @@ def main(args) -> None:
     # print(trainer.model)
 
     with EventStorage() as storage:
-        trainer.train()
+        return trainer.train()
 
 
 if __name__ == "__main__":
-    # TODO Add lauch for multiple gpus
     args = get_arguments()
-    main(args)
+    # main(args)
+    
+    launch(
+        main,
+        num_gpus_per_machine=args.num_gpus,
+        num_machines=args.num_machines,
+        machine_rank=args.machine_rank,
+        dist_url=args.dist_url,
+        args=(args,)
+    )

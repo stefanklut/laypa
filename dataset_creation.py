@@ -14,10 +14,13 @@ from utils.path import get_page_xml
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Preprocessing an annotated dataset of documents with pageXML")
-    parser.add_argument("-i", "--input", help="Input folder",
+    
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument("-i", "--input", help="Input folder",
                         required=True, type=str)
-    parser.add_argument("-o", "--output", help="Input folder",
+    io_args.add_argument("-o", "--output", help="Output folder",
                         required=True, type=str)
+    
     parser.add_argument("-m", "--mode", choices=["link", "symlink", "copy"], help="Mode for moving the images", default='copy')
     
     args = parser.parse_args()

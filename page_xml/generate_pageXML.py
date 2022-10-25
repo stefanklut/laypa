@@ -2,6 +2,7 @@ import argparse
 import logging
 from multiprocessing import Pool
 import os
+import string
 import sys
 from typing import Optional
 import numpy as np
@@ -17,10 +18,12 @@ from utils.copy import copy_mode
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()],
         description="Preprocessing an annotated dataset of documents with pageXML")
-    parser.add_argument("-i", "--input", help="Input folder/file",
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument("-i", "--input", help="Input folder/file",
                         required=True, type=str)
-    parser.add_argument(
+    io_args.add_argument(
         "-o", "--output", help="Output folder", required=True, type=str)
+    
     parser.add_argument("-m", "--mode", help="Output mode",
                         choices=["baseline", "region", "both"], default="baseline", type=str)
 
@@ -45,6 +48,8 @@ class GenPage(XMLRegions):
         
         self.logger = logging.getLogger(__name__)
         
+        self.valid_uuid_values = string.ascii_uppercase + string.ascii_lowercase + string.digits
+        
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
         self.output_dir = output_dir
@@ -68,10 +73,13 @@ class GenPage(XMLRegions):
         page = PageData(xml_output_path, logger=self.logger)
         page.new_page(image_output_path.name, str(old_height), str(old_width))
         
+        region_id = 0
         
         for i, region in enumerate(self.regions):
             binary_region_mask = np.zeros_like(mask)
             binary_region_mask[mask == i] = 1
+            
+            region_type = self.region_types[region]
             
             contours, hierarchy = cv2.findContours(
                 binary_region_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
@@ -85,12 +93,24 @@ class GenPage(XMLRegions):
                 # if cv2.contourArea(cnt) < size:
                 #     continue
                 
+                region_id += 1
+                
                 # --- soft a bit the region to prevent spikes
                 epsilon = 0.005 * cv2.arcLength(cnt, True)
                 approx_poly = cv2.approxPolyDP(cnt, epsilon, True)
             
                 approx_poly = np.round((approx_poly * scaling)).astype(np.int32)
-        
+                
+                region_coords = ""
+                for coords in approx_poly.reshape(-1, 2):
+                    region_coords = region_coords + f" {coords[0]}, {coords[1]}"
+                region_coords = region_coords.strip()
+                
+                uuid = str(np.random.choice(self.valid_uuid_values) for _ in range(4))
+                text_reg = page.add_element(
+                    region_type, f"r{uuid}_{region_id}", region, region_coords
+                )
+                
         page.save_xml()
 
     
@@ -105,11 +125,12 @@ class GenPage(XMLRegions):
             _ = list(tqdm(pool.imap_unordered(
                 self.generate_single_page, list(zip(mask_list, image_path_list))), total=len(mask_list)))
 
-def main():
-    
+def main(args):
+    # TODO This
+    pass
     
 if __name__ == "__main__":
     args = get_arguments()
-    
+    main(args)
     
         

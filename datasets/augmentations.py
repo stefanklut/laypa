@@ -2,8 +2,11 @@
 
 import argparse
 from collections import Counter
+import inspect
 from pathlib import Path
+import pprint
 import sys
+from typing import Optional, Sequence
 import numpy as np
 import torch
 import torchvision
@@ -27,22 +30,58 @@ from scipy.ndimage import map_coordinates
 from scipy.ndimage import affine_transform
 from scipy.ndimage import gaussian_filter
 
-# Linking already implemented methods
-# TODO RandomApply __repr__ and __str__ functions
-from detectron2.data.transforms import RandomApply
-
-# TODO Check if there is a benefit for using scipy instead of the standard torchvision
 # REVIEW Use the self._init() function
+
+class RandomApply(T.RandomApply):
+    def __init__(self, tfm_or_aug, prob=0.5):
+        super().__init__(tfm_or_aug, prob)
+        self.tfm_or_aug = self.aug
+    
+    def __repr__(self):
+        try:
+            sig = inspect.signature(self.__init__)
+            classname = type(self).__name__
+            argstr = []
+            for name, param in sig.parameters.items():
+                assert (
+                    param.kind != param.VAR_POSITIONAL and param.kind != param.VAR_KEYWORD
+                ), "The default __repr__ doesn't support *args or **kwargs"
+                assert hasattr(self, name), (
+                    "Attribute {} not found! "
+                    "Default __repr__ only works if attributes match the constructor.".format(name)
+                )
+                attr = getattr(self, name)
+                default = param.default
+                if default is attr:
+                    continue
+                attr_str = pprint.pformat(attr)
+                if "\n" in attr_str:
+                    # don't show it if pformat decides to use >1 lines
+                    attr_str = "..."
+                argstr.append("{}={}".format(name, attr_str))
+            return "{}({})".format(classname, ", ".join(argstr))
+        except AssertionError:
+            return super().__repr__()
+
+    __str__ = __repr__
+    
 
 class ResizeShortestEdge(T.Augmentation):
     """
     Resize alternative using cv2 instead of PIL or Pytorch
     """
-    def __init__(self, min_size, max_size, resize_mode) -> None:
+    def __init__(self, min_size, max_size=sys.maxsize, sample_style="choice") -> None:
         super().__init__()
-        self.resize_mode = resize_mode
+        assert sample_style in ["range", "choice"], sample_style
+        if sample_style == "range":
+            assert len(min_size) == 2, (
+                    "short_edge_length must be two values using 'range' sample style."
+                    f" Got {min_size}!"
+                )
+        self.sample_style = sample_style
         self.min_size = min_size
         self.max_size = max_size
+        
 
     @staticmethod
     def get_output_shape(old_height: int, old_width: int, short_edge_length: int, max_size: int) -> tuple[int, int]:
@@ -75,10 +114,10 @@ class ResizeShortestEdge(T.Augmentation):
     def get_transform(self, image: np.ndarray) -> T.Transform:
         old_height, old_width, channels = image.shape
 
-        if self.resize_mode == "range":
+        if self.sample_style == "range":
             short_edge_length = np.random.randint(
                 self.min_size[0], self.min_size[1] + 1)
-        elif self.resize_mode == "choice":
+        elif self.sample_style == "choice":
             short_edge_length = np.random.choice(self.min_size)
         else:
             raise NotImplementedError(
@@ -154,16 +193,25 @@ class RandomElastic(T.Augmentation):
 
 
 class RandomAffine(T.Augmentation):
-    def __init__(self, t_stdv: float=0.02, r_kappa: float=30, sh_kappa: float=20, sc_stdv: float=0.12) -> None:
+    def __init__(self, 
+                 t_stdv: float=0.02, 
+                 r_kappa: float=30, 
+                 sh_kappa: float=20, 
+                 sc_stdv: float=0.12, 
+                 probs: Optional[Sequence[float]]=None) -> None:
         super().__init__()
         self.t_stdv = t_stdv
         self.r_kappa = r_kappa
         self.sh_kappa = sh_kappa
         self.sc_stdv = sc_stdv
+        
+        if probs is not None:
+            assert len(probs) == 4, f"{len(probs)}: {probs}"
+            self.probs = probs
+        else:
+            self.probs = [1] * 4
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
-        
-        # TODO Separate prob for each sub-operation
 
         h, w = image.shape[:2]
 
@@ -176,46 +224,49 @@ class RandomAffine(T.Augmentation):
         matrix = np.eye(3)
 
         # Translation
-        matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2) * \
-            np.asarray([w, h]) * self.t_stdv
+        if self._rand_range() < self.probs[0]:
+            matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2) * \
+                np.asarray([w, h]) * self.t_stdv
 
         # Rotation
-        rot = np.eye(3)
-        theta = np.random.vonmises(0.0, self.r_kappa)
-        rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)],
-                         [-np.sin(theta), np.cos(theta)]]
+        if self._rand_range() < self.probs[1]:
+            rot = np.eye(3)
+            theta = np.random.vonmises(0.0, self.r_kappa)
+            rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)],
+                            [-np.sin(theta), np.cos(theta)]]
 
-        # print(rot)
+            # print(rot)
 
-        matrix = matrix @ center @ rot @ uncenter
+            matrix = matrix @ center @ rot @ uncenter
 
-        # Shear1
-        theta1 = np.random.vonmises(0.0, self.sh_kappa)
+        # Shear
+        if self._rand_range() < self.probs[2]:
+            theta1 = np.random.vonmises(0.0, self.sh_kappa)
 
-        shear1 = np.eye(3)
-        shear1[0, 1] = theta1
+            shear1 = np.eye(3)
+            shear1[0, 1] = theta1
 
-        # print(shear1)
+            # print(shear1)
 
-        matrix = matrix @ center @ shear1 @ uncenter
+            matrix = matrix @ center @ shear1 @ uncenter
 
-        # Shear2
-        theta2 = np.random.vonmises(0.0, self.sh_kappa)
+            theta2 = np.random.vonmises(0.0, self.sh_kappa)
 
-        shear2 = np.eye(3)
-        shear2[1, 0] = theta2
+            shear2 = np.eye(3)
+            shear2[1, 0] = theta2
 
-        # print(shear2)
+            # print(shear2)
 
-        matrix = matrix @ center @ shear2 @ uncenter
+            matrix = matrix @ center @ shear2 @ uncenter
 
         # Scale
-        scale = np.eye(3)
-        scale[0, 0], scale[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
+        if self._rand_range() < self.probs[3]:
+            scale = np.eye(3)
+            scale[0, 0], scale[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
 
-        # print(scale)
+            # print(scale)
 
-        matrix = matrix @ center @ scale @ uncenter
+            matrix = matrix @ center @ scale @ uncenter
 
         return AffineTransform(matrix)
 
@@ -468,7 +519,8 @@ class RandomBrightness(T.Augmentation):
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Testing the image augmentation and ")
-    parser.add_argument("-i", "--input", help="Input file",
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument("-i", "--input", help="Input file",
                         required=True, type=str)
 
     args = parser.parse_args()

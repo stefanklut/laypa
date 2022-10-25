@@ -430,7 +430,8 @@ class BlendTransform(T.Transform):
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Testing the image augmentation and ")
-    parser.add_argument("-i", "--input", help="Input file",
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument("-i", "--input", help="Input file",
                         required=True, type=str)
 
     args = parser.parse_args()

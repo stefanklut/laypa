@@ -27,12 +27,9 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args.add_argument("-c", "--config", help="config file", required=True)
     detectron2_args.add_argument("--opts", nargs=argparse.REMAINDER, help="optional args to change", default=[])
     
-    other_args = parser.add_argument_group("other")
-    # other_args.add_argument("-t", "--train", help="Train input folder", type=str)
-    # other_args.add_argument("-v", "--val", help="Validation input folder", type=str)
-    
-    other_args.add_argument("-i", "--input", help="Input folder", type=str)
-    other_args.add_argument("-o", "--output", help="Output folder", type=str)
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument("-i", "--input", help="Input folder", type=str)
+    io_args.add_argument("-o", "--output", help="Output folder", type=str)
     
     args = parser.parse_args()
     
@@ -147,19 +144,9 @@ class SavePredictor(Predictor):
 def main(args) -> None:
     cfg = setup_cfg(args)
     
-    # IDEA Make this happen inside a function?
-    # if cfg.MODEL.MODE == "baseline":
-    #     dataset.register_baseline(None, args.val)
-    #     metadata = MetadataCatalog.get("pagexml_baseline_val")
-    # elif cfg.MODEL.MODE == "region":
-    #     dataset.register_region(None, args.input)
-    #     metadata = MetadataCatalog.get("pagexml_region_val")
-    # else:
-    #     raise NotImplementedError(f"Only have \"baseline\" and \"region\", given {cfg.MODEL.MODE}")
-    
     predictor = SavePredictor(cfg=cfg, input_dir=args.input, output_dir=args.output)
     
-    results = predictor.process()
+    predictor.process()
 
 if __name__ == "__main__":
     args = get_arguments()

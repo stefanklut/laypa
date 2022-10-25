@@ -1,4 +1,5 @@
 import argparse
+from datasets.augmentations import ResizeShortestEdge
 from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog, DatasetCatalog
@@ -24,10 +25,10 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args.add_argument(
         "--opts", nargs=argparse.REMAINDER, help="optional args to change", default=[])
 
-    other_args = parser.add_argument_group("other")
-    other_args.add_argument(
+    io_args = parser.add_argument_group("IO")
+    io_args.add_argument(
         "-t", "--train", help="Train input folder", type=str)
-    other_args.add_argument(
+    io_args.add_argument(
         "-v", "--val", help="Validation input folder", type=str)
 
     args = parser.parse_args()
@@ -42,8 +43,8 @@ class Predictor(DefaultPredictor):
         checkpointer = DetectionCheckpointer(self.model)
         checkpointer.load(cfg.TEST.WEIGHTS)
 
-        self.aug = T.ResizeShortestEdge(
-            [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST
+        self.aug = ResizeShortestEdge(
+            [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST,
         )
 
     def __call__(self, original_image):
@@ -69,7 +70,8 @@ def main(args) -> None:
     train_loader = dataset.dataset_dict_loader(args.train)
     val_loader = dataset.dataset_dict_loader(args.val)
 
-    for inputs in np.random.choice(val_loader, 3):
+    # for inputs in np.random.choice(val_loader, 3):
+    for inputs in val_loader:
         im = cv2.imread(inputs["file_name"])
         gt = cv2.imread(inputs["sem_seg_file_name"], cv2.IMREAD_GRAYSCALE)
         outputs = predictor(im)
