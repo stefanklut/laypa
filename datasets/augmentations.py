@@ -538,8 +538,7 @@ def test(args) -> None:
         raise FileNotFoundError(f"Image {input_path} not found")
 
     print(f"Loading image {input_path}")
-    image = cv2.imread(str(input_path))
-    print(image.dtype)
+    image = cv2.imread(str(input_path))[..., ::-1]
 
     resize = ResizeShortestEdge(min_size=(640, 672, 704, 736, 768, 800),
                                 max_size=1333, 
@@ -582,14 +581,12 @@ def test(args) -> None:
 
     transforms = augs_list(input_augs)
 
-    output_im = input_augs.image
-    # print(np.unique(output_im))
-    print(output_im.dtype)
+    output_image = input_augs.image
 
-    im = Image.fromarray(image[..., ::-1])
+    im = Image.fromarray(image)
     im.show("Original")
 
-    im = Image.fromarray(output_im[..., ::-1].clip(0, 255).astype(np.uint8))
+    im = Image.fromarray(output_image.round().clip(0, 255).astype(np.uint8))
     im.show("Transformed")
 
 

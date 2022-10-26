@@ -449,15 +449,16 @@ def test(args) -> None:
         raise FileNotFoundError(f"Image {input_path} not found")
 
     print(f"Loading image {input_path}")
-    image = cv2.imread(str(input_path))
+    image = cv2.imread(str(input_path))[..., ::-1]
     print(image.dtype)
 
-    # FIXME No working test right now
+    affine = AffineTransform(np.eye(3))
+    output_image = affine.apply_image(image)
 
-    im = Image.fromarray(image[..., ::-1])
+    im = Image.fromarray(image)
     im.show("Original")
 
-    im = Image.fromarray(output_im[..., ::-1])
+    im = Image.fromarray(output_image.round().clip(0, 255).astype(np.uint8))
     im.show("Transformed")
 
 

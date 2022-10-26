@@ -7,6 +7,7 @@ import sys
 from typing import Optional
 import numpy as np
 from pathlib import Path
+import uuid
 
 from xml_regions import XMLRegions
 from tqdm import tqdm
@@ -44,8 +45,6 @@ class GenPageXML(XMLRegions):
         super().__init__(mode, line_width, line_color, regions, merge_regions, region_type)
         
         self.logger = logging.getLogger(__name__)
-        
-        self.valid_uuid_values = string.ascii_uppercase + string.ascii_lowercase + string.digits
         
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
@@ -118,8 +117,7 @@ class GenPageXML(XMLRegions):
                     region_coords = region_coords + f" {coords[0]},{coords[1]}"
                 region_coords = region_coords.strip()
                 
-                uuid = str(np.random.choice(self.valid_uuid_values) for _ in range(4))
-                # TODO start with region_ actual UUID
+                _uuid = uuid.uuid4()
                 text_reg = page.add_element(
                     region_type, f"region_{uuid}_{region_id}", region, region_coords
                 )
