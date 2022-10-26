@@ -15,7 +15,7 @@ from utils.path import clean_input, xml_path_to_image_path
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
-        description="Preprocessing an annotated dataset of documents with pageXML")
+        description="Visualize XML files for visualization/debugging")
     
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input folder/files", nargs="+", default=[],
@@ -41,7 +41,8 @@ class Viewer:
         region_names = xml_to_image.get_regions()
         region_colors = [(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)]
         
-        assert len(region_names) == len(region_colors), "Colors must match names in length"
+        if len(region_names) != len(region_colors):
+            raise ValueError(f"Colors must match names in length: {len(region_names)} v. {len(region_colors)}")
         
         self.metadata.set(stuff_classes=region_names,
                           stuff_colors=region_colors,
@@ -99,7 +100,7 @@ class Viewer:
         overlay_image = vis_im.get_image()
         cv2.imwrite(str(output_image_path), overlay_image[..., ::-1])
         
-    def run(self, xml_list: list[Path] | list[str]):
+    def run(self, xml_list: list[str] | list[Path]) -> None:
         cleaned_xml_list: list[Path] = [Path(path) if isinstance(path, str) else path for path in xml_list]
         cleaned_xml_list = [path.resolve() for path in cleaned_xml_list]
         

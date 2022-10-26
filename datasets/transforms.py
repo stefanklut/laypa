@@ -32,7 +32,7 @@ class ResizeTransform(T.Transform):
         Resize Image
 
         Args:
-            image (np.ndarray): _description_
+            img (np.ndarray): image array HxWxC
 
         Returns:
             np.ndarray: resized images
@@ -241,10 +241,10 @@ class WarpFieldTransform(T.Transform):
         Warp an image with a specified warpfield, using spline interpolation
 
         Args:
-            img (np.ndarray): HxW or 
+            img (np.ndarray): image array HxWxC
 
         Returns:
-            np.ndarray: _description_
+            np.ndarray: warped image
         """
         img = img.astype(np.float32)
         indices = self.generate_grid(img, self.warpfield)
@@ -345,9 +345,9 @@ class GaussianFilterTransform(T.Transform):
         Apply one or more gaussian filters
         
         Args:
-            sigma (float, optional): _description_. Defaults to 4.
-            order (int, optional): _description_. Defaults to 0.
-            iterations (int, optional): _description_. Defaults to 1.
+            sigma (float, optional): Gaussian deviation. Defaults to 4.
+            order (int, optional): order of gaussian derivative. Defaults to 0.
+            iterations (int, optional): times the kernel is applied. Defaults to 1.
         """
         self.sigma = sigma
         self.order = order
@@ -429,7 +429,7 @@ class BlendTransform(T.Transform):
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Testing the image augmentation and ")
+        description="Testing the image augmentation and transformations")
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input file",
                         required=True, type=str)

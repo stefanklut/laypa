@@ -7,35 +7,32 @@ import sys
 from typing import Optional
 import numpy as np
 from pathlib import Path
-from .xmlPAGE import PageData
+
 from xml_regions import XMLRegions
 from tqdm import tqdm
 import cv2
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.copy import copy_mode
+from utils.path import clean_input
+from page_xml.xmlPAGE import PageData
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()],
-        description="Preprocessing an annotated dataset of documents with pageXML")
+        description="Generate pageXML from label mask and images")
+    
     io_args = parser.add_argument_group("IO")
-    io_args.add_argument("-i", "--input", help="Input folder/file",
+    io_args.add_argument("-a", "--mask", help="Input mask folder/files", nargs="+", default=[],
+                        required=True, type=str)
+    io_args.add_argument("-i", "--input", help="Input image folder/files", nargs="+", default=[],
                         required=True, type=str)
     io_args.add_argument(
         "-o", "--output", help="Output folder", required=True, type=str)
-    
-    parser.add_argument("-m", "--mode", help="Output mode",
-                        choices=["baseline", "region", "both"], default="baseline", type=str)
-
-    parser.add_argument("-w", "--line_width",
-                        help="Used line width", type=int, default=5)
-    parser.add_argument("-c", "--line_color", help="Used line color",
-                        choices=list(range(256)), type=int, metavar="{0-255}", default=1)
 
     args = parser.parse_args()
     return args
 
-class GenPage(XMLRegions):
+class GenPageXML(XMLRegions):
     
     def __init__(self, output_dir: str|Path,
                  mode: str,
@@ -52,14 +49,27 @@ class GenPage(XMLRegions):
         
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
+            
+        if not output_dir.is_dir():
+            print(f"Could not find output dir ({output_dir}), creating one at specified location")
+            output_dir.mkdir(parents=True)
         self.output_dir = output_dir
+        
+        page_dir = self.output_dir.joinpath("page")
+        if not page_dir.is_dir():
+            print(f"Could not find page dir ({page_dir}), creating one at specified location")
+            page_dir.mkdir(parents=True)
+        self.page_dir = page_dir
         
         self.regions = self.get_regions()
     
-    def generate_single_page(self, info: tuple[np.ndarray, Path]):
+    def generate_single_page(self, info: tuple[np.ndarray|Path, Path]):
         mask, image_path = info
         
-        xml_output_path = self.output_dir.joinpath("page", image_path.stem + ".xml")
+        if isinstance(mask, Path):
+            mask = cv2.imread(str(mask), cv2.IMREAD_GRAYSCALE)
+        
+        xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
         image_output_path = self.output_dir.joinpath(image_path.name)
         
         copy_mode(image_path, image_output_path, mode="symlink")
@@ -76,6 +86,8 @@ class GenPage(XMLRegions):
         region_id = 0
         
         for i, region in enumerate(self.regions):
+            if region == "background":
+                continue
             binary_region_mask = np.zeros_like(mask)
             binary_region_mask[mask == i] = 1
             
@@ -103,23 +115,27 @@ class GenPage(XMLRegions):
                 
                 region_coords = ""
                 for coords in approx_poly.reshape(-1, 2):
-                    region_coords = region_coords + f" {coords[0]}, {coords[1]}"
+                    region_coords = region_coords + f" {coords[0]},{coords[1]}"
                 region_coords = region_coords.strip()
                 
                 uuid = str(np.random.choice(self.valid_uuid_values) for _ in range(4))
                 # TODO start with region_ actual UUID
                 text_reg = page.add_element(
-                    region_type, f"r{uuid}_{region_id}", region, region_coords
+                    region_type, f"region_{uuid}_{region_id}", region, region_coords
                 )
                 
         page.save_xml()
-
-    
-    def run(self, mask_list: list[np.ndarray], image_path_list: list[Path]):
+        
+    def run(self, 
+            mask_list: list[np.ndarray] | list[Path], 
+            image_path_list: list[Path]) -> None:
+        
+        if len(mask_list) != len(image_path_list):
+            raise ValueError(f"masks must match image paths in length: {len(mask_list)} v. {len(image_path_list)}")
+        
         # #Single thread
         # for mask_i, image_path_i in tqdm(zip(mask_list, image_path_list), total=len(mask_list)):
         #     self.generate_single_page((mask_i, image_path_i))
-        
         
         # Multi thread
         with Pool(os.cpu_count()) as pool:
@@ -127,8 +143,32 @@ class GenPage(XMLRegions):
                 self.generate_single_page, list(zip(mask_list, image_path_list))), total=len(mask_list)))
 
 def main(args):
-    # TODO This
-    pass
+    # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
+    image_formats = [".bmp", ".dib",
+                     ".jpeg", ".jpg", ".jpe",
+                     ".jp2",
+                     ".png",
+                     ".webp",
+                     ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
+                     ".pfm",
+                     ".sr", ".ras",
+                     ".tiff", ".tif",
+                     ".exr",
+                     ".hdr", ".pic"]
+    mask_paths = clean_input(args.mask, suffixes=[".png"])
+    image_paths = clean_input(args.input, suffixes=image_formats)
+    
+    gen_page = GenPageXML(output_dir=args.output,
+                          mode=args.mode,
+                          line_width=args.line_width,
+                          line_color=args.line_color,
+                          regions=args.regions,
+                          merge_regions=args.merge_regions,
+                          region_type=args.region_type)
+    
+    gen_page.run(mask_paths, image_paths)
+    
+    
     
 if __name__ == "__main__":
     args = get_arguments()

@@ -518,7 +518,7 @@ class RandomBrightness(T.Augmentation):
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Testing the image augmentation and ")
+        description="Testing the image augmentation and transformations")
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input file",
                         required=True, type=str)

@@ -17,7 +17,7 @@ from utils.path import clean_input
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
-        description="Preprocessing an annotated dataset of documents with pageXML")
+        description="Compare two sets of pagexml, based on pixel level metrics")
     
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-g", "--gt", help="Input folder/files GT", nargs="+", default=[],
@@ -140,6 +140,7 @@ class XMLEvaluator:
         return full_conf_matrix, full_b_conf_matrix
 
     def evaluate(self):
+        # TODO Change the variable names to make it clearer what is being calculated
         """
         Evaluates standard semantic segmentation metrics (http://cocodataset.org/#stuff-eval):
 

@@ -49,6 +49,16 @@ class XMLRegions:
         parser = argparse.ArgumentParser(add_help=False)
         
         region_args = parser.add_argument_group("regions")
+        
+        region_args.add_argument("-m", "--mode", help="Output mode",
+                        choices=["baseline", "region", "both"], default="region", type=str)
+
+        region_args.add_argument("-w", "--line_width",
+                            help="Used line width", type=int, default=5)
+        
+        region_args.add_argument("-c", "--line_color", help="Used line color",
+                            choices=list(range(256)), type=int, metavar="{0-255}", default=1)
+        
         region_args.add_argument(
         "--regions",
         default=republic_regions,

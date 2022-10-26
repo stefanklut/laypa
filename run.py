@@ -20,7 +20,8 @@ from tqdm import tqdm
 from natsort import os_sorted
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Main file for Layout Analysis")
+    parser = argparse.ArgumentParser(
+        description="Run file to inference using the model found in the config file")
     
     detectron2_args = parser.add_argument_group("detectron2")
     

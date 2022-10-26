@@ -9,11 +9,11 @@ from sklearn.model_selection import train_test_split
 from natsort import os_sorted
 from datetime import datetime
 from utils.copy import copy_mode
-from utils.path import get_page_xml
+from utils.path import image_path_to_xml_path
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Preprocessing an annotated dataset of documents with pageXML")
+        description="Moving files from multiple folders into a single structured dataset")
     
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input folder",
@@ -39,7 +39,7 @@ def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
         
     output_paths = []
     for path in paths:
-        page_path = get_page_xml(path)
+        page_path = image_path_to_xml_path(path)
         output_path = output_dir.joinpath(path.name)
         output_page_path = page_dir.joinpath(page_path.name)
         copy_mode(path, output_path, mode=mode)

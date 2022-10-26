@@ -16,7 +16,7 @@ import torch
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Main file for Layout Analysis")
+        description="Eval of prediction of model using visualizer")
 
     detectron2_args = parser.add_argument_group("detectron2")
 

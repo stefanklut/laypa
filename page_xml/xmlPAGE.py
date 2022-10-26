@@ -76,6 +76,7 @@ class PageData:
         """
         Returns the type of element
         """
+        # FIXME Excepting all is dangerous
         try:
             e_type = re.match(
                 r".*structure {.*type:(.*);.*}", element.attrib["custom"]
@@ -107,7 +108,7 @@ class PageData:
             .attrib.get("points")
             .split()
         )
-        return np.array([i.split(",") for i in str_coords]).astype(np.int)
+        return np.array([i.split(",") for i in str_coords]).astype(np.int32)
 
     def get_polygons(self, element_name):
         """
