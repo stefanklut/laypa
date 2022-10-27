@@ -28,7 +28,7 @@ def get_arguments() -> argparse.Namespace:
     args = parser.parse_args()
     return args
 
-class XMLEvaluator:
+class IOUEvaluator:
     def __init__(self, 
                  metadata: Optional[Metadata] = None, 
                  ignore_label: Optional[int] = None,
@@ -218,9 +218,9 @@ class XMLEvaluator:
         return boundary
 
 class EvalWrapper:
-    def __init__(self, xml_to_image: XMLImage, evaluator: XMLEvaluator) -> None:
+    def __init__(self, xml_to_image: XMLImage, evaluator: IOUEvaluator) -> None:
         self.xml_to_image: XMLImage = xml_to_image
-        self.evaluator: XMLEvaluator = evaluator
+        self.evaluator: IOUEvaluator = evaluator
     
     def compare_xml(self, info: tuple[Path, Path]):
         xml_i_1, xml_i_2 = info
@@ -331,7 +331,7 @@ def main(args):
         region_type=args.region_type
     )
     
-    evaluator = XMLEvaluator(ignore_label=255, 
+    evaluator = IOUEvaluator(ignore_label=255, 
                              class_names=xml_to_image.get_regions())
     
     eval_runner = EvalWrapper(xml_to_image, evaluator)
