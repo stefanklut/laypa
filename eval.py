@@ -52,7 +52,7 @@ class Predictor(DefaultPredictor):
 
 
 def main(args) -> None:
-    cfg = setup_cfg(args)
+    cfg = setup_cfg(args, save_config=False)
 
     # IDEA Make this happen inside a function?
     if cfg.MODEL.MODE == "baseline":

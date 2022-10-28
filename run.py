@@ -143,7 +143,7 @@ class SavePredictor(Predictor):
         #         self.save_prediction, image_paths), total=len(image_paths)))
     
 def main(args) -> None:
-    cfg = setup_cfg(args)
+    cfg = setup_cfg(args, save_config=False)
     
     predictor = SavePredictor(cfg=cfg, input_dir=args.input, output_dir=args.output)
     

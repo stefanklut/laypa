@@ -1,16 +1,12 @@
 # Taken from P2PaLA
 
 import argparse
-from collections import Counter
 import inspect
 from pathlib import Path
 import pprint
 import sys
 from typing import Optional, Sequence
 import numpy as np
-import torch
-import torchvision
-import cv2
 
 import detectron2.data.transforms as T
 
@@ -78,6 +74,8 @@ class ResizeShortestEdge(T.Augmentation):
                     "short_edge_length must be two values using 'range' sample style."
                     f" Got {min_size}!"
                 )
+        if isinstance(min_size, int):
+            min_size = (min_size, min_size)
         self.sample_style = sample_style
         self.min_size = min_size
         self.max_size = max_size
@@ -168,26 +166,28 @@ class Flip(T.Augmentation):
             raise ValueError("At least one of horiz or vert has to be True!")
 
 class RandomElastic(T.Augmentation):
-    def __init__(self, alpha: float=34, stdv: float=4) -> None:
+    def __init__(self, alpha: float=0.1, sigma: float=0.01) -> None:
         """
         Args:
-            alpha (int, optional): scale factor of the warpfield (sets max value). Defaults to 34.
-            stdv (int, optional): strenght of the gaussian filter. Defaults to 4.
+            alpha (int, optional): scale factor of the warpfield (sets max value). Defaults to 0.045.
+            stdv (int, optional): strenght of the gaussian filter. Defaults to 0.01.
         """
         super().__init__()
         self.alpha = alpha
-        self.stdv = stdv
+        self.sigma = sigma
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
         
+        min_length = min(h,w)
+        
         warpfield = np.zeros((h, w, 2))
         dx = gaussian_filter(
-            ((np.random.rand(h, w) * 2) - 1), self.stdv, mode="constant", cval=0)
+            ((np.random.rand(h, w) * 2) - 1), self.sigma * min_length, mode="constant", cval=0)
         dy = gaussian_filter(
-            ((np.random.rand(h, w) * 2) - 1), self.stdv, mode="constant", cval=0)
-        warpfield[..., 0] = dx * self.alpha
-        warpfield[..., 1] = dy * self.alpha
+            ((np.random.rand(h, w) * 2) - 1), self.sigma * min_length, mode="constant", cval=0)
+        warpfield[..., 0] = dx * min_length * self.alpha
+        warpfield[..., 1] = dy * min_length * self.alpha
 
         return WarpFieldTransform(warpfield)
 
@@ -212,6 +212,9 @@ class RandomAffine(T.Augmentation):
             self.probs = [1] * 4
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
+        
+        if not any(self.probs):
+            return T.NoOpTransform()
 
         h, w = image.shape[:2]
 
@@ -514,7 +517,75 @@ class RandomBrightness(T.Augmentation):
         w = np.random.uniform(self.intensity_min, self.intensity_max)
         return BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
 
+def build_augmentation(cfg, is_train) -> list[T.Augmentation | T.Transform]:
+    if is_train:
+        min_size = cfg.INPUT.MIN_SIZE_TRAIN
+        max_size = cfg.INPUT.MAX_SIZE_TRAIN
+        sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
+    else:
+        min_size = cfg.INPUT.MIN_SIZE_TEST
+        max_size = cfg.INPUT.MAX_SIZE_TEST
+        sample_style = "choice"
+    augmentation: list[T.Augmentation | T.Transform] = [
+        ResizeShortestEdge(min_size, max_size, sample_style)]
 
+    if not is_train:
+        return augmentation
+
+    # TODO Add random crop
+    # TODO 90 degree rotation
+    
+    # Color augments
+    augmentation.append(RandomApply(Grayscale(image_format=cfg.INPUT.FORMAT), 
+                                    prob=cfg.INPUT.GRAYSCALE.PROBABILITY))
+    augmentation.append(RandomApply(RandomBrightness(intensity_min=cfg.INPUT.BRIGHTNESS.MIN_INTENSITY, 
+                                                     intensity_max=cfg.INPUT.BRIGHTNESS.MAX_INTENSITY), 
+                                    prob=cfg.INPUT.BRIGHTNESS.PROBABILITY))
+    augmentation.append(RandomApply(RandomContrast(intensity_min=cfg.INPUT.CONTRAST.MIN_INTENSITY, 
+                                                   intensity_max=cfg.INPUT.CONTRAST.MAX_INTENSITY), 
+                                    prob=cfg.INPUT.CONTRAST.PROBABILITY))
+    augmentation.append(RandomApply(RandomSaturation(intensity_min=cfg.INPUT.SATURATION.MIN_INTENSITY, 
+                                                     intensity_max=cfg.INPUT.SATURATION.MIN_INTENSITY), 
+                                    prob=cfg.INPUT.SATURATION.PROBABILITY))
+    augmentation.append(RandomApply(RandomGaussianFilter(min_sigma=cfg.INPUT.GAUSSIAN_FILTER.MIN_SIGMA, 
+                                                         max_sigma=cfg.INPUT.GAUSSIAN_FILTER.MAX_SIGMA), 
+                                    prob=cfg.INPUT.GAUSSIAN_FILTER.PROBABILITY))
+    
+    # Flips
+    augmentation.append(RandomApply(Flip(horizontal=True,
+                                         vertical=False,), 
+                                    prob=cfg.INPUT.HORIZONTAL_FLIP.PROBABILITY))
+    augmentation.append(RandomApply(Flip(horizontal=True,
+                                         vertical=False,), 
+                                    prob=cfg.INPUT.HORIZONTAL_FLIP.PROBABILITY))
+    
+    
+    augmentation.append(RandomApply(RandomElastic(alpha=cfg.INPUT.ELASTIC_DEFORMATION.ALPHA, 
+                                                  sigma=cfg.INPUT.ELASTIC_DEFORMATION.SIGMA),
+                                    prob=cfg.INPUT.ELASTIC_DEFORMATION.PROBABILITY))
+    augmentation.append(RandomApply(RandomAffine(t_stdv=cfg.INPUT.AFFINE.TRANSLATION.STANDARD_DEVIATION,
+                                                 r_kappa=cfg.INPUT.AFFINE.ROTATION.KAPPA,
+                                                 sh_kappa=cfg.INPUT.AFFINE.SHEAR.KAPPA,
+                                                 sc_stdv=cfg.INPUT.AFFINE.SCALE.STANDARD_DEVIATION,
+                                                 probs=(cfg.INPUT.AFFINE.TRANSLATION.PROBABILITY,
+                                                        cfg.INPUT.AFFINE.ROTATION.PROBABILITY,
+                                                        cfg.INPUT.AFFINE.SHEAR.PROBABILITY,
+                                                        cfg.INPUT.AFFINE.SCALE.PROBABILITY)),
+                                    prob=cfg.INPUT.AFFINE.PROBABILITY))
+    
+    # augmentation.append(RandomApply(RandomTranslation(t_stdv=cfg.INPUT.AFFINE.TRANSLATION.STANDARD_DEVIATION),
+    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.TRANSLATION.PROBABILITY))
+    # augmentation.append(RandomApply(RandomRotation(r_kappa=cfg.INPUT.AFFINE.ROTATION.KAPPA),
+    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.ROTATION.PROBABILITY))
+    # augmentation.append(RandomApply(RandomShear(sh_kappa=cfg.INPUT.AFFINE.SHEAR.KAPPA),
+    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.SHEAR.PROBABILITY))
+    # augmentation.append(RandomApply(RandomScale(sc_stdv=cfg.INPUT.AFFINE.SCALE.STANDARD_DEVIATION),
+    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.SCALE.PROBABILITY))
+    
+    
+    
+    # print(augmentation)
+    return augmentation
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -525,6 +596,8 @@ def get_arguments() -> argparse.Namespace:
 
     args = parser.parse_args()
     return args
+
+
 
 
 def test(args) -> None:
@@ -542,26 +615,27 @@ def test(args) -> None:
 
     resize = ResizeShortestEdge(min_size=(640, 672, 704, 736, 768, 800),
                                 max_size=1333, 
-                                resize_mode="choice")
-    # elastic = RandomElastic()
+                                sample_style="choice")
+    elastic = RandomElastic()
 
-    # affine = RandomAffine()
-    # translation = RandomTranslation()
-    # rotation = RandomRotation()
-    # shear = RandomShear()
-    # scale = RandomScale()
-    # grayscale = Grayscale()
+    affine = RandomAffine()
+    translation = RandomTranslation()
+    rotation = RandomRotation()
+    shear = RandomShear()
+    scale = RandomScale()
+    grayscale = Grayscale()
     
-    # gaussian = RandomGaussianFilter(min_sigma=5, max_sigma=5)
-    # contrast = RandomContrast()
-    # brightness = RandomBrightness()
-    # saturation = RandomSaturation()
+    gaussian = RandomGaussianFilter()
+    contrast = RandomContrast()
+    brightness = RandomBrightness()
+    saturation = RandomSaturation()
     
     augs = []
 
     # augs = T.AugmentationList([resize, elastic, affine])
 
     augs.append(resize)
+    augs.append(elastic)
     # augs.append(grayscale)
     # augs.append(contrast)
     # augs.append(brightness)
@@ -582,6 +656,7 @@ def test(args) -> None:
     transforms = augs_list(input_augs)
 
     output_image = input_augs.image
+
 
     im = Image.fromarray(image)
     im.show("Original")

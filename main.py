@@ -28,22 +28,7 @@ from detectron2.data import transforms as T
 from detectron2.engine import hooks, launch
 
 
-from datasets.augmentations import (
-    RandomElastic,
-    RandomAffine,
-    Flip,
-    RandomTranslation,
-    RandomRotation,
-    RandomShear,
-    RandomScale,
-    ResizeShortestEdge,
-    RandomBrightness,
-    RandomContrast,
-    RandomSaturation,
-    RandomGaussianFilter,
-    RandomApply,
-    Grayscale
-)
+from datasets.augmentations import build_augmentation
 from utils.path import unique_path
 
 # TODO Replace with LazyConfig
@@ -92,7 +77,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
+def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     if cfg is None:
         cfg = get_cfg()
 
@@ -109,90 +94,13 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
         cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, f"RUN_({now:%Y-%m-%d|%H:%M:%S})")
 
     cfg.freeze()
-    os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-    cfg_output_path = Path(cfg.OUTPUT_DIR).joinpath("config.yaml")
-    
-    cfg_output_path = unique_path(cfg_output_path)
-    
-    with open(cfg_output_path, mode="w") as f:
-        f.write(cfg.dump())
+    if save_config:
+        os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+        cfg_output_path = Path(cfg.OUTPUT_DIR).joinpath("config.yaml")
+        cfg_output_path = unique_path(cfg_output_path)
+        with open(cfg_output_path, mode="w") as f:
+            f.write(cfg.dump())
     return cfg
-
-
-def build_augmentation(cfg, is_train) -> List[T.Augmentation | T.Transform]:
-    if is_train:
-        min_size = cfg.INPUT.MIN_SIZE_TRAIN
-        max_size = cfg.INPUT.MAX_SIZE_TRAIN
-        sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
-    else:
-        min_size = cfg.INPUT.MIN_SIZE_TEST
-        max_size = cfg.INPUT.MAX_SIZE_TEST
-        sample_style = "choice"
-    augmentation: List[T.Augmentation | T.Transform] = [
-        ResizeShortestEdge(min_size, max_size, sample_style)]
-
-    if not is_train:
-        return augmentation
-
-    if cfg.INPUT.RANDOM_FLIP != "none":
-        if cfg.INPUT.RANDOM_FLIP == "horizontal" or cfg.INPUT.RANDOM_FLIP == "both":
-            augmentation.append(
-                RandomApply(Flip(
-                    horizontal=True,
-                    vertical=False,
-                ), prob=0.5)
-            )
-        if cfg.INPUT.RANDOM_FLIP == "vertical" or cfg.INPUT.RANDOM_FLIP == "both":
-            augmentation.append(
-                RandomApply(Flip(
-                    horizontal=False,
-                    vertical=True,
-                ), prob=0.5)
-            )
-
-    # TODO Give these a proper argument in the config
-    
-    # TODO Add random crop
-    # TODO 90 degree rotation
-    
-    # augmentation.append(RandomApply(Grayscale(image_format=cfg.INPUT.FORMAT), 
-    #                                 prob=0.2))
-    
-    # augmentation.append(RandomApply(RandomBrightness(intensity_min=0.5, 
-    #                                                  intensity_max=1.5), 
-    #                                 prob=0.2))
-    # augmentation.append(RandomApply(RandomContrast(intensity_min=0.5, 
-    #                                                intensity_max=1.5), 
-    #                                 prob=0.2))
-    # augmentation.append(RandomApply(RandomSaturation(intensity_min=0.5, 
-    #                                                  intensity_max=1.5), 
-    #                                 prob=0.2))
-    # augmentation.append(RandomApply(RandomGaussianFilter(min_sigma=0, 
-    #                                                      max_sigma=3), 
-    #                                 prob=0.2))
-    
-    
-    augmentation.append(RandomApply(RandomElastic(alpha=34, 
-                                                  stdv=4), 
-                                    prob=0.5))
-    # augmentation.append(RandomApply(RandomAffine(t_stdv=0.02,
-    #                                              r_kappa=30,
-    #                                              sh_kappa=20,
-    #                                              sc_stdv=0.12),
-    #                                 prob=0.5))
-    augmentation.append(RandomApply(RandomTranslation(t_stdv=0.02),
-                                    prob=0.5))
-    augmentation.append(RandomApply(RandomRotation(r_kappa=30),
-                                    prob=0.5))
-    augmentation.append(RandomApply(RandomShear(sh_kappa=20),
-                                    prob=0.5))
-    augmentation.append(RandomApply(RandomScale(sc_stdv=0.12),
-                                    prob=0.5))
-    
-    
-    
-    # print(augmentation)
-    return augmentation
 
 
 class Trainer(DefaultTrainer):
