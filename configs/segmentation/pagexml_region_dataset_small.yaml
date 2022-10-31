@@ -1,0 +1,7 @@
+_BASE_: pagexml_region_dataset.yaml
+
+MODEL:
+  RESNETS:
+    DEPTH: 18
+    RES2_OUT_CHANNELS: 64
+  WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-18.pkl"

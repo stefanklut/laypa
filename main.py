@@ -7,7 +7,8 @@ from typing import List, Optional
 import torch
 
 import datasets.dataset as dataset
-from configs.extra_defaults import _C
+from configs.defaults import _C as _C_default
+from configs.extra_defaults import _C as _C_extra
 
 
 from detectron2.data import (
@@ -77,12 +78,12 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
+def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=False) -> CfgNode:
     if cfg is None:
-        cfg = get_cfg()
+        cfg = _C_default
 
     cfg.set_new_allowed(True)
-    cfg.merge_from_other_cfg(_C)
+    cfg.merge_from_other_cfg(_C_extra)
     cfg.set_new_allowed(False)
 
     cfg.merge_from_file(args.config)
@@ -92,6 +93,9 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     
     if cfg.OUTPUT_DIR and cfg.RUN_DIR and not cfg.MODEL.RESUME:
         cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, f"RUN_({now:%Y-%m-%d|%H:%M:%S})")
+    
+    if not cfg.CONFIG_PATH:
+        cfg.CONFIG_PATH = str(Path(args.config).resolve())
 
     cfg.freeze()
     if save_config:
@@ -184,11 +188,11 @@ def main(args) -> None:
             f"Only have \"baseline\" and \"region\", given {cfg.MODEL.MODE}")
     
     trainer = Trainer(cfg=cfg)
-    if cfg.MODEL.RESUME:
-        if not cfg.TRAIN.WEIGHTS:
-            trainer.resume_or_load(resume=True)
-        else:
-            trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
+    if not cfg.TRAIN.WEIGHTS:
+        trainer.resume_or_load(resume=cfg.MODEL.RESUME)
+    else:
+        trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
+        if trainer.checkpointer.has_checkpoint():
             trainer.start_iter = trainer.iter + 1
 
     # print(trainer.model)
