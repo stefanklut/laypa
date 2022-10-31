@@ -1,8 +1,6 @@
 _BASE_: pagexml_region_dataset.yaml
 
 MODEL:
-  BACKBONE: 
-      FREEZE_AT: 2
   RESNETS:
     DEPTH: 50
   WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
