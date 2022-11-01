@@ -34,6 +34,8 @@ from utils.path import unique_path
 
 # TODO Replace with LazyConfig
 
+# torch.autograd.set_detect_anomaly(True)
+
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Main file for Layout Analysis")

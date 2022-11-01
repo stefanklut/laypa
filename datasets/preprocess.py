@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 from typing import Optional
 import cv2
-from detectron2.data.transforms import ResizeShortestEdge
+
+import imagesize
 
 import matplotlib
 import numpy as np
@@ -37,6 +38,8 @@ def get_arguments() -> argparse.Namespace:
                         nargs="*", type=int, default=[1024])
     parser.add_argument(
         "--max_size", help="Max resize shape", type=int, default=2048)
+    parser.add_argument(
+        "-f", "--force", help="Overwrite the images and label masks", action="store_true")
 
     args = parser.parse_args()
     return args
@@ -54,7 +57,8 @@ class Preprocess:
                  line_color=None,
                  regions=None,
                  merge_regions=None,
-                 region_type=None
+                 region_type=None,
+                 force=False
                  ) -> None:
 
         self.input_dir: Optional[Path] = None
@@ -66,6 +70,8 @@ class Preprocess:
             self.set_output_dir(output_dir)
 
         self.mode = mode
+        
+        self.force = force
 
         self.xml_to_image = XMLImage(
                                 mode=self.mode,
@@ -169,8 +175,7 @@ class Preprocess:
 
         return res_image
 
-    def resize_image(self, image: np.ndarray) -> np.ndarray:
-        old_height, old_width, channels = image.shape
+    def sample_short_edge_length(self):
         if self.resize_mode == "range":
             short_edge_length = np.random.randint(
                 self.min_size[0], self.min_size[1] + 1)
@@ -179,18 +184,9 @@ class Preprocess:
         else:
             raise NotImplementedError(
                 "Only \"choice\" and \"range\" are accepted values")
-
-        if short_edge_length == 0:
-            return image
-
-        height, width = self.get_output_shape(
-            old_height, old_width, short_edge_length, self.max_size)
-
-        res_image = cv2.resize(image, np.asarray([width, height]).astype(
-            np.int32), interpolation=cv2.INTER_CUBIC)
-
-        return res_image
-
+        
+        return short_edge_length
+    
     @staticmethod
     def get_output_shape(old_height: int, old_width: int, short_edge_length: int, max_size: int) -> tuple[int, int]:
         """
@@ -209,34 +205,84 @@ class Preprocess:
         height = int(height + 0.5)
         width = int(width + 0.5)
         return (height, width)
+    
+    def resize_image(self, image: np.ndarray, image_shape: Optional[tuple[int, int]] = None) -> np.ndarray:
+        old_height, old_width, channels = image.shape
+
+        if image_shape is not None:
+            height, width = image_shape
+        else:
+            short_edge_length = self.sample_short_edge_length()
+            if short_edge_length == 0:
+                return image
+            height, width = self.get_output_shape(
+                old_height, old_width, short_edge_length, self.max_size)
+
+        res_image = cv2.resize(image, np.asarray([width, height]).astype(
+            np.int32), interpolation=cv2.INTER_CUBIC)
+
+        return res_image
 
     def process_single_file(self, image_path: Path) -> tuple[Path, Path, np.ndarray]:
         if self.input_dir is None:
             raise ValueError("Cannot run when the input dir is not set")
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
-
+        
         image_stem = image_path.stem
-        xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
-
-        image = cv2.imread(str(image_path))
-
+        xml_path = image_path_to_xml_path(image_path)
+        # xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
+        
+        image_shape = tuple(int(value) for value in imagesize.get(image_path)[::-1])
         if self.resize:
-            image = self.resize_image(image)
-
-        image_shape = np.asarray(image.shape[:2])
-
+            short_edge_length = self.sample_short_edge_length()
+            image_shape = self.get_output_shape(old_height=image_shape[0],
+                                                old_width=image_shape[1],
+                                                short_edge_length=short_edge_length,
+                                                max_size=self.max_size
+                                                )
+            
         out_image_path = self.output_dir.joinpath(
             "original", image_stem + ".png")
+        
+        def save_image(image_path: Path, out_image_path: Path, image_shape: tuple[int,int]):
+            image = cv2.imread(str(image_path))
 
-        cv2.imwrite(str(out_image_path), image)
-
-        mask = self.xml_to_image.run(xml_path, image_shape=image_shape)
+            if self.resize:
+                image = self.resize_image(image, image_shape=image_shape)
+            #REVIEW This can maybe also be replaced with copying/linking the original image, if no resize
+            cv2.imwrite(str(out_image_path), image)
+        
+        if self.force or not out_image_path.exists():
+            save_image(image_path, out_image_path, image_shape)
+        else:
+            out_image_shape = imagesize.get(out_image_path)[::-1]
+            if out_image_shape != image_shape:
+                save_image(image_path, out_image_path, image_shape)
+            else:
+                #TODO Skipped
+                pass
 
         out_mask_path = self.output_dir.joinpath(
             "ground_truth", image_stem + ".png")
+        
+        def save_mask(xml_path: Path, out_mask_path: Path, image_shape: tuple[int,int]):
+            mask = self.xml_to_image.run(xml_path, image_shape=image_shape)
+            
+            cv2.imwrite(str(out_mask_path), mask)
 
-        cv2.imwrite(str(out_mask_path), mask)
+        if self.force or not out_mask_path.exists():
+            save_mask(xml_path, out_mask_path, image_shape)
+        else:
+            out_mask_shape = tuple(int(value) for value in imagesize.get(out_mask_path)[::-1])
+            if out_mask_shape != image_shape:
+                save_mask(xml_path, out_mask_path, image_shape)
+            else:
+                # TODO Skipped
+                # print("Skipped mask")
+                pass    
+        
+        image_shape = np.asarray(image_shape)
 
         return out_image_path, out_mask_path, image_shape
 
@@ -300,7 +346,8 @@ def main(args) -> None:
         line_color=args.line_color,
         regions=args.regions,
         merge_regions=args.merge_regions,
-        region_type=args.region_type
+        region_type=args.region_type,
+        force=args.force
     )
     process.run()
 
