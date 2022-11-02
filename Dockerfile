@@ -16,6 +16,7 @@ COPY layout layout-analysis
 
 WORKDIR /src/layout-analysis
 RUN conda update conda
+RUN conda install mamba -n base -c conda-forge
 RUN conda update --all
 RUN conda init bash
 RUN conda env create -f environment.yml

@@ -14,4 +14,4 @@ TRAIN:
   WEIGHTS:
 
 TEST:
-  WEIGHTS: 
+  WEIGHTS: /home/stefan/Downloads/output/RUN_(2022-10-24|16:29:15)/checkpoints/model_best_mIOU.pth
