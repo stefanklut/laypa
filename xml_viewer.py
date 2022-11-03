@@ -11,7 +11,7 @@ from detectron2.data import MetadataCatalog, Metadata
 from detectron2.utils.visualizer import Visualizer
 
 from page_xml.xml_to_image import XMLImage
-from utils.path import clean_input, xml_path_to_image_path
+from utils.path_utils import clean_input, xml_path_to_image_path
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],

@@ -14,8 +14,8 @@ from tqdm import tqdm
 import cv2
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from utils.copy import copy_mode
-from utils.path import clean_input
+from utils.copy_utils import copy_mode
+from utils.path_utils import clean_input
 from page_xml.xmlPAGE import PageData
 
 def get_arguments() -> argparse.Namespace:

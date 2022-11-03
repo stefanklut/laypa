@@ -13,7 +13,7 @@ import logging
 from natsort import os_sorted
 from page_xml.xml_to_image import XMLImage
 from tqdm import tqdm
-from utils.path import clean_input
+from utils.path_utils import clean_input
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],

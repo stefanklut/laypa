@@ -130,6 +130,7 @@ dmypy.json
 
 # VSCODE
 .vscode/
+*.code-workspace
 
 # INTELLIJ
 .idea/

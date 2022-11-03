@@ -4,6 +4,23 @@ import re
 from typing import Iterable, Optional
 from natsort import os_sorted
 
+def check_path_accessible(path: Path):
+    """
+    Check if the provide path is accessible, raise error for different checks
+    Args:
+        path (Path): path to check
+    Raises:
+        ValueError: path is not a Path object
+        FileNotFoundError: folder/file does not exist at location
+        PermissionError: no read access for folder/file
+    """
+    if not isinstance(path, Path):
+        raise ValueError(f"provided object {path} is not Path, but {type(path)}")
+    if not path.exists():
+        raise FileNotFoundError(f"Missing path: {path}")
+    if not os.access(path=path, mode=os.R_OK):
+        raise PermissionError(f"No access to {path} for read operations")
+
 def image_path_to_xml_path(image_path: Path) -> Path:
     """
     Return the corresponding xml path for a image
@@ -19,13 +36,8 @@ def image_path_to_xml_path(image_path: Path) -> Path:
         Path: xml path
     """
     xml_path = image_path.resolve().parent.joinpath("page", image_path.stem + '.xml')
-    if not xml_path.is_file():
-        raise FileNotFoundError(
-            f"Input image path ({image_path}), has no corresponding pageXML file ({xml_path})")
-    if not os.access(path=xml_path, mode=os.R_OK):
-        raise PermissionError(
-            f"No access to {xml_path} for read operations")
-        
+    check_path_accessible(xml_path)
+
     return xml_path
 
 def xml_path_to_image_path(xml_path: Path) -> Path:
@@ -55,11 +67,7 @@ def xml_path_to_image_path(xml_path: Path) -> Path:
     #                  ".exr",
     #                  ".hdr", ".pic"]
     image_path = xml_path.resolve().parents[1].joinpath(xml_path.stem + ".jpg")
-    if not image_path.is_file():
-        raise FileNotFoundError(
-            f"Input pageXML path ({xml_path}), has no corresponding image file ({image_path})")
-    if not os.access(path=image_path, mode=os.R_OK):
-        raise PermissionError(f"No access to {xml_path} for read operations")
+    check_path_accessible(image_path)
         
     return image_path
 
@@ -111,10 +119,7 @@ def clean_input(input_list: list[str], suffixes: Iterable[str]) -> list[Path]:
     path_list: list[Path] = [Path(path) for path in input_list]
     
     for path in path_list:
-        if not path.exists():
-            raise FileNotFoundError(f"Missing path: {path}")
-        if not os.access(path=path, mode=os.R_OK):
-            raise PermissionError(f"No access to {path} for read operations")
+        check_path_accessible(path)
     
     if len(path_list) == 1 and path_list[0].is_dir():
         path_list = [path for path in path_list[0].glob("*")]

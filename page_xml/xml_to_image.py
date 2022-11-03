@@ -11,7 +11,7 @@ from typing import Optional
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
-        description="Code to turn an xml file into ")
+        description="Code to turn an xml file into an array")
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input file",
                         required=True, type=str)

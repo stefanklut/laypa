@@ -19,7 +19,7 @@ from multiprocessing import Pool
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xmlPAGE import PageData
 from page_xml.xml_to_image import XMLImage
-from utils.path import image_path_to_xml_path
+from utils.path_utils import image_path_to_xml_path
 
 def get_arguments() -> argparse.Namespace:    
     parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],

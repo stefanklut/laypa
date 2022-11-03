@@ -30,7 +30,7 @@ from detectron2.engine import hooks, launch
 
 
 from datasets.augmentations import build_augmentation
-from utils.path import unique_path
+from utils.path_utils import unique_path
 
 # TODO Replace with LazyConfig
 
@@ -118,13 +118,34 @@ class Trainer(DefaultTrainer):
         os.makedirs(self.checkpointer.save_dir, exist_ok=True)
         
         
-        best_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
+        miou_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
                                                    checkpointer=self.checkpointer,
                                                    val_metric="sem_seg/mIoU",
                                                    mode='max',
-                                                   file_prefix='model_best_mIOU')
+                                                   file_prefix='model_best_mIoU')
         
-        self.register_hooks([best_checkpointer])
+        fwiou_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
+                                                   checkpointer=self.checkpointer,
+                                                   val_metric="sem_seg/fwIoU",
+                                                   mode='max',
+                                                   file_prefix='model_best_fwIoU')
+        
+        macc_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
+                                                   checkpointer=self.checkpointer,
+                                                   val_metric="sem_seg/mACC",
+                                                   mode='max',
+                                                   file_prefix='model_best_mACC')
+        
+        pacc_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
+                                                   checkpointer=self.checkpointer,
+                                                   val_metric="sem_seg/pACC",
+                                                   mode='max',
+                                                   file_prefix='model_best_pACC')
+        
+        self.register_hooks([miou_checkpointer, 
+                             fwiou_checkpointer, 
+                             macc_checkpointer, 
+                             pacc_checkpointer])
 
     @classmethod
     def build_evaluator(cls, cfg, dataset_name):

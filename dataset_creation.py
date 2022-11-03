@@ -8,8 +8,8 @@ import shutil
 from sklearn.model_selection import train_test_split
 from natsort import os_sorted
 from datetime import datetime
-from utils.copy import copy_mode
-from utils.path import image_path_to_xml_path
+from utils.copy_utils import copy_mode
+from utils.path_utils import image_path_to_xml_path
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
