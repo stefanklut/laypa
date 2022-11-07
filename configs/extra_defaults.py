@@ -5,6 +5,7 @@ _C = CN()
 _C.CONFIG_PATH = ""
 
 _C.RUN_DIR = True
+_C.NAME = ""
 _C.SETUP_TIME = ""
 
 _C.MODEL = CN()

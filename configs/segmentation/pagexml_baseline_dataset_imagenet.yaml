@@ -1,10 +1,8 @@
-_BASE_: pagexml_region_dataset.yaml
+_BASE_: pagexml_baseline_dataset.yaml
 
-NAME: imagenet_freeze
+NAME: imagenet
 
 MODEL:
-  BACKBONE: 
-      FREEZE_AT: 2
   RESNETS:
     DEPTH: 50
   WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"

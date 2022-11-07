@@ -80,7 +80,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=False) -> CfgNode:
+def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     if cfg is None:
         cfg = _C_default
 
@@ -93,11 +93,17 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=False) -> CfgNode
     now = datetime.now()
     cfg.SETUP_TIME = f"{now:%Y-%m-%d|%H:%M:%S}"
     
-    if cfg.OUTPUT_DIR and cfg.RUN_DIR and not cfg.MODEL.RESUME:
-        cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, f"RUN_({now:%Y-%m-%d|%H:%M:%S})")
+    if cfg.OUTPUT_DIR and (cfg.RUN_DIR or cfg.NAME) and not cfg.MODEL.RESUME:
+        folder_name = []
+        if cfg.RUN_DIR:
+            folder_name.append(f"RUN_({now:%Y-%m-%d|%H:%M:%S})")
+        if cfg.NAME:
+            folder_name.append(cfg.NAME)
+            
+        cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, "_".join(folder_name))
     
-    if not cfg.CONFIG_PATH:
-        cfg.CONFIG_PATH = str(Path(args.config).resolve())
+    # For saving/documentation purposes
+    cfg.CONFIG_PATH = str(Path(args.config).resolve())
 
     cfg.freeze()
     if save_config:

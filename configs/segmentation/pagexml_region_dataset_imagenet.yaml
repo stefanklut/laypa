@@ -1,5 +1,7 @@
 _BASE_: pagexml_region_dataset.yaml
 
+NAME: imagenet
+
 MODEL:
   RESNETS:
     DEPTH: 50

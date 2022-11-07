@@ -1,4 +1,7 @@
 _BASE_: base_segmentation.yaml
+
+OUTPUT_DIR: ./output/region
+
 MODEL:
   MODE: region
 
@@ -14,4 +17,5 @@ TRAIN:
   WEIGHTS:
 
 TEST:
-  WEIGHTS: /home/stefan/Downloads/output/RUN_(2022-10-31|15:03:11)/checkpoints/model_best_mIOU.pth
+  WEIGHTS: /home/stefan/Downloads/layout-analysis/RUN_(2022-10-31|15:03:11)_imagenet_freeze/checkpoints/model_best_mIOU.pth
+

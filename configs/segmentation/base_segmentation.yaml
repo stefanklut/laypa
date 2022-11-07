@@ -3,6 +3,7 @@ MODEL:
   META_ARCHITECTURE: "SemanticSegmentor"
   BACKBONE: 
     FREEZE_AT: 0
+  RESUME: false
 
 DATALOADER:
   NUM_WORKERS: 8
@@ -60,11 +61,11 @@ INPUT:
     
     ROTATION:
       PROBABILITY: 0.5
-      KAPPA: 30.0
+      KAPPA: 30.
 
     SHEAR:
       PROBABILITY: 0.5
-      KAPPA: 20.0
+      KAPPA: 20.
 
     SCALE:
       PROBABILITY: 0.5
