@@ -89,13 +89,13 @@ class SavePredictor(Predictor):
             raise PermissionError(
                 f"No access to {input_dir} for read operations")
 
-        page_dir = input_dir.joinpath("page")
-        if not input_dir.joinpath("page").exists():
-            raise FileNotFoundError(f"Sub page dir ({page_dir}) is not found")
+        # page_dir = input_dir.joinpath("page")
+        # if not input_dir.joinpath("page").exists():
+        #     raise FileNotFoundError(f"Sub page dir ({page_dir}) is not found")
 
-        if not os.access(path=page_dir, mode=os.R_OK):
-            raise PermissionError(
-                f"No access to {page_dir} for read operations")
+        # if not os.access(path=page_dir, mode=os.R_OK):
+        #     raise PermissionError(
+        #         f"No access to {page_dir} for read operations")
 
         self.input_dir = input_dir.resolve()
         
