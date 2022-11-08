@@ -9,7 +9,7 @@ RUN apt-get install -y \
     ffmpeg libsm6 libxext6
 
 WORKDIR /src/
-COPY layout laypa
+COPY laypa laypa
 
 # When github is open
 # RUN git clone https://github.com/stefanklut/laypa.git
