@@ -9,12 +9,12 @@ RUN apt-get install -y \
     ffmpeg libsm6 libxext6
 
 WORKDIR /src/
-COPY layout layout-analysis
+COPY layout laypa
 
 # When github is open
-# RUN git clone https://github.com/stefanklut/layout-analysis.git
+# RUN git clone https://github.com/stefanklut/laypa.git
 
-WORKDIR /src/layout-analysis
+WORKDIR /src/laypa
 RUN conda update conda
 RUN conda install mamba -n base -c conda-forge
 RUN conda update --all
@@ -22,12 +22,12 @@ RUN conda init bash
 RUN conda env create -f environment.yml
 RUN conda clean --all
 
-ENV PATH /opt/conda/envs/layout-analysis/bin:$PATH
-ENV CONDA_DEFAULT_ENV layout-analysis
+ENV PATH /opt/conda/envs/laypa/bin:$PATH
+ENV CONDA_DEFAULT_ENV laypa
 
-SHELL ["conda", "run", "-n", "layout-analysis", "/bin/bash", "-c"]
+SHELL ["conda", "run", "-n", "laypa", "/bin/bash", "-c"]
 
-RUN echo "conda activate layout-analysis" >> ~/.bashrc
+RUN echo "conda activate laypa" >> ~/.bashrc
 
-ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "layout-analysis", "/bin/bash", "-c"]
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "laypa", "/bin/bash", "-c"]
 
