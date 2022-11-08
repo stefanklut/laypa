@@ -1,4 +1,7 @@
 _BASE_: base_segmentation.yaml
+
+OUTPUT_DIR: ./output/baseline
+
 MODEL:
   MODE: baseline
 
