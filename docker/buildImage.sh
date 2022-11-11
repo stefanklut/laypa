@@ -14,7 +14,8 @@ cd $DIR_OF_SCRIPT
 cp -r $LAYPA laypa
 
 echo "Building docker image..."
-docker build --squash --no-cache . -t docker.laypa
+# docker build --squash --no-cache . -t docker.laypa
+docker build --no-cache . -t docker.laypa
 
 rm -rf layout
 docker system prune -f
