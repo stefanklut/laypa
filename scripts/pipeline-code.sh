@@ -30,31 +30,31 @@ if [[ $GPU -gt -1 ]]; then
         echo "using GPU"
 fi
 
-docker run $DOCKERGPUPARAMS --rm -m 32000m -ti -v image_dir:image_dir docker.laypa:latest \
+docker run $DOCKERGPUPARAMS --rm --it -m 32000m -v $image_dir:$image_dir -v $output_dir:$output_dir docker.laypa:latest \
     python run.py \
     -c configs/segmentation/pagexml_baseline_dataset.yaml \
     -i $image_dir \
     -o $output_dir \
-    -m baseline \
+    -m baseline
     # > /dev/null
-
+echo $?
 if [[ $? -ne 0 ]]; then 
     echo "Baseline detection has errored, stopping program"
 fi
 
-docker run $DOCKERGPUPARAMS --rm -m 32000m -ti -v image_dir:image_dir docker.laypa:latest \
+docker run $DOCKERGPUPARAMS --rm --it -m 32000m -v $image_dir:$image_dir -v $output_dir:$output_dir docker.laypa:latest \
     python run.py \
     -c /home/stefan/Documents/repos/laypa/configs/segmentation/pagexml_baseline_dataset_imagenet_freeze.yaml \
     -i $image_dir \
     -o $output_dir \
-    -m region \
+    -m region
     # > /dev/null
-
+echo $?
 if [[ $? -ne 0 ]]; then 
     echo "Region detection has errored, stopping program"
 fi
 
-docker run --rm -v $SRC/:$SRC/ docker.loghi-tooling /src/loghi-tooling/minions/target/appassembler/bin/MinionExtractBaselines \
+docker run --rm -v $output_dir:$output_dir docker.loghi-tooling /src/loghi-tooling/minions/target/appassembler/bin/MinionExtractBaselines \
     -input_path_png $output_dir/page/ \
     -input_path_page $output_dir/page/ \
     -output_path_page $output_dir/page/
