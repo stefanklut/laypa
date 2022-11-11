@@ -258,8 +258,9 @@ class WarpFieldTransform(T.Transform):
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
         indices = self.generate_grid(segmentation, self.warpfield)
+        #cval=0 means background cval=255 means ignored
         sampled_segmentation = map_coordinates(
-            segmentation, indices, order=0, mode="constant", cval=255).reshape(segmentation.shape)
+            segmentation, indices, order=0, mode="constant", cval=0).reshape(segmentation.shape)
 
         return sampled_segmentation
 
@@ -299,7 +300,8 @@ class AffineTransform(T.Transform):
         return cv2.transform(coords[:,None,:], self.matrix)[:,0,:2]
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
-        return affine_transform(segmentation, self.matrix, order=0, mode='constant', cval=255)
+        #cval=0 means background cval=255 means ignored
+        return affine_transform(segmentation, self.matrix, order=0, mode='constant', cval=0)
 
     def inverse(self) -> T.Transform:
         raise NotImplementedError

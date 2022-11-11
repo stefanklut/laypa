@@ -8,8 +8,8 @@ from typing import Optional
 import numpy as np
 from pathlib import Path
 import uuid
+import imagesize
 
-from xml_regions import XMLRegions
 from tqdm import tqdm
 import cv2
 
@@ -17,6 +17,7 @@ sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.copy_utils import copy_mode
 from utils.path_utils import clean_input
 from page_xml.xmlPAGE import PageData
+from page_xml.xml_regions import XMLRegions
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()],
@@ -73,7 +74,7 @@ class GenPageXML(XMLRegions):
         
         copy_mode(image_path, image_output_path, mode="symlink")
         
-        old_height, old_width, channels = cv2.imread(str(image_output_path)).shape
+        old_width, old_height = imagesize.get(image_path)
         
         height, width = mask.shape
         
@@ -82,45 +83,52 @@ class GenPageXML(XMLRegions):
         page = PageData(xml_output_path, logger=self.logger)
         page.new_page(image_output_path.name, str(old_height), str(old_width))
         
-        region_id = 0
-        
-        for i, region in enumerate(self.regions):
-            if region == "background":
-                continue
-            binary_region_mask = np.zeros_like(mask)
-            binary_region_mask[mask == i] = 1
+        if self.mode == 'region':
+            region_id = 0
             
-            region_type = self.region_types[region]
-            
-            contours, hierarchy = cv2.findContours(
-                binary_region_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-            )
-            
-            for cnt in contours:
-                # --- remove small objects
-                if cnt.shape[0] < 4:
+            for i, region in enumerate(self.regions):
+                if region == "background":
                     continue
-                # TODO what size
-                # if cv2.contourArea(cnt) < size:
-                #     continue
+                binary_region_mask = np.zeros_like(mask).astype(np.uint8)
+                binary_region_mask[mask == i] = 1
                 
-                region_id += 1
+                region_type = self.region_types[region]
                 
-                # --- soft a bit the region to prevent spikes
-                epsilon = 0.005 * cv2.arcLength(cnt, True)
-                approx_poly = cv2.approxPolyDP(cnt, epsilon, True)
-            
-                approx_poly = np.round((approx_poly * scaling)).astype(np.int32)
-                
-                region_coords = ""
-                for coords in approx_poly.reshape(-1, 2):
-                    region_coords = region_coords + f" {coords[0]},{coords[1]}"
-                region_coords = region_coords.strip()
-                
-                _uuid = uuid.uuid4()
-                text_reg = page.add_element(
-                    region_type, f"region_{uuid}_{region_id}", region, region_coords
+                contours, hierarchy = cv2.findContours(
+                    binary_region_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
                 )
+                
+                for cnt in contours:
+                    # --- remove small objects
+                    if cnt.shape[0] < 4:
+                        continue
+                    # TODO what size
+                    # if cv2.contourArea(cnt) < size:
+                    #     continue
+                    
+                    region_id += 1
+                    
+                    # --- soft a bit the region to prevent spikes
+                    epsilon = 0.005 * cv2.arcLength(cnt, True)
+                    approx_poly = cv2.approxPolyDP(cnt, epsilon, True)
+                
+                    approx_poly = np.round((approx_poly * scaling)).astype(np.int32)
+                    
+                    region_coords = ""
+                    for coords in approx_poly.reshape(-1, 2):
+                        region_coords = region_coords + f" {coords[0]},{coords[1]}"
+                    region_coords = region_coords.strip()
+                    
+                    _uuid = uuid.uuid4()
+                    text_reg = page.add_element(
+                        region_type, f"region_{uuid}_{region_id}", region, region_coords
+                    )
+        elif self.mode == 'baseline':
+            # Push the calculation to outside of the python code <- mask is used by minion
+            mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
+            cv2.imwrite(str(mask_output_path), mask)
+        else:
+            raise NotImplementedError
                 
         page.save_xml()
         
@@ -130,6 +138,11 @@ class GenPageXML(XMLRegions):
         
         if len(mask_list) != len(image_path_list):
             raise ValueError(f"masks must match image paths in length: {len(mask_list)} v. {len(image_path_list)}")
+        
+        # Do not run multiprocessing for single images
+        if len(mask_list) == 1:
+            self.generate_single_page((mask_list[0], image_path_list[0]))
+            return
         
         # #Single thread
         # for mask_i, image_path_i in tqdm(zip(mask_list, image_path_list), total=len(mask_list)):

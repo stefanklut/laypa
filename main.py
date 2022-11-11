@@ -84,28 +84,47 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     if cfg is None:
         cfg = _C_default
 
+    # Merge with extra defaults, config file and command line args
     cfg.set_new_allowed(True)
     cfg.merge_from_other_cfg(_C_extra)
     cfg.set_new_allowed(False)
 
     cfg.merge_from_file(args.config)
     cfg.merge_from_list(args.opts)
-    now = datetime.now()
-    cfg.SETUP_TIME = f"{now:%Y-%m-%d|%H:%M:%S}"
     
+    
+    # For saving/documentation purposes
+    now = datetime.now()
+    formatted_datetime = f"{now:%Y-%m-%d_%H-%M-%S}"
+    cfg.SETUP_TIME = formatted_datetime
+    
+    cfg.CONFIG_PATH = str(Path(args.config).resolve())
+    
+    
+    # Setup run specific folders to prevent overwrites
     if cfg.OUTPUT_DIR and (cfg.RUN_DIR or cfg.NAME) and not cfg.MODEL.RESUME:
         folder_name = []
         if cfg.RUN_DIR:
-            folder_name.append(f"RUN_({now:%Y-%m-%d|%H:%M:%S})")
+            folder_name.append(f"RUN_{formatted_datetime}")
         if cfg.NAME:
             folder_name.append(cfg.NAME)
-            
         cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, "_".join(folder_name))
     
-    # For saving/documentation purposes
-    cfg.CONFIG_PATH = str(Path(args.config).resolve())
+    
+    if cfg.MODEL.DEVICE:
+        # If device can not be found, default to cpu
+        if torch.cuda.device_count() == 0:
+            cfg.MODEL.DEVICE = 'cpu'
+    else:
+        # If not specified use cuda if possible
+        if torch.cuda.device_count() > 0:
+            cfg.MODEL.DEVICE = 'cuda'
+        else:
+            cfg.MODEL.DEVICE = 'cpu'
 
     cfg.freeze()
+    
+    # Save the confic with all (changed) parameters to a yaml
     if save_config:
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
         cfg_output_path = Path(cfg.OUTPUT_DIR).joinpath("config.yaml")
@@ -233,6 +252,9 @@ def main(args) -> None:
 if __name__ == "__main__":
     args = get_arguments()
     # main(args)
+    
+    assert args.num_gpus <= torch.cuda.device_count(), \
+        f"Less GPUs found ({torch.cuda.device_count()}) than specified ({args.num_gpus})"
     
     launch(
         main,

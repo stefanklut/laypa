@@ -17,5 +17,5 @@ TRAIN:
   WEIGHTS:
 
 TEST:
-  WEIGHTS: /home/stefan/Downloads/layout-analysis/RUN_(2022-10-31|15:03:11)_imagenet_freeze/checkpoints/model_best_mIOU.pth
+  WEIGHTS: /home/stefan/Downloads/layout-analysis/region/RUN_(2022-11-06|03:22:37)_imagenet_freeze/checkpoints/model_best_mIoU.pth
 

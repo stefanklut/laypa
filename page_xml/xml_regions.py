@@ -56,7 +56,7 @@ class XMLRegions:
         region_args.add_argument("-w", "--line_width",
                             help="Used line width", type=int, default=5)
         
-        region_args.add_argument("-c", "--line_color", help="Used line color",
+        region_args.add_argument("-l", "--line_color", help="Used line color",
                             choices=list(range(256)), type=int, metavar="{0-255}", default=1)
         
         region_args.add_argument(
