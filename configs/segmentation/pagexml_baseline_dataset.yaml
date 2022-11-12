@@ -17,4 +17,4 @@ TRAIN:
   WEIGHTS:
 
 TEST:
-  WEIGHTS: ./output/run2-baseline/model_final.pth
+  WEIGHTS: pretrained_models/baseline_model_best_mIoU.pth
