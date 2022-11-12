@@ -17,5 +17,5 @@ TRAIN:
   WEIGHTS:
 
 TEST:
-  WEIGHTS: pretrained_models/baseline_model_best_mIoU.pth
+  WEIGHTS: pretrained_models/region_model_best_mIoU.pth
 
