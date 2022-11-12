@@ -15,7 +15,7 @@ def symlink_force(path: str|Path, destination: str|Path) -> None:
         e: Any uncaught error from os.symlink
     """
     # --- from https://stackoverflow.com/questions/8299386/modifying-a-symlink-in-python
-    if os.path.samefile(path, destination):
+    if os.path.exists(destination) and os.path.samefile(path, destination):
         return
     try:
         os.symlink(path, destination)
@@ -38,7 +38,7 @@ def link_force(path: str|Path, destination: str|Path) -> None:
         e: Any uncaught error from os.link
     """
     # --- from https://stackoverflow.com/questions/8299386/modifying-a-symlink-in-python
-    if os.path.samefile(path, destination):
+    if os.path.exists(destination) and os.path.samefile(path, destination):
         return
     try:
         os.link(path, destination)
