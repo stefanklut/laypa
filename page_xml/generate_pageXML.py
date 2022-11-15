@@ -126,9 +126,9 @@ class GenPageXML(XMLRegions):
         elif self.mode == 'baseline':
             # Push the calculation to outside of the python code <- mask is used by minion
             mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            mask = np.logical_not(mask).astype(np.uint8)
+            # mask = np.logical_not(mask).astype(np.uint8)
             # mask = cv2.resize(mask, (old_width, old_height), cv2.INTER_NEAREST)
-            cv2.imwrite(str(mask_output_path), mask)
+            cv2.imwrite(str(mask_output_path), (mask * 255).astype(np.uint8))
         else:
             raise NotImplementedError
                 

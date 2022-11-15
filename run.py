@@ -53,7 +53,11 @@ class Predictor(DefaultPredictor):
         return super().__call__(original_image)
 
 class SavePredictor(Predictor):
-    def __init__(self, cfg, input_dir, output_dir, gen_page):
+    def __init__(self, 
+                 cfg, 
+                 input_dir: str | Path, 
+                 output_dir: str | Path, 
+                 gen_page: GenPageXML):
         super().__init__(cfg)
         
         self.input_dir: Optional[Path] = None
