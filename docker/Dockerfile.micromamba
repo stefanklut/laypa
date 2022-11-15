@@ -1,0 +1,43 @@
+FROM mambaorg/micromamba:1.0.0
+USER root
+
+RUN apt-get update
+# RUN apt-get install -y apt-transport-https
+RUN apt-get -y dist-upgrade
+RUN apt-get clean
+RUN apt-get install -y \
+    apt-utils git \
+    ninja-build gcc g++ \
+    ffmpeg libsm6 libxext6
+
+WORKDIR /src/
+COPY laypa.micromamba/ laypa/
+
+# When github is open
+# RUN git clone https://github.com/stefanklut/laypa.git
+
+WORKDIR /src/laypa
+# RUN micromamba update -y --all
+# RUN micromamba init bash
+RUN micromamba create -y -n laypa -f environment.yml
+RUN micromamba clean --all
+
+ARG MAMBA_DOCKERFILE_ACTIVATE=1
+ENV ENV_NAME=laypa
+
+
+# RUN conda install -y mamba -n base -c conda-forge
+# RUN mamba update -y --all
+# RUN mamba init bash
+# RUN mamba env update -n base -f environment.yml
+# RUN mamba clean --all
+
+# SHELL ["conda", "run", "-n", "laypa", "/bin/bash", "-c"]
+# RUN echo "conda activate laypa" >> ~/.bashrc
+# ENV PATH /opt/conda/envs/laypa/bin:$PATH
+# ENV CONDA_DEFAULT_ENV laypa
+
+USER 1000
+
+# ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "laypa", "/bin/bash", "-c"]
+# ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "laypa", "/bin/bash"]
