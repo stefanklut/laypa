@@ -132,9 +132,9 @@ if !(docker image inspect docker.laypa:latest &> /dev/null); then
     exit 1
 fi
 
-tmpdir=$(mktemp -d)
-input_dir=$_arg_input
-output_dir=$_arg_output
+# tmpdir=$(mktemp -d)
+input_dir=$(realpath $_arg_input)
+output_dir=$(realpath $_arg_output)
 
 # input_dir=/home/stefan/Documents/test
 # output_dir=/home/stefan/Documents/test2
