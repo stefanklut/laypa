@@ -35,7 +35,7 @@ def image_path_to_xml_path(image_path: Path) -> Path:
     Returns:
         Path: xml path
     """
-    xml_path = image_path.resolve().parent.joinpath("page", image_path.stem + '.xml')
+    xml_path = image_path.absolute().parent.joinpath("page", image_path.stem + '.xml')
     check_path_accessible(xml_path)
 
     return xml_path
@@ -66,7 +66,7 @@ def xml_path_to_image_path(xml_path: Path) -> Path:
     #                  ".tiff", ".tif",
     #                  ".exr",
     #                  ".hdr", ".pic"]
-    image_path = xml_path.resolve().parents[1].joinpath(xml_path.stem + ".jpg")
+    image_path = xml_path.absolute().parents[1].joinpath(xml_path.stem + ".jpg")
     check_path_accessible(image_path)
         
     return image_path

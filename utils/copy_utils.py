@@ -14,6 +14,8 @@ def symlink_force(path: str|Path, destination: str|Path) -> None:
     Raises:
         e: Any uncaught error from os.symlink
     """
+    path = os.path.realpath(path)
+    
     # --- from https://stackoverflow.com/questions/8299386/modifying-a-symlink-in-python
     if os.path.exists(destination) and os.path.samefile(path, destination):
         return
@@ -38,6 +40,8 @@ def link_force(path: str|Path, destination: str|Path) -> None:
         e: Any uncaught error from os.link
     """
     # --- from https://stackoverflow.com/questions/8299386/modifying-a-symlink-in-python
+    path = os.path.realpath(path)
+    
     if os.path.exists(destination) and os.path.samefile(path, destination):
         return
     try:
@@ -57,6 +61,8 @@ def copy(path: str|Path, destination: str|Path) -> None:
         path (str | Path): input path
         destination (str | Path): output path
     """
+    path = os.path.realpath(path)
+    
     try:
         shutil.copy(path, destination)
     except shutil.SameFileError:
