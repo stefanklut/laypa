@@ -1,19 +1,15 @@
 import argparse
-from collections import Counter
-import errno
-from glob import glob
-import os
 from pathlib import Path
-import shutil
-from sklearn.model_selection import train_test_split
-from natsort import os_sorted
-from datetime import datetime
+import sys
+import random
+
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.copy_utils import copy_mode
 from utils.path_utils import image_path_to_xml_path
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Moving files from multiple folders into a single structured dataset")
+        description="Copying sampled files from a large pagexml corpus to a different folder")
     
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input folder",
@@ -23,10 +19,14 @@ def get_arguments() -> argparse.Namespace:
     
     parser.add_argument("-m", "--mode", choices=["link", "symlink", "copy"], help="Mode for moving the images", default='copy')
     
+    k_value = parser.add_mutually_exclusive_group(required=True)
+    k_value.add_argument("-p", "--percentage", help="Percentage of files to copy", type=float, default=None)
+    k_value.add_argument("-n", "--number", help="Number of files to copy", type=int, default=None)
+    
     args = parser.parse_args()
     return args
+
 def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
-    print(len(paths))
     if not output_dir.is_dir():
         print(f"Could not find output dir ({output_dir}), creating one at specified location")
         output_dir.mkdir(parents=True)
@@ -55,10 +55,10 @@ def main(args):
     if args.output == "":
         raise ValueError("Must give an output")
     
-    input_path = Path(args.input)
+    input_dir = Path(args.input)
     
-    if not input_path.exists():
-        raise FileNotFoundError(f"{input_path} does not exist")
+    if not input_dir.exists():
+        raise FileNotFoundError(f"{input_dir} does not exist")
     
     # IDEA add more image formats
     # image_formats = [".bmp", ".dib",
@@ -73,59 +73,35 @@ def main(args):
     #                  ".exr",
     #                  ".hdr", ".pic"]
     
-    
     image_format = '.jpg'
     
-    # Find all images
-    all_image_paths = list(input_path.glob(f"**/**/*{image_format}")) # Assume depth 2
-    
-    
-    if len(all_image_paths) != len(set(path.stem for path in all_image_paths)):
-        duplicates = {k:v for k, v in Counter(path.stem for path in all_image_paths).items() if v > 1}
-        
-        print(os_sorted(duplicates.items(), key=lambda s: s[0]))
-        raise ValueError("Found duplicate stems for images")
+    all_image_paths = list(input_dir.glob(f"*{image_format}"))
     
     if len(all_image_paths) == 0:
-        raise FileNotFoundError(f"No images found within {input_path}")
+        raise FileNotFoundError(f"No images found within {input_dir}")
     
-    train_paths, val_test_paths = train_test_split(all_image_paths, test_size=0.2)
+    if args.percentage is not None:
+        assert 0 < args.percentage <= 1, f"Sample percentage is outside range (0-1], percentage: {args.percentage}"
+        k_value = round(len(all_image_paths) * args.percentage)
+    elif args.number is not None:
+        k_value = args.number
+    else:
+        raise NotImplementedError
     
-    val_paths, test_paths = train_test_split(val_test_paths, test_size=0.5)
+    assert 0 < k_value <= len(all_image_paths), f"Number of samples is outside range (0-{len(all_image_paths)}], number of samples: {k_value}"
     
-    print("Number of train images:", len(train_paths))
-    print("Number of validation images:", len(val_paths))
-    print("Number of test images:", len(test_paths))
+    sampled_paths = random.sample(all_image_paths, k=k_value)
     
     output_dir = Path(args.output)
 
     if not output_dir.is_dir():
         print(f"Could not find output dir ({output_dir}), creating one at specified location")
         output_dir.mkdir(parents=True)
-    
-    train_dir = output_dir.joinpath("train")
-    val_dir = output_dir.joinpath("val")
-    test_dir = output_dir.joinpath("test")
-    
-    train_output_paths = copy_paths(train_paths, train_dir, mode=args.mode)
-    val_output_paths = copy_paths(val_paths, val_dir, mode=args.mode)
-    test_output_paths = copy_paths(test_paths, test_dir, mode=args.mode)
-    
-    with open(output_dir.joinpath("filelist.txt"), mode='w') as f:
-        for train_output_path in train_output_paths:
-            f.write(f"{train_output_path.relative_to(output_dir)}\n")
-        for val_output_path in val_output_paths:
-            f.write(f"{val_output_path.relative_to(output_dir)}\n")
-        for test_output_path in test_output_paths:
-            f.write(f"{test_output_path.relative_to(output_dir)}\n")
-            
-    with open(output_dir.joinpath("info.txt"), mode='w') as f:
-        f.write(f"Created: {datetime.now()}\n")
-        f.write(f"Number of train images: {len(train_paths)}\n")
-        f.write(f"Number of validation images: {len(val_paths)}\n")
-        f.write(f"Number of test images: {len(test_paths)}\n")
         
+    output_paths = copy_paths(sampled_paths, output_dir, mode=args.mode)
     
+    print(f"Copied {len(output_paths)} file to output path: {output_dir}")
+
 if __name__ == "__main__":
     args = get_arguments()
     main(args)
