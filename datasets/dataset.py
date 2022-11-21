@@ -1,5 +1,6 @@
 from multiprocessing import Pool
 import os
+from typing import Optional
 
 import numpy as np
 import argparse
@@ -22,7 +23,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def create_data(input_data) -> dict:
+def create_data(input_data: tuple[Path, Path, np.ndarray]) -> dict:
     image_path, mask_path, output_size = input_data
 
     # Data existence check
@@ -109,7 +110,10 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
     return input_dicts
 
 # IDEA register dataset for inference aswell
-def register_baseline(train=None, val=None, train_name=None, val_name=None):
+def register_baseline(train: Optional[str|Path]=None, 
+                      val: Optional[str|Path]=None, 
+                      train_name: Optional[str]=None, 
+                      val_name: Optional[str]=None):
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -138,7 +142,10 @@ def register_baseline(train=None, val=None, train_name=None, val_name=None):
     assert metadata is not None, "Metadata has not been set"
     return metadata
 
-def register_region(train=None, val=None, train_name=None, val_name=None):
+def register_region(train: Optional[str|Path]=None, 
+                    val: Optional[str|Path]=None, 
+                    train_name: Optional[str]=None, 
+                    val_name: Optional[str]=None):
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -167,7 +174,10 @@ def register_region(train=None, val=None, train_name=None, val_name=None):
     assert metadata is not None, "Metadata has not been set"
     return metadata
         
-def register_start(train=None, val=None, train_name=None, val_name=None):
+def register_start(train: Optional[str|Path]=None, 
+                   val: Optional[str|Path]=None, 
+                   train_name: Optional[str]=None, 
+                   val_name: Optional[str]=None):
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -196,7 +206,10 @@ def register_start(train=None, val=None, train_name=None, val_name=None):
     assert metadata is not None, "Metadata has not been set"
     return metadata
 
-def register_end(train=None, val=None, train_name=None, val_name=None):
+def register_end(train: Optional[str|Path]=None, 
+                 val: Optional[str|Path]=None, 
+                 train_name: Optional[str]=None, 
+                 val_name: Optional[str]=None):
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -225,7 +238,11 @@ def register_end(train=None, val=None, train_name=None, val_name=None):
     assert metadata is not None, "Metadata has not been set"
     return metadata
 
-def register_dataset(train=None, val=None , train_name=None, val_name=None, mode=None):
+def register_dataset(train: Optional[str|Path]=None, 
+                     val: Optional[str|Path]=None, 
+                     train_name: Optional[str]=None, 
+                     val_name: Optional[str]=None,
+                     mode: Optional[str]=None):
     assert train is not None or val is not None, "Must set at least something when registering"
     assert train is None or train_name is not None, "If train is not None, then train_name has to be set"
     assert val is None or val_name is not None, "If val is not None, then val_name has to be set"

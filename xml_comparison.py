@@ -75,7 +75,7 @@ class IOUEvaluator:
         if self._b_conf_matrix is None:
             raise ValueError("Must set/reset the boundry confusion matrix")
         if self._num_classes is None:
-            raise ValueError
+            raise ValueError("Must set number of classes")
         
         for input_i, output_i in zip(inputs, outputs):
 
@@ -108,7 +108,7 @@ class IOUEvaluator:
         if self._b_conf_matrix is None:
             raise ValueError("Must set/reset the boundry confusion matrix")
         if self._num_classes is None:
-            raise ValueError
+            raise ValueError("Must set number of classes")
         
         full_conf_matrix = np.zeros_like(self._b_conf_matrix)
         full_b_conf_matrix = np.zeros_like(self._b_conf_matrix)

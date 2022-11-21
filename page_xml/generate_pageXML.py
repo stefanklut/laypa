@@ -36,7 +36,8 @@ def get_arguments() -> argparse.Namespace:
 
 class GenPageXML(XMLRegions):
     
-    def __init__(self, output_dir: str|Path,
+    def __init__(self, 
+                 output_dir: str|Path,
                  mode: str,
                  line_width: Optional[int] = None,
                  line_color: Optional[int] = None,
