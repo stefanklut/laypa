@@ -1,4 +1,4 @@
-_BASE_: base_segmentation.yaml
+_BASE_: segmentation_base.yaml
 
 OUTPUT_DIR: ./output/region
 
@@ -9,9 +9,6 @@ MODEL:
     NUM_CLASSES: 7
   
   WEIGHTS: 
-DATASETS:
-  TRAIN: ("pagexml_region_train",)
-  TEST: ("pagexml_region_val",)
 
 TRAIN:
   WEIGHTS:

@@ -13,7 +13,7 @@ class XMLRegions:
                  merge_regions: Optional[list[str]]=None,
                  region_type: Optional[list[str]]=None) -> None:
         self.mode = mode
-        if self.mode == "baseline":
+        if self.mode in ["baseline", "start", "end"]:
             assert line_width is not None
             assert line_color is not None
 
@@ -51,7 +51,7 @@ class XMLRegions:
         region_args = parser.add_argument_group("regions")
         
         region_args.add_argument("-m", "--mode", help="Output mode",
-                        choices=["baseline", "region", "both"], default="region", type=str)
+                        choices=["baseline", "region", "start", "end", "both"], default="region", type=str)
 
         region_args.add_argument("-w", "--line_width",
                             help="Used line width", type=int, default=5)

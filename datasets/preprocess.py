@@ -48,16 +48,11 @@ def get_arguments() -> argparse.Namespace:
 class Preprocess:
     def __init__(self, input_dir=None,
                  output_dir=None,
-                 mode="baseline",
                  resize=False,
                  resize_mode="choice",
                  min_size=[800],
                  max_size=1333,
-                 line_width=None,
-                 line_color=None,
-                 regions=None,
-                 merge_regions=None,
-                 region_type=None,
+                 xml_to_image=None,
                  force=False
                  ) -> None:
 
@@ -68,22 +63,13 @@ class Preprocess:
         self.output_dir: Optional[Path] = None
         if output_dir is not None:
             self.set_output_dir(output_dir)
+            
+        if not isinstance(xml_to_image, XMLImage):
+            raise ValueError(f"Must provide convertion from xml to image. Current type is {type(xml_to_image)}, not XMLImage")
 
-        self.mode = mode
+        self.xml_to_image = xml_to_image
         
         self.force = force
-
-        self.xml_to_image = XMLImage(
-                                mode=self.mode,
-                                line_width=line_width,
-                                line_color=line_color,
-                                regions=regions,
-                                merge_regions=merge_regions,
-                                region_type=region_type
-                            )
-
-        # self.total_size = 2048*2048
-        self.mode = mode
 
         # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
         self.image_formats = [".bmp", ".dib",
@@ -280,7 +266,7 @@ class Preprocess:
             else:
                 # TODO Skipped
                 # print("Skipped mask")
-                pass    
+                pass
         
         image_shape = np.asarray(image_shape)
 
@@ -334,19 +320,22 @@ class Preprocess:
 
 
 def main(args) -> None:
-    process = Preprocess(
-        input_dir=args.input,
-        output_dir=args.output,
+    xml_to_image = XMLImage(
         mode=args.mode,
-        resize=args.resize,
-        resize_mode=args.resize_mode,
-        min_size=args.min_size,
-        max_size=args.max_size,
         line_width=args.line_width,
         line_color=args.line_color,
         regions=args.regions,
         merge_regions=args.merge_regions,
-        region_type=args.region_type,
+        region_type=args.region_type
+    )
+    process = Preprocess(
+        input_dir=args.input,
+        output_dir=args.output,
+        resize=args.resize,
+        resize_mode=args.resize_mode,
+        min_size=args.min_size,
+        max_size=args.max_size,
+        xml_to_image=xml_to_image,
         force=args.force
     )
     process.run()

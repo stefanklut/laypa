@@ -1,4 +1,4 @@
-_BASE_: base_segmentation.yaml
+_BASE_: segmentation_base.yaml
 
 OUTPUT_DIR: ./output/baseline
 
@@ -9,9 +9,6 @@ MODEL:
     NUM_CLASSES: 2
   
   WEIGHTS: 
-DATASETS:
-  TRAIN: ("pagexml_baseline_train",)
-  TEST: ("pagexml_baseline_val",)
 
 TRAIN:
   WEIGHTS:

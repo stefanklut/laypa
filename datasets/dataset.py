@@ -97,57 +97,150 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
             "expecting the images, mask and output_sizes to be the same length")
 
     # Single Thread
-    input_dicts = []
-    for image_path, mask_path, output_size in zip(image_paths, mask_paths, output_sizes):
-        input_dicts.append(create_data((image_path, mask_path, output_size)))
+    # input_dicts = []
+    # for image_path, mask_path, output_size in zip(image_paths, mask_paths, output_sizes):
+    #     input_dicts.append(create_data((image_path, mask_path, output_size)))
 
     # Multi Thread
-    # with Pool(os.cpu_count()) as pool:
-    #     input_dicts = list(pool.imap_unordered(
-    #         create_data, zip(image_paths, mask_paths, output_sizes)))
+    with Pool(os.cpu_count()) as pool:
+        input_dicts = list(pool.imap_unordered(
+            create_data, zip(image_paths, mask_paths, output_sizes)))
 
     return input_dicts
 
 # IDEA register dataset for inference aswell
-def register_baseline(train=None, val=None):
+def register_baseline(train=None, val=None, train_name=None, val_name=None):
+    metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
-            name="pagexml_baseline_train",
+            name=train_name,
             func=lambda path=train: dataset_dict_loader(path)
         )
-        MetadataCatalog.get("pagexml_baseline_train").set(stuff_classes=["background", "baseline"])
-        MetadataCatalog.get("pagexml_baseline_train").set(stuff_colors=[(0,0,0), (255,255,255)])
-        MetadataCatalog.get("pagexml_baseline_train").set(evaluator_type="sem_seg")
-        MetadataCatalog.get("pagexml_baseline_train").set(ignore_label=255)
+        MetadataCatalog.get(train_name).set(
+            stuff_classes=["background", "baseline"],
+            stuff_colors=[(0,0,0), (255,255,255)],
+            evaluator_type="sem_seg",
+            ignore_label=255
+        )
+        metadata = MetadataCatalog.get(train_name)
     if val is not None and val != "":
         DatasetCatalog.register(
-            name="pagexml_baseline_val",
+            name=val_name,
             func=lambda path=val: dataset_dict_loader(path)
         )
-        MetadataCatalog.get("pagexml_baseline_val").set(stuff_classes=["background", "baseline"])
-        MetadataCatalog.get("pagexml_baseline_val").set(stuff_colors=[(0,0,0), (255,255,255)])
-        MetadataCatalog.get("pagexml_baseline_val").set(evaluator_type="sem_seg")
-        MetadataCatalog.get("pagexml_baseline_val").set(ignore_label=255)
+        MetadataCatalog.get(val_name).set(
+            stuff_classes=["background", "baseline"],
+            stuff_colors=[(0,0,0), (255,255,255)],
+            evaluator_type="sem_seg",
+            ignore_label=255
+        )
+        metadata = MetadataCatalog.get(val_name)
+    assert metadata is not None, "Metadata has not been set"
+    return metadata
 
-def register_region(train=None, val=None):
+def register_region(train=None, val=None, train_name=None, val_name=None):
+    metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
-            name="pagexml_region_train",
+            name=train_name,
             func=lambda path=train: dataset_dict_loader(path)
         )
-        MetadataCatalog.get("pagexml_region_train").set(stuff_classes=["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"])
-        MetadataCatalog.get("pagexml_region_train").set(stuff_colors=[(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)])
-        MetadataCatalog.get("pagexml_region_train").set(evaluator_type="sem_seg")
-        MetadataCatalog.get("pagexml_region_train").set(ignore_label=255)
+        MetadataCatalog.get(train_name).set(
+            stuff_classes=["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"],
+            stuff_colors=[(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)],
+            evaluator_type="sem_seg",
+            ignore_label=255
+        )
+        metadata = MetadataCatalog.get(train_name)
     if val is not None and val != "":
         DatasetCatalog.register(
-            name="pagexml_region_val",
+            name=val_name,
             func=lambda path=val: dataset_dict_loader(path)
         )
-        MetadataCatalog.get("pagexml_region_val").set(stuff_classes=["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"])
-        MetadataCatalog.get("pagexml_region_val").set(stuff_colors=[(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)])
-        MetadataCatalog.get("pagexml_region_val").set(evaluator_type="sem_seg")
-        MetadataCatalog.get("pagexml_region_val").set(ignore_label=255)
+        MetadataCatalog.get(val_name).set(
+            stuff_classes=["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"],
+            stuff_colors=[(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)],
+            evaluator_type="sem_seg",
+            ignore_label=255
+        )
+        metadata = MetadataCatalog.get(val_name)
+    assert metadata is not None, "Metadata has not been set"
+    return metadata
+        
+def register_start(train=None, val=None, train_name=None, val_name=None):
+    metadata = None
+    if train is not None and train != "":
+        DatasetCatalog.register(
+            name=train_name,
+            func=lambda path=train: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get(train_name).set(
+            stuff_classes=["background", "start"],
+            stuff_colors=[(0,0,0), (0,255,0)],
+            evaluator_type="sem_seg",
+            ignore_label=255
+        )
+        metadata = MetadataCatalog.get(train_name)
+    if val is not None and val != "":
+        DatasetCatalog.register(
+            name=val_name,
+            func=lambda path=val: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get(val_name).set(
+            stuff_classes=["background", "start"],
+            stuff_colors=[(0,0,0), (0,255,0)],
+            evaluator_type="sem_seg",
+            ignore_label=255
+        )
+        metadata = MetadataCatalog.get(val_name)
+    assert metadata is not None, "Metadata has not been set"
+    return metadata
+
+def register_end(train=None, val=None, train_name=None, val_name=None):
+    metadata = None
+    if train is not None and train != "":
+        DatasetCatalog.register(
+            name=train_name,
+            func=lambda path=train: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get(train_name).set(
+            stuff_classes=["background", "end"],
+            stuff_colors=[(0,0,0), (255,0,0)],
+            evaluator_type="sem_seg",
+            ignore_label=255
+        )
+        metadata = MetadataCatalog.get(train_name)
+    if val is not None and val != "":
+        DatasetCatalog.register(
+            name=val_name,
+            func=lambda path=val: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get(val_name).set(
+            stuff_classes=["background", "end"],
+            stuff_colors=[(0,0,0), (255,0,0)],
+            evaluator_type="sem_seg",
+            ignore_label=255
+        )
+        metadata = MetadataCatalog.get(val_name)
+    assert metadata is not None, "Metadata has not been set"
+    return metadata
+
+def register_dataset(train=None, val=None , train_name=None, val_name=None, mode=None):
+    assert train is not None or val is not None, "Must set at least something when registering"
+    assert train is None or train_name is not None, "If train is not None, then train_name has to be set"
+    assert val is None or val_name is not None, "If val is not None, then val_name has to be set"
+    
+    if mode == "baseline":
+        return register_baseline(train, val, train_name, val_name)
+    elif mode == "region":
+        return register_region(train, val, train_name, val_name)
+    elif mode == "start":
+        return register_start(train, val, train_name, val_name)
+    elif mode == "end":
+        return register_end(train, val, train_name, val_name)
+    else:
+        raise NotImplementedError(
+            f"Only have \"baseline\", \"start\", \"end\" and \"region\", given {mode}")
 
 def main(args) -> None:
     results = dataset_dict_loader(args.input)

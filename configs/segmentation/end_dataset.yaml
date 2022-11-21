@@ -1,0 +1,18 @@
+_BASE_: segmentation_base.yaml
+
+OUTPUT_DIR: ./output/region
+
+MODEL:
+  MODE: end
+
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 7
+  
+  WEIGHTS: 
+
+TRAIN:
+  WEIGHTS:
+
+TEST:
+  WEIGHTS: pretrained_models/region_model_best_mIoU.pth
+

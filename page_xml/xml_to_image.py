@@ -41,15 +41,33 @@ class XMLImage(XMLRegions):
             image_shape = gt_data.get_size()[::-1]
 
         if self.mode == "baseline":
-            baseline_mask = gt_data.build_baseline_mask(image_shape,
-                                                        color=self.line_color,
-                                                        line_width=self.line_width)
+            baseline_mask = gt_data.build_baseline_mask(
+                image_shape,
+                color=self.line_color,
+                line_width=self.line_width
+            )
             mask = baseline_mask
         elif self.mode == "region":
-            region_mask = gt_data.build_mask(image_shape,
-                                             set(self.region_types.values()),
-                                             self.region_classes)
+            region_mask = gt_data.build_region_mask(
+                image_shape,
+                set(self.region_types.values()),
+                self.region_classes
+            )
             mask = region_mask
+        elif self.mode == "start":
+            start_mask = gt_data.build_start_mask(
+                image_shape,
+                color=self.line_color,
+                line_width=self.line_width
+            )
+            mask = start_mask
+        elif self.mode == "end":
+            end_mask = gt_data.build_end_mask(
+                image_shape,
+                color=self.line_color,
+                line_width=self.line_width
+            )
+            mask = end_mask
         else:
             raise NotImplementedError
 

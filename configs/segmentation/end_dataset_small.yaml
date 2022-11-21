@@ -1,0 +1,8 @@
+_BASE_: end_dataset.yaml
+
+NAME: small
+
+MODEL:
+  RESNETS:
+    DEPTH: 18
+    RES2_OUT_CHANNELS: 64

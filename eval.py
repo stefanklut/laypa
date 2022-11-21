@@ -54,21 +54,12 @@ class Predictor(DefaultPredictor):
 def main(args) -> None:
     cfg = setup_cfg(args, save_config=False)
 
-    # IDEA Make this happen inside a function?
-    if cfg.MODEL.MODE == "baseline":
-        dataset.register_baseline(args.train, args.val)
-        metadata = MetadataCatalog.get("pagexml_baseline_train")
-    elif cfg.MODEL.MODE == "region":
-        dataset.register_region(args.train, args.val)
-        metadata = MetadataCatalog.get("pagexml_region_train")
-    else:
-        raise NotImplementedError(
-            f"Only have \"baseline\" and \"region\", given {cfg.MODEL.MODE}")
+    metadata = dataset.register_dataset(args.train, args.val, "train", "val", mode=cfg.MODEL.MODE)
 
     predictor = Predictor(cfg=cfg)
 
-    train_loader = dataset.dataset_dict_loader(args.train)
-    val_loader = dataset.dataset_dict_loader(args.val)
+    train_loader = DatasetCatalog.get("train")
+    val_loader = DatasetCatalog.get("val")
 
     # for inputs in np.random.choice(val_loader, 3):
     for inputs in val_loader:

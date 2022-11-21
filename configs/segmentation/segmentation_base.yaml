@@ -5,6 +5,10 @@ MODEL:
     FREEZE_AT: 0
   RESUME: false
 
+DATASETS:
+  TRAIN: ("train",)
+  TEST: ("val",)
+
 DATALOADER:
   NUM_WORKERS: 8
 INPUT:

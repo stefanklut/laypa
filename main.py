@@ -227,13 +227,7 @@ def main(args) -> None:
 
     cfg = setup_cfg(args)
 
-    if cfg.MODEL.MODE == "baseline":
-        dataset.register_baseline(args.train, args.val)
-    elif cfg.MODEL.MODE == "region":
-        dataset.register_region(args.train, args.val)
-    else:
-        raise NotImplementedError(
-            f"Only have \"baseline\" and \"region\", given {cfg.MODEL.MODE}")
+    dataset.register_dataset(args.train, args.val, "train", "val", mode=cfg.MODEL.MODE)
     
     trainer = Trainer(cfg=cfg)
     if not cfg.TRAIN.WEIGHTS:
