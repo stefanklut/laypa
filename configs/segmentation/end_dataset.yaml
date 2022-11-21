@@ -1,6 +1,6 @@
 _BASE_: segmentation_base.yaml
 
-OUTPUT_DIR: ./output/region
+OUTPUT_DIR: ./output/end
 
 MODEL:
   MODE: end
