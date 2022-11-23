@@ -265,7 +265,6 @@ class Preprocess:
                 save_mask(xml_path, out_mask_path, image_shape)
             else:
                 # TODO Skipped
-                # print("Skipped mask")
                 pass
         
         image_shape = np.asarray(image_shape)

@@ -1,4 +1,4 @@
-_BASE_: segmentation_base.yaml
+_BASE_: ../segmentation_base.yaml
 
 OUTPUT_DIR: ./output/end
 
@@ -6,7 +6,7 @@ MODEL:
   MODE: end
 
   SEM_SEG_HEAD:
-    NUM_CLASSES: 7
+    NUM_CLASSES: 2
   
   WEIGHTS: 
 

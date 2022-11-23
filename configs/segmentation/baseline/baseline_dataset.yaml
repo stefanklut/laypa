@@ -1,4 +1,4 @@
-_BASE_: segmentation_base.yaml
+_BASE_: ../segmentation_base.yaml
 
 OUTPUT_DIR: ./output/baseline
 
