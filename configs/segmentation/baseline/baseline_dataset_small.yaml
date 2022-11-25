@@ -1,4 +1,4 @@
-_BASE_: pagexml_baseline_dataset.yaml
+_BASE_: baseline_dataset.yaml
 
 NAME: small
 
