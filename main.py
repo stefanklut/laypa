@@ -52,6 +52,7 @@ def get_arguments() -> argparse.Namespace:
                             required=True, type=str)
     io_args.add_argument("-v", "--val", help="Validation input folder",
                             required=True, type=str)
+    
     # other_args.add_argument("--img_list", help="List with location of images")
     # other_args.add_argument("--label_list", help="List with location of labels")
     # other_args.add_argument("--out_size_list", help="List with sizes of images")
@@ -220,11 +221,7 @@ class Trainer(DefaultTrainer):
 
         return build_detection_test_loader(cfg=cfg, mapper=mapper, dataset_name=dataset_name)
 
-
-def main(args) -> None:
-
-    # get("../configs/Misc/semantic_R_50_FPN_1x.yaml")
-
+def setup_training(args):
     cfg = setup_cfg(args)
 
     dataset.register_dataset(args.train, args.val, "train", "val", mode=cfg.MODEL.MODE)
@@ -239,22 +236,24 @@ def main(args) -> None:
 
     # print(trainer.model)
 
-    with EventStorage() as storage:
-        return trainer.train()
+    return trainer.train()
 
-
-if __name__ == "__main__":
-    args = get_arguments()
-    # main(args)
-    
+def main(args) -> None:
     assert args.num_gpus <= torch.cuda.device_count(), \
         f"Less GPUs found ({torch.cuda.device_count()}) than specified ({args.num_gpus})"
     
     launch(
-        main,
+        setup_training,
         num_gpus_per_machine=args.num_gpus,
         num_machines=args.num_machines,
         machine_rank=args.machine_rank,
         dist_url=args.dist_url,
         args=(args,)
     )
+    
+
+if __name__ == "__main__":
+    args = get_arguments()
+    main(args)
+    
+    

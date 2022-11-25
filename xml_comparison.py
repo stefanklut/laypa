@@ -55,7 +55,6 @@ class IOUEvaluator:
         self._conf_matrix = None
         self._b_conf_matrix = None
         
-        self._logger = logging.getLogger(__name__)
 
         self.reset()
 
@@ -199,7 +198,6 @@ class IOUEvaluator:
             res[f"ACC-{name}"] = 100 * acc[i]
 
         results = OrderedDict({"sem_seg": res})
-        # self._logger.info(results)
         return results
 
     def _mask_to_boundary(self, mask: np.ndarray, dilation_ratio=0.02):

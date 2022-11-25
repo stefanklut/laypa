@@ -176,6 +176,9 @@ class PageData:
         for element in self.root.findall("".join([".//", self.base, "Baseline"])):
             # --- get element coords
             str_coords = element.attrib.get("points").split()
+            # REVIEW currently ignoring empty baselines
+            if len(str_coords) == 0:
+                continue
             coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
             coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
             cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, color, line_width)

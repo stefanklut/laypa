@@ -46,8 +46,6 @@ class GenPageXML(XMLRegions):
                  region_type: Optional[list[str]] = None) -> None:
         super().__init__(mode, line_width, line_color, regions, merge_regions, region_type)
         
-        self.logger = logging.getLogger(__name__)
-        
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
             
@@ -81,7 +79,7 @@ class GenPageXML(XMLRegions):
         
         scaling = np.asarray([width, height]) / np.asarray([old_width, old_height])
         
-        page = PageData(xml_output_path, logger=self.logger)
+        page = PageData(xml_output_path)
         page.new_page(image_output_path.name, str(old_height), str(old_width))
         
         if self.mode == 'region':
