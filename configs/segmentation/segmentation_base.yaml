@@ -87,3 +87,5 @@ SOLVER:
   
 
 OUTPUT_DIR: ./output
+
+SEED: 42
