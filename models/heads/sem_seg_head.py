@@ -26,13 +26,12 @@ class WeightedSemSegFPNHead(SemSegFPNHead):
     ):
         super().__init__(
             input_shape,
-            num_classes,
-            weight,
-            conv_dims,
-            common_stride,
-            loss_weight,
-            norm,
-            ignore_value
+            num_classes=num_classes,
+            conv_dims=conv_dims,
+            common_stride=common_stride,
+            loss_weight=loss_weight,
+            norm=norm,
+            ignore_value=ignore_value
         )
         if len(weight) != num_classes:
             raise ValueError("Number of specified weights must match the number of classes")
@@ -42,7 +41,7 @@ class WeightedSemSegFPNHead(SemSegFPNHead):
     @classmethod
     def from_config(cls, cfg, input_shape: Dict[str, ShapeSpec]):
         config = super().from_config(cfg, input_shape)
-        config.update({"weight", cfg.MODEL.SEM_SEG_HEAD.NORM.WEIGHT})
+        config.update({"weight": cfg.MODEL.SEM_SEG_HEAD.WEIGHT})
         
         return config
     
@@ -54,7 +53,7 @@ class WeightedSemSegFPNHead(SemSegFPNHead):
             mode="bilinear",
             align_corners=False,
         )
-        weight = torch.tensor(self.weight, device=predictions.device)
+        weight = torch.tensor(self.weight, dtype=torch.float, device=predictions.device)
         loss = F.cross_entropy(
             predictions, targets, weight=weight, reduction="mean", ignore_index=self.ignore_value
         )

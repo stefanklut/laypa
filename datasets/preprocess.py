@@ -15,50 +15,40 @@ import matplotlib
 import numpy as np
 from natsort import os_sorted
 from multiprocessing import Pool
+from typing import Sequence
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xmlPAGE import PageData
 from page_xml.xml_to_image import XMLImage
-from utils.path_utils import image_path_to_xml_path
+from utils.path_utils import image_path_to_xml_path, check_path_accessible
 
 def get_arguments() -> argparse.Namespace:    
-    parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
+    parser = argparse.ArgumentParser(parents=[Preprocess.get_parser(), XMLImage.get_parser()],
         description="Preprocessing an annotated dataset of documents with pageXML")
+    
     io_args = parser.add_argument_group("IO")
-    io_args.add_argument("-i", "--input", help="Input folder",
+    io_args.add_argument("-i", "--input", help="Input folder/file",
                         required=True, type=str)
-    io_args.add_argument(
-        "-o", "--output", help="Output folder", required=True, type=str)
-
-    parser.add_argument(
-        "-r", "--resize", help="Resize input images", action="store_true")
-    parser.add_argument("--resize_mode", help="How to select the size when resizing",
-                        type=str, choices=["range", "choice"], default="choice")
-    parser.add_argument("--min_size", help="Min resize shape",
-                        nargs="*", type=int, default=[1024])
-    parser.add_argument(
-        "--max_size", help="Max resize shape", type=int, default=2048)
-    parser.add_argument(
-        "-f", "--force", help="Overwrite the images and label masks", action="store_true")
-
+    io_args.add_argument("-o", "--output", help="Output folder",
+                        required=True, type=str)
     args = parser.parse_args()
     return args
 
-
 class Preprocess:
-    def __init__(self, input_dir=None,
+    def __init__(self, input_path=None,
                  output_dir=None,
                  resize=False,
                  resize_mode="choice",
                  min_size=[800],
                  max_size=1333,
                  xml_to_image=None,
-                 force=False
+                 disable_check=False,
+                 overwrite=False
                  ) -> None:
 
-        self.input_dir: Optional[Path] = None
-        if input_dir is not None:
-            self.set_input_dir(input_dir)
+        self.input_path: Optional[Path] = None
+        if input_path is not None:
+            self.set_input_path(input_path)
 
         self.output_dir: Optional[Path] = None
         if output_dir is not None:
@@ -69,7 +59,8 @@ class Preprocess:
 
         self.xml_to_image = xml_to_image
         
-        self.force = force
+        self.disable_check = disable_check
+        self.overwrite = overwrite
 
         # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
         self.image_formats = [".bmp", ".dib",
@@ -99,34 +90,106 @@ class Preprocess:
         else:
             raise NotImplementedError(
                 "Only \"choice\" and \"range\" are accepted values")
+    
+    @classmethod
+    def get_parser(cls) -> argparse.ArgumentParser:
+        
+        parser = argparse.ArgumentParser(add_help=False)
+        pre_process_args = parser.add_argument_group("preprocessing")
+        
+        pre_process_args.add_argument(
+            "--resize", 
+            action="store_true",
+            help="Resize input images"
+        )
+        pre_process_args.add_argument(
+            "--resize_mode", 
+            default="choice",
+            choices=["range", "choice"],
+            type=str, 
+            help="How to select the size when resizing"
+        )
+        
+        pre_process_args.add_argument(
+            "--min_size", 
+            default=[1024],
+            nargs="*",
+            type=int, 
+            help="Min resize shape"
+        )
+        pre_process_args.add_argument(
+            "--max_size", 
+            default=2048,
+            type=int,
+            help="Max resize shape"
+        )
+        
+        pre_process_args.add_argument(
+            "--disable_check", 
+            action="store_true", 
+            help="Don't check if all images exist"
+        )
+        
+        pre_process_args.add_argument(
+            "--overwrite", 
+            action="store_true",
+            help="Overwrite the images and label masks"
+        )
+        
+        return parser
 
-    def set_input_dir(self, input_dir: str | Path) -> None:
-        if isinstance(input_dir, str):
-            input_dir = Path(input_dir)
-
-        if not input_dir.exists():
-            raise FileNotFoundError(f"Input dir ({input_dir}) is not found")
-
-        if not input_dir.is_dir():
-            raise NotADirectoryError(
-                f"Input path ({input_dir}) is not a directory")
-
-        if not os.access(path=input_dir, mode=os.R_OK):
+    def get_file_paths(self, input_path: str | Path):
+        if isinstance(input_path, str):
+            input_path = Path(input_path)
+        
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input dir ({input}) is not found")
+        
+        if not os.access(path=input_path, mode=os.R_OK):
             raise PermissionError(
-                f"No access to {input_dir} for read operations")
+                f"No access to {input_path} for read operations")
+              
+        if input_path.is_dir():
+            image_paths = [image_path for image_path in input_path.glob("*") if image_path.suffix in self.image_formats]
+        elif input_path.is_file() and input_path.suffix == ".txt":
+            with input_path.open(mode="r") as f:
+                image_paths = [Path(line) for line in f.read().splitlines()]
+        else:
+            raise ValueError(f"Invalid file type: {input_path.suffix}")
+            
+        xml_paths = [image_path_to_xml_path(image_path, self.disable_check) for image_path in image_paths]
+        
+        return image_paths, xml_paths
+    
+    def set_input_path(self, input_path: str | Path) -> None:
+        if isinstance(input_path, str):
+            input_path = Path(input_path)
 
-        page_dir = input_dir.joinpath("page")
-        if not input_dir.joinpath("page").exists():
-            raise FileNotFoundError(f"Sub page dir ({page_dir}) is not found")
+        if not input_path.exists():
+            raise FileNotFoundError(f"Input ({input_path}) is not found")
 
-        if not os.access(path=page_dir, mode=os.R_OK):
+        # Old check replace with get_file_paths
+        # if not input_path.is_dir():
+        #     raise NotADirectoryError(
+        #         f"Input path ({input_path}) is not a directory")
+
+        if not os.access(path=input_path, mode=os.R_OK):
             raise PermissionError(
-                f"No access to {page_dir} for read operations")
+                f"No access to {input_path} for read operations")
 
-        self.input_dir = input_dir.resolve()
+        # Old check replace with get_file_paths
+        # page_dir = input_path.joinpath("page")
+        # if not page_dir.exists():
+        #     raise FileNotFoundError(f"Sub page dir ({page_dir}) is not found")
 
-    def get_input_dir(self) -> Optional[Path]:
-        return self.input_dir
+        # if not os.access(path=page_dir, mode=os.R_OK):
+        #     raise PermissionError(
+        #         f"No access to {page_dir} for read operations")
+
+        self.input_path = input_path.resolve()
+
+    def get_input_path(self) -> Optional[Path]:
+        return self.input_path
 
     def set_output_dir(self, output_dir: str | Path) -> None:
         if isinstance(output_dir, str):
@@ -142,9 +205,13 @@ class Preprocess:
     def get_output_dir(self) -> Optional[Path]:
         return self.output_dir
 
+    # @staticmethod
+    # def check_pageXML_exists(image_paths: list[Path]) -> None:
+    #     _ = [image_path_to_xml_path(image_path) for image_path in image_paths]
+    
     @staticmethod
-    def check_pageXML_exists(image_paths: list[Path]) -> None:
-        _ = [image_path_to_xml_path(image_path) for image_path in image_paths]
+    def check_paths_exists(paths: list[Path]) -> None:
+        _ = [check_path_accessible(path) for path in paths]
 
     def resize_image_old(self, image: np.ndarray) -> np.ndarray:
         old_height, old_width, channels = image.shape
@@ -210,13 +277,11 @@ class Preprocess:
         return res_image
 
     def process_single_file(self, image_path: Path) -> tuple[Path, Path, np.ndarray]:
-        if self.input_dir is None:
-            raise ValueError("Cannot run when the input dir is not set")
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         
         image_stem = image_path.stem
-        xml_path = image_path_to_xml_path(image_path)
+        xml_path = image_path_to_xml_path(image_path, self.disable_check)
         # xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
         
         image_shape = tuple(int(value) for value in imagesize.get(image_path)[::-1])
@@ -239,7 +304,7 @@ class Preprocess:
             #REVIEW This can maybe also be replaced with copying/linking the original image, if no resize
             cv2.imwrite(str(out_image_path), image)
         
-        if self.force or not out_image_path.exists():
+        if self.overwrite or not out_image_path.exists():
             save_image(image_path, out_image_path, image_shape)
         else:
             out_image_shape = imagesize.get(out_image_path)[::-1]
@@ -257,7 +322,7 @@ class Preprocess:
             
             cv2.imwrite(str(out_mask_path), mask)
 
-        if self.force or not out_mask_path.exists():
+        if self.overwrite or not out_mask_path.exists():
             save_mask(xml_path, out_mask_path, image_shape)
         else:
             out_mask_shape = tuple(int(value) for value in imagesize.get(out_mask_path)[::-1])
@@ -272,23 +337,27 @@ class Preprocess:
         return out_image_path, out_mask_path, image_shape
 
     def run(self) -> None:
-        if self.input_dir is None:
-            raise ValueError("Cannot run when the input dir is not set")
+        if self.input_path is None:
+            raise ValueError("Cannot run when the input path is not set")
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
 
-        image_paths = os_sorted([image_path.resolve() for image_path in self.input_dir.glob("*")
-                                 if image_path.suffix in self.image_formats])
+        image_paths, xml_paths = self.get_file_paths(self.input_path)
 
         if len(image_paths) == 0:
             raise ValueError(
-                f"No images found when searching input dir ({self.input_dir})")
+                f"No images found when checking input ({self.input_path})")
+            
+        if len(xml_paths) == 0:
+            raise ValueError(
+                f"No pagexml found when checking input  ({self.input_path})")
 
-        self.check_pageXML_exists(image_paths)
+        if not self.disable_check:
+            self.check_paths_exists(image_paths)
+            self.check_paths_exists(xml_paths)
 
         self.output_dir.joinpath("original").mkdir(parents=True, exist_ok=True)
-        self.output_dir.joinpath("ground_truth").mkdir(
-            parents=True, exist_ok=True)
+        self.output_dir.joinpath("ground_truth").mkdir(parents=True, exist_ok=True)
 
         # Single thread
         # for image_path in tqdm(image_paths):
@@ -328,14 +397,15 @@ def main(args) -> None:
         region_type=args.region_type
     )
     process = Preprocess(
-        input_dir=args.input,
+        input_path=args.input,
         output_dir=args.output,
         resize=args.resize,
         resize_mode=args.resize_mode,
         min_size=args.min_size,
         max_size=args.max_size,
         xml_to_image=xml_to_image,
-        force=args.force
+        disable_check=args.disable_check,
+        overwrite=args.overwrite
     )
     process.run()
 

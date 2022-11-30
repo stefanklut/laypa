@@ -12,6 +12,7 @@ import numpy as np
 from main import setup_cfg
 import torch.nn.functional as F
 import torch
+from natsort import os_sorted
 
 
 def get_arguments() -> argparse.Namespace:
@@ -62,7 +63,7 @@ def main(args) -> None:
     val_loader = DatasetCatalog.get("val")
 
     # for inputs in np.random.choice(val_loader, 3):
-    for inputs in val_loader:
+    for inputs in os_sorted(val_loader, key=lambda x: x["file_name"]):
         im = cv2.imread(inputs["file_name"])
         gt = cv2.imread(inputs["sem_seg_file_name"], cv2.IMREAD_GRAYSCALE)
         outputs = predictor(im)

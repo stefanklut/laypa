@@ -20,8 +20,10 @@ def check_path_accessible(path: Path):
         raise FileNotFoundError(f"Missing path: {path}")
     if not os.access(path=path, mode=os.R_OK):
         raise PermissionError(f"No access to {path} for read operations")
+    
+    return True
 
-def image_path_to_xml_path(image_path: Path) -> Path:
+def image_path_to_xml_path(image_path: Path, check: bool=True) -> Path:
     """
     Return the corresponding xml path for a image
 
@@ -36,11 +38,13 @@ def image_path_to_xml_path(image_path: Path) -> Path:
         Path: xml path
     """
     xml_path = image_path.absolute().parent.joinpath("page", image_path.stem + '.xml')
-    check_path_accessible(xml_path)
+    
+    if check:
+        check_path_accessible(xml_path)
 
     return xml_path
 
-def xml_path_to_image_path(xml_path: Path) -> Path:
+def xml_path_to_image_path(xml_path: Path, check: bool=True) -> Path:
     """
     Return the corresponding image path for an xml
 
@@ -67,7 +71,9 @@ def xml_path_to_image_path(xml_path: Path) -> Path:
     #                  ".exr",
     #                  ".hdr", ".pic"]
     image_path = xml_path.absolute().parents[1].joinpath(xml_path.stem + ".jpg")
-    check_path_accessible(image_path)
+    
+    if check:
+        check_path_accessible(image_path)
         
     return image_path
 

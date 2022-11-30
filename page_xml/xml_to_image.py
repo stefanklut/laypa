@@ -18,7 +18,6 @@ def get_arguments() -> argparse.Namespace:
     io_args.add_argument(
         "-o", "--output", help="Output file", required=True, type=str)
     
-    
 
     args = parser.parse_args()
     return args

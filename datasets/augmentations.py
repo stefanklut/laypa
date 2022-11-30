@@ -444,12 +444,13 @@ class RandomSaturation(T.Augmentation):
         
         self.intensity_min = intensity_min
         self.intensity_max = intensity_max
+        self.image_format = image_format
         
         rgb_weights = np.asarray([0.299, 0.587, 0.114])
         
-        if image_format == "RGB":
+        if self.image_format == "RGB":
             self.weights = rgb_weights
-        elif image_format == "BGR":
+        elif self.image_format == "BGR":
             self.weights = rgb_weights[::-1]
         else:
             raise NotImplementedError
@@ -545,7 +546,7 @@ def build_augmentation(cfg, is_train) -> list[T.Augmentation | T.Transform]:
                                                    intensity_max=cfg.INPUT.CONTRAST.MAX_INTENSITY), 
                                     prob=cfg.INPUT.CONTRAST.PROBABILITY))
     augmentation.append(RandomApply(RandomSaturation(intensity_min=cfg.INPUT.SATURATION.MIN_INTENSITY, 
-                                                     intensity_max=cfg.INPUT.SATURATION.MIN_INTENSITY), 
+                                                     intensity_max=cfg.INPUT.SATURATION.MAX_INTENSITY), 
                                     prob=cfg.INPUT.SATURATION.PROBABILITY))
     augmentation.append(RandomApply(RandomGaussianFilter(min_sigma=cfg.INPUT.GAUSSIAN_FILTER.MIN_SIGMA, 
                                                          max_sigma=cfg.INPUT.GAUSSIAN_FILTER.MAX_SIGMA), 

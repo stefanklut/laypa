@@ -1,0 +1,1 @@
+from .heads import SEM_SEG_HEADS_REGISTRY

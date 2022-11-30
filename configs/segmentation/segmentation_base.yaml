@@ -3,7 +3,7 @@ MODEL:
   META_ARCHITECTURE: "SemanticSegmentor"
   BACKBONE: 
     FREEZE_AT: 0
-  RESUME: false
+  RESUME: False
 
 DATASETS:
   TRAIN: ("train",)
@@ -11,9 +11,29 @@ DATASETS:
 
 DATALOADER:
   NUM_WORKERS: 8
+
+PREPROCESS:
+  OVERWRITE: False
+  DISABLE_CHECK: False
+  
+  RESIZE:
+    USE: True
+    RESIZE_MODE: "choice"
+    MIN_SIZE: [1024]
+    MAX_SIZE: 2048
+  BASELINE:
+    LINE_COLOR: 1
+    LINE_WIDTH: 5
+  REGION:
+    REGIONS: ["marginalia", "page-number", "resolution", "date",
+              "index", "attendance", "Resumption", "resumption", 
+              "Insertion", "insertion"]
+    MERGE_REGIONS: ["resolution:Resumption,resumption,Insertion,insertion"]
+    REGION_TYPE: []
+
 INPUT:
   MIN_SIZE_TRAIN_SAMPLING: choice
-  MIN_SIZE_TRAIN: (832, 896, 960, 1024)
+  MIN_SIZE_TRAIN: (896, 960, 1024, 1088, 1152)
   MAX_SIZE_TRAIN: 2048
 
   # FIXME Have the Min size adjustable
@@ -52,7 +72,7 @@ INPUT:
     PROBABILITY: 0.5
 
   ELASTIC_DEFORMATION:
-    PROBABILITY: 0.
+    PROBABILITY: 0.5
     ALPHA: 0.1
     SIGMA: 0.01
 

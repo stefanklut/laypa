@@ -6,7 +6,7 @@ import sys
 from typing import List, Optional
 import torch
 
-import datasets.dataset as dataset
+from datasets import dataset
 from configs.defaults import _C as _C_default
 from configs.extra_defaults import _C as _C_extra
 
@@ -17,6 +17,7 @@ from detectron2.data import (
     build_detection_train_loader,
     DatasetMapper
 )
+from detectron2.utils import comm
 from detectron2.engine import DefaultTrainer
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import (
@@ -24,13 +25,18 @@ from detectron2.config import (
     CfgNode
 )
 from detectron2.evaluation import SemSegEvaluator
-from detectron2.utils.events import EventStorage
+from detectron2.utils.env import seed_all_rng
 from detectron2.data import transforms as T
 from detectron2.engine import hooks, launch
 
 
 from datasets.augmentations import build_augmentation
+from datasets.preprocess import Preprocess
 from utils.path_utils import unique_path
+from page_xml.xml_to_image import XMLImage
+from utils.tempdir import OptionalTemporaryDirectory
+
+import models
 
 # TODO Replace with LazyConfig
 
@@ -48,17 +54,23 @@ def get_arguments() -> argparse.Namespace:
         "--opts", nargs=argparse.REMAINDER, help="optional args to change", default=[])
 
     io_args = parser.add_argument_group("IO")
-    io_args.add_argument("-t", "--train", help="Train input folder",
+    io_args.add_argument("-t", "--train", help="Train input folder/file",
                             required=True, type=str)
-    io_args.add_argument("-v", "--val", help="Validation input folder",
+    io_args.add_argument("-v", "--val", help="Validation input folder/file",
                             required=True, type=str)
+    
+    tmp_args = parser.add_argument_group("tmp files")
+    tmp_args.add_argument(
+        "--tmp_dir", help="Temp files folder", type=str, default=None)
+    tmp_args.add_argument(
+        "--keep_tmp_dir", action="store_true", help="Don't remove tmp dir after execution")
     
     # other_args.add_argument("--img_list", help="List with location of images")
     # other_args.add_argument("--label_list", help="List with location of labels")
     # other_args.add_argument("--out_size_list", help="List with sizes of images")
     
     # From detectron2.engine.defaults
-    gpu_args = parser.add_argument_group("GPU Launch")
+    gpu_args = parser.add_argument_group("GPU launch")
     gpu_args.add_argument("--num-gpus", type=int, default=1, help="number of gpus *per machine*")
     gpu_args.add_argument("--num-machines", type=int, default=1, help="total number of machines")
     gpu_args.add_argument(
@@ -93,6 +105,12 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     cfg.merge_from_file(args.config)
     cfg.merge_from_list(args.opts)
     
+    if not cfg.SEED < 0:
+        seed = cfg.SEED
+        rank = comm.get_rank()
+        seed_all_rng(None if seed < 0 else seed + rank)
+        # TODO What to do with this, NLL is not deterministic. Only during training
+        # torch.use_deterministic_algorithms(True)
     
     # For saving/documentation purposes
     now = datetime.now()
@@ -100,7 +118,6 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     cfg.SETUP_TIME = formatted_datetime
     
     cfg.CONFIG_PATH = str(Path(args.config).resolve())
-    
     
     # Setup run specific folders to prevent overwrites
     if cfg.OUTPUT_DIR and (cfg.RUN_DIR or cfg.NAME) and not cfg.MODEL.RESUME:
@@ -113,7 +130,7 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     
     
     if cfg.MODEL.DEVICE:
-        # If device can not be found, default to cpu
+        # If cuda device can not be found, default to cpu
         if torch.cuda.device_count() == 0:
             cfg.MODEL.DEVICE = 'cpu'
     else:
@@ -126,7 +143,7 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     cfg.freeze()
     
     # Save the confic with all (changed) parameters to a yaml
-    if save_config:
+    if comm.is_main_process() and cfg.OUTPUT_DIR and save_config:
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
         cfg_output_path = Path(cfg.OUTPUT_DIR).joinpath("config.yaml")
         cfg_output_path = unique_path(cfg_output_path)
@@ -134,6 +151,68 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
             f.write(cfg.dump())
     return cfg
 
+def preprocess_datasets(cfg: CfgNode, 
+                        train: str | Path, 
+                        val: str | Path, 
+                        output_dir: str | Path):
+    
+    if isinstance(train, str):
+        train = Path(train)
+    
+    if isinstance(val, str):
+        val = Path(val)
+        
+    if isinstance(output_dir, str):
+        output_dir = Path(output_dir)
+    
+        
+    if not train.exists():
+        raise FileNotFoundError(f"Train File/Folder not found: {train} does not exist")
+    
+    if not train.exists():
+        raise FileNotFoundError(f"Validation File/Folder not found: {val} does not exist")
+    
+    if not output_dir.exists():
+        raise FileNotFoundError(f"Output Folder not found: {output_dir} does not exist")
+    
+    xml_to_image = XMLImage(
+        mode=cfg.MODEL.MODE,
+        line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
+        line_color=cfg.PREPROCESS.BASELINE.LINE_COLOR,
+        regions=cfg.PREPROCESS.REGION.REGIONS,
+        merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
+        region_type=cfg.PREPROCESS.REGION.REGION_TYPE
+    )
+    
+    process = Preprocess(
+        input_path=None,
+        output_dir=None,
+        resize=cfg.PREPROCESS.RESIZE.USE,
+        resize_mode=cfg.PREPROCESS.RESIZE.RESIZE_MODE,
+        min_size=cfg.PREPROCESS.RESIZE.MIN_SIZE,
+        max_size=cfg.PREPROCESS.RESIZE.MAX_SIZE,
+        xml_to_image=xml_to_image,
+        disable_check=cfg.PREPROCESS.DISABLE_CHECK,
+        overwrite=cfg.PREPROCESS.OVERWRITE
+    )
+    
+    # Train
+    train_output_dir = output_dir.joinpath('train')
+    process.set_input_path(train)
+    process.set_output_dir(train_output_dir)
+    process.run()
+    
+    # Validation
+    val_output_dir = output_dir.joinpath('val')
+    process.set_input_path(val)
+    process.set_output_dir(val_output_dir)
+    process.run()
+    
+    dataset.register_dataset(train_output_dir, 
+                             val_output_dir, 
+                             train_name="train", 
+                             val_name="val", 
+                             mode=cfg.MODEL.MODE)
 
 class Trainer(DefaultTrainer):
     
@@ -224,19 +303,24 @@ class Trainer(DefaultTrainer):
 def setup_training(args):
     cfg = setup_cfg(args)
 
-    dataset.register_dataset(args.train, args.val, "train", "val", mode=cfg.MODEL.MODE)
     
-    trainer = Trainer(cfg=cfg)
-    if not cfg.TRAIN.WEIGHTS:
-        trainer.resume_or_load(resume=cfg.MODEL.RESUME)
-    else:
-        trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
-        if trainer.checkpointer.has_checkpoint():
-            trainer.start_iter = trainer.iter + 1
+    with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
+        
+        preprocess_datasets(cfg, args.train, args.val, tmp_dir)
+    
+        trainer = Trainer(cfg=cfg)
+        if not cfg.TRAIN.WEIGHTS:
+            trainer.resume_or_load(resume=cfg.MODEL.RESUME)
+        else:
+            trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
+            if trainer.checkpointer.has_checkpoint():
+                trainer.start_iter = trainer.iter + 1
 
-    # print(trainer.model)
+        # print(trainer.model)
+        
+        results = trainer.train()
 
-    return trainer.train()
+    return results
 
 def main(args) -> None:
     assert args.num_gpus <= torch.cuda.device_count(), \

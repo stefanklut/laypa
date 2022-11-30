@@ -22,7 +22,7 @@ class XMLRegions:
 
         elif self.mode == "region":
             assert regions is not None
-            assert merge_regions is not None
+            # assert merge_regions is not None
             # assert region_type is not None
             
             # regions: list of type names (required for lookup)
@@ -44,28 +44,44 @@ class XMLRegions:
     def get_parser(cls) -> argparse.ArgumentParser:
         # HACK hardcoded regions if none are given
         republic_regions = ["marginalia", "page-number", "resolution", "date",
-                            "index", "attendance", "Resumption", "resumption", "Insertion", "insertion"]
+                            "index", "attendance", "Resumption", "resumption", 
+                            "Insertion", "insertion"]
         republic_merge_regions = ["resolution:Resumption,resumption,Insertion,insertion"]
         parser = argparse.ArgumentParser(add_help=False)
         
         region_args = parser.add_argument_group("regions")
         
-        region_args.add_argument("-m", "--mode", help="Output mode",
-                        choices=["baseline", "region", "start", "end", "both"], default="region", type=str)
+        region_args.add_argument(
+            "-m", "--mode",
+            default="region",
+            choices=["baseline", "region", "start", "end", "both"], 
+            type=str,
+            help="Output mode"
+        )
 
-        region_args.add_argument("-w", "--line_width",
-                            help="Used line width", type=int, default=5)
-        
-        region_args.add_argument("-l", "--line_color", help="Used line color",
-                            choices=list(range(256)), type=int, metavar="{0-255}", default=1)
+        region_args.add_argument(
+            "-w", "--line_width",
+            default=5,
+            type=int,
+            help="Used line width"
+        )
         
         region_args.add_argument(
-        "--regions",
-        default=republic_regions,
-        nargs="+",
-        type=str,
-        help="""List of regions to be extracted. 
-                            Format: --regions r1 r2 r3 ...""",
+            "-l", "--line_color", 
+            default=1,
+            choices=list(range(256)), 
+            type=int,
+            metavar="{0-255}",
+            help="Used line color"
+        )
+        
+        region_args.add_argument(
+            "--regions",
+            default=republic_regions,
+            nargs="+",
+            type=str,
+            help="""List of regions to be extracted. 
+                                Format: --regions r1 r2 r3 ..."""
         )
         region_args.add_argument(
             "--merge_regions",
@@ -75,7 +91,7 @@ class XMLRegions:
             type=str,
             help="""Merge regions on PAGE file into a single one.
                                 Format --merge_regions r1:r2,r3 r4:r5, then r2 and r3
-                                will be merged into r1 and r5 into r4""",
+                                will be merged into r1 and r5 into r4"""
         )
         region_args.add_argument(
             "--region_type",
@@ -85,7 +101,7 @@ class XMLRegions:
             help="""Type of region on PAGE file.
                                 Format --region_type t1:r1,r3 t2:r5, then type t1
                                 will assigned to regions r1 and r3 and type t2 to
-                                r5 and so on...""",
+                                r5 and so on..."""
         )
         return parser
         
@@ -113,7 +129,7 @@ class XMLRegions:
 
     def _build_merged_regions(self) -> Optional[dict[str, str]]:
         """build dic of regions to be merged into a single class"""
-        if self._merge_regions is None:
+        if self._merge_regions is None or len(self._merge_regions):
             return None
         to_merge = {}
         msg = ""
@@ -146,7 +162,7 @@ class XMLRegions:
     def _build_region_types(self) -> dict[str ,str]:
         """ build a dic of regions and their respective type"""
         reg_type = {"full_page": "TextRegion"}
-        if self._region_type is None:
+        if self._region_type is None or len(self._region_type):
             for reg in self._regions:
                 reg_type[reg] = "TextRegion"
             return reg_type
@@ -177,7 +193,13 @@ class XMLRegions:
             for values in self.merged_regions.values():
                 removed_regions = removed_regions.union(set(values))
             remaining_regions.extend(region for region in self._regions if not region in removed_regions)
-        else:
+        elif self.mode == "baseline":
             remaining_regions.extend(["baseline"])
+        elif self.mode == "start":
+            remaining_regions.extend(["start"])
+        elif self.mode == "end":
+            remaining_regions.extend(["end"])
+        else:
+            raise NotImplementedError
         
         return remaining_regions
