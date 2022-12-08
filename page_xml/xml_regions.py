@@ -129,8 +129,8 @@ class XMLRegions:
 
     def _build_merged_regions(self) -> Optional[dict[str, str]]:
         """build dic of regions to be merged into a single class"""
-        if self._merge_regions is None or len(self._merge_regions):
-            return None
+        if self._merge_regions is None or len(self._merge_regions) == 0:
+            return {}
         to_merge = {}
         msg = ""
         for c in self._merge_regions:
@@ -187,11 +187,12 @@ class XMLRegions:
     def get_regions(self) -> list[str]:    
         remaining_regions = ["background"]
         if self.mode == 'region':
-            assert self.merged_regions is not None
-            
-            removed_regions = set()
-            for values in self.merged_regions.values():
-                removed_regions = removed_regions.union(set(values))
+            if self.merged_regions is None:
+                removed_regions = set()
+            else:
+                removed_regions = set()
+                for values in self.merged_regions.values():
+                    removed_regions = removed_regions.union(set(values))
             remaining_regions.extend(region for region in self._regions if not region in removed_regions)
         elif self.mode == "baseline":
             remaining_regions.extend(["baseline"])

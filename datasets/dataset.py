@@ -113,7 +113,8 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
 def register_baseline(train: Optional[str|Path]=None, 
                       val: Optional[str|Path]=None, 
                       train_name: Optional[str]=None, 
-                      val_name: Optional[str]=None):
+                      val_name: Optional[str]=None,
+                      ignore_label: int=255):
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -124,7 +125,7 @@ def register_baseline(train: Optional[str|Path]=None,
             stuff_classes=["background", "baseline"],
             stuff_colors=[(0,0,0), (255,255,255)],
             evaluator_type="sem_seg",
-            ignore_label=255
+            ignore_label=ignore_label
         )
         metadata = MetadataCatalog.get(train_name)
     if val is not None and val != "":
@@ -136,7 +137,7 @@ def register_baseline(train: Optional[str|Path]=None,
             stuff_classes=["background", "baseline"],
             stuff_colors=[(0,0,0), (255,255,255)],
             evaluator_type="sem_seg",
-            ignore_label=255
+            ignore_label=ignore_label
         )
         metadata = MetadataCatalog.get(val_name)
     assert metadata is not None, "Metadata has not been set"
@@ -145,7 +146,8 @@ def register_baseline(train: Optional[str|Path]=None,
 def register_region(train: Optional[str|Path]=None, 
                     val: Optional[str|Path]=None, 
                     train_name: Optional[str]=None, 
-                    val_name: Optional[str]=None):
+                    val_name: Optional[str]=None,
+                    ignore_label: int=255):
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -156,7 +158,7 @@ def register_region(train: Optional[str|Path]=None,
             stuff_classes=["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"],
             stuff_colors=[(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)],
             evaluator_type="sem_seg",
-            ignore_label=255
+            ignore_label=ignore_label
         )
         metadata = MetadataCatalog.get(train_name)
     if val is not None and val != "":
@@ -168,7 +170,7 @@ def register_region(train: Optional[str|Path]=None,
             stuff_classes=["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"],
             stuff_colors=[(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)],
             evaluator_type="sem_seg",
-            ignore_label=255
+            ignore_label=ignore_label
         )
         metadata = MetadataCatalog.get(val_name)
     assert metadata is not None, "Metadata has not been set"
@@ -177,7 +179,8 @@ def register_region(train: Optional[str|Path]=None,
 def register_start(train: Optional[str|Path]=None, 
                    val: Optional[str|Path]=None, 
                    train_name: Optional[str]=None, 
-                   val_name: Optional[str]=None):
+                   val_name: Optional[str]=None,
+                   ignore_label: int=255):
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -188,7 +191,7 @@ def register_start(train: Optional[str|Path]=None,
             stuff_classes=["background", "start"],
             stuff_colors=[(0,0,0), (0,255,0)],
             evaluator_type="sem_seg",
-            ignore_label=255
+            ignore_label=ignore_label
         )
         metadata = MetadataCatalog.get(train_name)
     if val is not None and val != "":
@@ -200,7 +203,7 @@ def register_start(train: Optional[str|Path]=None,
             stuff_classes=["background", "start"],
             stuff_colors=[(0,0,0), (0,255,0)],
             evaluator_type="sem_seg",
-            ignore_label=255
+            ignore_label=ignore_label
         )
         metadata = MetadataCatalog.get(val_name)
     assert metadata is not None, "Metadata has not been set"
@@ -209,7 +212,8 @@ def register_start(train: Optional[str|Path]=None,
 def register_end(train: Optional[str|Path]=None, 
                  val: Optional[str|Path]=None, 
                  train_name: Optional[str]=None, 
-                 val_name: Optional[str]=None):
+                 val_name: Optional[str]=None,
+                 ignore_label: int=255):
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -220,7 +224,7 @@ def register_end(train: Optional[str|Path]=None,
             stuff_classes=["background", "end"],
             stuff_colors=[(0,0,0), (255,0,0)],
             evaluator_type="sem_seg",
-            ignore_label=255
+            ignore_label=ignore_label
         )
         metadata = MetadataCatalog.get(train_name)
     if val is not None and val != "":
@@ -232,7 +236,7 @@ def register_end(train: Optional[str|Path]=None,
             stuff_classes=["background", "end"],
             stuff_colors=[(0,0,0), (255,0,0)],
             evaluator_type="sem_seg",
-            ignore_label=255
+            ignore_label=ignore_label
         )
         metadata = MetadataCatalog.get(val_name)
     assert metadata is not None, "Metadata has not been set"
@@ -242,19 +246,20 @@ def register_dataset(train: Optional[str|Path]=None,
                      val: Optional[str|Path]=None, 
                      train_name: Optional[str]=None, 
                      val_name: Optional[str]=None,
-                     mode: Optional[str]=None):
+                     mode: Optional[str]=None,
+                     ignore_label: int=255):
     assert train is not None or val is not None, "Must set at least something when registering"
     assert train is None or train_name is not None, "If train is not None, then train_name has to be set"
     assert val is None or val_name is not None, "If val is not None, then val_name has to be set"
     
     if mode == "baseline":
-        return register_baseline(train, val, train_name, val_name)
+        return register_baseline(train, val, train_name, val_name, ignore_label=ignore_label)
     elif mode == "region":
-        return register_region(train, val, train_name, val_name)
+        return register_region(train, val, train_name, val_name, ignore_label=ignore_label)
     elif mode == "start":
-        return register_start(train, val, train_name, val_name)
+        return register_start(train, val, train_name, val_name, ignore_label=ignore_label)
     elif mode == "end":
-        return register_end(train, val, train_name, val_name)
+        return register_end(train, val, train_name, val_name, ignore_label=ignore_label)
     else:
         raise NotImplementedError(
             f"Only have \"baseline\", \"start\", \"end\" and \"region\", given {mode}")

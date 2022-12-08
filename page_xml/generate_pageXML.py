@@ -122,7 +122,7 @@ class GenPageXML(XMLRegions):
                     text_reg = page.add_element(
                         region_type, f"region_{_uuid}_{region_id}", region, region_coords
                     )
-        elif self.mode == 'baseline':
+        elif self.mode in ['baseline', 'start', 'end']:
             # Push the calculation to outside of the python code <- mask is used by minion
             mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
             # mask = np.logical_not(mask).astype(np.uint8)

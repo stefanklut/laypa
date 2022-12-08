@@ -142,7 +142,7 @@ class PageData:
                 e_type = self.get_region_type(node)
                 if e_type == None or e_type not in color_dic:
                     # ignore would be 0, no loss is 255
-                    e_color = 255
+                    e_color = 0
                     self.logger.warning(
                        'Element type "{}" undefined on color dic, set to default={} {}'.format(
                             e_type, e_color, self.filepath

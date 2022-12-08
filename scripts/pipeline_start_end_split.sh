@@ -134,7 +134,10 @@ fi
 
 # tmpdir=$(mktemp -d)
 input_dir=$(realpath $_arg_input)
-# tmp_dir=$(realpath $(mktemp -d))
+tmp_dir=$(realpath $(mktemp -d))
+baseline=$tmp_dir/baseline
+start=$tmp_dir/start
+end=$tmp_dir/end
 output_dir=$(realpath $_arg_output)
 
 # input_dir=/home/stefan/Documents/test
@@ -158,17 +161,45 @@ if [[ $GPU -gt -1 ]]; then
         echo "using GPU ${GPU}"
 fi
 
-docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir docker.laypa:latest \
+docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_dir:$tmp_dir docker.laypa:latest \
     python run.py \
     -c configs/segmentation/baseline/baseline_dataset_imagenet_freeze.yaml \
     -i $input_dir \
-    -o $output_dir \
+    -o $tmp_dir/baseline \
     -m baseline \
     --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/baseline_model_best_mIoU.pth
     # > /dev/null
 
 if [[ $? -ne 0 ]]; then
     echo "Baseline detection has errored, stopping program"
+    exit 1
+fi
+
+docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_dir:$tmp_dir docker.laypa:latest \
+    python run.py \
+    -c configs/segmentation/start/start_dataset_imagenet_freeze.yaml \
+    -i $input_dir \
+    -o $tmp_dir/start \
+    -m start \
+    --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/start_model_best_mIoU.pth
+    # > /dev/null
+
+if [[ $? -ne 0 ]]; then
+    echo "Start detection has errored, stopping program"
+    exit 1
+fi
+
+docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_dir:$tmp_dir docker.laypa:latest \
+    python run.py \
+    -c configs/segmentation/end/end_dataset_imagenet_freeze.yaml \
+    -i $input_dir \
+    -o $tmp_dir/end \
+    -m end \
+    --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/end_model_best_mIoU.pth
+    # > /dev/null
+
+if [[ $? -ne 0 ]]; then
+    echo "End detection has errored, stopping program"
     exit 1
 fi
 
@@ -186,14 +217,32 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-docker run --rm -v $output_dir:$output_dir docker.loghi-tooling /src/loghi-tooling/minions/target/appassembler/bin/MinionExtractBaselines \
-    -input_path_png $output_dir/page/ \
-    -input_path_page $output_dir/page/ \
-    -output_path_page $output_dir/page/
+# Just used for debugging right now
+docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $output_dir:$output_dir -v $tmp_dir:$tmp_dir docker.laypa:latest \
+    python utils/combine_start_end.py \
+    --baseline $tmp_dir/baseline/page/ \
+	--start $tmp_dir/start/page/ \
+	--end $tmp_dir/end/page/ \
+    --output $output_dir/page/
+    # > /dev/null
+
+if [[ $? -ne 0 ]]; then
+    echo "Combining images has errored, stopping program"
+    exit 1
+fi
+
+docker run --rm -v $output_dir:$output_dir -v $tmp_dir:$tmp_dir docker.loghi-tooling /src/loghi-tooling/minions/target/appassembler/bin/MinionExtractBaselinesStartEndNew \
+    -input_path_png $tmp_dir/baseline/page/ \
+	-input_path_png_start $tmp_dir/start/page/ \
+	-input_path_png_end $tmp_dir/end/page/ \
+    -input_path_pagexml $output_dir/page/ \
+    -output_path_pagexml $output_dir/page/
 
 if [[ $? -ne 0 ]]; then
     echo "Extract baselines has errored, stopping program"
     exit 1
 fi
+
+# rm -r $tmp_dir
 
 # ] <-- needed because of Argbash
