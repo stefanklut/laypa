@@ -2,15 +2,12 @@ import argparse
 from datasets.augmentations import ResizeShortestEdge
 from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
-from detectron2.data import MetadataCatalog, DatasetCatalog
+from detectron2.data import DatasetCatalog
 from detectron2.checkpoint import DetectionCheckpointer
-import detectron2.data.transforms as T
 import datasets.dataset as dataset
 import matplotlib.pyplot as plt
 import cv2
-import numpy as np
 from main import setup_cfg
-import torch.nn.functional as F
 import torch
 from natsort import os_sorted
 

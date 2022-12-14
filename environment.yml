@@ -13,7 +13,6 @@ dependencies:
   - numpy
   - opencv
   - pillow
-  - shapely
   - matplotlib
   - scipy
   - scikit-learn

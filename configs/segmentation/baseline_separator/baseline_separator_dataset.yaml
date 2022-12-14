@@ -1,0 +1,17 @@
+_BASE_: ../segmentation_base.yaml
+
+OUTPUT_DIR: ./output/baseline_separator
+
+MODEL:
+  MODE: baseline_separator
+
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 3
+  
+  WEIGHTS: 
+
+TRAIN:
+  WEIGHTS:
+
+TEST:
+  WEIGHTS: pretrained_models/baseline_separator_model_best_mIoU.pth

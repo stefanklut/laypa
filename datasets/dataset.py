@@ -242,6 +242,72 @@ def register_end(train: Optional[str|Path]=None,
     assert metadata is not None, "Metadata has not been set"
     return metadata
 
+def register_separator(train: Optional[str|Path]=None, 
+                 val: Optional[str|Path]=None, 
+                 train_name: Optional[str]=None, 
+                 val_name: Optional[str]=None,
+                 ignore_label: int=255):
+    metadata = None
+    if train is not None and train != "":
+        DatasetCatalog.register(
+            name=train_name,
+            func=lambda path=train: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get(train_name).set(
+            stuff_classes=["background", "separator"],
+            stuff_colors=[(0,0,0), (50,50,50)],
+            evaluator_type="sem_seg",
+            ignore_label=ignore_label
+        )
+        metadata = MetadataCatalog.get(train_name)
+    if val is not None and val != "":
+        DatasetCatalog.register(
+            name=val_name,
+            func=lambda path=val: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get(val_name).set(
+            stuff_classes=["background", "separator"],
+            stuff_colors=[(0,0,0), (50,50,50)],
+            evaluator_type="sem_seg",
+            ignore_label=ignore_label
+        )
+        metadata = MetadataCatalog.get(val_name)
+    assert metadata is not None, "Metadata has not been set"
+    return metadata
+
+def register_baseline_separator(train: Optional[str|Path]=None, 
+                 val: Optional[str|Path]=None, 
+                 train_name: Optional[str]=None, 
+                 val_name: Optional[str]=None,
+                 ignore_label: int=255):
+    metadata = None
+    if train is not None and train != "":
+        DatasetCatalog.register(
+            name=train_name,
+            func=lambda path=train: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get(train_name).set(
+            stuff_classes=["background", "baseline", "separator"],
+            stuff_colors=[(0,0,0), (255,255,255), (50,50,50)],
+            evaluator_type="sem_seg",
+            ignore_label=ignore_label
+        )
+        metadata = MetadataCatalog.get(train_name)
+    if val is not None and val != "":
+        DatasetCatalog.register(
+            name=val_name,
+            func=lambda path=val: dataset_dict_loader(path)
+        )
+        MetadataCatalog.get(val_name).set(
+            stuff_classes=["background", "baseline", "separator"],
+            stuff_colors=[(0,0,0), (255,255,255), (50,50,50)],
+            evaluator_type="sem_seg",
+            ignore_label=ignore_label
+        )
+        metadata = MetadataCatalog.get(val_name)
+    assert metadata is not None, "Metadata has not been set"
+    return metadata
+
 def register_dataset(train: Optional[str|Path]=None, 
                      val: Optional[str|Path]=None, 
                      train_name: Optional[str]=None, 
@@ -260,6 +326,10 @@ def register_dataset(train: Optional[str|Path]=None,
         return register_start(train, val, train_name, val_name, ignore_label=ignore_label)
     elif mode == "end":
         return register_end(train, val, train_name, val_name, ignore_label=ignore_label)
+    elif mode == "separator":
+        return register_separator(train, val, train_name, val_name, ignore_label=ignore_label)
+    elif mode == "baseline_separator":
+        return register_baseline_separator(train, val, train_name, val_name, ignore_label=ignore_label)
     else:
         raise NotImplementedError(
             f"Only have \"baseline\", \"start\", \"end\" and \"region\", given {mode}")

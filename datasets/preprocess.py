@@ -1,9 +1,6 @@
 from tqdm import tqdm
 import argparse
-import glob
 import os
-import pathlib
-import pickle
 import sys
 from pathlib import Path
 from typing import Optional
@@ -11,14 +8,10 @@ import cv2
 
 import imagesize
 
-import matplotlib
 import numpy as np
-from natsort import os_sorted
 from multiprocessing import Pool
-from typing import Sequence
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.xmlPAGE import PageData
 from page_xml.xml_to_image import XMLImage
 from utils.path_utils import image_path_to_xml_path, check_path_accessible
 

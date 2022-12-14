@@ -1,0 +1,15 @@
+_BASE_: baseline_separator_dataset.yaml
+
+NAME: baseline_freeze
+
+MODEL:
+  BACKBONE: 
+      FREEZE_AT: 2
+  RESNETS:
+    DEPTH: 50
+  WEIGHTS: "pretrained_models/baseline_model_best_mIoU.pth"
+
+SOLVER:
+  BASE_LR: 0.002
+  MAX_ITER: 100000
+  STEPS: (60000, 80000)

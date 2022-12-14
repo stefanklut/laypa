@@ -4,17 +4,10 @@ import os
 from pathlib import Path
 from typing import Optional
 from detectron2.engine import DefaultPredictor
-from detectron2.utils.visualizer import Visualizer
-from detectron2.data import MetadataCatalog, DatasetCatalog
 from detectron2.checkpoint import DetectionCheckpointer
-import detectron2.data.transforms as T
 from datasets.augmentations import ResizeShortestEdge
-import datasets.dataset as dataset
-import matplotlib.pyplot as plt
 import cv2
-import numpy as np
 from main import setup_cfg
-import torch.nn.functional as F
 import torch
 from tqdm import tqdm
 

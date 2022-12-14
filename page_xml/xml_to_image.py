@@ -67,6 +67,20 @@ class XMLImage(XMLRegions):
                 line_width=self.line_width
             )
             mask = end_mask
+        elif self.mode == "separator":
+            separator_mask = gt_data.build_separator_mask(
+                image_shape,
+                color=self.line_color,
+                line_width=self.line_width
+            )
+            mask = separator_mask
+        elif self.mode == "baseline_separator":
+            baseline_separator_mask = gt_data.build_baseline_separator_mask(
+                image_shape,
+                color=self.line_color,
+                line_width=self.line_width
+            )
+            mask = baseline_separator_mask
         else:
             raise NotImplementedError
 

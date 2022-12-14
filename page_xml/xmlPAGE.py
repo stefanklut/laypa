@@ -160,7 +160,8 @@ class PageData:
                     "File {} does not contains regions".format(self.filepath)
                     )
         return mask
-
+    
+    # TODO Maybe remove the color argument as it doesn't make much sense with the rest of the pipeline
     def build_baseline_mask(self, out_size, color, line_width):
         """
         Builds a "image" mask of Baselines on XML-PAGE
@@ -190,7 +191,7 @@ class PageData:
     
     def build_start_mask(self, out_size, color, line_width):
         """
-        Builds a "image" mask of Baselines on XML-PAGE
+        Builds a "image" mask of Starts on XML-PAGE
         """
         size = self.get_size()[::-1]
         out_size = np.asarray(out_size)
@@ -203,9 +204,11 @@ class PageData:
         for element in self.root.findall("".join([".//", self.base, "Baseline"])):
             # --- get element coords
             str_coords = element.attrib.get("points").split()
+            if len(str_coords) == 0:
+                continue
             coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
-            coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)[0]
-            cv2.circle(mask, coords, line_width, color, -1)
+            coords_start = (coords * np.flip(scale_factor, 0)).astype(np.int32)[0]
+            cv2.circle(mask, coords_start, line_width, color, -1)
         if not mask.any():
             self.logger.warning(
                     "File {} does not contains baselines".format(self.filepath)
@@ -214,7 +217,33 @@ class PageData:
     
     def build_end_mask(self, out_size, color, line_width):
         """
-        Builds a "image" mask of Baselines on XML-PAGE
+        Builds a "image" mask of Ends on XML-PAGE
+        """
+        size = self.get_size()[::-1]
+        out_size = np.asarray(out_size)
+        # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
+        # --- is better to keep mask as np.uint8 to save disk space, then change it
+        # --- to np.int @ dataloader only if NNLLoss is going to be used.
+        mask = np.zeros((out_size[0], out_size[1]), np.uint8)
+        # print(out_size)
+        scale_factor = out_size / size
+        for element in self.root.findall("".join([".//", self.base, "Baseline"])):
+            # --- get element coords
+            str_coords = element.attrib.get("points").split()
+            if len(str_coords) == 0:
+                continue
+            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
+            coords_end = (coords * np.flip(scale_factor, 0)).astype(np.int32)[-1]
+            cv2.circle(mask, coords_end, line_width, color, -1)
+        if not mask.any():
+            self.logger.warning(
+                    "File {} does not contains baselines".format(self.filepath)
+                    )
+        return mask
+    
+    def build_separator_mask(self, out_size, color, line_width):
+        """
+        Builds a "image" mask of Ends on XML-PAGE
         """
         size = self.get_size()[::-1]
         out_size = np.asarray(out_size)
@@ -228,8 +257,46 @@ class PageData:
             # --- get element coords
             str_coords = element.attrib.get("points").split()
             coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
-            coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)[-1]
-            cv2.circle(mask, coords, line_width, color, -1)
+            if len(str_coords) == 0:
+                continue
+            coords_start = (coords * np.flip(scale_factor, 0)).astype(np.int32)[0]
+            cv2.circle(mask, coords_start, line_width, color, -1)
+            coords_end = (coords * np.flip(scale_factor, 0)).astype(np.int32)[-1]
+            cv2.circle(mask, coords_end, line_width, color, -1)
+        if not mask.any():
+            self.logger.warning(
+                    "File {} does not contains baselines".format(self.filepath)
+                    )
+        return mask
+    
+    def build_baseline_separator_mask(self, out_size, color, line_width):
+        """
+        Builds a "image" mask of Ends on XML-PAGE
+        """
+        baseline_color = 1
+        separator_color = 2
+        
+        size = self.get_size()[::-1]
+        out_size = np.asarray(out_size)
+        # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
+        # --- is better to keep mask as np.uint8 to save disk space, then change it
+        # --- to np.int @ dataloader only if NNLLoss is going to be used.
+        mask = np.zeros((out_size[0], out_size[1]), np.uint8)
+        # print(out_size)
+        scale_factor = out_size / size
+        for element in self.root.findall("".join([".//", self.base, "Baseline"])):
+            # --- get element coords
+            str_coords = element.attrib.get("points").split()
+            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
+            if len(str_coords) == 0:
+                continue
+            
+            cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            
+            coords_start = (coords * np.flip(scale_factor, 0)).astype(np.int32)[0]
+            cv2.circle(mask, coords_start, line_width, separator_color, -1)
+            coords_end = (coords * np.flip(scale_factor, 0)).astype(np.int32)[-1]
+            cv2.circle(mask, coords_end, line_width, separator_color, -1)
         if not mask.any():
             self.logger.warning(
                     "File {} does not contains baselines".format(self.filepath)

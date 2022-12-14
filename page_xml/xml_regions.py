@@ -13,7 +13,7 @@ class XMLRegions:
                  merge_regions: Optional[list[str]]=None,
                  region_type: Optional[list[str]]=None) -> None:
         self.mode = mode
-        if self.mode in ["baseline", "start", "end"]:
+        if self.mode in ["baseline", "start", "end", "separator", "baseline_separator"]:
             assert line_width is not None
             assert line_color is not None
 
@@ -54,7 +54,7 @@ class XMLRegions:
         region_args.add_argument(
             "-m", "--mode",
             default="region",
-            choices=["baseline", "region", "start", "end", "both"], 
+            choices=["baseline", "region", "start", "end", "separator", "baseline_separator"], 
             type=str,
             help="Output mode"
         )
@@ -200,6 +200,10 @@ class XMLRegions:
             remaining_regions.extend(["start"])
         elif self.mode == "end":
             remaining_regions.extend(["end"])
+        elif self.mode == "separator":
+            remaining_regions.extend(["separator"])
+        elif self.mode == "baseline_separator":
+            remaining_regions.extend(["baseline","separator"])
         else:
             raise NotImplementedError
         
