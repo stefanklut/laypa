@@ -3,7 +3,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 import cv2
 
 import imagesize
@@ -21,14 +21,14 @@ def get_arguments() -> argparse.Namespace:
     
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input folder/file",
-                        required=True, type=str)
+                            nargs="+", action="extend", type=str)
     io_args.add_argument("-o", "--output", help="Output folder",
                         required=True, type=str)
     args = parser.parse_args()
     return args
 
 class Preprocess:
-    def __init__(self, input_path=None,
+    def __init__(self, input_paths=None,
                  output_dir=None,
                  resize=False,
                  resize_mode="choice",
@@ -39,9 +39,9 @@ class Preprocess:
                  overwrite=False
                  ) -> None:
 
-        self.input_path: Optional[Path] = None
-        if input_path is not None:
-            self.set_input_path(input_path)
+        self.input_paths: Optional[Sequence[Path]] = None
+        if input_paths is not None:
+            self.set_input_paths(input_paths)
 
         self.output_dir: Optional[Path] = None
         if output_dir is not None:
@@ -130,59 +130,99 @@ class Preprocess:
         )
         
         return parser
+    
+    @staticmethod
+    def clean_input_paths(input_paths: str | Path | Sequence[str|Path]):
+        if not input_paths:
+            raise ValueError("Must provide input path")
+        
+        if isinstance(input_paths, str):
+            output = [Path(input_paths)]
+        elif isinstance(input_paths, Path):
+            output = [input_paths]
+        elif isinstance(input_paths, Sequence):
+            output = []
+            for path in input_paths:
+                if isinstance(path, str):
+                    output.append(Path(path))
+                elif isinstance(path, Path):
+                    output.append(path)
+                else:
+                    raise NotImplementedError
+        
+        return output
 
-    def get_file_paths(self, input_path: str | Path):
-        if isinstance(input_path, str):
-            input_path = Path(input_path)
+    def get_file_paths(self, input_path: str | Path | Sequence[str|Path]):
+        input_paths = self.clean_input_paths(input_path)
+            
+        image_paths = []
         
-        if not input_path.exists():
-            raise FileNotFoundError(f"Input dir ({input}) is not found")
-        
-        if not os.access(path=input_path, mode=os.R_OK):
-            raise PermissionError(
-                f"No access to {input_path} for read operations")
-              
-        if input_path.is_dir():
-            image_paths = [image_path for image_path in input_path.glob("*") if image_path.suffix in self.image_formats]
-        elif input_path.is_file() and input_path.suffix == ".txt":
-            with input_path.open(mode="r") as f:
-                image_paths = [Path(line) for line in f.read().splitlines()]
-        else:
-            raise ValueError(f"Invalid file type: {input_path.suffix}")
+        for input_path in input_paths:
+            if not input_path.exists():
+                raise FileNotFoundError(f"Input dir/file ({input}) is not found")
+            
+            if not os.access(path=input_path, mode=os.R_OK):
+                raise PermissionError(
+                    f"No access to {input_path} for read operations")
+                
+            if input_path.is_dir():
+                sub_image_paths = [image_path for image_path in input_path.glob("*") if image_path.suffix in self.image_formats]
+                
+                if not self.disable_check:
+                    if len(sub_image_paths) == 0:
+                        raise FileNotFoundError(f"No image files found in the ")
+                    
+            elif input_path.is_file() and input_path.suffix == ".txt":
+                with input_path.open(mode="r") as f:
+                    sub_image_paths = [Path(line) for line in f.read().splitlines()]
+                    
+                if not self.disable_check:
+                    for path in sub_image_paths:
+                        if not path.is_file():
+                            raise FileNotFoundError(f"Missing file from the txt file: {input_path}")
+            else:
+                raise ValueError(f"Invalid file type: {input_path.suffix}")
+
+            image_paths.extend(sub_image_paths)
             
         xml_paths = [image_path_to_xml_path(image_path, self.disable_check) for image_path in image_paths]
         
         return image_paths, xml_paths
     
-    def set_input_path(self, input_path: str | Path) -> None:
-        if isinstance(input_path, str):
-            input_path = Path(input_path)
+    def set_input_paths(self, input_paths: str | Path | Sequence[str|Path]) -> None:
+        input_paths = self.clean_input_paths(input_paths)
+        
+        all_input_paths = []
 
-        if not input_path.exists():
-            raise FileNotFoundError(f"Input ({input_path}) is not found")
+        for input_path in input_paths:
+            if not input_path.exists():
+                raise FileNotFoundError(f"Input ({input_path}) is not found")
 
-        # Old check replace with get_file_paths
-        # if not input_path.is_dir():
-        #     raise NotADirectoryError(
-        #         f"Input path ({input_path}) is not a directory")
+            # Old check replace with get_file_paths
+            # if not input_path.is_dir():
+            #     raise NotADirectoryError(
+            #         f"Input path ({input_path}) is not a directory")
 
-        if not os.access(path=input_path, mode=os.R_OK):
-            raise PermissionError(
-                f"No access to {input_path} for read operations")
+            if not os.access(path=input_path, mode=os.R_OK):
+                raise PermissionError(
+                    f"No access to {input_path} for read operations")
 
-        # Old check replace with get_file_paths
-        # page_dir = input_path.joinpath("page")
-        # if not page_dir.exists():
-        #     raise FileNotFoundError(f"Sub page dir ({page_dir}) is not found")
+            # Old check replace with get_file_paths
+            # page_dir = input_path.joinpath("page")
+            # if not page_dir.exists():
+            #     raise FileNotFoundError(f"Sub page dir ({page_dir}) is not found")
 
-        # if not os.access(path=page_dir, mode=os.R_OK):
-        #     raise PermissionError(
-        #         f"No access to {page_dir} for read operations")
+            # if not os.access(path=page_dir, mode=os.R_OK):
+            #     raise PermissionError(
+            #         f"No access to {page_dir} for read operations")
+            
+            input_path = input_path.resolve()
+            all_input_paths.append(input_path)
 
-        self.input_path = input_path.resolve()
+        self.input_paths = all_input_paths
 
-    def get_input_path(self) -> Optional[Path]:
-        return self.input_path
+    def get_input_path(self) -> Optional[Sequence[Path]]:
+        return self.input_paths
 
     def set_output_dir(self, output_dir: str | Path) -> None:
         if isinstance(output_dir, str):
@@ -330,20 +370,20 @@ class Preprocess:
         return out_image_path, out_mask_path, image_shape
 
     def run(self) -> None:
-        if self.input_path is None:
+        if self.input_paths is None:
             raise ValueError("Cannot run when the input path is not set")
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
 
-        image_paths, xml_paths = self.get_file_paths(self.input_path)
+        image_paths, xml_paths = self.get_file_paths(self.input_paths)
 
         if len(image_paths) == 0:
             raise ValueError(
-                f"No images found when checking input ({self.input_path})")
+                f"No images found when checking input ({self.input_paths})")
             
         if len(xml_paths) == 0:
             raise ValueError(
-                f"No pagexml found when checking input  ({self.input_path})")
+                f"No pagexml found when checking input  ({self.input_paths})")
 
         if not self.disable_check:
             self.check_paths_exists(image_paths)
@@ -390,7 +430,7 @@ def main(args) -> None:
         region_type=args.region_type
     )
     process = Preprocess(
-        input_path=args.input,
+        input_paths=args.input,
         output_dir=args.output,
         resize=args.resize,
         resize_mode=args.resize_mode,

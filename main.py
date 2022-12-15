@@ -3,7 +3,7 @@ from datetime import datetime
 import os
 from pathlib import Path
 import sys
-from typing import List, Optional
+from typing import List, Optional, Sequence
 import torch
 
 from datasets import dataset
@@ -55,9 +55,9 @@ def get_arguments() -> argparse.Namespace:
 
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-t", "--train", help="Train input folder/file",
-                            required=True, type=str)
+                            nargs="+", action="extend", type=str)
     io_args.add_argument("-v", "--val", help="Validation input folder/file",
-                            required=True, type=str)
+                            nargs="+", action="extend", type=str)
     
     tmp_args = parser.add_argument_group("tmp files")
     tmp_args.add_argument(
@@ -152,25 +152,21 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     return cfg
 
 def preprocess_datasets(cfg: CfgNode, 
-                        train: str | Path, 
-                        val: str | Path, 
+                        train: str | Path | Sequence[str|Path], 
+                        val: str | Path | Sequence[str|Path], 
                         output_dir: str | Path):
     
-    if isinstance(train, str):
-        train = Path(train)
-    
-    if isinstance(val, str):
-        val = Path(val)
+    train = Preprocess.clean_input_paths(train)
+    val = Preprocess.clean_input_paths(val)
         
     if isinstance(output_dir, str):
         output_dir = Path(output_dir)
-    
         
-    if not train.exists():
-        raise FileNotFoundError(f"Train File/Folder not found: {train} does not exist")
+    if not all(missing := path.exists() for path in train):
+        raise FileNotFoundError(f"Train File/Folder not found: {missing} does not exist")
     
-    if not train.exists():
-        raise FileNotFoundError(f"Validation File/Folder not found: {val} does not exist")
+    if not all(missing := path.exists() for path in val):
+        raise FileNotFoundError(f"Validation File/Folder not found: {missing} does not exist")
     
     if not output_dir.exists():
         raise FileNotFoundError(f"Output Folder not found: {output_dir} does not exist")
@@ -185,7 +181,7 @@ def preprocess_datasets(cfg: CfgNode,
     )
     
     process = Preprocess(
-        input_path=None,
+        input_paths=None,
         output_dir=None,
         resize=cfg.PREPROCESS.RESIZE.USE,
         resize_mode=cfg.PREPROCESS.RESIZE.RESIZE_MODE,
@@ -198,13 +194,13 @@ def preprocess_datasets(cfg: CfgNode,
     
     # Train
     train_output_dir = output_dir.joinpath('train')
-    process.set_input_path(train)
+    process.set_input_paths(train)
     process.set_output_dir(train_output_dir)
     process.run()
     
     # Validation
     val_output_dir = output_dir.joinpath('val')
-    process.set_input_path(val)
+    process.set_input_paths(val)
     process.set_output_dir(val_output_dir)
     process.run()
     
