@@ -16,6 +16,20 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 def main(args):
+    """
+    Quick program to combine start, end, and baseline predictions. These predictions are saved in the RGB channels of a color image.
+
+    Args:
+        args (argparse.Namespace): arguments for where to find the images, and the output dir
+
+    Raises:
+        FileNotFoundError: dir for baselines is missing
+        FileNotFoundError: dir for start is missing
+        FileNotFoundError: dir for end is missing
+        FileNotFoundError: no images found in the baseline dir
+        ValueError: number of start images does not match the baseline images
+        ValueError: number of end images does not match the baseline images
+    """
     baseline_path = Path(args.baseline)
     start_path = Path(args.start)
     end_path = Path(args.end)
@@ -42,9 +56,9 @@ def main(args):
     end_image_paths = [end_image_path for path in baseline_image_paths if (end_image_path := end_path.joinpath(path.name)).is_file()]
     
     if len(start_image_paths) != len(baseline_image_paths):
-        raise FileNotFoundError(f"Number of images in {start_path} does not match number of images in {baseline_path}")
+        raise ValueError(f"Number of images in {start_path} does not match number of images in {baseline_path}")
     if len(end_image_paths) != len(baseline_image_paths):
-        raise FileNotFoundError(f"Number of images in {start_path} does not match number of images in {baseline_path}")
+        raise ValueError(f"Number of images in {start_path} does not match number of images in {baseline_path}")
     
     print("Combining Images")
     # TODO Multithread

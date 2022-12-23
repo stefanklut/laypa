@@ -22,17 +22,44 @@ def get_arguments() -> argparse.Namespace:
     args = parser.parse_args()
     return args
 
-
+# IDEA have fixed ordering of the classes, maybe look at what order is best
 class XMLImage(XMLRegions):
+    """
+    Class for turning a pageXML into an image with classes
+    """
     def __init__(self, mode: str, 
                  line_width: Optional[int] = None, 
                  line_color: Optional[int] = None, 
                  regions: Optional[list[str]] = None, 
                  merge_regions: Optional[list[str]] = None, 
                  region_type: Optional[list[str]] = None) -> None:
+        """
+        Class for turning a pageXML into an image with classes
+        
+        Args:
+            mode (str): mode of the region type
+            line_width (Optional[int], optional): width of line. Defaults to None.
+            line_color (Optional[int], optional): value of line (when only one line type exists). Defaults to None.
+            regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
+            merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
+            region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
+        """
         super().__init__(mode, line_width, line_color, regions, merge_regions, region_type)
 
     def run(self, xml_path: Path, image_shape=None) -> np.ndarray:
+        """
+        Turn a single pageXML into a mask of labels
+
+        Args:
+            xml_path (Path): path to pageXML
+            image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
+
+        Raises:
+            NotImplementedError: mode is not known
+
+        Returns:
+            np.ndarray: mask of labels
+        """
         gt_data = PageData(xml_path)
         gt_data.parse()
 

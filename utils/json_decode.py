@@ -21,6 +21,9 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 def main(args):
+    """
+    Decode the results as saved in the json coco format. Not really used, mainly for seeing what the format is for
+    """
     json_path = Path(args.input)
     assert json_path.suffix == ".json", json_path.suffix
     check_path_accessible(json_path)

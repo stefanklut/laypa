@@ -29,10 +29,21 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 class IOUEvaluator:
+    """
+    Class for saving IOU results
+    """
     def __init__(self, 
                  metadata: Optional[Metadata] = None, 
                  ignore_label: Optional[int] = None,
                  class_names: Optional[list[str]] = None) -> None:
+        """
+        Class for saving IOU results
+
+        Args:
+            metadata (Optional[Metadata], optional): if available get class info from metadata. Defaults to None.
+            ignore_label (Optional[int], optional): ignored label. Defaults to None.
+            class_names (Optional[list[str]], optional): names for each class in the prediction. Defaults to None.
+        """
         
         self._class_names: Optional[list[str]] = None
         self._num_classes: Optional[int] = None
@@ -59,6 +70,12 @@ class IOUEvaluator:
         self.reset()
 
     def reset(self):
+        """
+        Reset the internal confusion matrices
+
+        Raises:
+            ValueError: number of classes has not been set
+        """
         if self._num_classes is None:
             raise ValueError
         
@@ -69,10 +86,22 @@ class IOUEvaluator:
         )
 
     def process(self, inputs: list[np.ndarray], outputs: list[np.ndarray]) -> None:
+        """
+        Update the internal confusion matrix
+
+        Args:
+            inputs (list[np.ndarray]): array of ground truth
+            outputs (list[np.ndarray]): array of predictions
+
+        Raises:
+            ValueError: confusion matrix has not been initialized
+            ValueError: boundary confusion matrix has not been initialized
+            ValueError: number of classes has not been set
+        """
         if self._conf_matrix is None:
             raise ValueError("Must set/reset the confusion matrix")
         if self._b_conf_matrix is None:
-            raise ValueError("Must set/reset the boundry confusion matrix")
+            raise ValueError("Must set/reset the boundary confusion matrix")
         if self._num_classes is None:
             raise ValueError("Must set number of classes")
         
@@ -101,11 +130,23 @@ class IOUEvaluator:
                 self._b_conf_matrix += _b_conf_matrix
                 
     def process_output(self, inputs: list[np.ndarray], outputs: list[np.ndarray]):
+        """
+        Output a confusion matrix for the processing externally
+
+        Args:
+            inputs (list[np.ndarray]): array of ground truth
+            outputs (list[np.ndarray]): array of predictions
+
+        Raises:
+            ValueError: confusion matrix has not been initialized
+            ValueError: boundary confusion matrix has not been initialized
+            ValueError: number of classes has not been set
+        """
         # Does not update the internal confusion matrix
         if self._conf_matrix is None:
             raise ValueError("Must set/reset the confusion matrix")
         if self._b_conf_matrix is None:
-            raise ValueError("Must set/reset the boundry confusion matrix")
+            raise ValueError("Must set/reset the boundary confusion matrix")
         if self._num_classes is None:
             raise ValueError("Must set number of classes")
         
@@ -216,11 +257,32 @@ class IOUEvaluator:
         return boundary
 
 class EvalWrapper:
+    """
+    Wrapper to run the IOUEvaluator with pageXML, requires conversion to mask images first
+    """
     def __init__(self, xml_to_image: XMLImage, evaluator: IOUEvaluator) -> None:
+        """
+        Wrapper to run the IOUEvaluator with pageXML, requires conversion to mask images first
+
+        Args:
+            xml_to_image (XMLImage): converter from pageXML to mask image
+            evaluator (IOUEvaluator): evaluator for the XML
+        """
         self.xml_to_image: XMLImage = xml_to_image
         self.evaluator: IOUEvaluator = evaluator
     
     def compare_xml(self, info: tuple[Path, Path]):
+        """
+        Conversion of two pageXMLs to a mask, and then running these masks through the IOUEvaluator
+
+        Args:
+            info (tuple[Path, Path]): (tuple containing)
+                Path: ground truth pageXML path
+                Path: predicted pageXML path
+
+        Raises:
+            ValueError: the names of the pageXMLs do not match
+        """
         xml_i_1, xml_i_2 = info
         
         if xml_i_1.stem != xml_i_2.stem:
@@ -232,6 +294,22 @@ class EvalWrapper:
         self.evaluator.process([image_i_1], [image_i_2])
     
     def compare_xml_output(self, info: tuple[Path, Path]) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Conversion of two pageXMLs to a mask, and then running these masks through the IOUEvaluator
+        With the return option multiprocessing is possible, no internal values are overwritten
+
+        Args:
+            info (tuple[Path, Path]): (tuple containing)
+                Path: ground truth pageXML path
+                Path: predicted pageXML path
+
+        Raises:
+            ValueError: the names of the pageXMLs do not match
+            
+        Returns:
+            np.ndarray: confusion matrix
+            np.ndarray: boundary confusion matrix
+        """
         xml_i_1, xml_i_2 = info
         
         if xml_i_1.stem != xml_i_2.stem:
@@ -245,6 +323,17 @@ class EvalWrapper:
         return confusion_matrix
     
     def compare_images(self, info: tuple[Path, Path]):
+        """
+        Load two images to a mask, and then running these masks through the IOUEvaluator
+
+        Args:
+            info (tuple[Path, Path]): (tuple containing)
+                Path: ground truth image path
+                Path: predicted image path
+
+        Raises:
+            ValueError: the names of the pageXMLs do not match
+        """
         image_path_i_1, image_path_i_2 = info
         
         if image_path_i_1.stem != image_path_i_2.stem:
@@ -256,6 +345,22 @@ class EvalWrapper:
         self.evaluator.process([image_i_1], [image_i_2])
     
     def compare_images_output(self, info: tuple[Path, Path]) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Load two images to a mask, and then running these masks through the IOUEvaluator
+        With the return option multiprocessing is possible, no internal values are overwritten
+
+        Args:
+            info (tuple[Path, Path]): (tuple containing)
+                Path: ground truth image path
+                Path: predicted image path
+
+        Raises:
+            ValueError: the names of the images do not match
+            
+        Returns:
+            np.ndarray: confusion matrix
+            np.ndarray: boundary confusion matrix
+        """
         image_path_i_1, image_path_i_2 = info
         
         if image_path_i_1.stem != image_path_i_2.stem:
@@ -269,6 +374,16 @@ class EvalWrapper:
         return confusion_matrix
     
     def run_xml(self, xml_list1: list[Path], xml_list2: list[Path]):
+        """
+        Run the xml IOU evaluation on list of pageXML paths
+
+        Args:
+            xml_list1 (list[Path]): ground truth pageXML paths
+            xml_list2 (list[Path]): predicted pageXML paths
+
+        Raises:
+            ValueError: number of xmls in both list is not equal
+        """
         if len(xml_list1) != len(xml_list2):
             raise ValueError("Number of xml files does not match")
         
@@ -283,10 +398,21 @@ class EvalWrapper:
                 self.compare_xml_output, list(zip(xml_list1, xml_list2))), total=len(xml_list1)))
         
         results = np.asarray(results)
+        #HACK to get the confusion matrix back into the evaluator
         self.evaluator._conf_matrix += np.sum(results[:, 0], axis=0)
         self.evaluator._b_conf_matrix += np.sum(results[:, 1], axis=0)
         
     def run_images(self, image_path_list1: list[Path], image_path_list2: list[Path]):
+        """
+        Run the IOU evaluation on list of image paths
+
+        Args:
+            image_path_list1 (list[Path]): ground truth image paths
+            image_path_list2 (list[Path]): predicted image paths
+
+        Raises:
+            ValueError: number of images in both list is not equal
+        """
         if len(image_path_list1) != len(image_path_list2):
             raise ValueError("Number of image paths does not match")
         # #Single thread
@@ -300,13 +426,27 @@ class EvalWrapper:
                 self.compare_images_output, list(zip(image_path_list1, image_path_list2))), total=len(image_path_list1)))
         
         results = np.asarray(results)
+        #HACK to get the confusion matrix back into the evaluator
         self.evaluator._conf_matrix += np.sum(results[:, 0], axis=0)
         self.evaluator._b_conf_matrix += np.sum(results[:, 1], axis=0)
     
     def evaluate(self):
+        """
+        Run the full evaluation of the confusion matrix
+
+        Returns:
+            OrderDict: values are saved in "sem_seg"
+        """
         return self.evaluator.evaluate()
     
 def pretty_print(input_dict: dict[str, float], n_decimals=3):
+    """
+    Print the dict with better readability
+
+    Args:
+        input_dict (dict[str, float]): dictionary of 
+        n_decimals (int, optional): rounding of the float values. Defaults to 3.
+    """
     len_names = max(len(key) for key in input_dict.keys())+1
     len_values = max(len(f"{value:.{n_decimals}f}") for value in input_dict.values())+1
     

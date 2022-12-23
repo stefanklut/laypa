@@ -29,7 +29,22 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 class Viewer:
+    """
+    Simple viewer to convert xml files to images (grayscale, color or overlay)
+    """
     def __init__(self, xml_to_image: XMLImage, output_dir: str|Path, mode='gray') -> None:
+        """
+        Simple viewer to convert xml files to images (grayscale, color or overlay)
+
+        Args:
+            xml_to_image (XMLImage): converter from xml to a label mask
+            output_dir (str | Path): path to output dir
+            mode (str, optional): output mode: gray, color, or overlay. Defaults to 'gray'.
+
+        Raises:
+            ValueError: Colors do not match the number of region types
+            NotImplementedError: Different mode specified than allowed
+        """
         
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
@@ -61,11 +76,23 @@ class Viewer:
             raise NotImplementedError
         
     def save_gray_image(self, xml_path_i: Path):
+        """
+        Save the pageXML as a grayscale image
+
+        Args:
+            xml_path_i (Path): single pageXML path
+        """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
         gray_image = self.xml_to_image.run(xml_path_i)
         cv2.imwrite(str(output_image_path), gray_image)
         
     def save_color_image(self, xml_path_i: Path):
+        """
+        Save the pageXML as a color image
+
+        Args:
+            xml_path_i (Path): single pageXML path
+        """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
         gray_image = self.xml_to_image.run(xml_path_i)
         
@@ -79,12 +106,14 @@ class Viewer:
             color_image[gray_image == i] = np.asarray(color).reshape((1,1,3))
             
         cv2.imwrite(str(output_image_path), color_image[..., ::-1])
-    
-    @staticmethod
-    def check_image_exists(xml_paths: list[Path]):
-        _ = [xml_path_to_image_path(xml_path) for xml_path in xml_paths]
                 
     def save_overlay_image(self, xml_path_i: Path):
+        """
+        Save the pageXML as a overlay image. Requires the image file to exist folder up
+
+        Args:
+            xml_path_i (Path): single pageXML path
+        """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
         gray_image = self.xml_to_image.run(xml_path_i)
         
@@ -100,10 +129,21 @@ class Viewer:
         overlay_image = vis_im.get_image()
         cv2.imwrite(str(output_image_path), overlay_image[..., ::-1])
         
+    @staticmethod
+    def check_image_exists(xml_paths: list[Path]):
+        all(xml_path_to_image_path(xml_path) for xml_path in xml_paths)
+        
     def run(self, xml_list: list[str] | list[Path]) -> None:
+        """
+        Run the conversion of pageXML to images on all pageXML paths specified
+
+        Args:
+            xml_list (list[str] | list[Path]): multiple pageXML paths
+        """
         cleaned_xml_list: list[Path] = [Path(path) if isinstance(path, str) else path for path in xml_list]
         cleaned_xml_list = [path.resolve() for path in cleaned_xml_list]
         
+        # with overlay all images must exist as well
         if self.mode == 'overlay':
             self.check_image_exists(cleaned_xml_list)
             

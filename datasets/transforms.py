@@ -17,10 +17,19 @@ from scipy.ndimage import gaussian_filter
 
 class ResizeTransform(T.Transform):
     """
-    Resize Image Using cv2
+    Resize image Using cv2
     """
 
     def __init__(self, height: int, width: int, new_height: int, new_width: int) -> None:
+        """
+        Resize image Using cv2
+
+        Args:
+            height (int): initial height
+            width (int): initial width
+            new_height (int): height after resizing 
+            new_width (int): width after resizing
+        """
         super().__init__()
         self.height = height
         self.width = width
@@ -63,7 +72,7 @@ class ResizeTransform(T.Transform):
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
         """
-        Resize segmentation (using nearsest neighbor interpolation)
+        Resize segmentation (using nearest neighbor interpolation)
 
         Args:
             segmentation (np.ndarray): labels of shape HxW
@@ -92,6 +101,12 @@ class HFlipTransform(T.Transform):
     """
 
     def __init__(self, width: int):
+        """
+        Perform horizontal flip
+
+        Args:
+            width (int): image width
+        """
         super().__init__()
         self.width = width
 
@@ -141,10 +156,16 @@ class HFlipTransform(T.Transform):
 
 class VFlipTransform(T.Transform):
     """
-    Perform vertical flip.
+    Perform vertical flip
     """
 
     def __init__(self, height: int):
+        """
+        Perform vertical flip
+
+        Args:
+            height (int): image height
+        """
         super().__init__()
         self.height = height
 
@@ -199,6 +220,8 @@ class WarpFieldTransform(T.Transform):
 
     def __init__(self, warpfield: np.ndarray) -> None:
         """
+        Apply a warp field (optical flow) to an image
+        
         Args:
             warpfield (np.ndarray): flow of pixels in the image
         """
@@ -254,9 +277,22 @@ class WarpFieldTransform(T.Transform):
         return sampled_img
 
     def apply_coords(self, coords: np.ndarray):
+        """
+        Coords moving might be possible but might move some out of bounds
+        """
+        # TODO This may be possible, and seems necessary for the instance predictions
         raise NotImplementedError
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        """
+        Warp a segmentation with a specified warpfield, using spline interpolation with order 0
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: warped segmentation
+        """
         indices = self.generate_grid(segmentation, self.warpfield)
         #cval=0 means background cval=255 means ignored
         sampled_segmentation = map_coordinates(
@@ -265,6 +301,9 @@ class WarpFieldTransform(T.Transform):
         return sampled_segmentation
 
     def inverse(self) -> T.Transform:
+        """
+        No inverse for a warp is possible since information is lost
+        """
         raise NotImplementedError
 
 
@@ -275,6 +314,8 @@ class AffineTransform(T.Transform):
 
     def __init__(self, matrix: np.ndarray) -> None:
         """
+        Apply an affine transformation to an image
+        
         Args:
             matrix (np.ndarray): affine matrix applied to the pixels in image
         """
@@ -282,6 +323,18 @@ class AffineTransform(T.Transform):
         self.matrix = matrix
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply an affine transformation to the image
+
+        Args:
+            img (np.ndarray): image array HxWxC
+
+        Raises:
+            NotImplementedError: wrong dimensions of image
+
+        Returns:
+            np.ndarray: transformed image
+        """
         img = img.astype(np.float32)
         if img.ndim == 2:
             return affine_transform(img, self.matrix, order=1, mode='constant', cval=0)
@@ -296,23 +349,51 @@ class AffineTransform(T.Transform):
                 "No support for multi dimensions (NxHxWxC) right now")
 
     def apply_coords(self, coords: np.ndarray):
+        """
+        Apply affine transformation to coordinates
+
+        Args:
+            coords (np.ndarray): floating point array of shape Nx2. Each row is
+                (x, y).
+
+        Returns:
+            np.ndarray: transformed coordinates
+        """
         coords = coords.astype(np.float32)
         return cv2.transform(coords[:,None,:], self.matrix)[:,0,:2]
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        """
+        Apply an affine transformation to the segmentation
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: transformed segmentation
+        """
         #cval=0 means background cval=255 means ignored
         return affine_transform(segmentation, self.matrix, order=0, mode='constant', cval=0)
 
     def inverse(self) -> T.Transform:
+        """
+        Inverse not always possible, since information may be lost
+        """
         raise NotImplementedError
 
 
 class GrayscaleTransform(T.Transform):
     """
-    Convert an image to grascale
+    Convert an image to grayscale
     """
 
     def __init__(self, image_format: str = "RGB") -> None:
+        """
+        Convert an image to grayscale
+
+        Args:
+            image_format (str, optional): type of image format. Defaults to "RGB".
+        """
         super().__init__()
 
         rgb_weights = np.asarray([0.299, 0.587, 0.114]).astype(np.float32)
@@ -323,18 +404,50 @@ class GrayscaleTransform(T.Transform):
             self.weights = rgb_weights[::-1]
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Turn to grayscale by applying weights to the color image and than tile to get 3 channels again
+
+        Args:
+            img (np.ndarray): image array HxWxC
+
+        Returns:
+            np.ndarray: grayscale version of image
+        """
+        # REVIEW wasn't there a cv2 function I could use
         img = img.astype(np.float32)
         grayscale = np.tile(img.dot(self.weights),
                             (3, 1, 1)).transpose((1, 2, 0))
         return grayscale
 
     def apply_coords(self, coords: np.ndarray):
+        """
+        Color transform does not affect coords
+
+        Args:
+            coords (np.ndarray): floating point array of shape Nx2. Each row is
+                (x, y).
+
+        Returns:
+            np.ndarray: original coords
+        """
         return coords
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        """
+        Color transform does not affect segmentation
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: original segmentation
+        """
         return segmentation
 
     def inverse(self) -> T.Transform:
+        """
+        No inverse possible. Grayscale cannot return to color
+        """
         raise NotImplementedError
 
 
@@ -356,6 +469,15 @@ class GaussianFilterTransform(T.Transform):
         self.iterations = iterations
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply gaussian filters to the original image
+
+        Args:
+            img (np.ndarray): image array HxWxC
+
+        Returns:
+            np.ndarray: blurred image
+        """
         img = img.astype(np.float32)
         transformed_img = img.copy()
         for _ in range(self.iterations):
@@ -364,12 +486,34 @@ class GaussianFilterTransform(T.Transform):
         return transformed_img
     
     def apply_coords(self, coords: np.ndarray):
+        """
+        Blurring should not affect the coordinates
+
+        Args:
+            coords (np.ndarray): loating point array of shape Nx2. Each row is
+                (x, y).
+
+        Returns:
+            np.ndarray: original coords
+        """
         return coords
     
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        """
+        Blurring should not affect the segmentation
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: original segmentation
+        """
         return segmentation
     
     def inverse(self) -> T.Transform:
+        """
+        No inverse of blurring is possible since information is lost
+        """
         raise NotImplementedError
 
 class BlendTransform(T.Transform):

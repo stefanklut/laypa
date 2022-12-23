@@ -94,6 +94,18 @@ def get_arguments() -> argparse.Namespace:
 
 
 def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
+    """
+    Create the config used for training and evaluation. 
+    Loads from default configs and merges with specific config file specified in the command line arguments
+
+    Args:
+        args (argparse.Namespace): arguments used to load a config file, also used for overwriting values directly (--opts)
+        cfg (Optional[CfgNode], optional): possible overwrite of default config. Defaults to None.
+        save_config (bool, optional): flag whether or not to save the config (should be True during training). Defaults to True.
+
+    Returns:
+        CfgNode: config
+    """
     if cfg is None:
         cfg = _C_default
 
@@ -155,6 +167,20 @@ def preprocess_datasets(cfg: CfgNode,
                         train: str | Path | Sequence[str|Path], 
                         val: str | Path | Sequence[str|Path], 
                         output_dir: str | Path):
+    """
+    Preprocess the dataset(s). Converts ground truth pageXML to label masks for training
+
+    Args:
+        cfg (CfgNode): config
+        train (str | Path | Sequence[str | Path]): path to dir/txt(s) containing the training images
+        val (str | Path | Sequence[str | Path]): path to dir/txt(s) containing the validation images
+        output_dir (str | Path): path to output dir, where the processed data will be saved
+
+    Raises:
+        FileNotFoundError: a training dir/txt does not exist
+        FileNotFoundError: a validation dir/txt does not exist
+        FileNotFoundError: the output dir does not exist
+    """
     
     train = Preprocess.clean_input_paths(train)
     val = Preprocess.clean_input_paths(val)
@@ -211,7 +237,9 @@ def preprocess_datasets(cfg: CfgNode,
                              mode=cfg.MODEL.MODE)
 
 class Trainer(DefaultTrainer):
-    
+    """
+    Trainer class
+    """
     def __init__(self, cfg):
         super().__init__(cfg)
         
@@ -297,9 +325,18 @@ class Trainer(DefaultTrainer):
         return build_detection_test_loader(cfg=cfg, mapper=mapper, dataset_name=dataset_name)
 
 def setup_training(args):
+    """
+    Setup and start training
+
+    Args:
+        args (argparse.Namespace): arguments used to load a config file, also used for overwriting values directly (--opts)
+
+    Returns:
+        OrderedDict|None: results, if evaluation is enabled. Otherwise None.
+    """
     cfg = setup_cfg(args)
 
-    
+    # Temp dir for preprocessing in case no temporary dir was specified
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
         
         preprocess_datasets(cfg, args.train, args.val, tmp_dir)

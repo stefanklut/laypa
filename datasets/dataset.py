@@ -24,6 +24,19 @@ def get_arguments() -> argparse.Namespace:
 
 
 def create_data(input_data: tuple[Path, Path, np.ndarray]) -> dict:
+    """_summary_
+
+    Args:
+        input_data (tuple[Path, Path, np.ndarray]): input consisting of the image path, the labels mask path, and the shape of the image (use for grouping for example)
+
+    Raises:
+        FileNotFoundError: image path is missing
+        FileNotFoundError: mask path is missing
+        ValueError: the image and mask path have a different stem
+
+    Returns:
+        dict: data used for detectron training
+    """
     image_path, mask_path, output_size = input_data
 
     # Data existence check
@@ -65,6 +78,23 @@ def create_data(input_data: tuple[Path, Path, np.ndarray]) -> dict:
 
 
 def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
+    """_summary_
+
+    Args:
+        dataset_dir (str | Path): dir containing three files,
+            image_list.txt: containing the locations of the images, 
+            mask_list.txt: containing the locations of the mask, 
+            output_sizes.txt: containing the image shapes
+
+    Raises:
+        FileNotFoundError: image_list.txt does not exist
+        FileNotFoundError: mask_list.txt does not exist
+        FileNotFoundError: output_sizes.txt
+        ValueError: length of the three list does not match
+
+    Returns:
+        list[dict]: list of dicts used to feed the dataloader
+    """
     if isinstance(dataset_dir, str):
         dataset_dir = Path(dataset_dir)
 
@@ -95,7 +125,7 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
     # Data formatting check
     if not (len(image_paths) == len(mask_paths) == len(output_sizes)):
         raise ValueError(
-            "expecting the images, mask and output_sizes to be the same length")
+            f"expecting the images, mask and output_sizes to be the same length: {len(image_paths)}, {len(mask_paths)}, {len(output_sizes)}")
 
     # Single Thread
     # input_dicts = []
@@ -109,12 +139,15 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
 
     return input_dicts
 
-# IDEA register dataset for inference aswell
+# IDEA register dataset for inference as well
 def register_baseline(train: Optional[str|Path]=None, 
                       val: Optional[str|Path]=None, 
                       train_name: Optional[str]=None, 
                       val_name: Optional[str]=None,
                       ignore_label: int=255):
+    """
+    Register the baseline type dataset. Should be called by register_dataset function
+    """
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -148,6 +181,9 @@ def register_region(train: Optional[str|Path]=None,
                     train_name: Optional[str]=None, 
                     val_name: Optional[str]=None,
                     ignore_label: int=255):
+    """
+    Register the region type dataset. Should be called by register_dataset function
+    """
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -181,6 +217,9 @@ def register_start(train: Optional[str|Path]=None,
                    train_name: Optional[str]=None, 
                    val_name: Optional[str]=None,
                    ignore_label: int=255):
+    """
+    Register the start type dataset. Should be called by register_dataset function
+    """
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -214,6 +253,9 @@ def register_end(train: Optional[str|Path]=None,
                  train_name: Optional[str]=None, 
                  val_name: Optional[str]=None,
                  ignore_label: int=255):
+    """
+    Register the end type dataset. Should be called by register_dataset function
+    """
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -247,6 +289,9 @@ def register_separator(train: Optional[str|Path]=None,
                  train_name: Optional[str]=None, 
                  val_name: Optional[str]=None,
                  ignore_label: int=255):
+    """
+    Register the separator type dataset. Should be called by register_dataset function
+    """
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -280,6 +325,9 @@ def register_baseline_separator(train: Optional[str|Path]=None,
                  train_name: Optional[str]=None, 
                  val_name: Optional[str]=None,
                  ignore_label: int=255):
+    """
+    Register the baseline separator type dataset. Should be called by register_dataset function
+    """
     metadata = None
     if train is not None and train != "":
         DatasetCatalog.register(
@@ -314,6 +362,23 @@ def register_dataset(train: Optional[str|Path]=None,
                      val_name: Optional[str]=None,
                      mode: Optional[str]=None,
                      ignore_label: int=255):
+    """
+    Register a dataset to the detectron dataset catalog
+
+    Args:
+        train (Optional[str | Path], optional): dir containing the txt files for the training. Defaults to None.
+        val (Optional[str | Path], optional): dir containing the txt files for the validation. Defaults to None.
+        train_name (Optional[str], optional): name under which the training dataset is saved in the catalog. Defaults to None.
+        val_name (Optional[str], optional): name under which the validation dataset is saved in the catalog. Defaults to None.
+        mode (Optional[str], optional): type of dataset being used. Defaults to None.
+        ignore_label (int, optional): value in data that should be ignore (saved in metadata). Defaults to 255.
+
+    Raises:
+        NotImplementedError: mode is not an accepted value
+
+    Returns:
+        MetadataCatalog: metadata catalog for the registered dataset
+    """
     assert train is not None or val is not None, "Must set at least something when registering"
     assert train is None or train_name is not None, "If train is not None, then train_name has to be set"
     assert val is None or val_name is not None, "If val is not None, then val_name has to be set"

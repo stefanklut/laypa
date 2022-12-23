@@ -243,7 +243,7 @@ class PageData:
     
     def build_separator_mask(self, out_size, color, line_width):
         """
-        Builds a "image" mask of Ends on XML-PAGE
+        Builds a "image" mask of Separators on XML-PAGE
         """
         size = self.get_size()[::-1]
         out_size = np.asarray(out_size)
@@ -271,7 +271,7 @@ class PageData:
     
     def build_baseline_separator_mask(self, out_size, color, line_width):
         """
-        Builds a "image" mask of Ends on XML-PAGE
+        Builds a "image" mask of Separators and Baselines on XML-PAGE
         """
         baseline_color = 1
         separator_color = 2

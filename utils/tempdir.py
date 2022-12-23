@@ -8,6 +8,18 @@ from pathlib import Path
 
 
 class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
+    """
+    Temp dir class that allows specifying the name and location of the temporary dir. 
+    Deleting the temporary dir can also be turned off. 
+    
+    This has the same behavior as mkdtemp but can be used as a context manager.  
+    For example:
+
+        with TemporaryDirectory() as tmpdir:
+            ...
+
+    Upon exiting the context, the directory and everything contained can be removed if specified.
+    """
     def __init__(self, 
                  suffix: Optional[str]=None, 
                  prefix: Optional[str]=None, 
@@ -15,6 +27,29 @@ class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
                  ignore_cleanup_errors: bool=False, 
                  cleanup: bool=True, 
                  name: Optional[Path|str]=None):
+        """
+        Temp dir class that allows specifying the name and location of the temporary dir. 
+        Deleting the temporary dir can also be turned off. 
+        
+        This has the same behavior as mkdtemp but can be used as a context manager.  
+        For example:
+
+            with TemporaryDirectory() as tmpdir:
+                ...
+
+        Upon exiting the context, the directory and everything contained can be removed if specified.
+
+        Args:
+            suffix (Optional[str], optional): if not None, the file name will end with that suffix. Defaults to None.
+            prefix (Optional[str], optional): if not None, the file name will begin with that prefix. Defaults to None.
+            dir (Optional[str], optional): dir in which to create the temp dir. Defaults to None.
+            ignore_cleanup_errors (bool, optional): flag for cleanup errors. Defaults to False.
+            cleanup (bool, optional): flag if the temp dir needs to be deleted. Defaults to True.
+            name (Optional[Path | str], optional): name (path) of the tempdir, overwrite suffix, prefix, and dir. Defaults to None.
+
+        Raises:
+            FileNotFoundError: missing parent path for name
+        """
         
         self._do_cleanup = cleanup
         
@@ -46,11 +81,24 @@ class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
         
     @classmethod
     def _cleanup(cls, name, warn_message, ignore_errors=False, cleanup=True):
+        """
+        Remove temporary dir, but only when there is no reference to it.
+        Not used with the context manager. Just when created as a normal object
+
+        Args:
+            name (str): path to temp dir
+            warn_message (_type_): warning to send if method is called
+            ignore_errors (bool, optional): flag for ignoring errors. Defaults to False.
+            cleanup (bool, optional): flag if the temp dir needs to be deleted. Defaults to True.
+        """
         if cleanup:
             cls._rmtree(name, ignore_errors=ignore_errors)
             warnings.warn(warn_message, ResourceWarning)
         
         
     def __exit__(self, exc, value, tb) -> None:
+        """
+        Overwrite of the context manager exit, to handle flag for cleanup
+        """
         if self._do_cleanup:
             self.cleanup()

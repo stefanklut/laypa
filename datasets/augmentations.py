@@ -9,6 +9,7 @@ from typing import Optional, Sequence
 import numpy as np
 
 import detectron2.data.transforms as T
+from detectron2.config import CfgNode
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from datasets.transforms import (ResizeTransform,
@@ -29,7 +30,18 @@ from scipy.ndimage import gaussian_filter
 # REVIEW Use the self._init() function
 
 class RandomApply(T.RandomApply):
-    def __init__(self, tfm_or_aug, prob=0.5):
+    """
+    Randomly apply an augmentation to an image with a given probability.
+    """
+    def __init__(self, tfm_or_aug: T.Augmentation | T.Transform, prob=0.5) -> None:
+        """
+        Randomly apply an augmentation to an image with a given probability.
+
+        Args:
+            tfm_or_aug (Augmentation | Transform): transform or augmentation to apply
+            prob (float, optional): probability between 0.0 and 1.0 that
+                the wrapper transformation is applied. Defaults to 0.5.
+        """
         super().__init__(tfm_or_aug, prob)
         self.tfm_or_aug = self.aug
     
@@ -64,18 +76,26 @@ class RandomApply(T.RandomApply):
 
 class ResizeShortestEdge(T.Augmentation):
     """
-    Resize alternative using cv2 instead of PIL or Pytorch
+    Resize image alternative using cv2 instead of PIL or Pytorch
     """
-    def __init__(self, min_size, max_size=sys.maxsize, sample_style="choice") -> None:
+    def __init__(self, min_size: int| Sequence[int], max_size: int=sys.maxsize, sample_style: str="choice") -> None:
+        """
+        Resize image alternative using cv2 instead of PIL or Pytorch
+
+        Args:
+            min_size (int | Sequence[int]): shortest edge length
+            max_size (int, optional): max other length. Defaults to sys.maxsize.
+            sample_style (str, optional): type of sampling used to get the output shape. Defaults to "choice".
+        """
         super().__init__()
         assert sample_style in ["range", "choice"], sample_style
+        if isinstance(min_size, int):
+            min_size = (min_size, min_size)
         if sample_style == "range":
             assert len(min_size) == 2, (
                     "short_edge_length must be two values using 'range' sample style."
                     f" Got {min_size}!"
                 )
-        if isinstance(min_size, int):
-            min_size = (min_size, min_size)
         self.sample_style = sample_style
         self.min_size = min_size
         self.max_size = max_size
@@ -139,7 +159,7 @@ class Flip(T.Augmentation):
 
     def __init__(self, horizontal: bool=True, vertical: bool=False) -> None:
         """
-        Flip the image, XOR for horizonal or vertical
+        Flip the image, XOR for horizontal or vertical
         
         Args:
             horizontal (boolean): whether to apply horizontal flipping. Defaults to True.
@@ -149,9 +169,9 @@ class Flip(T.Augmentation):
 
         if horizontal and vertical:
             raise ValueError(
-                "Cannot do both horiz and vert. Please use two Flip instead.")
+                "Cannot do both horizontal and vertical. Please use two Flip instead.")
         if not horizontal and not vertical:
-            raise ValueError("At least one of horiz or vert has to be True!")
+            raise ValueError("At least one of horizontal or vertical has to be True!")
         self.horizontal = horizontal
         self.vertical = vertical
 
@@ -163,14 +183,19 @@ class Flip(T.Augmentation):
         elif self.vertical:
             return VFlipTransform(h)
         else:
-            raise ValueError("At least one of horiz or vert has to be True!")
+            raise ValueError("At least one of horizontal or vertical has to be True!")
 
 class RandomElastic(T.Augmentation):
+    """
+    Apply a random elastic transformation to the image, made using random warpfield and gaussian filters
+    """
     def __init__(self, alpha: float=0.1, sigma: float=0.01) -> None:
         """
+        Apply a random elastic transformation to the image, made using random warpfield and gaussian filters
+        
         Args:
             alpha (int, optional): scale factor of the warpfield (sets max value). Defaults to 0.045.
-            stdv (int, optional): strenght of the gaussian filter. Defaults to 0.01.
+            stdv (int, optional): strength of the gaussian filter. Defaults to 0.01.
         """
         super().__init__()
         self.alpha = alpha
@@ -193,12 +218,25 @@ class RandomElastic(T.Augmentation):
 
 
 class RandomAffine(T.Augmentation):
+    """
+    Apply a random affine transformation to the image
+    """
     def __init__(self, 
                  t_stdv: float=0.02, 
                  r_kappa: float=30, 
                  sh_kappa: float=20, 
                  sc_stdv: float=0.12, 
                  probs: Optional[Sequence[float]]=None) -> None:
+        """
+        Apply a random affine transformation to the image
+
+        Args:
+            t_stdv (float, optional): standard deviation used for the translation. Defaults to 0.02.
+            r_kappa (float, optional): kappa value used for sampling the rotation. Defaults to 30.
+            sh_kappa (float, optional): kappa value used for sampling the shear.. Defaults to 20.
+            sc_stdv (float, optional): standard deviation used for the scale. Defaults to 0.12.
+            probs (Optional[Sequence[float]], optional): individual probabilities for each sub category of an affine transformation. When None is given default to all 1.0 Defaults to None.
+        """
         super().__init__()
         self.t_stdv = t_stdv
         self.r_kappa = r_kappa
@@ -209,7 +247,7 @@ class RandomAffine(T.Augmentation):
             assert len(probs) == 4, f"{len(probs)}: {probs}"
             self.probs = probs
         else:
-            self.probs = [1] * 4
+            self.probs = [1.0] * 4
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         
@@ -275,7 +313,16 @@ class RandomAffine(T.Augmentation):
 
 
 class RandomTranslation(T.Augmentation):
+    """
+    Apply a random translation to the image
+    """
     def __init__(self, t_stdv: float=0.02) -> None:
+        """
+        Apply a random affine transformation to the image
+
+        Args:
+            t_stdv (float, optional): standard deviation used for the translation. Defaults to 0.02.
+        """
         super().__init__()
         self.t_stdv = t_stdv
 
@@ -294,7 +341,16 @@ class RandomTranslation(T.Augmentation):
 
 
 class RandomRotation(T.Augmentation):
+    """
+    Apply a random rotation to the image
+    """
     def __init__(self, r_kappa: float=30) -> None:
+        """
+        Apply a random rotation to the image
+
+        Args:
+            r_kappa (float, optional): kappa value used for sampling the rotation. Defaults to 30.
+        """
         super().__init__()
         self.r_kappa = r_kappa
 
@@ -331,7 +387,16 @@ class RandomRotation(T.Augmentation):
 
 
 class RandomShear(T.Augmentation):
+    """
+    Apply a random shearing to the image
+    """
     def __init__(self, sh_kappa: float=20) -> None:
+        """
+        Apply a random shearing to the image
+
+        Args:
+            sh_kappa (float, optional): kappa value used for sampling the shear.. Defaults to 20.
+        """
         super().__init__()
         self.sh_kappa = sh_kappa
 
@@ -370,7 +435,16 @@ class RandomShear(T.Augmentation):
 
 
 class RandomScale(T.Augmentation):
+    """
+    Apply a random shearing to the image
+    """
     def __init__(self, sc_stdv: float=0.12) -> None:
+        """
+        Apply a random shearing to the image
+    
+        Args:
+            sc_stdv (float, optional): standard deviation used for the scale. Defaults to 0.12.
+        """
         super().__init__()
         self.sc_stdv = sc_stdv
 
@@ -401,6 +475,12 @@ class Grayscale(T.Augmentation):
     Randomly convert the image to grayscale
     """
     def __init__(self, image_format="RGB") -> None:
+        """
+        Randomly convert the image to grayscale
+
+        Args:
+            image_format (str, optional): Color formatting. Defaults to "RGB".
+        """
         super().__init__()
         self.image_format = image_format
 
@@ -412,6 +492,15 @@ class RandomGaussianFilter(T.Augmentation):
     Apply random gaussian kernels
     """
     def __init__(self, min_sigma: float = 1, max_sigma: float = 3, order: int = 0, iterations: int = 1) -> None:
+        """
+        Apply random gaussian kernels
+
+        Args:
+            min_sigma (float, optional): min Gaussian deviation. Defaults to 1.
+            max_sigma (float, optional): max Gaussian deviation. Defaults to 3.
+            order (int, optional): order of the gaussian kernel. Defaults to 0.
+            iterations (int, optional): number of times the gaussian kernel is applied. Defaults to 1.
+        """
         super().__init__()
         self.min_sigma = min_sigma
         self.max_sigma = max_sigma
@@ -436,6 +525,8 @@ class RandomSaturation(T.Augmentation):
     """
     def __init__(self, intensity_min: float=0.5, intensity_max: float=1.5, image_format="RGB") -> None:
         """
+        Change the saturation of an image
+        
         Args:
             intensity_min (float): Minimum augmentation
             intensity_max (float): Maximum augmentation
@@ -465,7 +556,7 @@ class RandomSaturation(T.Augmentation):
     
 class RandomContrast(T.Augmentation):
     """
-    Randomly transforms image contrast.
+    Randomly transforms image contrast
 
     Contrast intensity is uniformly sampled in (intensity_min, intensity_max).
     - intensity < 1 will reduce contrast
@@ -477,6 +568,8 @@ class RandomContrast(T.Augmentation):
 
     def __init__(self, intensity_min: float=0.5, intensity_max: float=1.5):
         """
+        Randomly transforms image contrast
+        
         Args:
             intensity_min (float): Minimum augmentation
             intensity_max (float): Maximum augmentation
@@ -493,7 +586,7 @@ class RandomContrast(T.Augmentation):
 
 class RandomBrightness(T.Augmentation):
     """
-    Randomly transforms image brightness.
+    Randomly transforms image brightness
 
     Brightness intensity is uniformly sampled in (intensity_min, intensity_max).
     - intensity < 1 will reduce brightness
@@ -505,6 +598,8 @@ class RandomBrightness(T.Augmentation):
 
     def __init__(self, intensity_min: float=0.5, intensity_max: float=1.5):
         """
+        Randomly transforms image brightness.
+
         Args:
             intensity_min (float): Minimum augmentation
             intensity_max (float): Maximum augmentation
@@ -518,7 +613,17 @@ class RandomBrightness(T.Augmentation):
         w = np.random.uniform(self.intensity_min, self.intensity_max)
         return BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
 
-def build_augmentation(cfg, is_train) -> list[T.Augmentation | T.Transform]:
+def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.Transform]:
+    """
+    Function to generate all the augmentations used in the inference and training process
+
+    Args:
+        cfg (CfgNode): config node
+        is_train (bool): flag if the augmentation are used for inference or training
+
+    Returns:
+        list[T.Augmentation | T.Transform]: list of augmentations to apply to an image
+    """
     if is_train:
         min_size = cfg.INPUT.MIN_SIZE_TRAIN
         max_size = cfg.INPUT.MAX_SIZE_TRAIN

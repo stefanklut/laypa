@@ -33,7 +33,16 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 class Predictor(DefaultPredictor):
+    """
+    Predictor runs the model specified in the config, on call the image is processed and the results dict is output
+    """
     def __init__(self, cfg):
+        """
+        Predictor runs the model specified in the config, on call the image is processed and the results dict is output
+
+        Args:
+            cfg (CfgNode): config
+        """
         super().__init__(cfg)
         
         checkpointer = DetectionCheckpointer(self.model)
@@ -43,14 +52,29 @@ class Predictor(DefaultPredictor):
             [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST
         )
     def __call__(self, original_image):
+        """
+        Not really useful, but shows what call needs to be made
+        """
         return super().__call__(original_image)
 
 class SavePredictor(Predictor):
+    """
+    Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
+    """
     def __init__(self, 
                  cfg, 
                  input_dir: str | Path, 
                  output_dir: str | Path, 
                  gen_page: GenPageXML):
+        """
+        Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
+
+        Args:
+            cfg (CfgNode): config
+            input_dir (str | Path): path to input dir
+            output_dir (str | Path): path to output dir
+            gen_page (GenPageXML): class to convert from predictions to pageXML
+        """
         super().__init__(cfg)
         
         self.input_dir: Optional[Path] = None
@@ -60,6 +84,9 @@ class SavePredictor(Predictor):
         self.output_dir: Optional[Path] = None
         if output_dir is not None:
             self.set_output_dir(output_dir)
+            
+        if not isinstance(gen_page, GenPageXML):
+            raise ValueError(f"Must provide conversion from mask to pageXML. Current type is {type(gen_page)}, not GenPageXML")
             
         self.gen_page = gen_page
             
@@ -77,6 +104,17 @@ class SavePredictor(Predictor):
                               ".hdr", ".pic"]
         
     def set_input_dir(self, input_dir: str | Path) -> None:
+        """
+        Setter for the input dir
+
+        Args:
+            input_dir (str | Path): path to input dir
+
+        Raises:
+            FileNotFoundError: input dir does not exist
+            NotADirectoryError: input dir does not point to a directory
+            PermissionError: input dir is not readable
+        """
         if isinstance(input_dir, str):
             input_dir = Path(input_dir)
 
@@ -102,6 +140,12 @@ class SavePredictor(Predictor):
         self.input_dir = input_dir.resolve()
         
     def set_output_dir(self, output_dir: str | Path) -> None:
+        """
+        Setter for the output dir
+
+        Args:
+            output_dir (str | Path): path to output dir
+        """
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
 
@@ -113,6 +157,15 @@ class SavePredictor(Predictor):
         self.output_dir = output_dir.resolve()
     
     def save_prediction(self, input_path: Path | str):
+        """
+        Run the model and get the prediction, and save pageXML or a mask image depending on the mode
+
+        Args:
+            input_path (Path | str): path to single image
+
+        Raises:
+            ValueError: no output dir is specified
+        """
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         
@@ -125,6 +178,13 @@ class SavePredictor(Predictor):
         self.gen_page.run([output_image], [input_path])
     
     def process(self):
+        """
+        Run the model on all images within the input dir
+
+        Raises:
+            ValueError: no input dir is specified
+            ValueError: no output dir is specified
+        """
         if self.input_dir is None:
             raise ValueError("Cannot run when the input dir is not set")
         if self.output_dir is None:

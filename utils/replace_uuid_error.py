@@ -29,6 +29,9 @@ def replace_error(file_path):
         file.write(data)
 
 def main(args):
+    """
+    Use to fix an error with the UUID, currently no longer used. It might be useful again if something similar happens again
+    """
     input_folder = Path(args.input)
     
     if not input_folder.is_dir():

@@ -12,6 +12,20 @@ class XMLRegions:
                  regions: Optional[list[str]]=None,
                  merge_regions: Optional[list[str]]=None,
                  region_type: Optional[list[str]]=None) -> None:
+        """
+        Base for Methods that need to load XML regions. If type is region specify the region variables otherwise line variables
+
+        Args:
+            mode (str): mode of the region type
+            line_width (Optional[int], optional): width of line. Defaults to None.
+            line_color (Optional[int], optional): value of line (when only one line type exists). Defaults to None.
+            regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
+            merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
+            region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
+
+        Raises:
+            NotImplementedError: mode is not known
+        """
         self.mode = mode
         if self.mode in ["baseline", "start", "end", "separator", "baseline_separator"]:
             assert line_width is not None
@@ -42,6 +56,12 @@ class XMLRegions:
     #REVIEW is this the best place for this
     @classmethod
     def get_parser(cls) -> argparse.ArgumentParser:
+        """
+        Return argparser that has the arguments required for the pageXML regions.
+
+        Returns:
+            argparse.ArgumentParser: the argparser for regions
+        """
         # HACK hardcoded regions if none are given
         republic_regions = ["marginalia", "page-number", "resolution", "date",
                             "index", "attendance", "Resumption", "resumption", 
@@ -106,6 +126,9 @@ class XMLRegions:
         return parser
         
     def merge_classes(self) -> None:
+        """
+        Merge the classes defined by the merge regions
+        """
         if self.merged_regions is None:
             return
         if len(self.merged_regions) == 0:
@@ -119,7 +142,12 @@ class XMLRegions:
                 self.region_classes[child] = self.region_classes[parent]
 
     def _build_class_regions(self) -> dict[str, int]:
-        """given a list of regions assign a equaly separated class to each one"""
+        """
+        Given a list of regions assign a equally separated class to each one
+        
+        Returns:
+            dict[str, str]: keys are the class name, values are the class number
+        """
 
         class_dic = {}
 
@@ -127,8 +155,18 @@ class XMLRegions:
             class_dic[r] = c + 1
         return class_dic
 
-    def _build_merged_regions(self) -> Optional[dict[str, str]]:
-        """build dic of regions to be merged into a single class"""
+    def _build_merged_regions(self) -> dict[str, str]:
+        """
+        Build dict of regions to be merged into a single class
+
+        Raises:
+            argparse.ArgumentTypeError: the command line argument was not given in the right format
+            ValueError: found merging into multiple classes (example a:c,b:c)
+            ValueError: found merging loop (example: a:b,b:a)
+
+        Returns:
+            dict[str, str]: keys are the target class, values are the class to be merged
+        """
         if self._merge_regions is None or len(self._merge_regions) == 0:
             return {}
         to_merge = {}
@@ -160,7 +198,15 @@ class XMLRegions:
         return to_merge
 
     def _build_region_types(self) -> dict[str ,str]:
-        """ build a dic of regions and their respective type"""
+        """ 
+        Build a dictionary of regions and their respective type. If none are given, all regions are of type TextRegion.
+
+        Raises:
+            argparse.ArgumentTypeError: the command line argument was not given in the right format
+
+        Returns:
+            dict[str, str]: Mapping from region to region type
+        """
         reg_type = {"full_page": "TextRegion"}
         if self._region_type is None or len(self._region_type):
             for reg in self._regions:
@@ -184,7 +230,17 @@ class XMLRegions:
                 )
         return reg_type
     
-    def get_regions(self) -> list[str]:    
+    def get_regions(self) -> list[str]:
+        """
+        Return what are currently the regions used. Getting all regions and merging the merged regions.
+        Always including a background class as class 0
+
+        Raises:
+            NotImplementedError: the mode is not implemented
+
+        Returns:
+            list[str]: the names of all the classes currently used
+        """
         remaining_regions = ["background"]
         if self.mode == 'region':
             if self.merged_regions is None:

@@ -27,6 +27,17 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
+    """
+    copy a list of image paths to an output dir. The respective pageXMLs are also copied
+
+    Args:
+        paths (list[Path]): image paths
+        output_dir (Path): path of the output dir
+        mode (str, optional): type of copy mode (symlink, link, copy). Defaults to "copy".
+
+    Returns:
+        list[Path]: output paths
+    """
     if not output_dir.is_dir():
         print(f"Could not find output dir ({output_dir}), creating one at specified location")
         output_dir.mkdir(parents=True)
@@ -50,6 +61,19 @@ def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
     return output_paths
 
 def main(args):
+    """
+    Sample result (or really an pageXML) from a larger corpus to process or view. 
+
+    Args:
+        args (argparse.Namespace): arguments for where to find the images, and the output dir
+
+    Raises:
+        ValueError: must give an input
+        ValueError: must give an output
+        FileNotFoundError: input dir is missing
+        FileNotFoundError: no images found in the input dir
+        NotImplementedError: both the percentage and the number of samples is None
+    """
     if args.input == "":
         raise ValueError("Must give an input")
     if args.output == "":
@@ -73,9 +97,11 @@ def main(args):
     #                  ".exr",
     #                  ".hdr", ".pic"]
     
-    image_format = '.jpg'
+    image_formats = ['.jpg']
     
-    all_image_paths = list(input_dir.glob(f"*{image_format}"))
+    all_image_paths = []
+    for image_format in image_formats:
+        all_image_paths.extend(input_dir.glob(f"*{image_format}"))
     
     if len(all_image_paths) == 0:
         raise FileNotFoundError(f"No images found within {input_dir}")

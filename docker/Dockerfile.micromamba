@@ -1,14 +1,17 @@
-FROM mambaorg/micromamba:1.0.0
+FROM mambaorg/micromamba:1.1.0
 USER root
 
-RUN apt-get update
-# RUN apt-get install -y apt-transport-https
-RUN apt-get -y dist-upgrade
-RUN apt-get clean
-RUN apt-get install -y \
-    apt-utils git \
-    ninja-build gcc g++ \
-    ffmpeg libsm6 libxext6
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update -y && \
+    apt-get dist-upgrade -y && \
+    apt-get clean -y && \
+    apt-get install -y \
+        apt-utils git \
+        ninja-build gcc g++ \
+        ffmpeg libsm6 libxext6 && \
+        apt-get autoremove && \
+    apt-get clean -y
 
 WORKDIR /src/
 COPY laypa.micromamba/ laypa/
@@ -19,8 +22,8 @@ COPY laypa.micromamba/ laypa/
 WORKDIR /src/laypa
 # RUN micromamba update -y --all
 # RUN micromamba init bash
-RUN micromamba create -y -n laypa -f environment.yml
-RUN micromamba clean --all
+RUN --mount=type=cache,target=/opt/conda/pkgs micromamba create -y -n laypa -f environment.yml && \
+    micromamba clean -y --all
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 ENV ENV_NAME=laypa

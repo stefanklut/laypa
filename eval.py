@@ -35,7 +35,16 @@ def get_arguments() -> argparse.Namespace:
 
 
 class Predictor(DefaultPredictor):
+    """
+    Predictor runs the model specified in the config, on call the image is processed and the results dict is output
+    """
     def __init__(self, cfg):
+        """
+        Predictor runs the model specified in the config, on call the image is processed and the results dict is output
+
+        Args:
+            cfg (CfgNode): config
+        """
         super().__init__(cfg)
 
         checkpointer = DetectionCheckpointer(self.model)
@@ -46,10 +55,20 @@ class Predictor(DefaultPredictor):
         )
 
     def __call__(self, original_image):
+        """
+        Not really useful, but shows what call needs to be made
+        """
         return super().__call__(original_image)
 
 
 def main(args) -> None:
+    """
+    Currently running the validation set and showing the ground truth and the prediction side by side
+
+    Args:
+        args (argparse.Namespace): arguments for where to find the images
+    """
+    # Setup config
     cfg = setup_cfg(args, save_config=False)
 
     metadata = dataset.register_dataset(args.train, args.val, "train", "val", mode=cfg.MODEL.MODE)

@@ -26,7 +26,18 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
+def copy_paths(paths: list[Path], output_dir: Path, mode="copy") -> list[Path]:
+    """
+    copy a list of image paths to an output dir. The respective pageXMLs are also copied
+
+    Args:
+        paths (list[Path]): image paths
+        output_dir (Path): path of the output dir
+        mode (str, optional): type of copy mode (symlink, link, copy). Defaults to "copy".
+
+    Returns:
+        list[Path]: output paths
+    """
     if not output_dir.is_dir():
         print(f"Could not find output dir ({output_dir}), creating one at specified location")
         output_dir.mkdir(parents=True)
@@ -50,6 +61,19 @@ def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
     return output_paths
 
 def main(args):
+    """
+    Create a dataset structure (train, val, test) from multiple sub dirs
+
+    Args:
+        args (argparse.Namespace): arguments for where to find the images, and the output dir
+
+    Raises:
+        ValueError: must give an input
+        ValueError: must give an output
+        FileNotFoundError: input dir is missing
+        ValueError: found duplicates in the images
+        FileNotFoundError: no images found in sub dir
+    """
     if args.input == "":
         raise ValueError("Must give an input")
     if args.output == "":
@@ -74,10 +98,12 @@ def main(args):
     #                  ".hdr", ".pic"]
     
     
-    image_format = '.jpg'
+    image_formats = ['.jpg']
     
     # Find all images
-    all_image_paths = list(input_dir.glob(f"**/**/*{image_format}")) # Assume depth 2
+    all_image_paths = []
+    for image_format in image_formats:
+        all_image_paths.extend(input_dir.glob(f"**/**/*{image_format}")) # Assume depth 2
     
     
     if len(all_image_paths) != len(set(path.stem for path in all_image_paths)):

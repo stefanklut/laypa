@@ -35,6 +35,9 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 class GenPageXML(XMLRegions):
+    """
+    Class for the generation of the pageXML from class predictions on images
+    """
     
     def __init__(self, 
                  output_dir: str|Path,
@@ -44,6 +47,18 @@ class GenPageXML(XMLRegions):
                  regions: Optional[list[str]] = None,
                  merge_regions: Optional[list[str]] = None,
                  region_type: Optional[list[str]] = None) -> None:
+        """
+        Class for the generation of the pageXML from class predictions on images
+
+        Args:
+            output_dir (str | Path): path to output dir
+            mode (str): mode of the region type
+            line_width (Optional[int], optional): width of line. Defaults to None.
+            line_color (Optional[int], optional): value of line (when only one line type exists). Defaults to None.
+            regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
+            merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
+            region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
+        """
         super().__init__(mode, line_width, line_color, regions, merge_regions, region_type)
         
         if isinstance(output_dir, str):
@@ -63,6 +78,18 @@ class GenPageXML(XMLRegions):
         self.regions = self.get_regions()
     
     def generate_single_page(self, info: tuple[np.ndarray|Path, Path]):
+        """
+        Convert a single prediction into 
+
+        Args:
+            info (tuple[np.ndarray | Path, Path]):
+                (tuple containing)
+                np.ndarray | Path: mask as array or path of mask
+                Path: original image 
+
+        Raises:
+            NotImplementedError: mode is not known
+        """
         mask, image_path = info
         
         if isinstance(mask, Path):
@@ -125,8 +152,6 @@ class GenPageXML(XMLRegions):
         elif self.mode in ['baseline', 'start', 'end']:
             # Push the calculation to outside of the python code <- mask is used by minion
             mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            # mask = np.logical_not(mask).astype(np.uint8)
-            # mask = cv2.resize(mask, (old_width, old_height), cv2.INTER_NEAREST)
             cv2.imwrite(str(mask_output_path), (mask * 255).astype(np.uint8))
         else:
             raise NotImplementedError
@@ -136,6 +161,16 @@ class GenPageXML(XMLRegions):
     def run(self, 
             mask_list: list[np.ndarray] | list[Path], 
             image_path_list: list[Path]) -> None:
+        """
+        Generate pageXML for all mask-image pairs in the lists
+
+        Args:
+            mask_list (list[np.ndarray] | list[Path]): all mask as arrays or path to the mask
+            image_path_list (list[Path]): path to the original image
+
+        Raises:
+            ValueError: length of mask list and image list do not match
+        """
         
         if len(mask_list) != len(image_path_list):
             raise ValueError(f"masks must match image paths in length: {len(mask_list)} v. {len(image_path_list)}")

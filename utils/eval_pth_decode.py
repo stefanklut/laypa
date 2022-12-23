@@ -19,6 +19,9 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 def main(args):
+    """
+    Decode the metrics as saved in the pickle format. Not really used, mainly for seeing what the format is for
+    """
     pth_path = Path(args.input)
     assert pth_path.suffix == ".pth", pth_path.suffix
     check_path_accessible(pth_path)
