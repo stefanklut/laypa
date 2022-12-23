@@ -25,9 +25,9 @@ def get_arguments() -> argparse.Namespace:
 
     io_args = parser.add_argument_group("IO")
     io_args.add_argument(
-        "-t", "--train", help="Train input folder", type=str)
+        "-t", "--train", help="Train input folder", type=str, default=None)
     io_args.add_argument(
-        "-v", "--val", help="Validation input folder", type=str)
+        "-v", "--val", help="Validation input folder", type=str, default=None)
 
     args = parser.parse_args()
 
@@ -75,7 +75,7 @@ def main(args) -> None:
 
     predictor = Predictor(cfg=cfg)
 
-    train_loader = DatasetCatalog.get("train")
+    # train_loader = DatasetCatalog.get("train")
     val_loader = DatasetCatalog.get("val")
 
     # for inputs in np.random.choice(val_loader, 3):

@@ -51,6 +51,7 @@ class Viewer:
         
         self.output_dir: Path = output_dir
         self.xml_to_image: XMLImage = xml_to_image
+        #TODO Load the metadata
         self.metadata = Metadata()
         
         region_names = xml_to_image.get_regions()

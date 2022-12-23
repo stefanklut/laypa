@@ -256,12 +256,13 @@ class PageData:
         for element in self.root.findall("".join([".//", self.base, "Baseline"])):
             # --- get element coords
             str_coords = element.attrib.get("points").split()
-            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
             if len(str_coords) == 0:
                 continue
-            coords_start = (coords * np.flip(scale_factor, 0)).astype(np.int32)[0]
+            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
+            coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
+            coords_start = coords[0]
             cv2.circle(mask, coords_start, line_width, color, -1)
-            coords_end = (coords * np.flip(scale_factor, 0)).astype(np.int32)[-1]
+            coords_end = coords[-1]
             cv2.circle(mask, coords_end, line_width, color, -1)
         if not mask.any():
             self.logger.warning(
@@ -290,12 +291,12 @@ class PageData:
             coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
             if len(str_coords) == 0:
                 continue
-            
+            coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
             cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
             
-            coords_start = (coords * np.flip(scale_factor, 0)).astype(np.int32)[0]
+            coords_start = coords[0]
             cv2.circle(mask, coords_start, line_width, separator_color, -1)
-            coords_end = (coords * np.flip(scale_factor, 0)).astype(np.int32)[-1]
+            coords_end = coords[-1]
             cv2.circle(mask, coords_end, line_width, separator_color, -1)
         if not mask.any():
             self.logger.warning(
