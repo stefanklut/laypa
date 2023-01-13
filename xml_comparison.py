@@ -21,9 +21,9 @@ def get_arguments() -> argparse.Namespace:
     
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-g", "--gt", help="Input folder/files GT", nargs="+", default=[],
-                        required=True, type=str)
+                        required=True, type=str, action="extend")
     io_args.add_argument("-i", "--input", help="Input folder/files", nargs="+", default=[],
-                        required=True, type=str)
+                        required=True, type=str, action="extend")
 
     args = parser.parse_args()
     return args

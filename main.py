@@ -55,9 +55,9 @@ def get_arguments() -> argparse.Namespace:
 
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-t", "--train", help="Train input folder/file",
-                            nargs="+", action="extend", type=str)
+                            nargs="+", action="extend", type=str, required=True)
     io_args.add_argument("-v", "--val", help="Validation input folder/file",
-                            nargs="+", action="extend", type=str)
+                            nargs="+", action="extend", type=str, required=True)
     
     tmp_args = parser.add_argument_group("tmp files")
     tmp_args.add_argument(
@@ -130,6 +130,21 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     cfg.SETUP_TIME = formatted_datetime
     
     cfg.CONFIG_PATH = str(Path(args.config).resolve())
+    
+    if args.train is None:
+        pass
+    elif isinstance(args.train, Sequence):
+        cfg.TRAINING_PATHS = [str(Path(path).resolve()) for path in args.train]
+    else:
+        cfg.TRAINING_PATHS = [str(Path(args.train).resolve())]
+      
+    if args.val is None:
+        pass
+    elif isinstance(args.val, Sequence):
+        cfg.VALIDATION_PATH = [str(Path(path).resolve()) for path in args.val]
+    else:
+        cfg.VALIDATION_PATH = [str(Path(args.val).resolve())]
+    
     
     # Setup run specific folders to prevent overwrites
     if cfg.OUTPUT_DIR and (cfg.RUN_DIR or cfg.NAME) and not cfg.MODEL.RESUME:
@@ -222,13 +237,28 @@ def preprocess_datasets(cfg: CfgNode,
     train_output_dir = output_dir.joinpath('train')
     process.set_input_paths(train)
     process.set_output_dir(train_output_dir)
+    train_image_paths, _ = process.get_file_paths()
     process.run()
     
     # Validation
     val_output_dir = output_dir.joinpath('val')
     process.set_input_paths(val)
     process.set_output_dir(val_output_dir)
+    val_image_paths, _ = process.get_file_paths()
     process.run()
+    
+    #Saving the image used to a txt file
+    os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+    train_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("training_images.txt")
+    val_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("validation_images.txt")
+    
+    with open(train_image_output_path, mode="w") as f:
+        for path in train_image_paths:
+            f.write(f"{path}\n")
+            
+    with open(val_image_output_path, mode="w") as f:
+        for path in val_image_paths:
+            f.write(f"{path}\n")
     
     dataset.register_dataset(train_output_dir, 
                              val_output_dir, 

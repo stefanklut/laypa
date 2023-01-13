@@ -4,10 +4,14 @@ _C = CN()
 
 # Logging
 _C.CONFIG_PATH = ""
+_C.TRAINING_PATHS = []
+_C.VALIDATION_PATHS = []
+
 
 _C.RUN_DIR = True
 _C.NAME = ""
 _C.SETUP_TIME = ""
+
 
 # Model changes
 _C.MODEL = CN()

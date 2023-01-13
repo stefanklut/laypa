@@ -139,5 +139,5 @@ dmypy.json
 output/
 
 # Pretrained_models
-pretrained_models/
+*.pth
 

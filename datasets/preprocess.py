@@ -195,12 +195,9 @@ class Preprocess:
         
         return output
 
-    def get_file_paths(self, input_path: str | Path | Sequence[str|Path]):
+    def get_file_paths(self):
         """
         Get all image paths used for the preprocessing and the corresponding pageXML paths
-
-        Args:
-            input_path (str | Path | Sequence[str | Path]): path(s) from which to extract the images
 
         Raises:
             FileNotFoundError: input path not found on the filesystem
@@ -213,7 +210,10 @@ class Preprocess:
             list[Path]: image paths
             list[Path]: pageXML paths
         """
-        input_paths = self.clean_input_paths(input_path)
+        if self.input_paths is None:
+            raise ValueError("Cannot run when the input path is not set")
+        
+        input_paths = self.clean_input_paths(self.input_paths)
             
         image_paths = []
         
@@ -226,7 +226,7 @@ class Preprocess:
                     f"No access to {input_path} for read operations")
                 
             if input_path.is_dir():
-                sub_image_paths = [image_path for image_path in input_path.glob("*") if image_path.suffix in self.image_formats]
+                sub_image_paths = [image_path.absolute() for image_path in input_path.glob("*") if image_path.suffix in self.image_formats]
                 
                 if not self.disable_check:
                     if len(sub_image_paths) == 0:
@@ -234,7 +234,7 @@ class Preprocess:
                     
             elif input_path.is_file() and input_path.suffix == ".txt":
                 with input_path.open(mode="r") as f:
-                    sub_image_paths = [Path(line) for line in f.read().splitlines()]
+                    sub_image_paths = [Path(line).absolute() for line in f.read().splitlines()]
                     
                 if not self.disable_check:
                     for path in sub_image_paths:
@@ -530,7 +530,7 @@ class Preprocess:
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
 
-        image_paths, xml_paths = self.get_file_paths(self.input_paths)
+        image_paths, xml_paths = self.get_file_paths()
 
         if len(image_paths) == 0:
             raise ValueError(

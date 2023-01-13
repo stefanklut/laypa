@@ -22,7 +22,7 @@ def get_arguments() -> argparse.Namespace:
                         required=True, type=str)
     io_args.add_argument("-o", "--output", help="Output folder", required=True, type=str)
     
-    parser.add_argument("-v", "--variation", help="Output mode",
+    parser.add_argument("-t", "--output_type", help="Output mode",
                         choices=["gray", "color", "overlay"], default="overlay", type=str)
     
     args = parser.parse_args()
@@ -32,7 +32,7 @@ class Viewer:
     """
     Simple viewer to convert xml files to images (grayscale, color or overlay)
     """
-    def __init__(self, xml_to_image: XMLImage, output_dir: str|Path, mode='gray') -> None:
+    def __init__(self, xml_to_image: XMLImage, output_dir: str|Path, output_type='gray') -> None:
         """
         Simple viewer to convert xml files to images (grayscale, color or overlay)
 
@@ -65,13 +65,13 @@ class Viewer:
                           evaluator_type="sem_seg",
                           ignore_label=255)
         
-        self.mode = mode
+        self.output_type = output_type
         
-        if self.mode == 'gray':
+        if self.output_type == 'gray':
             self.save_function = self.save_gray_image
-        elif self.mode == 'color':
+        elif self.output_type == 'color':
             self.save_function = self.save_color_image
-        elif self.mode == 'overlay':
+        elif self.output_type == 'overlay':
             self.save_function = self.save_overlay_image
         else:
             raise NotImplementedError
@@ -145,7 +145,7 @@ class Viewer:
         cleaned_xml_list = [path.resolve() for path in cleaned_xml_list]
         
         # with overlay all images must exist as well
-        if self.mode == 'overlay':
+        if self.output_type == 'overlay':
             self.check_image_exists(cleaned_xml_list)
             
         if not self.output_dir.is_dir():
@@ -173,7 +173,7 @@ def main(args) -> None:
         region_type=args.region_type
     )
     
-    viewer = Viewer(xml_to_image=xml_to_image, output_dir=args.output, mode=args.variation)
+    viewer = Viewer(xml_to_image=xml_to_image, output_dir=args.output, output_type=args.output_type)
     viewer.run(xml_list)
 
 if __name__ == "__main__":

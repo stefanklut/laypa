@@ -16,8 +16,7 @@ from natsort import os_sorted
 from page_xml.generate_pageXML import GenPageXML
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(parents=[GenPageXML.get_parser()],
-        description="Run file to inference using the model found in the config file")
+    parser = argparse.ArgumentParser(description="Run file to inference using the model found in the config file")
     
     detectron2_args = parser.add_argument_group("detectron2")
     
@@ -25,8 +24,8 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args.add_argument("--opts", nargs=argparse.REMAINDER, help="optional args to change", default=[])
     
     io_args = parser.add_argument_group("IO")
-    io_args.add_argument("-i", "--input", help="Input folder", type=str)
-    io_args.add_argument("-o", "--output", help="Output folder", type=str)
+    io_args.add_argument("-i", "--input", help="Input folder", type=str, required=True)
+    io_args.add_argument("-o", "--output", help="Output folder", type=str, required=True)
     
     args = parser.parse_args()
     
@@ -205,12 +204,12 @@ def main(args) -> None:
     cfg = setup_cfg(args, save_config=False)
     
     gen_page = GenPageXML(output_dir=args.output,
-                          mode=args.mode,
-                          line_width=args.line_width,
-                          line_color=args.line_color,
-                          regions=args.regions,
-                          merge_regions=args.merge_regions,
-                          region_type=args.region_type)
+                          mode=cfg.MODEL.MODE,
+                          line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
+                          line_color=cfg.PREPROCESS.BASELINE.LINE_COLOR,
+                          regions=cfg.PREPROCESS.REGION.REGIONS,
+                          merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
+                          region_type=cfg.PREPROCESS.REGION.REGION_TYPE)
     
     predictor = SavePredictor(cfg=cfg, input_dir=args.input, output_dir=args.output, gen_page=gen_page)
     
