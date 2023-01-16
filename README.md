@@ -100,20 +100,45 @@ docker buildx build --no-cache . -t docker.laypa
 <summary> Click for minikube install instructions </summary>
 
 <!-- TODO This -->
+Minikube is local Kubernetes, allowing you to test the Laypa tools in a Kubernetes environment. If not already installed start with installing minikube ([install instructions][minikube_install_link])
+
+If the docker images have already been built the minikube can run them straight away. To do so, start minikube without any special arguments:
 ```sh
-
+minikube start
 ```
-</details>
 
-### Pretrained models
-<!-- TODO Add the pretrained models as a download -->
-Coming soon
+Afterwards the docker for Laypa can be added to the running minikube instance using the following command (assuming the Laypa docker was built under the name docker.laypa):
+```sh
+minikube image load docker.laypa
+```
+
+It is also possible to build the Laypa docker using the minikube docker instance. This means minikube will need access to the Laypa code. As it stand, this is current still done using a copy command from the local storage. In order to do so start the minikube with the mount argument:
+```sh
+minikube start --mount
+```
+This will make the machines filesystem available to minikube. Then ssh into the running minikube:
+```sh
+minikube ssh
+```
+
+Within the ssh minikube go to the location of the laypa where the host `/home/<user>` is mounted to `minikube-host`
+```sh
+cd minikube-host/PATH_TO_LAYPA
+```
+
+And follow the instructions for install a docker version of Laypa as described [here](#docker)
+
+</details>
 
 When successful the docker image should be available under the name `docker.laypa`. This can be verified using the following command:
 ```sh
 docker image ls
 ```
 And checking if docker.laypa is present in the list of built images.
+
+### Pretrained models
+<!-- TODO Add the pretrained models as a download -->
+Coming soon
 
 ## Dataset(s)
 
@@ -145,7 +170,8 @@ inference_data
 Some dataset that should work with laypa are listed below, some preprocessing may be require:
 - [cBAD][cbad_link]
 - [VOC and notarial deeds][voc_link]
-- [PubLayNet][publaynet_link]
+- [OHG][ohg_link]
+- [Bozen][bozen_link]
 
 ## Training 
 Three things are required to train a model using [`main.py`][main_link].
@@ -233,7 +259,6 @@ python run.py -c config.yml -i data/inference_dir -o results_dir
 
 ### With External Java Processing
 <!-- TODO Remove the need for Java -->
-<!-- TODO Pretrained models should be included in the git structure to indicate the location they are expected in -->
 Examples of running the full pipeline (with processing of baselines) are present in the [`scripts`][scripts_link] directory. These files make the assumption that the docker images for both Laypa and the loghi-tooling (Java post-processing) are available on your machine. The script will also try and verify this. The Laypa docker image needs to be build with the pretrained models included.
 
 To run the scripts only two thing are needed:
@@ -367,7 +392,7 @@ The optional arguments are shown using square brackets. The `--mode` parameter s
 Distributed under the MIT License. See [`LICENSE`][license_link] for more information.
 
 ## Contact
-This project was made while working for the KNAW <!-- TODO KNAW Link -->
+This project was made while working at the [KNAW Humanities Cluster Digital Infrastructure][huc_di_link]
 ### Issues
 Please let report any bugs or errors that you find to the [issues][issues_link] page. So that they can be looked into. Try to see if an issue with the same problem/bug is not still open. Feature requests should also be done through the [issues][issues_link] page.
 
@@ -380,18 +405,24 @@ If you discover a bug or missing feature that you would like to help with please
 [conda_install_link]: https://conda.io/projects/conda/en/latest/user-guide/install/index.html#regular-installation
 [mamba_install_link]: https://mamba.readthedocs.io/en/latest/installation.html
 [docker_install_link]: https://docs.docker.com/engine/install/
+[minikube_install_link]: https://minikube.sigs.k8s.io/docs/start/
+
+[cbad_link]: https://doi.org/10.5281/zenodo.2567397
+[voc_link]: https://doi.org/10.5281/zenodo.3517776
+[ohg_link]: https://doi.org/10.5281/zenodo.3517776
+[bozen_link]: https://doi.org/10.5281/zenodo.218236
+
+<!-- TODO Replace with relative links? -->
+[pull_request_link]: https://github.com/stefanklut/laypa/pulls
+[issues_link]: https://github.com/stefanklut/laypa/issues
 [environment_link]: https://github.com/stefanklut/laypa/blob/main/environment.yml
 [license_link]: https://github.com/stefanklut/laypa/blob/main/LICENSE
 [configs_link]: https://github.com/stefanklut/laypa/blob/main/configs/segmentation
 [scripts_link]: https://github.com/stefanklut/laypa/blob/main/scripts
-[pull_request_link]: https://github.com/stefanklut/laypa/pulls
-[issues_link]: https://github.com/stefanklut/laypa/issues
-[cbad_link]: https://zenodo.org/record/2567398#.Y78UHdLMJD9
-[voc_link]: https://zenodo.org/record/4159268#.Y78TWNLMJD-
-[publaynet_link]: https://github.com/ibm-aur-nlp/PubLayNet
 [tutorial_link]: https://github.com/stefanklut/laypa/blob/main/turorial
 [main_link]: https://github.com/stefanklut/laypa/blob/main/main.py
 [run_link]: https://github.com/stefanklut/laypa/blob/main/run.py
 [eval_link]: https://github.com/stefanklut/laypa/blob/main/eval.py
 [xml_comparison_link]: https://github.com/stefanklut/laypa/blob/main/xml_comparison.py
 [xml_viewer_link]: https://github.com/stefanklut/laypa/blob/main/xml_viewer.py
+[huc_di_link]: https://di.huc.knaw.nl/
