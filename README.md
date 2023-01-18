@@ -4,6 +4,25 @@
 Laypa is a segmentation network, with the goal of finding regions (paragraph, page number, etc.) and baselines in documents. The current approach is using a ResNet backbone and a feature pyramid head, which made pixel wise classifications. The models are built using the [detectron2][detectron_link] framework. The baselines and region classifications are then made available for further processing. This post-processing turn the classification into instances. So that they can be used by other programs (OCR/HTR), either as masks or directly as pageXML.
 
 <!-- TODO Table of contents -->
+# Table of Contents
+- [Laypa](#laypa)
+- [Table of Contents](#table-of-contents)
+  - [Tested Environments](#tested-environments)
+  - [Setup](#setup)
+    - [Conda](#conda)
+    - [Docker](#docker)
+    - [Pretrained models](#pretrained-models)
+  - [Dataset(s)](#datasets)
+  - [Training](#training)
+  - [Inference](#inference)
+    - [Without External Processing](#without-external-processing)
+    - [With External Java Processing](#with-external-java-processing)
+  - [Tutorial](#tutorial)
+  - [Evaluation](#evaluation)
+  - [License](#license)
+  - [Contact](#contact)
+    - [Issues](#issues)
+    - [Contributions](#contributions)
 
 ## Tested Environments
 Developed using the following software and hardware:
@@ -16,6 +35,8 @@ Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
 <summary> Click here to show all tested environments </summary>
 
 <!-- TODO Add more with testing -->
+More coming soon
+
 Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
 -|-|-|-|-|-|-|-
  Ubuntu 22.04 | 3.10 | 1.13.0 | 11.7 | RTX 3080 Ti Laptop | 12.0 | Intel i9-12900H | :white_check_mark:
@@ -35,7 +56,7 @@ Or using SSH:
 git clone git@github.com:stefanklut/laypa.git
 ```
 
-And make laypa the working directory :
+And make laypa the working directory:
 ```sh
 cd laypa
 ```
@@ -417,14 +438,15 @@ If you discover a bug or missing feature that you would like to help with please
 <!-- TODO Replace with relative links? -->
 [pull_request_link]: https://github.com/stefanklut/laypa/pulls
 [issues_link]: https://github.com/stefanklut/laypa/issues
-[environment_link]: https://github.com/stefanklut/laypa/blob/main/environment.yml
-[license_link]: https://github.com/stefanklut/laypa/blob/main/LICENSE
-[configs_link]: https://github.com/stefanklut/laypa/blob/main/configs/segmentation
-[scripts_link]: https://github.com/stefanklut/laypa/blob/main/scripts
-[tutorial_link]: https://github.com/stefanklut/laypa/blob/main/turorial
-[main_link]: https://github.com/stefanklut/laypa/blob/main/main.py
-[run_link]: https://github.com/stefanklut/laypa/blob/main/run.py
-[eval_link]: https://github.com/stefanklut/laypa/blob/main/eval.py
-[xml_comparison_link]: https://github.com/stefanklut/laypa/blob/main/xml_comparison.py
-[xml_viewer_link]: https://github.com/stefanklut/laypa/blob/main/xml_viewer.py
+[environment_link]: environment.yml
+[license_link]: LICENSE
+[configs_link]: configs/segmentation/
+[scripts_link]: scripts/
+[tutorial_link]: tutorial/
+[main_link]: main.py
+[run_link]: run.py
+[eval_link]: eval.py
+[xml_comparison_link]: xml_comparison.py
+[xml_viewer_link]: xml_viewer.py
+
 [huc_di_link]: https://di.huc.knaw.nl/
