@@ -95,8 +95,14 @@ cd $tmpdir/docker
 
 Building the docker using the provided script:
 ```sh
-./buildImage.sh PATH_TO_LAYPA
+./buildImage.sh <PATH_TO_LAYPA>
 ```
+
+Or the alternative docker using micromamba (might be more unstable, but builds are faster):
+```sh
+buildImage.micromamba.sh <PATH_TO_LAYPA>
+```
+
 
 <details>
 <summary> Click for manual docker install instructions </summary>
@@ -111,9 +117,9 @@ Change the working dir to the docker directory:
 cd $tmpdir/docker
 ```
 
-Build the docker using the buildkit version of docker build
+Build the docker using docker build
 ```sh
-docker buildx build --no-cache . -t docker.laypa
+docker build --no-cache . -t docker.laypa
 ```
 
 </details>
