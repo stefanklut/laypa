@@ -84,20 +84,19 @@ def main(args):
     if not input_dir.exists():
         raise FileNotFoundError(f"{input_dir} does not exist")
     
-    # IDEA add more image formats
-    # image_formats = [".bmp", ".dib",
-    #                  ".jpeg", ".jpg", ".jpe",
-    #                  ".jp2",
-    #                  ".png",
-    #                  ".webp",
-    #                  ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
-    #                  ".pfm",
-    #                  ".sr", ".ras",
-    #                  ".tiff", ".tif",
-    #                  ".exr",
-    #                  ".hdr", ".pic"]
+    image_formats = [".bmp", ".dib",
+                     ".jpeg", ".jpg", ".jpe",
+                     ".jp2",
+                     ".png",
+                     ".webp",
+                     ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
+                     ".pfm",
+                     ".sr", ".ras",
+                     ".tiff", ".tif",
+                     ".exr",
+                     ".hdr", ".pic"]
     
-    image_formats = ['.jpg']
+    # image_formats = ['.jpg']
     
     all_image_paths = []
     for image_format in image_formats:

@@ -58,19 +58,29 @@ def xml_path_to_image_path(xml_path: Path, check: bool=True) -> Path:
     Returns:
         Path: image_path
     """
-    # IDEA add more image formats, maybe use glob to get the corresponding file
-    # image_formats = [".bmp", ".dib",
-    #                  ".jpeg", ".jpg", ".jpe",
-    #                  ".jp2",
-    #                  ".png",
-    #                  ".webp",
-    #                  ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
-    #                  ".pfm",
-    #                  ".sr", ".ras",
-    #                  ".tiff", ".tif",
-    #                  ".exr",
-    #                  ".hdr", ".pic"]
-    image_path = xml_path.absolute().parents[1].joinpath(xml_path.stem + ".jpg")
+    
+    
+    image_formats = [".bmp", ".dib",
+                     ".jpeg", ".jpg", ".jpe",
+                     ".jp2",
+                     ".png",
+                     ".webp",
+                     ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
+                     ".pfm",
+                     ".sr", ".ras",
+                     ".tiff", ".tif",
+                     ".exr",
+                     ".hdr", ".pic"]
+    
+    # image_formats = [".jpg"]
+    
+    # Check if image with name exist if so return, else raise Error
+    for image_format in image_formats:
+        image_path = xml_path.absolute().parents[1].joinpath(xml_path.stem + image_format)
+        if image_path.exists():
+            break
+    else:
+        raise FileNotFoundError(f"No image equivalent found for {xml_path}")
     
     if check:
         check_path_accessible(image_path)

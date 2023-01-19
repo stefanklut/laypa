@@ -117,7 +117,7 @@ cp -r -T $LAYPA/ laypa
 
 echo "Building docker image..."
 # docker build --squash --no-cache . -t docker.laypa
-docker buildx build --no-cache . -t docker.laypa
+docker build --no-cache . -t docker.laypa
 
 rm -rf laypa
 docker system prune -f

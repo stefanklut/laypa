@@ -1,4 +1,4 @@
-FROM mambaorg/micromamba:1.1.0
+FROM mambaorg/micromamba
 USER root
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -22,7 +22,7 @@ COPY laypa.micromamba/ laypa/
 WORKDIR /src/laypa
 # RUN micromamba update -y --all
 # RUN micromamba init bash
-RUN --mount=type=cache,target=/opt/conda/pkgs micromamba create -y -n laypa -f environment.yml && \
+RUN micromamba create -y -n laypa -f environment.yml && \
     micromamba clean -y --all
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1

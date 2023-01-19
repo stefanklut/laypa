@@ -22,7 +22,7 @@ COPY _entrypoint.sh /usr/local/bin/_entrypoint.sh
 WORKDIR /src/laypa
 # RUN conda update -y --all
 # RUN conda init bash
-RUN --mount=type=cache,target=/opt/conda/pkgs mamba env create -f environment.yml && \
+RUN mamba env create -f environment.yml && \
     mamba clean -y --all
 
 SHELL ["conda", "run", "-n", "laypa", "/bin/bash", "-c"]
