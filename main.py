@@ -179,8 +179,8 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     return cfg
 
 def preprocess_datasets(cfg: CfgNode, 
-                        train: str | Path | Sequence[str|Path], 
-                        val: str | Path | Sequence[str|Path], 
+                        train: Optional[str | Path | Sequence[str|Path]], 
+                        val: Optional[str | Path | Sequence[str|Path]], 
                         output_dir: str | Path):
     """
     Preprocess the dataset(s). Converts ground truth pageXML to label masks for training
@@ -197,18 +197,10 @@ def preprocess_datasets(cfg: CfgNode,
         FileNotFoundError: the output dir does not exist
     """
     
-    train = Preprocess.clean_input_paths(train)
-    val = Preprocess.clean_input_paths(val)
+    
         
     if isinstance(output_dir, str):
         output_dir = Path(output_dir)
-        
-    if not all(missing := path.exists() for path in train):
-        raise FileNotFoundError(f"Train File/Folder not found: {missing} does not exist")
-    
-    if not all(missing := path.exists() for path in val):
-        raise FileNotFoundError(f"Validation File/Folder not found: {missing} does not exist")
-    
     if not output_dir.exists():
         raise FileNotFoundError(f"Output Folder not found: {output_dir} does not exist")
     
@@ -233,32 +225,47 @@ def preprocess_datasets(cfg: CfgNode,
         overwrite=cfg.PREPROCESS.OVERWRITE
     )
     
-    # Train
-    train_output_dir = output_dir.joinpath('train')
-    process.set_input_paths(train)
-    process.set_output_dir(train_output_dir)
-    train_image_paths, _ = process.get_file_paths()
-    process.run()
     
-    # Validation
-    val_output_dir = output_dir.joinpath('val')
-    process.set_input_paths(val)
-    process.set_output_dir(val_output_dir)
-    val_image_paths, _ = process.get_file_paths()
-    process.run()
+    train_output_dir = None
+    if train is not None:
+        train = Preprocess.clean_input_paths(train)
+        if not all(missing := path.exists() for path in train):
+            raise FileNotFoundError(f"Train File/Folder not found: {missing} does not exist")
+        
+        train_output_dir = output_dir.joinpath('train')
+        process.set_input_paths(train)
+        process.set_output_dir(train_output_dir)
+        train_image_paths, _ = process.get_file_paths()
+        process.run()
+        
+        #Saving the image used to a txt file
+        os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+        train_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("training_images.txt")
+        
+        with open(train_image_output_path, mode="w") as f:
+            for path in train_image_paths:
+                f.write(f"{path}\n")
     
-    #Saving the image used to a txt file
-    os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-    train_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("training_images.txt")
-    val_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("validation_images.txt")
     
-    with open(train_image_output_path, mode="w") as f:
-        for path in train_image_paths:
-            f.write(f"{path}\n")
+    val_output_dir = None
+    if val is not None:
+        val = Preprocess.clean_input_paths(val)
+        if not all(missing := path.exists() for path in val):
+            raise FileNotFoundError(f"Validation File/Folder not found: {missing} does not exist")
+        
+        val_output_dir = output_dir.joinpath('val')
+        process.set_input_paths(val)
+        process.set_output_dir(val_output_dir)
+        val_image_paths, _ = process.get_file_paths()
+        process.run()
+    
+        #Saving the image used to a txt file
+        os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+        val_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("validation_images.txt")
             
-    with open(val_image_output_path, mode="w") as f:
-        for path in val_image_paths:
-            f.write(f"{path}\n")
+        with open(val_image_output_path, mode="w") as f:
+            for path in val_image_paths:
+                f.write(f"{path}\n")
     
     dataset.register_dataset(train_output_dir, 
                              val_output_dir, 

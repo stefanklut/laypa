@@ -230,7 +230,7 @@ class Preprocess:
                 
                 if not self.disable_check:
                     if len(sub_image_paths) == 0:
-                        raise FileNotFoundError(f"No image files found in the ")
+                        raise FileNotFoundError(f"No image files found in the provided dir(s)/file(s)")
                     
             elif input_path.is_file() and input_path.suffix == ".txt":
                 with input_path.open(mode="r") as f:
