@@ -23,6 +23,8 @@ class PageData:
         self.filepath = filepath
         self.name = self.filepath.stem
         self.creator = "P2PaLA-PRHLT" if creator == None else creator
+        
+        # REVIEW should this be replaced with the newer pageXML standard?
         self.XMLNS = {
             "xmlns": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15",
             "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",

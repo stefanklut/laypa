@@ -141,3 +141,6 @@ output/
 # Pretrained_models
 *.pth
 
+# Tutorial
+tutorial/*results/
+

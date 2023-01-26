@@ -172,7 +172,7 @@ Coming soon
 ## Dataset(s)
 
 The dataset used for training requires images combined with ground truth pageXML. For structure the pageXML needs to be inside a directory one level down from the images. The dataset can be split over multiple directories, with the image paths specified in a `.txt` file. The structure should look as follows:
-```sh
+```
 training_data
 ├── page
 │   ├── image1.xml
@@ -188,7 +188,7 @@ training_data
 Where the image and pageXML filename stems should match `image1.jpg <-> image1.xml`. For the `.txt` based dataset absolute paths to the images are recommended. The structure for the data used as validation is the same as that for training.
 
 When running inference the images you want processed should be in a single directory. With the images directly under the root folder as follows:
-```sh
+```
 inference_data
 ├── image1.jpg
 ├── image2.jpg
@@ -441,7 +441,6 @@ If you discover a bug or missing feature that you would like to help with please
 [ohg_link]: https://doi.org/10.5281/zenodo.3517776
 [bozen_link]: https://doi.org/10.5281/zenodo.218236
 
-<!-- TODO Replace with relative links? -->
 [pull_request_link]: https://github.com/stefanklut/laypa/pulls
 [issues_link]: https://github.com/stefanklut/laypa/issues
 [environment_link]: environment.yml

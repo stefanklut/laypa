@@ -1,0 +1,600 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<PcGts xmlns="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15 http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15/pagecontent.xsd">
+    <Metadata>
+        <Creator>prov=University of Rostock/Institute of Mathematics/CITlab/Gundram Leifert/gundram.leifert@uni-rostock.de:name=Republic200(htr_id=16626)::::v=2.4.3
+prov=University of Rostock/Institute of Mathematics/CITlab/Tobias Gruening/tobias.gruening@uni-rostock.de:name=de.uros.citlab.module.baseline2polygon.B2PSeamMultiOriented:v=2.4.3
+prov=University of Rostock/Institute of Mathematics/CITlab/Tobias Gruening/tobias.gruening@uni-rostock.de:name=/net_tf/LA73_249_0mod360.pb:de.uros.citlab.segmentation.CITlab_LA_ML:v=2.4.2
+TRP</Creator>
+        <Created>2019-09-04T09:17:53.335+02:00</Created>
+        <LastChange>2020-07-15T16:36:08.093+02:00</LastChange>
+        <TranskribusMetadata docId="205073" pageId="8842168" pageNr="4" tsid="34505774" status="GT" userId="28220" imgUrl="https://files.transkribus.eu/Get?id=UTNBZMHUOSFYTZZDKSISQNRB&amp;fileType=view" xmlUrl="https://files.transkribus.eu/Get?id=AHVWBRSFVHENTSMSJOLPPCIN" imageId="5711348"/>
+    </Metadata>
+    <Page imageFilename="NL-HaNA_1.01.02_3099_0298.jpg" imageWidth="5612" imageHeight="4392">
+        <ReadingOrder>
+            <OrderedGroup id="ro_1665577971266" caption="Regions reading order">
+                <RegionRefIndexed index="0" regionRef="TextRegion_1576759406451_828"/>
+                <RegionRefIndexed index="1" regionRef="TextRegion_1576759399506_823"/>
+                <RegionRefIndexed index="2" regionRef="TextRegion_1576759420988_833"/>
+                <RegionRefIndexed index="3" regionRef="TextRegion_1576759589848_879"/>
+                <RegionRefIndexed index="4" regionRef="TextRegion_1576759429358_838"/>
+                <RegionRefIndexed index="5" regionRef="TextRegion_1576759589848_878"/>
+                <RegionRefIndexed index="6" regionRef="TextRegion_1576759429358_837"/>
+                <RegionRefIndexed index="7" regionRef="region_1576759925497_932"/>
+                <RegionRefIndexed index="8" regionRef="TextRegion_1576759698399_888"/>
+                <RegionRefIndexed index="9" regionRef="TextRegion_1576759443110_846"/>
+                <RegionRefIndexed index="10" regionRef="region_1576759474878_861"/>
+                <RegionRefIndexed index="11" regionRef="TextRegion_1576759455574_851"/>
+                <RegionRefIndexed index="12" regionRef="TextRegion_1576759713393_898"/>
+                <RegionRefIndexed index="13" regionRef="TextRegion_1576759465404_858"/>
+                <RegionRefIndexed index="14" regionRef="region_1576759489966_867"/>
+                <RegionRefIndexed index="15" regionRef="TextRegion_1576759465404_857"/>
+            </OrderedGroup>
+        </ReadingOrder>
+        <TextRegion orientation="0.0" id="TextRegion_1576759406451_828" custom="readingOrder {index:0;} structure {type:resolution;}">
+            <Coords points="1024,260 2852,260 2852,1368 1114,1350 1051,1310"/>
+            <TextLine id="r1l1" custom="readingOrder {index:0;} textStyle {offset:6; length:1;fontSize:0.0; kerning:0; superscript:true;} abbrev {offset:8; length:4;expansion:article;}">
+                <Coords points="1055,660 2823,574 2705,483 2287,520 2126,450 2043,529 1776,486 1598,555 1482,493 1368,546 1283,475 1170,522 1050,472"/>
+                <Baseline points="1069,615 1155,613 1242,612 1329,609 1416,607 1503,605 1590,603 1677,600 1764,598 1851,595 1938,593 2024,590 2111,588 2198,586 2285,584 2372,581 2459,579 2546,578 2633,576 2720,575 2807,574"/>
+                <TextEquiv>
+                    <Unicode>du xvie arle de la paciffication de Gand</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l2" custom="readingOrder {index:1;}">
+                <Coords points="1077,777 2700,717 2835,697 2830,570 2523,638 1885,605 1692,669 1543,624 1073,683"/>
+                <Baseline points="1090,738 1176,733 1262,729 1349,725 1435,721 1522,718 1608,714 1695,711 1781,708 1868,704 1954,701 2040,698 2127,695 2213,693 2300,690 2386,687 2473,683 2559,681 2646,677 2732,674 2819,670"/>
+                <TextEquiv>
+                    <Unicode>est dict, Que les Estatz generaulx ont deputé</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l3" custom="readingOrder {index:2;}">
+                <Coords points="1065,896 2800,801 2814,724 1059,763"/>
+                <Baseline points="1077,852 1163,848 1249,844 1335,840 1421,836 1508,833 1594,829 1680,825 1766,822 1852,818 1939,815 2025,811 2111,807 2197,803 2283,799 2370,794 2456,790 2542,785 2628,781 2714,775 2801,769"/>
+                <TextEquiv>
+                    <Unicode>les pensionaires de Boisleducq, Bruges Yman</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l4" custom="readingOrder {index:3;} abbrev {offset:18; length:3;expansion:vande\u0020;}">
+                <Coords points="1080,984 1616,940 1910,990 2261,921 2406,973 2550,904 2816,908 2811,811 2583,799 2473,852 2323,800 1077,914"/>
+                <Baseline points="1095,961 1180,957 1265,954 1350,950 1435,946 1521,943 1606,940 1691,935 1776,932 1861,928 1947,924 2032,920 2117,916 2202,911 2287,906 2373,901 2458,896 2543,890 2628,884 2713,878 2799,871"/>
+                <TextEquiv>
+                    <Unicode>et de Middelborch van Wercke, pour visiter</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l5" custom="readingOrder {index:4;}">
+                <Coords points="1075,1097 2780,1019 2839,1013 2835,930 1069,997"/>
+                <Baseline points="1087,1073 1173,1070 1260,1066 1347,1063 1433,1059 1520,1056 1607,1053 1693,1049 1780,1045 1867,1041 1954,1038 2040,1033 2127,1029 2214,1024 2300,1020 2387,1014 2474,1008 2560,1002 2647,995 2734,988 2821,980"/>
+                <TextEquiv>
+                    <Unicode>ladite Instruction, les authorisant de prendre</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l6" custom="readingOrder {index:5;}">
+                <Coords points="1064,1198 1776,1215 2006,1153 2106,1214 2808,1124 2847,1025 2657,998 2443,1082 2245,1021 2060,1104 1895,1055 1747,1116 1197,1094 1061,1151"/>
+                <Baseline points="1079,1187 1166,1183 1254,1178 1342,1175 1430,1171 1518,1168 1606,1165 1694,1161 1782,1158 1870,1155 1958,1152 2045,1148 2133,1144 2221,1140 2309,1135 2397,1130 2485,1125 2573,1118 2661,1111 2749,1103 2837,1095"/>
+                <TextEquiv>
+                    <Unicode>auecq eulx telz aultres qu‛ilz trouueront convenu</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l7" custom="readingOrder {index:6;}">
+                <Coords points="1071,1363 1189,1307 1770,1343 1940,1264 2252,1307 2632,1233 2838,1283 2786,1111 2527,1191 2106,1210 2024,1160 1947,1211 1066,1245"/>
+                <Baseline points="1083,1301 1169,1296 1256,1291 1343,1287 1430,1282 1517,1278 1604,1275 1691,1271 1778,1267 1865,1264 1952,1261 2038,1258 2125,1254 2212,1250 2299,1247 2386,1242 2473,1238 2560,1233 2647,1228 2734,1222 2821,1216"/>
+                <TextEquiv>
+                    <Unicode>pour en apres rapporter leurs advis aux Estatz.</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>du xvie arle de la paciffication de Gand
+est dict, Que les Estatz generaulx ont deputé
+les pensionaires de Boisleducq, Bruges Yman
+et de Middelborch van Wercke, pour visiter
+ladite Instruction, les authorisant de prendre
+auecq eulx telz aultres qu‛ilz trouueront convenu
+pour en apres rapporter leurs advis aux Estatz.</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" type="marginalia" id="TextRegion_1576759399506_823" custom="readingOrder {index:1;} structure {type:marginalia;}">
+            <Coords points="318,1589 904,1595 1027,1728 1004,2111 324,2111"/>
+            <TextLine id="r1l10" custom="readingOrder {index:0;}">
+                <Coords points="344,1771 481,1724 560,1724 615,1749 681,1707 720,1735 767,1713 911,1719 907,1610 875,1620 672,1575 552,1651 436,1629 340,1683"/>
+                <Baseline points="357,1729 384,1726 411,1723 438,1721 465,1719 492,1717 519,1715 546,1714 573,1713 600,1712 627,1711 654,1711 681,1710 708,1709 735,1709 762,1708 789,1707 816,1706 843,1705 870,1704 897,1703"/>
+                <TextEquiv>
+                    <Unicode>Cornille Van</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l12" custom="readingOrder {index:1;} abbrev {offset:9; length:9;expansion:Commissaire;}">
+                <Coords points="347,1850 433,1861 470,1835 714,1815 864,1815 892,1837 1015,1820 1014,1734 962,1748 913,1706 804,1711 677,1779 559,1725 514,1760 410,1747 343,1767"/>
+                <Baseline points="360,1824 392,1822 424,1821 456,1820 488,1819 520,1818 552,1817 584,1816 616,1815 648,1814 680,1812 712,1811 744,1810 776,1808 808,1807 840,1805 872,1803 904,1800 936,1798 968,1795 1001,1791"/>
+                <TextEquiv>
+                    <Unicode>Mansdale Coissaire</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l14" custom="readingOrder {index:2;} abbrev {offset:5; length:12;expansion:fortiffication;}">
+                <Coords points="363,1953 527,1923 684,1933 739,1906 781,1933 946,1918 984,1907 979,1813 897,1838 828,1818 768,1842 731,1818 683,1865 608,1830 554,1878 504,1836 360,1894"/>
+                <Baseline points="378,1928 407,1928 437,1927 466,1927 496,1926 525,1925 555,1924 584,1922 614,1920 643,1919 673,1918 702,1915 732,1914 761,1912 791,1909 820,1908 850,1906 879,1904 909,1902 938,1900 968,1898"/>
+                <TextEquiv>
+                    <Unicode>a la fortifficaon</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l16" custom="readingOrder {index:3;}">
+                <Coords points="366,2077 437,2068 462,2040 608,2081 643,2055 705,2059 842,2017 948,2027 943,1915 920,1910 894,1935 660,1916 582,1958 537,1927 465,1978 361,1953"/>
+                <Baseline points="380,2027 407,2027 435,2027 462,2027 490,2027 518,2027 545,2026 573,2025 600,2024 628,2024 656,2023 683,2022 711,2020 738,2018 766,2016 794,2015 821,2012 849,2010 876,2008 904,2005 932,2002"/>
+                <TextEquiv>
+                    <Unicode>de Willebroeck.</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="line_1576759395153_812" custom="readingOrder {index:4;}">
+                <Coords points="1003,1475 1024,1472 1024,1589 1007,1590"/>
+                <Baseline points="1021,1569 1024,1568"/>
+                <TextEquiv>
+                    <Unicode>Sur l‛ordonnance donne par Monsieur le Prince</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="line_1576759395154_814" custom="readingOrder {index:5;}">
+                <Coords points="997,1596 1024,1594 1024,1672 999,1663"/>
+                <Baseline points="1014,1656 1024,1655"/>
+                <TextEquiv>
+                    <Unicode>d‛Orenge au Tresorier pour Cornille van Mans„</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>Cornille Van&#13;
+Mansdale Coissaire&#13;
+a la fortifficaon&#13;
+de Willebroeck.&#13;
+Sur l‛ordonnance donne par Monsieur le Prince&#13;
+d‛Orenge au Tresorier pour Cornille van Mans„</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" id="TextRegion_1576759420988_833" custom="readingOrder {index:2;} structure {type:resolution;}">
+            <Coords points="1022,1703 957,1615 747,1578 689,1411 728,1228 1032,1248 1072,1401 2852,1368 2853,2654 1024,2654"/>
+            <TextLine id="line_1576759395153_811" custom="readingOrder {index:0;}">
+                <Coords points="1024,1472 1394,1433 2004,1482 2196,1407 2549,1470 2859,1389 2862,1472 2702,1545 1024,1589"/>
+                <Baseline points="1024,1568 1112,1559 1203,1550 1295,1543 1386,1538 1477,1534 1569,1531 1660,1529 1751,1527 1843,1526 1934,1525 2025,1525 2117,1523 2208,1522 2299,1520 2391,1517 2482,1513 2573,1508 2665,1501 2756,1493 2848,1483"/>
+                <TextEquiv>
+                    <Unicode>Sur l‛odonnance donne par Monsieur le Prince</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="line_1576759395154_813" custom="readingOrder {index:1;}">
+                <Coords points="1024,1594 1900,1533 2401,1582 2841,1508 2844,1620 2769,1643 1118,1707 1024,1672"/>
+                <Baseline points="1024,1655 1104,1654 1195,1653 1286,1651 1377,1650 1468,1648 1558,1647 1649,1645 1740,1643 1831,1640 1922,1638 2012,1636 2103,1633 2194,1629 2285,1625 2376,1621 2466,1616 2557,1610 2648,1604 2739,1598 2830,1591"/>
+                <TextEquiv>
+                    <Unicode>d‛Orenge au Tresorier pour Cornille van Mans„</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l11" custom="readingOrder {index:2;}">
+                <Coords points="1040,1812 1510,1818 1616,1757 1710,1812 1799,1758 2373,1793 2813,1715 2810,1641 2131,1644 1880,1720 1653,1661 1138,1746 1035,1700"/>
+                <Baseline points="1055,1791 1142,1784 1229,1778 1316,1773 1403,1769 1490,1766 1577,1763 1664,1761 1751,1758 1838,1756 1925,1753 2012,1751 2099,1748 2186,1745 2273,1741 2360,1737 2447,1731 2534,1725 2621,1717 2708,1708 2796,1698"/>
+                <TextEquiv>
+                    <Unicode>„dale, Commissaire a la fortiffication de</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l13" custom="readingOrder {index:3;} textStyle {offset:20; length:1;fontSize:0.0; kerning:0; superscript:true;}">
+                <Coords points="1075,1915 2332,1904 2508,1818 2816,1829 2837,1718 2345,1811 1936,1767 1708,1817 1616,1760 1511,1833 1070,1823"/>
+                <Baseline points="1088,1904 1179,1898 1271,1893 1362,1888 1454,1885 1545,1881 1637,1878 1728,1875 1820,1873 1911,1869 2003,1866 2094,1863 2186,1859 2277,1854 2369,1848 2460,1841 2552,1832 2643,1822 2735,1810 2827,1797"/>
+                <TextEquiv>
+                    <Unicode>Willebroeck du xviije. de ce moys est dict</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l15" custom="readingOrder {index:4;}">
+                <Coords points="1081,2035 1722,2046 1958,1981 2238,2033 2803,1941 2798,1826 2094,1937 1075,1915"/>
+                <Baseline points="1094,2023 1178,2015 1263,2009 1348,2004 1432,2000 1517,1997 1602,1993 1686,1990 1771,1988 1856,1985 1941,1983 2025,1980 2110,1977 2195,1974 2279,1970 2364,1965 2449,1959 2533,1952 2618,1943 2703,1932 2788,1921"/>
+                <TextEquiv>
+                    <Unicode>les Estatz suyuant la requisition dudict</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l17" custom="readingOrder {index:5;} abbrev {offset:0; length:3;expansion:Sieur;} textStyle {offset:1; length:1;fontSize:0.0; kerning:0; superscript:true;}">
+                <Coords points="1059,2157 2556,2103 2813,2049 2807,1931 2713,1998 2340,2038 1822,2002 1527,2068 1259,2017 1054,2060"/>
+                <Baseline points="1073,2144 1159,2136 1245,2129 1331,2123 1418,2119 1504,2114 1590,2111 1676,2107 1763,2105 1849,2102 1935,2100 2021,2097 2108,2093 2194,2090 2280,2085 2366,2080 2453,2073 2539,2065 2625,2056 2711,2046 2798,2033"/>
+                <TextEquiv>
+                    <Unicode>Sr. Prince comme dessus, ordonnent audict</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l18" custom="readingOrder {index:6;}">
+                <Coords points="1053,2309 1192,2259 1516,2288 1636,2222 2593,2221 2853,2179 2849,2097 1046,2179"/>
+                <Baseline points="1067,2270 1155,2261 1244,2254 1332,2248 1421,2242 1509,2237 1598,2232 1686,2228 1775,2225 1863,2220 1952,2217 2041,2213 2129,2209 2218,2205 2306,2199 2395,2194 2483,2188 2572,2180 2660,2172 2749,2163 2838,2152"/>
+                <TextEquiv>
+                    <Unicode>Tresorier payer audict Mansdale ladite somme</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l19" custom="readingOrder {index:7;} abbrev {offset:8; length:4;expansion:arthois;}">
+                <Coords points="1043,2383 2711,2321 2807,2294 2801,2191 2721,2237 2138,2217 2026,2280 1885,2232 1698,2275 1639,2222 1510,2292 1039,2315"/>
+                <Baseline points="1058,2372 1144,2367 1231,2363 1317,2359 1404,2355 1491,2351 1577,2346 1664,2343 1750,2339 1837,2335 1924,2330 2010,2326 2097,2321 2183,2317 2270,2311 2357,2305 2443,2298 2530,2291 2616,2284 2703,2275 2790,2265"/>
+                <TextEquiv>
+                    <Unicode>de C L. arth des deniers estans soubz luy a</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l20" custom="readingOrder {index:8;}">
+                <Coords points="1098,2531 2757,2410 2751,2313 2621,2306 1976,2398 1090,2392"/>
+                <Baseline points="1111,2490 1192,2485 1274,2480 1355,2475 1437,2470 1518,2466 1600,2462 1681,2457 1763,2453 1844,2449 1926,2444 2008,2440 2089,2435 2171,2431 2252,2426 2334,2421 2415,2416 2497,2411 2578,2406 2660,2400 2742,2394"/>
+                <TextEquiv>
+                    <Unicode>charge d'en rendre par ledit Mansdale</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l21" custom="readingOrder {index:9;}">
+                <Coords points="1104,2612 2691,2590 2882,2508 2872,2329 2481,2483 2343,2434 2255,2492 1099,2529"/>
+                <Baseline points="1118,2603 1205,2596 1292,2591 1380,2586 1467,2582 1555,2578 1642,2574 1729,2569 1817,2566 1904,2563 1992,2559 2079,2555 2166,2550 2254,2546 2341,2541 2429,2535 2516,2528 2603,2521 2691,2513 2778,2505 2866,2494"/>
+                <TextEquiv>
+                    <Unicode>Compte et reliqua, la et ainsy qu‛il appartiendra</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>Sur l‛odonnance donne par Monsieur le Prince
+d‛Orenge au Tresorier pour Cornille van Mans„
+„dale, Commissaire a la fortiffication de
+Willebroeck du xviije. de ce moys est dict
+les Estatz suyuant la requisition dudict
+Sr. Prince comme dessus, ordonnent audict
+Tresorier payer audict Mansdale ladite somme
+de C L. arth des deniers estans soubz luy a
+charge d'en rendre par ledit Mansdale
+Compte et reliqua, la et ainsy qu‛il appartiendra</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" type="marginalia" id="TextRegion_1576759589848_879" custom="readingOrder {index:3;} structure {type:marginalia;}">
+            <Coords points="323,2705 667,2715 804,2932 1041,2924 1017,3129 779,3152 794,3256 344,3266"/>
+            <TextLine id="r1l24" custom="readingOrder {index:0;} unclear {offset:0; length:4;}">
+                <Coords points="390,2936 411,2936 419,2945 440,2924 455,2933 484,2915 526,2915 543,2930 573,2924 573,2847 546,2844 528,2853 463,2794 440,2806 390,2803"/>
+                <Baseline points="404,2898 429,2899 455,2900 481,2900 506,2899 532,2899 558,2898"/>
+                <TextEquiv>
+                    <Unicode>fcum</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="line_1576759395156_816" custom="readingOrder {index:1;} abbrev {offset:0; length:6;expansion:Guillame;}">
+                <Coords points="382,2962 1024,2918 1024,3049 899,3066 639,3015 389,3091"/>
+                <Baseline points="400,3043 517,3032 635,3022 753,3014 871,3005 989,2998 1024,2995"/>
+                <TextEquiv>
+                    <Unicode>Guille nuytinck</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="line_1576759395157_818" custom="readingOrder {index:2;} abbrev {offset:0; length:3;expansion:Monsieur;}">
+                <Coords points="600,3037 729,3074 865,3025 921,3064 1024,3030 1024,3119 914,3156 817,3120 403,3149 399,3081"/>
+                <Baseline points="387,3134 443,3135 499,3135 556,3134 612,3132 669,3131 725,3128 782,3125 838,3122 895,3119 951,3115 1007,3112 1024,3110"/>
+                <TextEquiv>
+                    <Unicode>Mre de la Poste</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l28" custom="readingOrder {index:3;}">
+                <Coords points="383,3273 433,3257 495,3271 527,3246 560,3264 619,3248 648,3262 707,3240 743,3263 793,3262 790,3130 726,3154 693,3140 623,3159 540,3149 485,3185 440,3148 381,3155"/>
+                <Baseline points="398,3232 423,3232 448,3233 473,3233 498,3234 524,3234 549,3234 574,3234 599,3234 624,3233 650,3232 675,3231 700,3230 725,3228 750,3226 776,3224"/>
+                <TextEquiv>
+                    <Unicode>De Malines</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>fcum
+Guille nuytinck
+Mre de la Poste
+De Malines</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" id="TextRegion_1576759429358_838" custom="readingOrder {index:4;} structure {type:resolution;}">
+            <Coords points="1024,2654 2853,2654 2775,2966 1067,3143"/>
+            <TextLine id="r1l23" custom="readingOrder {index:0;} abbrev {offset:3; length:5;expansion:requeste;} textStyle {offset:6; length:2;fontSize:0.0; kerning:0; superscript:true;}">
+                <Coords points="1063,2907 1506,2911 1668,2844 2401,2862 2782,2800 2818,2678 2346,2690 2251,2745 1635,2695 1539,2791 1217,2779 1060,2842"/>
+                <Baseline points="1077,2880 1163,2870 1250,2862 1336,2855 1423,2850 1509,2846 1596,2843 1682,2840 1769,2838 1855,2837 1942,2835 2028,2833 2115,2831 2201,2828 2288,2824 2374,2820 2461,2814 2547,2807 2634,2798 2720,2787 2807,2774"/>
+                <TextEquiv>
+                    <Unicode>La reqte. de Guillame nuytinck est</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="line_1576759395156_815" custom="readingOrder {index:1;}">
+                <Coords points="1024,2918 2630,2811 2769,2821 2775,2918 1948,3035 1614,2970 1024,3049"/>
+                <Baseline points="1121,2991 1167,2989 1225,2985 1343,2980 1461,2975 1579,2969 1696,2964 1814,2958 1932,2953 2050,2947 2168,2941 2286,2933 2404,2925 2522,2917 2640,2907 2758,2896"/>
+                <TextEquiv>
+                    <Unicode>envoye a ceulx de la Chambre des aydes</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="line_1576759429469_841" custom="readingOrder {index:2;}">
+                <Coords points="1024,3030 1158,2988 1347,3031 1398,2998 1559,3019 1564,3110 1477,3126 1155,3126 1085,3099 1024,3119"/>
+                <Baseline points="1090,3105 1102,3104 1120,3103 1179,3091 1233,3091 1292,3089 1324,3083 1403,3084 1459,3081 1516,3078"/>
+                <TextEquiv>
+                    <Unicode>pour advis</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>La reqte. de Guillame nuytinck est
+envoye a ceulx de la Chambre des aydes
+pour advis</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" type="marginalia" id="TextRegion_1576759589848_878" custom="readingOrder {index:5;} structure {type:marginalia;}">
+            <Coords points="344,3266 1024,3266 1023,3574 344,3574"/>
+            <TextLine id="line_1576759395159_820" custom="readingOrder {index:0;} abbrev {offset:9; length:3;expansion:vande;} abbrev {offset:13; length:7;expansion:Lieutenant;}">
+                <Coords points="470,3259 526,3284 582,3260 695,3302 747,3265 815,3270 913,3309 972,3296 1024,3320 1024,3417 880,3404 845,3434 797,3400 732,3419 629,3403 458,3421 382,3458 379,3278"/>
+                <Baseline points="395,3411 428,3409 461,3407 494,3405 527,3403 560,3402 593,3401 626,3400 659,3399 692,3399 726,3398 759,3398 792,3397 825,3397 858,3397 891,3397 924,3397 957,3397 990,3396 1043,3399 1024,3396"/>
+                <TextEquiv>
+                    <Unicode>Gesanten van Lieuten</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r1l31" custom="readingOrder {index:1;}">
+                <Coords points="374,3546 443,3516 507,3554 557,3546 602,3568 619,3552 641,3572 741,3499 774,3521 811,3490 951,3504 946,3401 844,3435 798,3399 751,3404 709,3442 633,3404 549,3440 472,3420 369,3428"/>
+                <Baseline points="388,3503 415,3503 442,3503 470,3503 497,3502 525,3502 552,3500 579,3498 607,3497 634,3495 662,3494 689,3492 716,3490 744,3489 771,3487 799,3486 826,3485 853,3484 881,3483 908,3483 936,3483"/>
+                <TextEquiv>
+                    <Unicode>van Lymborch</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>Gesanten van Lieuten
+van Lymborch</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" id="TextRegion_1576759429358_837" custom="readingOrder {index:6;} structure {type:resolution;}">
+            <Coords points="1029,3362 977,3337 886,3325 797,3258 795,3148 1024,3126 2853,3126 2831,3336 1108,3387"/>
+            <TextLine id="r1l29" custom="readingOrder {index:0;} abbrev {offset:7; length:5;expansion:requeste;} textStyle {offset:10; length:2;fontSize:0.0; kerning:0; superscript:true;} abbrev {offset:14; length:3;expansion:vande;} abbrev {offset:27; length:3;expansion:vande;} abbrev {offset:31; length:7;expansion:Lieutenant;}">
+                <Coords points="1033,3356 1285,3406 1442,3348 2390,3376 2483,3315 2831,3320 2827,3170 2623,3246 1030,3247"/>
+                <Baseline points="1048,3343 1136,3340 1224,3336 1312,3334 1401,3332 1489,3330 1577,3328 1666,3327 1754,3326 1842,3324 1931,3323 2019,3322 2107,3319 2195,3317 2284,3315 2372,3312 2460,3308 2549,3304 2637,3298 2725,3292 2814,3286"/>
+                <TextEquiv>
+                    <Unicode>Sur la reqte. van gesanten van Lieuten van</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>Sur la reqte. van gesanten van Lieuten van</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion type="page-number" id="region_1576759925497_932" custom="readingOrder {index:7;} structure {type:page-number;}">
+            <Coords points="5015,209 5315,209 5315,446 5015,446"/>
+        </TextRegion>
+        <TextRegion orientation="0.0" id="TextRegion_1576759698399_888" custom="readingOrder {index:8;} structure {type:date;}">
+            <Coords points="2986,65 3534,65 3534,327 2986,327"/>
+            <TextLine id="r2l1" custom="readingOrder {index:0;} abbrev {offset:3; length:5;expansion:Februarij;}">
+                <Coords points="3117,257 3192,281 3250,262 3301,276 3493,231 3485,125 3426,127 3395,150 3367,128 3312,183 3253,146 3195,163 3108,152"/>
+                <Baseline points="3129,231 3155,230 3182,228 3209,226 3235,225 3262,222 3289,220 3315,218 3342,215 3369,213 3395,211 3422,209 3449,207 3476,207"/>
+                <TextEquiv>
+                    <Unicode>28 Febr.</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>28 Febr.</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" id="TextRegion_1576759443110_846" custom="readingOrder {index:9;} structure {type:resolution;}">
+            <Coords points="3519,318 4909,323 5009,456 5491,512 5468,995 3744,1048 3590,988 3553,838"/>
+            <TextLine id="r3l1" custom="readingOrder {index:0;}">
+                <Coords points="5066,425 5122,415 5140,422 5152,410 5175,420 5205,397 5220,413 5249,417 5255,255 5211,250 5171,275 5154,275 5114,309 5070,304"/>
+                <Baseline points="5082,369 5107,370 5133,372 5159,373 5184,374 5210,374 5236,374"/>
+                <TextEquiv>
+                    <Unicode>294.</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l2" custom="readingOrder {index:1;}">
+                <Coords points="3633,622 5468,611 5410,513 5241,565 4985,457 4902,518 4773,449 4631,527 4269,442 4071,537 3933,436 3820,508 3635,477"/>
+                <Baseline points="3647,600 3737,601 3827,602 3918,604 4008,605 4098,606 4189,607 4279,609 4369,610 4460,611 4550,612 4640,612 4731,613 4821,614 4911,614 5002,615 5092,615 5182,615 5273,615 5363,615 5454,614"/>
+                <TextEquiv>
+                    <Unicode>Lijmborch, est dict, les Estatz ordonnent</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l3" custom="readingOrder {index:2;} abbrev {offset:2; length:3;expansion:vander;}">
+                <Coords points="3645,729 5423,744 5473,614 5225,671 3645,655"/>
+                <Baseline points="3659,719 3749,719 3839,719 3929,719 4019,719 4109,719 4199,719 4289,720 4379,720 4469,720 4559,720 4649,720 4739,720 4829,719 4919,719 5009,718 5099,716 5189,714 5279,712 5369,708 5460,705"/>
+                <TextEquiv>
+                    <Unicode>a van Beken advizer tous moyens pour assister</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l4" custom="readingOrder {index:3;}">
+                <Coords points="3620,851 4555,851 4709,903 4806,834 5278,865 5386,782 5300,732 5215,789 4999,729 4908,777 4834,731 4643,777 3619,748"/>
+                <Baseline points="3635,838 3721,836 3808,835 3895,833 3982,833 4069,832 4156,832 4242,831 4329,831 4416,831 4503,831 4590,831 4677,830 4764,830 4850,829 4937,827 5024,826 5111,824 5198,821 5285,818 5372,814"/>
+                <TextEquiv>
+                    <Unicode>les Suppliants sur leur requis, actendu la</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l5" custom="readingOrder {index:4;}">
+                <Coords points="3620,981 3815,975 3864,938 3903,969 3959,952 4101,986 4192,948 4304,954 4364,990 4387,981 4384,854 4323,891 4192,851 4025,886 3980,869 3957,893 3855,846 3617,874"/>
+                <Baseline points="3635,963 3671,958 3708,954 3745,950 3782,948 3818,946 3855,944 3892,943 3929,942 3965,942 4002,941 4039,941 4076,941 4112,940 4149,940 4186,939 4223,938 4259,937 4296,935 4333,933 4370,930"/>
+                <TextEquiv>
+                    <Unicode>necessite presente</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>294.
+Lijmborch, est dict, les Estatz ordonnent
+a van Beken advizer tous moyens pour assister
+les Suppliants sur leur requis, actendu la
+necessite presente</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion type="marginalia" id="region_1576759474878_861" custom="readingOrder {index:10;} structure {type:marginalia;}">
+            <Coords points="2891,1190 3288,1192 3493,1239 3463,1499 3432,1583 2905,1604"/>
+            <TextLine id="line_1576760744158_1099" custom="readingOrder {index:0;}">
+                <Coords points="2973,1307 3464,1313 3463,1363 2972,1357"/>
+                <Baseline points="2973,1335 3464,1341"/>
+                <TextEquiv>
+                    <Unicode>Guillame de la</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="line_1576760748532_1104" custom="readingOrder {index:1;}">
+                <Coords points="2976,1411 3273,1413 3273,1463 2976,1461"/>
+                <Baseline points="2978,1444 3271,1433"/>
+                <TextEquiv>
+                    <Unicode>Brasserie</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>Guillame de la
+Brasserie</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" id="TextRegion_1576759455574_851" custom="readingOrder {index:11;} structure {type:resolution;}">
+            <Coords points="3465,1559 3511,1388 3568,1237 3241,1174 3119,778 3591,798 3601,989 3749,1030 5468,995 5468,2007 3519,2007"/>
+            <TextLine id="r3l7" custom="readingOrder {index:0;} abbrev {offset:11; length:5;expansion:requeste;} textStyle {offset:14; length:2;fontSize:0.0; kerning:0; superscript:true;}">
+                <Coords points="3589,1196 5482,1168 5482,1065 5294,1026 4969,1108 4890,1063 4232,1121 3589,1016"/>
+                <Baseline points="3604,1173 3697,1172 3790,1171 3883,1170 3976,1169 4070,1169 4163,1169 4256,1170 4349,1170 4442,1171 4536,1171 4629,1172 4722,1173 4815,1173 4908,1174 5002,1174 5095,1174 5188,1174 5281,1173 5374,1173 5468,1171"/>
+                <TextEquiv>
+                    <Unicode>Quant a la reqte. de Guillame de la brasserie</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l8" custom="readingOrder {index:1;}">
+                <Coords points="3603,1325 5426,1300 5372,1188 3603,1219"/>
+                <Baseline points="3618,1292 3707,1288 3797,1284 3887,1282 3976,1281 4066,1281 4156,1281 4245,1281 4335,1282 4425,1282 4515,1283 4604,1284 4694,1285 4784,1285 4873,1285 4963,1284 5053,1282 5142,1280 5232,1277 5322,1273 5412,1267"/>
+                <TextEquiv>
+                    <Unicode>Sergeant du Capitaine Schet soubz le Conte</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l9" custom="readingOrder {index:2;}">
+                <Coords points="3628,1423 3943,1414 4030,1472 4235,1399 5123,1430 5435,1392 5435,1327 3627,1335"/>
+                <Baseline points="3642,1404 3735,1401 3829,1398 3922,1396 4016,1395 4110,1395 4203,1394 4297,1394 4391,1394 4484,1395 4578,1395 4671,1394 4765,1394 4859,1393 4952,1392 5046,1389 5140,1386 5233,1382 5327,1378 5421,1371"/>
+                <TextEquiv>
+                    <Unicode>de la Marche, et billet du Tresorier vander</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l10" custom="readingOrder {index:3;} textStyle {offset:12; length:1;fontSize:0.0; kerning:0; superscript:true;}">
+                <Coords points="3503,1550 4629,1503 4996,1564 5328,1492 5326,1415 5258,1399 4982,1464 3501,1444"/>
+                <Baseline points="3519,1541 3608,1534 3698,1528 3788,1523 3877,1519 3967,1516 4057,1514 4146,1512 4236,1511 4326,1510 4416,1510 4505,1510 4595,1509 4685,1508 4774,1507 4864,1506 4954,1504 5043,1501 5133,1497 5223,1492 5313,1486"/>
+                <TextEquiv>
+                    <Unicode>Beken du xxve de ce moys, et advis de la</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l11" custom="readingOrder {index:4;}">
+                <Coords points="3651,1691 3939,1635 4574,1672 5387,1619 5385,1474 5006,1564 4624,1506 4460,1582 4312,1532 3649,1564"/>
+                <Baseline points="3666,1636 3751,1633 3836,1631 3921,1629 4007,1628 4092,1626 4177,1626 4263,1625 4348,1624 4433,1623 4519,1622 4604,1621 4689,1620 4774,1619 4860,1617 4945,1615 5030,1613 5116,1610 5201,1607 5286,1602 5372,1598"/>
+                <TextEquiv>
+                    <Unicode>Chambre des aydes est dict, que les Estatz</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l12" custom="readingOrder {index:5;}">
+                <Coords points="3642,1796 4817,1744 4895,1811 5007,1803 5174,1721 5316,1751 5314,1636 4751,1624 4286,1701 3931,1636 3640,1696"/>
+                <Baseline points="3657,1747 3739,1745 3821,1744 3903,1743 3985,1742 4068,1741 4150,1741 4232,1740 4314,1740 4396,1739 4479,1739 4561,1738 4643,1738 4725,1736 4807,1735 4890,1733 4972,1731 5054,1728 5136,1724 5218,1720 5301,1715"/>
+                <TextEquiv>
+                    <Unicode>se conforment a ceulx de ladite Chambre</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l13" custom="readingOrder {index:6;}">
+                <Coords points="3614,1925 3743,1868 5174,1896 5318,1850 5317,1776 3960,1773 3613,1834"/>
+                <Baseline points="3628,1869 3711,1865 3795,1862 3879,1860 3963,1859 4047,1858 4130,1858 4214,1857 4298,1857 4382,1857 4466,1857 4549,1857 4633,1857 4717,1856 4801,1855 4885,1853 4968,1851 5052,1848 5136,1843 5220,1839 5304,1833"/>
+                <TextEquiv>
+                    <Unicode>pour veu que le payement se fache moictie</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l14" custom="readingOrder {index:7;}">
+                <Coords points="3631,2004 4300,1986 4663,2033 4775,1991 5005,2045 5004,1894 4373,1924 4078,1879 3943,1922 3848,1873 3630,1928"/>
+                <Baseline points="3646,1984 3713,1981 3780,1979 3847,1977 3914,1976 3982,1975 4049,1974 4116,1973 4183,1973 4250,1973 4318,1972 4385,1972 4452,1972 4519,1972 4586,1972 4654,1971 4721,1971 4788,1970 4855,1969 4922,1967 4990,1965"/>
+                <TextEquiv>
+                    <Unicode>en argent et l‛aultre en drap.</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>Quant a la reqte. de Guillame de la brasserie
+Sergeant du Capitaine Schet soubz le Conte
+de la Marche, et billet du Tresorier vander
+Beken du xxve de ce moys, et advis de la
+Chambre des aydes est dict, que les Estatz
+se conforment a ceulx de ladite Chambre
+pour veu que le payement se fache moictie
+en argent et l‛aultre en drap.</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" type="marginalia" id="TextRegion_1576759713393_898" custom="readingOrder {index:12;} structure {type:marginalia;}">
+            <Coords points="2946,2239 3024,2174 3305,2266 3478,2277 3495,2496 2916,2498"/>
+            <TextLine id="r2l4" custom="readingOrder {index:0;}">
+                <Coords points="2927,2476 3055,2409 3143,2413 3187,2443 3231,2423 3246,2438 3285,2408 3435,2427 3436,2312 3383,2294 3347,2320 3274,2329 3185,2328 3094,2283 3044,2288 3008,2320 2985,2305 2955,2329 2929,2320"/>
+                <Baseline points="2943,2397 2968,2397 2993,2397 3018,2398 3043,2398 3068,2399 3093,2399 3118,2400 3143,2400 3168,2400 3194,2401 3219,2401 3244,2401 3269,2401 3294,2401 3319,2401 3344,2401 3369,2401 3394,2400 3420,2400"/>
+                <TextEquiv>
+                    <Unicode>Jehan nesel</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>Jehan nesel</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" id="TextRegion_1576759465404_858" custom="readingOrder {index:13;} structure {type:resolution;}">
+            <Coords points="3497,2537 3528,2284 3369,2260 3294,2076 3519,2007 5468,2007 5468,2981 3519,2981"/>
+            <TextLine id="r3l16" custom="readingOrder {index:0;} abbrev {offset:3; length:5;expansion:requeste;} textStyle {offset:6; length:2;fontSize:0.0; kerning:0; superscript:true;}">
+                <Coords points="3544,2273 4016,2250 4096,2318 4240,2238 5290,2265 5361,2232 5361,2120 5199,2197 4827,2176 4641,2067 4485,2150 4167,2114 3986,2100 3833,2114 3544,2156"/>
+                <Baseline points="3558,2249 3647,2244 3736,2240 3826,2238 3915,2236 4005,2235 4094,2235 4183,2235 4273,2236 4362,2237 4452,2239 4541,2240 4630,2241 4720,2242 4809,2243 4899,2243 4988,2242 5077,2241 5167,2239 5256,2236 5346,2232"/>
+                <TextEquiv>
+                    <Unicode>La reqte. de Jehan nesel et pieres Joinctes</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l17" custom="readingOrder {index:1;}">
+                <Coords points="3642,2387 4231,2351 4409,2435 4517,2378 5299,2347 5298,2279 5204,2256 4479,2320 4245,2236 4113,2287 3641,2272"/>
+                <Baseline points="3657,2355 3738,2353 3819,2353 3900,2352 3982,2352 4063,2352 4144,2352 4226,2353 4307,2353 4388,2354 4470,2354 4551,2354 4632,2354 4713,2353 4795,2353 4876,2351 4957,2350 5039,2347 5120,2344 5201,2340 5283,2335"/>
+                <TextEquiv>
+                    <Unicode>sont renvoyees aux qualtre Membres de</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l18" custom="readingOrder {index:2;}">
+                <Coords points="3612,2473 4217,2519 5311,2453 5310,2394 5224,2374 4864,2366 4750,2421 4519,2382 4414,2442 4171,2357 4022,2429 3611,2387"/>
+                <Baseline points="3626,2464 3709,2466 3792,2467 3876,2468 3959,2468 4043,2469 4126,2469 4210,2469 4293,2468 4377,2467 4460,2467 4543,2465 4627,2464 4710,2462 4794,2461 4877,2459 4961,2457 5044,2454 5128,2451 5211,2448 5295,2445"/>
+                <TextEquiv>
+                    <Unicode>Flandres, ausquelz sera donne advertence</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l19" custom="readingOrder {index:3;}">
+                <Coords points="3601,2623 5267,2592 5313,2508 5197,2460 4629,2523 3599,2496"/>
+                <Baseline points="3615,2592 3699,2590 3783,2588 3867,2586 3951,2585 4035,2584 4119,2583 4204,2582 4288,2582 4372,2581 4456,2580 4540,2579 4624,2578 4708,2577 4793,2575 4877,2573 4961,2571 5045,2568 5129,2564 5213,2561 5298,2556"/>
+                <TextEquiv>
+                    <Unicode>de ce qu‛est passé en ceste assemblee</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l20" custom="readingOrder {index:4;}">
+                <Coords points="3638,2725 5157,2714 5298,2679 5297,2611 4857,2589 4725,2651 3636,2604"/>
+                <Baseline points="3654,2710 3735,2706 3816,2704 3898,2702 3979,2700 4061,2699 4142,2698 4223,2698 4305,2697 4386,2697 4468,2696 4549,2696 4630,2695 4712,2694 4793,2693 4875,2690 4956,2688 5037,2685 5119,2681 5200,2676 5282,2670"/>
+                <TextEquiv>
+                    <Unicode>touchant le faict contenu, affin de par</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l21" custom="readingOrder {index:5;} abbrev {offset:6; length:4;expansion:desdits;}">
+                <Coords points="3624,2839 5231,2826 5284,2807 5283,2695 4965,2766 4732,2703 4376,2762 4207,2698 3624,2780"/>
+                <Baseline points="3638,2822 3719,2818 3801,2815 3882,2813 3964,2812 4046,2811 4127,2811 4209,2811 4290,2811 4372,2811 4454,2811 4535,2812 4617,2812 4698,2812 4780,2811 4862,2810 4943,2809 5025,2807 5106,2804 5188,2799 5270,2794"/>
+                <TextEquiv>
+                    <Unicode>ceulx desd qualtre Membres en estre</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l22" custom="readingOrder {index:6;}">
+                <Coords points="3624,2957 4795,2911 5123,2976 5202,2931 5201,2858 4761,2826 3624,2872"/>
+                <Baseline points="3639,2937 3716,2934 3793,2931 3871,2928 3948,2926 4025,2925 4103,2924 4180,2923 4257,2923 4335,2923 4412,2923 4489,2923 4567,2923 4644,2923 4721,2923 4799,2922 4876,2921 4953,2920 5031,2919 5108,2917 5186,2914"/>
+                <TextEquiv>
+                    <Unicode>ordonné comme Ilz trouueront convenir.</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>La reqte. de Jehan nesel et pieres Joinctes
+sont renvoyees aux qualtre Membres de
+Flandres, ausquelz sera donne advertence
+de ce qu‛est passé en ceste assemblee
+touchant le faict contenu, affin de par
+ceulx desd qualtre Membres en estre
+ordonné comme Ilz trouueront convenir.</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion type="marginalia" id="region_1576759489966_867" custom="readingOrder {index:14;} structure {type:marginalia;}">
+            <Coords points="2928,3110 3275,3119 3360,3188 3449,3217 3400,3375 2922,3369"/>
+            <TextLine id="line_1576760765581_1111" custom="readingOrder {index:0;} abbrev {offset:0; length:4;expansion:Lettres;} abbrev {offset:8; length:3;expansion:sieur;} textStyle {offset:9; length:1;fontSize:0.0; kerning:0; superscript:true;}">
+                <Coords points="2942,3199 3414,3215 3412,3265 2940,3249"/>
+                <Baseline points="3033,3228 2935,3221 3077,3237 3132,3245 3218,3239 3319,3250 3407,3251"/>
+                <TextEquiv>
+                    <Unicode>Lres au sr. de</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="line_1576760769456_1116" custom="readingOrder {index:1;}">
+                <Coords points="2960,3288 3313,3305 3311,3355 2958,3338"/>
+                <Baseline points="2959,3314 3290,3341"/>
+                <TextEquiv>
+                    <Unicode>Courtewile</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>Lres au sr. de
+Courtewile</Unicode>
+            </TextEquiv>
+        </TextRegion>
+        <TextRegion orientation="0.0" id="TextRegion_1576759465404_857" custom="readingOrder {index:15;} structure {type:resolution;}">
+            <Coords points="3519,2981 5468,2981 5468,3328 3519,3328"/>
+            <TextLine id="r3l23" custom="readingOrder {index:0;} abbrev {offset:0; length:4;expansion:Lettres;} abbrev {offset:17; length:2;expansion:Sieur;} textStyle {offset:18; length:1;fontSize:0.0; kerning:0; superscript:true;}">
+                <Coords points="3555,3220 5298,3218 5342,3059 5194,3018 5115,3089 4758,3135 4451,3059 4310,3110 4041,3061 3555,3164"/>
+                <Baseline points="3570,3192 3657,3189 3745,3186 3833,3184 3921,3182 4009,3181 4096,3180 4184,3180 4272,3180 4360,3180 4448,3181 4535,3181 4623,3181 4711,3182 4799,3182 4887,3182 4974,3181 5062,3181 5150,3179 5238,3177 5326,3175"/>
+                <TextEquiv>
+                    <Unicode>Lres dressees au Sr. de Courtewile sont</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextLine id="r3l24" custom="readingOrder {index:1;} textStyle {offset:25; length:3;fontSize:0.0; kerning:0; superscript:true;}">
+                <Coords points="3611,3323 4542,3299 5014,3381 5306,3334 5306,3228 4879,3253 4675,3188 4448,3246 4316,3184 4139,3251 3918,3191 3611,3234"/>
+                <Baseline points="3625,3299 3708,3298 3791,3298 3874,3297 3958,3297 4041,3297 4124,3298 4208,3299 4291,3299 4374,3300 4458,3301 4541,3301 4624,3302 4707,3303 4791,3303 4874,3303 4957,3303 5041,3302 5124,3301 5207,3300 5291,3298"/>
+                <TextEquiv>
+                    <Unicode>arrestees en conformté de„la„ lecture que en a</Unicode>
+                </TextEquiv>
+            </TextLine>
+            <TextEquiv>
+                <Unicode>Lres dressees au Sr. de Courtewile sont
+arrestees en conformté de„la„ lecture que en a</Unicode>
+            </TextEquiv>
+        </TextRegion>
+    </Page>
+</PcGts>

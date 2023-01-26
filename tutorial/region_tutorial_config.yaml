@@ -1,0 +1,20 @@
+_BASE_: ../configs/segmentation/region/region_dataset.yaml
+
+OUTPUT_DIR: ./tutorial/training_results/
+
+NAME: tutorial_region
+
+MODEL:
+  RESNETS:
+    DEPTH: 50
+  WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
+
+TEST:
+  EVAL_PERIOD: 1000
+
+SOLVER:
+  IMS_PER_BATCH: 4
+  CHECKPOINT_PERIOD: 2500
+  BASE_LR: 0.002
+  STEPS: (8000, 12000, 16000)
+  MAX_ITER: 25000
