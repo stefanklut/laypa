@@ -16,7 +16,9 @@ dependencies:
   - scipy
   - scikit-learn
   - pip
+  - tensorboard
   - pip:
     - 'git+https://github.com/facebookresearch/detectron2.git'
     - natsort
+    - torch-tb-profiler
     - imagesize
