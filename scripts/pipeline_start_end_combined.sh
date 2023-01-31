@@ -166,7 +166,6 @@ docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_
     -c configs/segmentation/baseline/baseline_dataset_imagenet_freeze.yaml \
     -i $input_dir \
     -o $tmp_dir/baseline \
-    -m baseline \
     --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/baseline_model_best_mIoU.pth
     # > /dev/null
 
@@ -180,7 +179,6 @@ docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_
     -c configs/segmentation/start/start_dataset_imagenet_freeze.yaml \
     -i $input_dir \
     -o $tmp_dir/start \
-    -m start \
     --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/start_model_best_mIoU.pth
     # > /dev/null
 
@@ -194,7 +192,6 @@ docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_
     -c configs/segmentation/end/end_dataset_imagenet_freeze.yaml \
     -i $input_dir \
     -o $tmp_dir/end \
-    -m end \
     --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/end_model_best_mIoU.pth
     # > /dev/null
 
@@ -208,7 +205,6 @@ docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $outp
     -c configs/segmentation/region/region_dataset_imagenet_freeze.yaml \
     -i $input_dir \
     -o $output_dir \
-    -m region \
     --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/region_model_best_mIoU.pth
     # > /dev/null
 
