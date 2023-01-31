@@ -141,9 +141,9 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     if args.val is None:
         pass
     elif isinstance(args.val, Sequence):
-        cfg.VALIDATION_PATH = [str(Path(path).resolve()) for path in args.val]
+        cfg.VALIDATION_PATHS = [str(Path(path).resolve()) for path in args.val]
     else:
-        cfg.VALIDATION_PATH = [str(Path(args.val).resolve())]
+        cfg.VALIDATION_PATHS = [str(Path(args.val).resolve())]
     
     
     # Setup run specific folders to prevent overwrites
@@ -169,7 +169,7 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
 
     cfg.freeze()
     
-    # Save the confic with all (changed) parameters to a yaml
+    # Save the config with all (changed) parameters to a yaml
     if comm.is_main_process() and cfg.OUTPUT_DIR and save_config:
         os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
         cfg_output_path = Path(cfg.OUTPUT_DIR).joinpath("config.yaml")
