@@ -208,7 +208,7 @@ class XMLRegions:
             dict[str, str]: Mapping from region to region type
         """
         reg_type = {"full_page": "TextRegion"}
-        if self._region_type is None or len(self._region_type):
+        if self._region_type is None or len(self._region_type) == 0:
             for reg in self._regions:
                 reg_type[reg] = "TextRegion"
             return reg_type

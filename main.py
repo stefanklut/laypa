@@ -131,14 +131,18 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     
     cfg.CONFIG_PATH = str(Path(args.config).resolve())
     
-    if args.train is None:
+    if not hasattr(args, 'train'):
+        pass 
+    elif args.train is None:
         pass
     elif isinstance(args.train, Sequence):
         cfg.TRAINING_PATHS = [str(Path(path).resolve()) for path in args.train]
     else:
         cfg.TRAINING_PATHS = [str(Path(args.train).resolve())]
       
-    if args.val is None:
+    if not hasattr(args, 'val'):
+        pass
+    elif args.val is None:
         pass
     elif isinstance(args.val, Sequence):
         cfg.VALIDATION_PATHS = [str(Path(path).resolve()) for path in args.val]
