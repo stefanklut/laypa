@@ -2,7 +2,7 @@
 This is a tutorial on how to use Laypa with concrete examples. 
 
 ## Setup
-First ensure that the proper [install instructions](../README.md#setup) have been followed.
+First ensure that the proper [install instructions](setup_section) have been followed.
 Open a terminal with the Laypa home directory as the current working directory
 
 ```sh
@@ -16,7 +16,7 @@ conda activate laypa
 ```
 
 ## Training
-We are first going to train a model using the data in the [`tutorial/data/training`](data/training/) directory. The general approach is described in the main [README](../README.md#training). The data is structured as follows:
+We are first going to train a model using the data in the [`tutorial/data/training`](training_link) directory. The general approach is described in the main [README](training_section). The data is structured as follows:
 
 ```
 training
@@ -39,7 +39,7 @@ During training you should see the loss go down indicating that the model is lea
 
 ### Baseline Models
 
-To train the baseline model, we will use the [baseline config](baseline_tutorial_config.yaml) found in the tutorial directory. This config inherits most information from the larger [baseline config](../configs/segmentation/baseline/baseline_dataset.yaml), but overwrites (among other things) the save location of the trained model and the number of iterations.
+To train the baseline model, we will use the [baseline config](baseline_config_link) found in the tutorial directory. This config inherits most information from the larger [baseline config](baseline_base_link), but overwrites (among other things) the save location of the trained model and the number of iterations.
 
 ```sh
 python main.py --config tutorial/baseline_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation
@@ -47,7 +47,7 @@ python main.py --config tutorial/baseline_tutorial_config.yaml --train tutorial/
 
 ### Region Models
 
-To train the region model, we will use the [region config](region_tutorial_config.yaml) found in the tutorial directory. This config inherits most information from the larger [region config](../configs/segmentation/region/region_dataset.yaml), but overwrites (among other things) the save location of the trained model and the number of iterations.
+To train the region model, we will use the [region config](region_config_link) found in the tutorial directory. This config inherits most information from the larger [region config](region_base_link), but overwrites (among other things) the save location of the trained model and the number of iterations.
 
 ```sh
 python main.py --config tutorial/region_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation
@@ -65,7 +65,7 @@ All other aspects of the training can be changed in either the config file direc
 
 
 ## Inference
-We are then going to inference the data found in the [`tutorial/data/inference`](data/inference/) directory. The general approach is described in the main [README](../README.md#inference). The data is structured as follows:
+We are then going to inference the data found in the [`tutorial/data/inference`](inference_link) directory. The general approach is described in the main [README](inference_section). The data is structured as follows:
 
 ```
 inference
@@ -75,7 +75,7 @@ inference
 ```
 
 ### Baseline Models
-For the inference of the baseline, we will again use the [baseline config](baseline_tutorial_config.yaml) found in the tutorial directory.
+For the inference of the baseline, we will again use the [baseline config](baseline_config_link) found in the tutorial directory.
 
 ```sh
 python run.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/inference --output tutorial/inference_results
@@ -83,7 +83,7 @@ python run.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/d
 The baseline models output the mask image for further processing. The pageXML output is just the name/placeholder.
 
 ### Region Models
-For the inference of the regions, we will again use the [region config](region_tutorial_config.yaml) found in the tutorial directory.
+For the inference of the regions, we will again use the [region config](region_config_link) found in the tutorial directory.
 
 ```sh
 python run.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/inference --output tutorial/inference_results
@@ -97,3 +97,17 @@ To change the weights that are loaded into the model the `--opts` argument can b
 ```sh
 python run.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/train --output tutorial/inference_results --opts TEST.WEIGHTS <TRAINING_RUN>/checkpoints/<MODEL_NAME>.pth
 ```
+
+<!-- Images and Links Shorthand-->
+[setup_section]: ../README.md#setup
+[training_section]: ../README.md#training
+[inference_section]:../README.md#inference
+
+[baseline_config_link]:baseline_tutorial_config.yaml
+[region_config_link]:region_tutorial_config.yaml
+
+[baseline_base_link]:../configs/segmentation/region/region_dataset.yaml
+[region_base_link]:../configs/segmentation/region/region_dataset.yaml
+
+[training_link]: data/training/
+[inference_link]:data/inference/
