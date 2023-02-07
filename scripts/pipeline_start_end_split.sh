@@ -200,18 +200,7 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir docker.laypa:latest \
-    python run.py \
-    -c configs/segmentation/region/region_dataset_imagenet_freeze.yaml \
-    -i $input_dir \
-    -o $output_dir \
-    --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/region_model_best_mIoU.pth
-    # > /dev/null
-
-if [[ $? -ne 0 ]]; then
-    echo "Region detection has errored, stopping program"
-    exit 1
-fi
+cp -P $tmp_dir/baseline/* $output_dir
 
 # Just used for debugging right now
 docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $output_dir:$output_dir -v $tmp_dir:$tmp_dir docker.laypa:latest \
@@ -231,8 +220,9 @@ docker run --rm -v $output_dir:$output_dir -v $tmp_dir:$tmp_dir docker.loghi-too
     -input_path_png $tmp_dir/baseline/page/ \
 	-input_path_png_start $tmp_dir/start/page/ \
 	-input_path_png_end $tmp_dir/end/page/ \
-    -input_path_pagexml $output_dir/page/ \
-    -output_path_pagexml $output_dir/page/
+    -input_path_pagexml $tmp_dir/baseline/page/ \
+    -output_path_pagexml $output_dir/page/ \
+	-as_single_region true
 
 if [[ $? -ne 0 ]]; then
     echo "Extract baselines has errored, stopping program"

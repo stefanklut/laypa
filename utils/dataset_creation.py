@@ -138,7 +138,7 @@ def main(args):
             raise FileNotFoundError(f"{input_dir} does not exist")
         # Find all images
         
-        xml_paths = list(input_dir.rglob(f"**/*.xml"))
+        xml_paths = list(input_dir.rglob(f"**/page/*.xml"))
         if len(xml_paths) == 0:
             raise FileNotFoundError(f"No xml_files found within {input_dir}")
         all_xml_paths.extend(xml_paths) # Assume depth 2
