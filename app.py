@@ -1,5 +1,3 @@
-import io
-import json
 import torch
 
 import numpy as np
@@ -35,6 +33,9 @@ gen_page = GenPageXML(output_dir=args.output,
 predictor = Predictor(cfg=cfg)
 
 def load_image(img_bytes):
+    # NOTE Reading images with cv2 removes the color profile, 
+    # so saving the image results in different colors when viewing the image.
+    # This should not affect the pixel values in the loaded image.
     bytes_array = np.frombuffer(img_bytes, np.uint8)
     image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR)
     return image
@@ -42,7 +43,7 @@ def load_image(img_bytes):
 @app.route('/predict', methods=['POST'])
 def predict():
     if request.method == 'POST':
-        file = request.files['file']
+        file = request.files['image']
         img_bytes = file.read()
         image = load_image(img_bytes)
         outputs = predictor(image)
