@@ -359,8 +359,7 @@ class Preprocess:
             width = np.ceil(old_width / (256 * counter)) * 256
             counter += 1
 
-        res_image = cv2.resize(image, np.asarray([width, height]).astype(np.int32),
-                               interpolation=cv2.INTER_CUBIC)
+        res_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)
 
         return res_image
 
@@ -429,8 +428,7 @@ class Preprocess:
             height, width = self.get_output_shape(
                 old_height, old_width, short_edge_length, self.max_size)
 
-        resized_image = cv2.resize(image, np.asarray([width, height]).astype(
-            np.int32), interpolation=cv2.INTER_CUBIC)
+        resized_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)
 
         return resized_image
 
@@ -456,14 +454,16 @@ class Preprocess:
         xml_path = image_path_to_xml_path(image_path, self.disable_check)
         # xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
         
-        image_shape = tuple(int(value) for value in imagesize.get(image_path)[::-1])
+        original_image_shape = tuple(int(value) for value in imagesize.get(image_path)[::-1])
         if self.resize:
             short_edge_length = self.sample_short_edge_length()
-            image_shape = self.get_output_shape(old_height=image_shape[0],
-                                                old_width=image_shape[1],
+            image_shape = self.get_output_shape(old_height=original_image_shape[0],
+                                                old_width=original_image_shape[1],
                                                 short_edge_length=short_edge_length,
                                                 max_size=self.max_size
                                                 )
+        else:
+            image_shape = original_image_shape
             
         out_image_path = self.output_dir.joinpath(
             "original", image_stem + ".png")
@@ -492,21 +492,21 @@ class Preprocess:
 
         out_mask_path = self.output_dir.joinpath("ground_truth", image_stem + ".png")
         
-        def save_mask(xml_path: Path, out_mask_path: Path, image_shape: tuple[int,int]):
+        def save_mask(xml_path: Path, out_mask_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int,int]):
             """
             Quick helper function for opening->converting to image->saving
             """
-            mask = self.xml_to_image.run(xml_path, image_shape=image_shape)
+            mask = self.xml_to_image.run(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
             
             cv2.imwrite(str(out_mask_path), mask)
         
         # Check if image already exist and if it doesn't need resizing
         if self.overwrite or not out_mask_path.exists():
-            save_mask(xml_path, out_mask_path, image_shape)
+            save_mask(xml_path, out_mask_path, original_image_shape, image_shape)
         else:
             out_mask_shape = tuple(int(value) for value in imagesize.get(out_mask_path)[::-1])
             if out_mask_shape != image_shape:
-                save_mask(xml_path, out_mask_path, image_shape)
+                save_mask(xml_path, out_mask_path, original_image_shape, image_shape)
             else:
                 # TODO Skipped
                 pass

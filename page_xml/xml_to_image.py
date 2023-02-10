@@ -46,12 +46,13 @@ class XMLImage(XMLRegions):
         """
         super().__init__(mode, line_width, line_color, regions, merge_regions, region_type)
 
-    def run(self, xml_path: Path, image_shape=None) -> np.ndarray:
+    def run(self, xml_path: Path, original_image_shape=None, image_shape=None) -> np.ndarray:
         """
         Turn a single pageXML into a mask of labels
 
         Args:
             xml_path (Path): path to pageXML
+            original_image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
             image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
 
         Raises:
@@ -62,9 +63,12 @@ class XMLImage(XMLRegions):
         """
         gt_data = PageData(xml_path)
         gt_data.parse()
+        
+        if original_image_shape is not None:
+            gt_data.set_size(original_image_shape)
 
         if image_shape is None:
-            image_shape = gt_data.get_size()[::-1]
+            image_shape = gt_data.get_size()
 
         if self.mode == "baseline":
             baseline_mask = gt_data.build_baseline_mask(

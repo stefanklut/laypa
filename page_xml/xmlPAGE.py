@@ -1,4 +1,4 @@
-# Taken from P2PaLA
+# Modified from P2PaLA
 
 import os
 import logging
@@ -35,8 +35,12 @@ class PageData:
                 ]
             ),
         }
+        self.size = None
         # self.parse()
-
+    
+    def set_size(self, size: tuple[int, int]):
+        self.size = size[::-1]
+    
     def parse(self):
         """
         Parse PAGE-XML file
@@ -96,13 +100,18 @@ class PageData:
         """
         Get Image size defined on XML file
         """
+        if self.size is not None:
+            return self.size
+        
         img_width = int(
             self.root.findall("".join(["./", self.base, "Page"]))[0].get("imageWidth")
         )
         img_height = int(
             self.root.findall("".join(["./", self.base, "Page"]))[0].get("imageHeight")
         )
-        return (img_width, img_height)
+        self.size = (img_height, img_width)
+        
+        return self.size
 
     def get_coords(self, element):
         str_coords = (
@@ -134,7 +143,7 @@ class PageData:
         """
         Builds a "image" mask of desired elements
         """
-        size = self.get_size()[::-1]
+        size = self.get_size()
         mask = np.zeros(out_size, np.uint8)
         out_size = np.asarray(out_size)
         scale_factor = out_size / size
@@ -168,7 +177,7 @@ class PageData:
         """
         Builds a "image" mask of Baselines on XML-PAGE
         """
-        size = self.get_size()[::-1]
+        size = self.get_size()
         # TODO Check for size in pageXML being 0, causes terrible error
         out_size = np.asarray(out_size)
         # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
@@ -196,7 +205,7 @@ class PageData:
         """
         Builds a "image" mask of Starts on XML-PAGE
         """
-        size = self.get_size()[::-1]
+        size = self.get_size()
         out_size = np.asarray(out_size)
         # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
         # --- is better to keep mask as np.uint8 to save disk space, then change it
@@ -222,7 +231,7 @@ class PageData:
         """
         Builds a "image" mask of Ends on XML-PAGE
         """
-        size = self.get_size()[::-1]
+        size = self.get_size()
         out_size = np.asarray(out_size)
         # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
         # --- is better to keep mask as np.uint8 to save disk space, then change it
@@ -248,7 +257,7 @@ class PageData:
         """
         Builds a "image" mask of Separators on XML-PAGE
         """
-        size = self.get_size()[::-1]
+        size = self.get_size()
         out_size = np.asarray(out_size)
         # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
         # --- is better to keep mask as np.uint8 to save disk space, then change it
@@ -280,7 +289,7 @@ class PageData:
         baseline_color = 1
         separator_color = 2
         
-        size = self.get_size()[::-1]
+        size = self.get_size()
         out_size = np.asarray(out_size)
         # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
         # --- is better to keep mask as np.uint8 to save disk space, then change it
