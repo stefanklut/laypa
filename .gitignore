@@ -144,3 +144,6 @@ output/
 # Tutorial
 tutorial/*results/
 
+# Redis
+*.rdb
+
