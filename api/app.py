@@ -1,16 +1,18 @@
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
+import time
 
 import cv2
 import numpy as np
 import torch
 from flask import Flask, jsonify, request
 
+from concurrent.futures import ThreadPoolExecutor
 
-import sys
-from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.generate_pageXML import GenPageXML
 from main import setup_cfg
+from page_xml.generate_pageXML import GenPageXML
 from run import Predictor
 
 app = Flask(__name__)
@@ -36,6 +38,8 @@ gen_page = GenPageXML(output_dir=args.output,
 
 predictor = Predictor(cfg=cfg)
 
+executor = ThreadPoolExecutor(max_workers=1)
+
 def load_image(img_bytes):
     # NOTE Reading images with cv2 removes the color profile, 
     # so saving the image results in different colors when viewing the image.
@@ -44,15 +48,21 @@ def load_image(img_bytes):
     image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR)
     return image
 
+def predict_image(image):
+    outputs = predictor(image)
+    output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
+    return output_image
+
 @app.route('/predict', methods=['POST'])
 def predict():
     if request.method == 'POST':
         file = request.files['image']
         img_bytes = file.read()
         image = load_image(img_bytes)
-        outputs = predictor(image)
-        output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
-        return jsonify({"success": True})
+        # IDEA Pass Generated UUID to the predict_image function to recall/implement the GET app route
+        future = executor.submit(predict_image, image)
+        # TODO Add callbacks
+        return jsonify({"success": True, "added_queue_position": executor._work_queue.qsize(), "added_time": time.time()})
 
 
 if __name__ == '__main__':
