@@ -19,11 +19,7 @@ from detectron2.data import (
 )
 from detectron2.utils import comm
 from detectron2.engine import DefaultTrainer
-from detectron2.checkpoint import DetectionCheckpointer
-from detectron2.config import (
-    get_cfg,
-    CfgNode
-)
+from detectron2.config import CfgNode
 from detectron2.evaluation import SemSegEvaluator
 from detectron2.utils.env import seed_all_rng
 from detectron2.data import transforms as T

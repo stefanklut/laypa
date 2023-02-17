@@ -1,4 +1,4 @@
-# Taken from P2PaLA
+# Modified from P2PaLA
 
 import argparse
 import inspect
@@ -21,10 +21,6 @@ from datasets.transforms import (ResizeTransform,
                                  GaussianFilterTransform,
                                  BlendTransform)
 
-
-
-from scipy.ndimage import map_coordinates
-from scipy.ndimage import affine_transform
 from scipy.ndimage import gaussian_filter
 
 # REVIEW Use the self._init() function

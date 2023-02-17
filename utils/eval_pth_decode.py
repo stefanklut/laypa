@@ -1,7 +1,6 @@
 import argparse
 from pathlib import Path
 import sys
-import numpy as np
 import torch
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))

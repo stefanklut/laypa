@@ -6,8 +6,7 @@ import argparse
 import os
 from pathlib import Path
 
-from natsort import os_sorted
-from detectron2.data import MetadataCatalog, Metadata
+from detectron2.data import Metadata
 from detectron2.utils.visualizer import Visualizer
 
 from page_xml.xml_to_image import XMLImage

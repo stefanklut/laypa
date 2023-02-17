@@ -1,6 +1,5 @@
 import os
 import tempfile
-from time import sleep
 from typing import Optional
 import weakref
 import warnings

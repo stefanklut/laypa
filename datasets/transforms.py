@@ -1,10 +1,7 @@
-# Taken from P2PaLA
+# Modified from P2PaLA
 
 import argparse
-from collections import Counter
 import numpy as np
-import torch
-import torchvision
 import cv2
 import detectron2.data.transforms as T
 
@@ -51,7 +48,7 @@ class ResizeTransform(T.Transform):
         assert (old_height, old_width) == (self.height,
                                            self.width), "Input dims do not match specified dims"
 
-        res_image = cv2.resize(img, np.asarray([self.new_width, self.new_height]).astype(np.int32), interpolation=cv2.INTER_CUBIC)
+        res_image = cv2.resize(img, (self.new_width, self.new_height), interpolation=cv2.INTER_CUBIC)
 
         return res_image
 
@@ -84,7 +81,7 @@ class ResizeTransform(T.Transform):
         assert (old_height, old_width) == (self.height,
                                            self.width), "Input dims do not match specified dims"
 
-        res_segmentation = cv2.resize(segmentation, np.asarray([self.new_width, self.new_height]).astype(np.int32), interpolation=cv2.INTER_NEAREST)
+        res_segmentation = cv2.resize(segmentation, (self.new_width, self.new_height), interpolation=cv2.INTER_NEAREST)
 
         return res_segmentation
 
