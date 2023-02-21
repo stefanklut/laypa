@@ -4,7 +4,6 @@ from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.checkpoint import DetectionCheckpointer
-import datasets.dataset as dataset
 import matplotlib.pyplot as plt
 import cv2
 from main import preprocess_datasets, setup_cfg
@@ -80,7 +79,7 @@ def main(args) -> None:
 
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
         
-        preprocess_datasets(cfg, args.train, args.val, tmp_dir)
+        preprocess_datasets(cfg, args.train, args.val, tmp_dir, save_image_locations=False)
         predictor = Predictor(cfg=cfg)
 
         # train_loader = DatasetCatalog.get("train")

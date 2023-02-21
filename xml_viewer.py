@@ -6,8 +6,7 @@ import argparse
 import os
 from pathlib import Path
 
-from natsort import os_sorted
-from detectron2.data import MetadataCatalog, Metadata
+from detectron2.data import Metadata
 from detectron2.utils.visualizer import Visualizer
 
 from page_xml.xml_to_image import XMLImage
@@ -55,7 +54,8 @@ class Viewer:
         self.metadata = Metadata()
         
         region_names = xml_to_image.get_regions()
-        region_colors = [(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)]
+        # region_colors = [(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)]
+        region_colors = [(0,0,0), (255,255,255)]
         
         if len(region_names) != len(region_colors):
             raise ValueError(f"Colors must match names in length: {len(region_names)} v. {len(region_colors)}")

@@ -39,7 +39,7 @@ class PageData:
         # self.parse()
     
     def set_size(self, size: tuple[int, int]):
-        self.size = size[::-1]
+        self.size = size
     
     def parse(self):
         """

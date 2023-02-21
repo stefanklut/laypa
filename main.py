@@ -19,11 +19,7 @@ from detectron2.data import (
 )
 from detectron2.utils import comm
 from detectron2.engine import DefaultTrainer
-from detectron2.checkpoint import DetectionCheckpointer
-from detectron2.config import (
-    get_cfg,
-    CfgNode
-)
+from detectron2.config import CfgNode
 from detectron2.evaluation import SemSegEvaluator
 from detectron2.utils.env import seed_all_rng
 from detectron2.data import transforms as T
@@ -185,7 +181,8 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
 def preprocess_datasets(cfg: CfgNode, 
                         train: Optional[str | Path | Sequence[str|Path]], 
                         val: Optional[str | Path | Sequence[str|Path]], 
-                        output_dir: str | Path):
+                        output_dir: str | Path,
+                        save_image_locations: bool = True):
     """
     Preprocess the dataset(s). Converts ground truth pageXML to label masks for training
 
@@ -242,13 +239,14 @@ def preprocess_datasets(cfg: CfgNode,
         train_image_paths, _ = process.get_file_paths()
         process.run()
         
-        #Saving the image used to a txt file
-        os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-        train_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("training_images.txt")
+        if save_image_locations:
+            #Saving the images used to a txt file
+            os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+            train_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("training_images.txt")
         
-        with open(train_image_output_path, mode="w") as f:
-            for path in train_image_paths:
-                f.write(f"{path}\n")
+            with open(train_image_output_path, mode="w") as f:
+                for path in train_image_paths:
+                    f.write(f"{path}\n")
     
     
     val_output_dir = None
@@ -262,14 +260,16 @@ def preprocess_datasets(cfg: CfgNode,
         process.set_output_dir(val_output_dir)
         val_image_paths, _ = process.get_file_paths()
         process.run()
-    
-        #Saving the image used to a txt file
-        os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-        val_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("validation_images.txt")
-            
-        with open(val_image_output_path, mode="w") as f:
-            for path in val_image_paths:
-                f.write(f"{path}\n")
+        
+        if save_image_locations:
+            #FIXME This should have a flag (eval.py)
+            #Saving the images used to a txt file
+            os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
+            val_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("validation_images.txt")
+                
+            with open(val_image_output_path, mode="w") as f:
+                for path in val_image_paths:
+                    f.write(f"{path}\n")
     
     dataset.register_dataset(train_output_dir, 
                              val_output_dir, 

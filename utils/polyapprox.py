@@ -1,4 +1,4 @@
-# Taken from P2PaLA
+# Modified from P2PaLA
 
 import numpy as np
 
@@ -67,16 +67,16 @@ def poly_approx(secPoints, vertM, delta):
     secSize = secPoints.shape[0]
     # --- Define internal Variables
     # --- Dynamic programming matrix. The rows represent the input points and the colums the vertices.
-    matD = np.zeros([secSize, vertM], dtype=np.float)
+    matD = np.zeros([secSize, vertM], dtype=np.float32)
     matD.fill(np.inf)
     # --- Sequence of Vertices. Sorted in the order of secPoints
-    secVec = np.zeros((vertM, 2), dtype=np.int)
+    secVec = np.zeros((vertM, 2), dtype=np.int32)
     # --- Matrix to store the sequence of decisions taken
-    pathMatrix = np.zeros([secSize, vertM], dtype=np.int)
+    pathMatrix = np.zeros([secSize, vertM], dtype=np.int32)
     # --- Initialization of the first cell of D, because this is and endpoint bounded polygon
     matD[0, 0] = 0
     # matD[1:,0] = np.inf
-    minArray = np.zeros((secSize), dtype=np.float)
+    minArray = np.zeros((secSize), dtype=np.float32)
     for m in range(1, vertM):
         for n in range(m, secSize):
             minArray.fill(np.inf)
@@ -107,7 +107,7 @@ def norm_trace(sec_points, vert_m):
     """
     trace normalization algorithm
     """
-    trace_long = np.zeros(sec_points.shape[0], dtype=np.float)
+    trace_long = np.zeros(sec_points.shape[0], dtype=np.float32)
     output = np.zeros((vert_m, 2), dtype=int)
     p_iter = enumerate(sec_points)
     next(p_iter)

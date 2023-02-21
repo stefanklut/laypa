@@ -2,15 +2,13 @@
 
 import argparse
 from collections import OrderedDict
-from multiprocessing import Pool, Value
+from multiprocessing import Pool
 import os
 from pathlib import Path
 import numpy as np
 import cv2
 from detectron2.data import Metadata
 from typing import Optional
-import logging
-from natsort import os_sorted
 from page_xml.xml_to_image import XMLImage
 from tqdm import tqdm
 from utils.path_utils import clean_input
@@ -339,8 +337,8 @@ class EvalWrapper:
         if image_path_i_1.stem != image_path_i_2.stem:
             raise ValueError(f"Images {image_path_i_1} & {image_path_i_2} do not match")
     
-        image_i_1 = cv2.imread(image_path_i_1, cv2.IMREAD_GRAYSCALE)
-        image_i_2 = cv2.imread(image_path_i_2, cv2.IMREAD_GRAYSCALE)
+        image_i_1 = cv2.imread(str(image_path_i_1), cv2.IMREAD_GRAYSCALE)
+        image_i_2 = cv2.imread(str(image_path_i_2), cv2.IMREAD_GRAYSCALE)
         
         self.evaluator.process([image_i_1], [image_i_2])
     
@@ -366,8 +364,8 @@ class EvalWrapper:
         if image_path_i_1.stem != image_path_i_2.stem:
             raise ValueError(f"Images {image_path_i_1} & {image_path_i_2} do not match")
     
-        image_i_1 = cv2.imread(image_path_i_1, cv2.IMREAD_GRAYSCALE)
-        image_i_2 = cv2.imread(image_path_i_2, cv2.IMREAD_GRAYSCALE)
+        image_i_1 = cv2.imread(str(image_path_i_1), cv2.IMREAD_GRAYSCALE)
+        image_i_2 = cv2.imread(str(image_path_i_2), cv2.IMREAD_GRAYSCALE)
         
         confusion_matrix = self.evaluator.process_output([image_i_1], [image_i_2])
         
