@@ -142,7 +142,7 @@ output/
 *.pth
 
 # Tutorial
-tutorial/*results/
+tutorial/*results*/
 
 # Redis
 *.rdb

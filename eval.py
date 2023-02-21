@@ -79,7 +79,7 @@ def main(args) -> None:
 
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
         
-        preprocess_datasets(cfg, args.train, args.val, tmp_dir)
+        preprocess_datasets(cfg, args.train, args.val, tmp_dir, save_image_locations=False)
         predictor = Predictor(cfg=cfg)
 
         # train_loader = DatasetCatalog.get("train")
