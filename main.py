@@ -104,6 +104,8 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     """
     if cfg is None:
         cfg = _C_default
+        
+    cfg.defrost()
 
     # Merge with extra defaults, config file and command line args
     cfg.set_new_allowed(True)

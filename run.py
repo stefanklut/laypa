@@ -174,7 +174,8 @@ class SavePredictor(Predictor):
         outputs = super().__call__(image)
         output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
         
-        self.gen_page.run([output_image], [input_path])
+        self.gen_page.link_image(input_path)
+        self.gen_page.generate_single_page(output_image, input_path)
     
     def process(self):
         """

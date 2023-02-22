@@ -67,6 +67,7 @@ class GenPageXML(XMLRegions):
             output_dir.mkdir(parents=True)
         self.output_dir = output_dir
         
+        # TODO Generate page/output folder only when running folder
         page_dir = self.output_dir.joinpath("page")
         if not page_dir.is_dir():
             print(f"Could not find page dir ({page_dir}), creating one at specified location")
@@ -74,10 +75,30 @@ class GenPageXML(XMLRegions):
         self.page_dir = page_dir
         
         self.regions = self.get_regions()
+        
+    def set_output_dir(self, output_dir: str|Path):
+        if isinstance(output_dir, str):
+            output_dir = Path(output_dir)
+            
+        if not output_dir.is_dir():
+            print(f"Could not find output dir ({output_dir}), creating one at specified location")
+            output_dir.mkdir(parents=True)
+        self.output_dir = output_dir
+        
+        page_dir = self.output_dir.joinpath("page")
+        if not page_dir.is_dir():
+            print(f"Could not find page dir ({page_dir}), creating one at specified location")
+            page_dir.mkdir(parents=True)
+        self.page_dir = page_dir
+        
+    def link_image(self, image_path: Path):
+        image_output_path = self.output_dir.joinpath(image_path.name)
+        
+        copy_mode(image_path, image_output_path, mode="symlink")
     
-    def generate_single_page(self, info: tuple[np.ndarray|Path, Path]):
+    def generate_single_page(self, mask: np.ndarray, image_path: Path):
         """
-        Convert a single prediction into 
+        Convert a single prediction into a page
 
         Args:
             info (tuple[np.ndarray | Path, Path]):
@@ -87,25 +108,22 @@ class GenPageXML(XMLRegions):
 
         Raises:
             NotImplementedError: mode is not known
-        """
-        mask, image_path = info
-        
-        if isinstance(mask, Path):
-            mask = cv2.imread(str(mask), cv2.IMREAD_GRAYSCALE)
+        """        
         
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
-        image_output_path = self.output_dir.joinpath(image_path.name)
         
-        copy_mode(image_path, image_output_path, mode="symlink")
+        # TODO Double scaling seems bad but need an alternative
+        # old_width, old_height = imagesize.get(image_path)
+        old_width, old_height = mask.shape
         
-        old_width, old_height = imagesize.get(image_path)
         
         height, width = mask.shape
         
         scaling = np.asarray([width, height]) / np.asarray([old_width, old_height])
+        # scaling = np.asarray((1,1))
         
         page = PageData(xml_output_path)
-        page.new_page(image_output_path.name, str(old_height), str(old_width))
+        page.new_page(image_path.name, str(old_height), str(old_width))
         
         if self.mode == 'region':
             region_id = 0
@@ -158,6 +176,12 @@ class GenPageXML(XMLRegions):
             raise NotImplementedError
                 
         page.save_xml()
+    
+    def generate_single_page_wrapper(self, info):
+        mask, image_path = info
+        if isinstance(mask, Path):
+            mask = cv2.imread(str(mask), cv2.IMREAD_GRAYSCALE)
+        self.generate_single_page(mask, image_path)
         
     def run(self, 
             mask_list: list[np.ndarray] | list[Path], 
@@ -178,7 +202,7 @@ class GenPageXML(XMLRegions):
         
         # Do not run multiprocessing for single images
         if len(mask_list) == 1:
-            self.generate_single_page((mask_list[0], image_path_list[0]))
+            self.generate_single_page_wrapper((mask_list[0], image_path_list[0]))
             return
         
         # #Single thread
@@ -188,7 +212,7 @@ class GenPageXML(XMLRegions):
         # Multi thread
         with Pool(os.cpu_count()) as pool:
             _ = list(tqdm(pool.imap_unordered(
-                self.generate_single_page, list(zip(mask_list, image_path_list))), total=len(mask_list)))
+                self.generate_single_page_wrapper, list(zip(mask_list, image_path_list))), total=len(mask_list)))
 
 def main(args):
     # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
