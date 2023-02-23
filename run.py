@@ -2,7 +2,7 @@ import argparse
 from multiprocessing import Pool
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 from detectron2.engine import DefaultPredictor
 from detectron2.checkpoint import DetectionCheckpointer
 from datasets.augmentations import ResizeShortestEdge
@@ -24,7 +24,7 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args.add_argument("--opts", nargs=argparse.REMAINDER, help="optional args to change", default=[])
     
     io_args = parser.add_argument_group("IO")
-    io_args.add_argument("-i", "--input", help="Input folder", type=str, required=True)
+    io_args.add_argument("-i", "--input", nargs="+", help="Input folder", type=str, action='extend', required=True)
     io_args.add_argument("-o", "--output", help="Output folder", type=str, required=True)
     
     args = parser.parse_args()
@@ -62,7 +62,7 @@ class SavePredictor(Predictor):
     """
     def __init__(self, 
                  cfg, 
-                 input_dir: str | Path, 
+                 input_paths: str | Path, 
                  output_dir: str | Path, 
                  gen_page: GenPageXML):
         """
@@ -76,9 +76,9 @@ class SavePredictor(Predictor):
         """
         super().__init__(cfg)
         
-        self.input_dir: Optional[Path] = None
-        if input_dir is not None:
-            self.set_input_dir(input_dir)
+        self.input_paths: Optional[Sequence[Path]] = None
+        if input_paths is not None:
+            self.set_input_paths(input_paths)
         
         self.output_dir: Optional[Path] = None
         if output_dir is not None:
@@ -102,41 +102,33 @@ class SavePredictor(Predictor):
                               ".exr",
                               ".hdr", ".pic"]
         
-    def set_input_dir(self, input_dir: str | Path) -> None:
+    def set_input_paths(self, input_paths: str | Path | Sequence[str|Path]) -> None:
         """
-        Setter for the input dir
+        Setter for image paths, also cleans them to be a list of Paths
 
         Args:
-            input_dir (str | Path): path to input dir
+            input_paths (str | Path | Sequence[str | Path]): path(s) from which to extract the images
 
         Raises:
-            FileNotFoundError: input dir does not exist
-            NotADirectoryError: input dir does not point to a directory
-            PermissionError: input dir is not readable
+            FileNotFoundError: input path not found on the filesystem
+            PermissionError: input path not accessible
         """
-        if isinstance(input_dir, str):
-            input_dir = Path(input_dir)
+        input_paths = self.clean_input_paths(input_paths)
+        
+        all_input_paths = []
 
-        if not input_dir.exists():
-            raise FileNotFoundError(f"Input dir ({input_dir}) is not found")
+        for input_path in input_paths:
+            if not input_path.exists():
+                raise FileNotFoundError(f"Input ({input_path}) is not found")
 
-        if not input_dir.is_dir():
-            raise NotADirectoryError(
-                f"Input path ({input_dir}) is not a directory")
+            if not os.access(path=input_path, mode=os.R_OK):
+                raise PermissionError(
+                    f"No access to {input_path} for read operations")
+            
+            input_path = input_path.resolve()
+            all_input_paths.append(input_path)
 
-        if not os.access(path=input_dir, mode=os.R_OK):
-            raise PermissionError(
-                f"No access to {input_dir} for read operations")
-
-        # page_dir = input_dir.joinpath("page")
-        # if not input_dir.joinpath("page").exists():
-        #     raise FileNotFoundError(f"Sub page dir ({page_dir}) is not found")
-
-        # if not os.access(path=page_dir, mode=os.R_OK):
-        #     raise PermissionError(
-        #         f"No access to {page_dir} for read operations")
-
-        self.input_dir = input_dir.resolve()
+        self.input_paths = all_input_paths
         
     def set_output_dir(self, output_dir: str | Path) -> None:
         """
@@ -177,6 +169,96 @@ class SavePredictor(Predictor):
         self.gen_page.link_image(input_path)
         self.gen_page.generate_single_page(output_image, input_path)
     
+    # TODO put in utils together with preprocess
+    @staticmethod
+    def clean_input_paths(input_paths: str | Path | Sequence[str|Path]) -> Sequence[Path]:
+            """
+            Make all types of input path conform to list of paths
+            
+            Args:
+                input_paths (str | Path | Sequence[str | Path]): path(s) to dir with images/file(s) with the location of images
+
+            Raises:
+                ValueError: Must provide input path
+                NotImplementedError: given input paths are the wrong class
+
+            Returns:
+                list[Path]: output paths of images
+            """
+            if not input_paths:
+                raise ValueError("Must provide input path")
+            
+            if isinstance(input_paths, str):
+                output = [Path(input_paths)]
+            elif isinstance(input_paths, Path):
+                output = [input_paths]
+            elif isinstance(input_paths, Sequence):
+                output = []
+                for path in input_paths:
+                    if isinstance(path, str):
+                        output.append(Path(path))
+                    elif isinstance(path, Path):
+                        output.append(path)
+                    else:
+                        raise NotImplementedError
+            else:
+                raise NotImplementedError
+            
+            return output
+
+    
+    def get_file_paths(self, input_paths: str | Path | Sequence[str|Path], disable_check=False) -> Sequence[Path]:
+            """
+            Get all image paths used for the running the 
+
+            Raises:
+                FileNotFoundError: input path not found on the filesystem
+                PermissionError: input path not accessible
+                FileNotFoundError: dir does not contain any image files 
+                FileNotFoundError: image from txt file does not exist
+                ValueError: specified path is not a dir or txt file
+
+            Returns:
+                list[Path]: image paths
+                list[Path]: pageXML paths
+            """
+            if input_paths is None:
+                raise ValueError("Cannot run when the input path is not set")
+            
+            input_paths = self.clean_input_paths(input_paths)
+                
+            image_paths = []
+            
+            for input_path in input_paths:
+                if not input_path.exists():
+                    raise FileNotFoundError(f"Input dir/file ({input}) is not found")
+                
+                if not os.access(path=input_path, mode=os.R_OK):
+                    raise PermissionError(
+                        f"No access to {input_path} for read operations")
+                    
+                if input_path.is_dir():
+                    sub_image_paths = [image_path.absolute() for image_path in input_path.glob("*") if image_path.suffix in self.image_formats]
+                    
+                    if not disable_check:
+                        if len(sub_image_paths) == 0:
+                            raise FileNotFoundError(f"No image files found in the provided dir(s)/file(s)")
+                        
+                elif input_path.is_file() and input_path.suffix == ".txt":
+                    with input_path.open(mode="r") as f:
+                        sub_image_paths = [Path(line).absolute() for line in f.read().splitlines()]
+                        
+                    if not disable_check:
+                        for path in sub_image_paths:
+                            if not path.is_file():
+                                raise FileNotFoundError(f"Missing file from the txt file: {input_path}")
+                else:
+                    raise ValueError(f"Invalid file type: {input_path.suffix}")
+
+                image_paths.extend(sub_image_paths)
+            
+            return image_paths
+
     def process(self):
         """
         Run the model on all images within the input dir
@@ -185,21 +267,21 @@ class SavePredictor(Predictor):
             ValueError: no input dir is specified
             ValueError: no output dir is specified
         """
-        if self.input_dir is None:
+        if self.input_paths is None:
             raise ValueError("Cannot run when the input dir is not set")
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         
-        image_paths = os_sorted([image_path.resolve() for image_path in self.input_dir.glob("*")
-                                 if image_path.suffix in self.image_formats])
+        input_path = self.get_file_paths(self.input_paths)
         # Single thread
-        for inputs in tqdm(image_paths):
+        for inputs in tqdm():
             self.save_prediction(inputs)
         
         # Multithread <- does not work with cuda
         # with Pool(os.cpu_count()) as pool:
         #     results = list(tqdm(pool.imap_unordered(
         #         self.save_prediction, image_paths), total=len(image_paths)))
+    
     
 def main(args) -> None:
     cfg = setup_cfg(args, save_config=False)
@@ -212,7 +294,7 @@ def main(args) -> None:
                           merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
                           region_type=cfg.PREPROCESS.REGION.REGION_TYPE)
     
-    predictor = SavePredictor(cfg=cfg, input_dir=args.input, output_dir=args.output, gen_page=gen_page)
+    predictor = SavePredictor(cfg=cfg, input_paths=args.input, output_dir=args.output, gen_page=gen_page)
     
     predictor.process()
 

@@ -195,7 +195,7 @@ class Preprocess:
         
         return output
 
-    def get_file_paths(self):
+    def get_file_paths(self, input_paths: str | Path | Sequence[str|Path], disable_check=False):
         """
         Get all image paths used for the preprocessing and the corresponding pageXML paths
 
@@ -210,10 +210,10 @@ class Preprocess:
             list[Path]: image paths
             list[Path]: pageXML paths
         """
-        if self.input_paths is None:
+        if input_paths is None:
             raise ValueError("Cannot run when the input path is not set")
         
-        input_paths = self.clean_input_paths(self.input_paths)
+        input_paths = self.clean_input_paths(input_paths)
             
         image_paths = []
         
@@ -228,7 +228,7 @@ class Preprocess:
             if input_path.is_dir():
                 sub_image_paths = [image_path.absolute() for image_path in input_path.glob("*") if image_path.suffix in self.image_formats]
                 
-                if not self.disable_check:
+                if not disable_check:
                     if len(sub_image_paths) == 0:
                         raise FileNotFoundError(f"No image files found in the provided dir(s)/file(s)")
                     
@@ -236,7 +236,7 @@ class Preprocess:
                 with input_path.open(mode="r") as f:
                     sub_image_paths = [Path(line).absolute() for line in f.read().splitlines()]
                     
-                if not self.disable_check:
+                if not disable_check:
                     for path in sub_image_paths:
                         if not path.is_file():
                             raise FileNotFoundError(f"Missing file from the txt file: {input_path}")
@@ -245,9 +245,9 @@ class Preprocess:
 
             image_paths.extend(sub_image_paths)
             
-        xml_paths = [image_path_to_xml_path(image_path, self.disable_check) for image_path in image_paths]
         
-        return image_paths, xml_paths
+        
+        return image_paths
     
     def set_input_paths(self, input_paths: str | Path | Sequence[str|Path]) -> None:
         """
@@ -268,23 +268,9 @@ class Preprocess:
             if not input_path.exists():
                 raise FileNotFoundError(f"Input ({input_path}) is not found")
 
-            # Old check replace with get_file_paths
-            # if not input_path.is_dir():
-            #     raise NotADirectoryError(
-            #         f"Input path ({input_path}) is not a directory")
-
             if not os.access(path=input_path, mode=os.R_OK):
                 raise PermissionError(
                     f"No access to {input_path} for read operations")
-
-            # Old check replace with get_file_paths
-            # page_dir = input_path.joinpath("page")
-            # if not page_dir.exists():
-            #     raise FileNotFoundError(f"Sub page dir ({page_dir}) is not found")
-
-            # if not os.access(path=page_dir, mode=os.R_OK):
-            #     raise PermissionError(
-            #         f"No access to {page_dir} for read operations")
             
             input_path = input_path.resolve()
             all_input_paths.append(input_path)
@@ -530,7 +516,9 @@ class Preprocess:
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
 
-        image_paths, xml_paths = self.get_file_paths()
+        
+        image_paths = self.get_file_paths(self.input_paths, self.disable_check)
+        xml_paths = [image_path_to_xml_path(image_path, self.disable_check) for image_path in image_paths]
 
         if len(image_paths) == 0:
             raise ValueError(
