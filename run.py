@@ -204,8 +204,8 @@ class SavePredictor(Predictor):
 def main(args) -> None:
     cfg = setup_cfg(args, save_config=False)
     
-    gen_page = GenPageXML(output_dir=args.output,
-                          mode=cfg.MODEL.MODE,
+    gen_page = GenPageXML(mode=cfg.MODEL.MODE,
+                          output_dir=args.output,
                           line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
                           line_color=cfg.PREPROCESS.BASELINE.LINE_COLOR,
                           regions=cfg.PREPROCESS.REGION.REGIONS,

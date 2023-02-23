@@ -38,8 +38,8 @@ class GenPageXML(XMLRegions):
     """
     
     def __init__(self, 
-                 output_dir: str|Path,
                  mode: str,
+                 output_dir: Optional[str|Path] = None,
                  line_width: Optional[int] = None,
                  line_color: Optional[int] = None,
                  regions: Optional[list[str]] = None,
@@ -59,20 +59,11 @@ class GenPageXML(XMLRegions):
         """
         super().__init__(mode, line_width, line_color, regions, merge_regions, region_type)
         
-        if isinstance(output_dir, str):
-            output_dir = Path(output_dir)
-            
-        if not output_dir.is_dir():
-            print(f"Could not find output dir ({output_dir}), creating one at specified location")
-            output_dir.mkdir(parents=True)
-        self.output_dir = output_dir
+        self.output_dir = None
+        self.page_dir = None
         
-        # TODO Generate page/output folder only when running folder
-        page_dir = self.output_dir.joinpath("page")
-        if not page_dir.is_dir():
-            print(f"Could not find page dir ({page_dir}), creating one at specified location")
-            page_dir.mkdir(parents=True)
-        self.page_dir = page_dir
+        if output_dir is not None:
+            self.set_output_dir(output_dir)
         
         self.regions = self.get_regions()
         
@@ -92,6 +83,8 @@ class GenPageXML(XMLRegions):
         self.page_dir = page_dir
         
     def link_image(self, image_path: Path):
+        if self.output_dir is None:
+            raise ValueError("Output dir is not set")
         image_output_path = self.output_dir.joinpath(image_path.name)
         
         copy_mode(image_path, image_output_path, mode="symlink")
@@ -108,7 +101,11 @@ class GenPageXML(XMLRegions):
 
         Raises:
             NotImplementedError: mode is not known
-        """        
+        """
+        if self.output_dir is None:
+            raise ValueError("Output dir is not set")
+        if self.page_dir is None:
+            raise ValueError("Output dir is not set")
         
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
         
@@ -230,8 +227,8 @@ def main(args):
     mask_paths = clean_input(args.mask, suffixes=[".png"])
     image_paths = clean_input(args.input, suffixes=image_formats)
     
-    gen_page = GenPageXML(output_dir=args.output,
-                          mode=args.mode,
+    gen_page = GenPageXML(mode=args.mode,
+                          output_dir=args.output,
                           line_width=args.line_width,
                           line_color=args.line_color,
                           regions=args.regions,
