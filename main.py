@@ -238,7 +238,7 @@ def preprocess_datasets(cfg: CfgNode,
         train_output_dir = output_dir.joinpath('train')
         process.set_input_paths(train)
         process.set_output_dir(train_output_dir)
-        train_image_paths, _ = process.get_file_paths()
+        train_image_paths = process.get_file_paths(train)
         process.run()
         
         if save_image_locations:
@@ -260,7 +260,7 @@ def preprocess_datasets(cfg: CfgNode,
         val_output_dir = output_dir.joinpath('val')
         process.set_input_paths(val)
         process.set_output_dir(val_output_dir)
-        val_image_paths, _ = process.get_file_paths()
+        val_image_paths = process.get_file_paths(val)
         process.run()
         
         if save_image_locations:
