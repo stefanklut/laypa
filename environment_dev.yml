@@ -20,6 +20,7 @@ dependencies:
   - flask
   - pip:
     - 'git+https://github.com/facebookresearch/detectron2.git'
+    - timm
     - natsort
     - torch-tb-profiler
     - imagesize
