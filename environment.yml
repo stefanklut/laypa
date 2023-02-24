@@ -16,6 +16,7 @@ dependencies:
   - scipy
   - scikit-learn
   - pip
+  - flask
   - pip:
     - 'git+https://github.com/facebookresearch/detectron2.git'
     - natsort
