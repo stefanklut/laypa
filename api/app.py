@@ -90,7 +90,7 @@ executor = ThreadPoolExecutor(max_workers=max_workers)
 
 queue_size = Gauge('queue_size', "Size of worker queue").set_function(lambda: executor._work_queue.qsize())
 images_processed = Counter('images_processed', "Total number of images processed")
-exception_predict = Counter('exception_predicts', 'Exception thrown in compute() function')
+exception_predict = Counter('exception_predict', 'Exception thrown in predict() function')
 
 
 def load_image(img_bytes):
