@@ -10,6 +10,8 @@ import numpy as np
 import torch
 from flask import Flask, abort, jsonify, request
 
+from prometheus_client import generate_latest, Counter, Gauge
+
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
@@ -86,6 +88,9 @@ max_queue_size = max_workers + max_queue_size
 
 executor = ThreadPoolExecutor(max_workers=max_workers)
 
+queue_size = Gauge('queue_size', "Size of worker queue").set_function(lambda: executor._work_queue.qsize())
+images_processed = Counter('images_processed', "Total number of images processed")
+
 
 def load_image(img_bytes):
     # NOTE Reading images with cv2 removes the color profile, 
@@ -109,6 +114,7 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str):
     outputs = predict_gen_page_wrapper.predictor(image)
     output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
     predict_gen_page_wrapper.gen_page.generate_single_page(output_image, output_path)
+    images_processed.inc()
     return True
 
 @app.route('/predict', methods=['POST'])
@@ -140,6 +146,11 @@ def predict():
     future = executor.submit(predict_image, image, image_name, identifier)
     # TODO Add callbacks
     return jsonify({"success": True, "identifier": identifier, "filename": str(image_name), "added_queue_position": executor._work_queue.qsize(), "added_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))})
+
+
+@app.route('/prometheus', methods=['GET'])
+def metrics():
+    return generate_latest()
 
 
 if __name__ == '__main__':
