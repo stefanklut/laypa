@@ -272,9 +272,9 @@ class SavePredictor(Predictor):
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         
-        input_path = self.get_file_paths(self.input_paths)
+        input_paths = self.get_file_paths(self.input_paths)
         # Single thread
-        for inputs in tqdm():
+        for inputs in tqdm(input_paths):
             self.save_prediction(inputs)
         
         # Multithread <- does not work with cuda
