@@ -17,6 +17,7 @@ Laypa is a segmentation network, with the goal of finding regions (paragraph, pa
   - [Inference](#inference)
     - [Without External Processing](#without-external-processing)
     - [With External Java Processing](#with-external-java-processing)
+    - [Flask Server](#flask-server)
   - [Tutorial](#tutorial)
   - [Evaluation](#evaluation)
   - [License](#license)
@@ -152,7 +153,7 @@ minikube ssh
 
 Within the ssh minikube go to the location of the laypa where the host `/home/<user>` is mounted to `minikube-host`
 ```sh
-cd minikube-host/PATH_TO_LAYPA
+cd minikube-host/<PATH_TO_LAYPA>
 ```
 
 And follow the instructions for install a docker version of Laypa as described [here](#docker)
@@ -317,6 +318,16 @@ The positional arguments input and output refer to the input and output director
 ./scripts/pipeline.sh inference_dir results_dir
 ```
 
+### Flask Server
+The Flask Server is set up to run the inference code in a Kubernetes environment. To run the Flask API run the [`start_flask.sh`][start_flask_link] application with the environment variables set. This can generally be set when running a docker, which can set the environment variables beforehand depending on the docker internal file structure.  To quickly test locally you can run the [`start_flask_local.sh`][start_flask_local_link] application, which sets the environment variables at runtime.
+
+The flask server will run on port 5000 and can be called from outside using a `curl` command. When testing on a localhost the command will look as follows:
+```
+curl -X POST -F image=@<PATH_TO_IMAGE> -F identifier=<identifier> -F model=<MODEL_FOLDER_NAME> 'http://localhost:5000/predict'
+```
+The required form information is the image (`image`) that should be processed. A given identifier to differentiate multiple runs/tests (`identifier`). And finally which config and weights to use (`model`). The config and weights are saved in a folder, this folder name is what needs to be provided. In this folder, the config should be named `config.yml` and the weight file should end in `.pth`.
+
+
 
 ## Tutorial
 <!-- TODO Small example for training with images and pretrained network -->
@@ -453,5 +464,7 @@ If you discover a bug or missing feature that you would like to help with please
 [eval_link]: eval.py
 [xml_comparison_link]: xml_comparison.py
 [xml_viewer_link]: xml_viewer.py
+[start_flask_link]: /api/start_flask.sh
+[start_flask_local_link]: /api/start_flask_local.sh
 
 [huc_di_link]: https://di.huc.knaw.nl/
