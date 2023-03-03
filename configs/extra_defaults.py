@@ -114,11 +114,13 @@ _C.INPUT.DATASET_MAPPER_NAME = "mask_former_semantic"
 _C.INPUT.COLOR_AUG_SSD = False
 # We retry random cropping until no single category in semantic segmentation GT occupies more
 # than `SINGLE_CATEGORY_MAX_AREA` part of the crop.
+_C.INPUT.CROP = CN()
 _C.INPUT.CROP.SINGLE_CATEGORY_MAX_AREA = 1.0
 # Pad image and segmentation GT in dataset mapper.
 _C.INPUT.SIZE_DIVISIBILITY = -1
 
 # solver config
+_C.SOLVER = CN()
 # weight decay on embedding
 _C.SOLVER.WEIGHT_DECAY_EMBED = 0.0
 # optimizer

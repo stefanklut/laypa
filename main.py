@@ -345,6 +345,14 @@ class Trainer(DefaultTrainer):
                                    use_instance_mask=cfg.MODEL.MASK_ON,
                                    instance_mask_format=cfg.INPUT.MASK_FORMAT,
                                    use_keypoint=cfg.MODEL.KEYPOINT_ON)
+        elif "MaskFormer" in cfg.MODEL.META_ARCHITECTURE:
+            mapper = DatasetMapper(is_train=True,
+                                   augmentations=build_augmentation(
+                                       cfg, is_train=True),
+                                   image_format=cfg.INPUT.FORMAT,
+                                   use_instance_mask=cfg.MODEL.MASK_ON,
+                                   instance_mask_format=cfg.INPUT.MASK_FORMAT,
+                                   use_keypoint=cfg.MODEL.KEYPOINT_ON)
         else:
             raise NotImplementedError(
                 f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
@@ -357,6 +365,14 @@ class Trainer(DefaultTrainer):
             mapper = DatasetMapper(is_train=False,
                                    augmentations=build_augmentation(
                                        cfg, is_train=False),
+                                   image_format=cfg.INPUT.FORMAT,
+                                   use_instance_mask=cfg.MODEL.MASK_ON,
+                                   instance_mask_format=cfg.INPUT.MASK_FORMAT,
+                                   use_keypoint=cfg.MODEL.KEYPOINT_ON)
+        elif "MaskFormer" in cfg.MODEL.META_ARCHITECTURE:
+            mapper = DatasetMapper(is_train=True,
+                                   augmentations=build_augmentation(
+                                       cfg, is_train=True),
                                    image_format=cfg.INPUT.FORMAT,
                                    use_instance_mask=cfg.MODEL.MASK_ON,
                                    instance_mask_format=cfg.INPUT.MASK_FORMAT,
