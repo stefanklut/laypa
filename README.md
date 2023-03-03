@@ -99,6 +99,12 @@ Building the docker using the provided script:
 ./buildImage.sh <PATH_TO_LAYPA>
 ```
 
+Or the multistage build with some profiler tools taken out (might be smaller):
+```sh
+./buildImage.multistage.sh <PATH_TO_LAYPA>
+```
+
+
 Or the alternative docker using micromamba (might be more unstable, but builds are faster):
 ```sh
 buildImage.micromamba.sh <PATH_TO_LAYPA>
