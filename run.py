@@ -14,6 +14,7 @@ from tqdm import tqdm
 from natsort import os_sorted
 
 from page_xml.generate_pageXML import GenPageXML
+from utils.input_utils import clean_input_paths, get_file_paths
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run file to inference using the model found in the config file")
@@ -113,7 +114,7 @@ class SavePredictor(Predictor):
             FileNotFoundError: input path not found on the filesystem
             PermissionError: input path not accessible
         """
-        input_paths = self.clean_input_paths(input_paths)
+        input_paths = clean_input_paths(input_paths)
         
         all_input_paths = []
 
@@ -168,96 +169,6 @@ class SavePredictor(Predictor):
         
         self.gen_page.link_image(input_path)
         self.gen_page.generate_single_page(output_image, input_path)
-    
-    # TODO put in utils together with preprocess
-    @staticmethod
-    def clean_input_paths(input_paths: str | Path | Sequence[str|Path]) -> Sequence[Path]:
-            """
-            Make all types of input path conform to list of paths
-            
-            Args:
-                input_paths (str | Path | Sequence[str | Path]): path(s) to dir with images/file(s) with the location of images
-
-            Raises:
-                ValueError: Must provide input path
-                NotImplementedError: given input paths are the wrong class
-
-            Returns:
-                list[Path]: output paths of images
-            """
-            if not input_paths:
-                raise ValueError("Must provide input path")
-            
-            if isinstance(input_paths, str):
-                output = [Path(input_paths)]
-            elif isinstance(input_paths, Path):
-                output = [input_paths]
-            elif isinstance(input_paths, Sequence):
-                output = []
-                for path in input_paths:
-                    if isinstance(path, str):
-                        output.append(Path(path))
-                    elif isinstance(path, Path):
-                        output.append(path)
-                    else:
-                        raise NotImplementedError
-            else:
-                raise NotImplementedError
-            
-            return output
-
-    
-    def get_file_paths(self, input_paths: str | Path | Sequence[str|Path], disable_check=False) -> Sequence[Path]:
-            """
-            Get all image paths used for the running the 
-
-            Raises:
-                FileNotFoundError: input path not found on the filesystem
-                PermissionError: input path not accessible
-                FileNotFoundError: dir does not contain any image files 
-                FileNotFoundError: image from txt file does not exist
-                ValueError: specified path is not a dir or txt file
-
-            Returns:
-                list[Path]: image paths
-                list[Path]: pageXML paths
-            """
-            if input_paths is None:
-                raise ValueError("Cannot run when the input path is not set")
-            
-            input_paths = self.clean_input_paths(input_paths)
-                
-            image_paths = []
-            
-            for input_path in input_paths:
-                if not input_path.exists():
-                    raise FileNotFoundError(f"Input dir/file ({input}) is not found")
-                
-                if not os.access(path=input_path, mode=os.R_OK):
-                    raise PermissionError(
-                        f"No access to {input_path} for read operations")
-                    
-                if input_path.is_dir():
-                    sub_image_paths = [image_path.absolute() for image_path in input_path.glob("*") if image_path.suffix in self.image_formats]
-                    
-                    if not disable_check:
-                        if len(sub_image_paths) == 0:
-                            raise FileNotFoundError(f"No image files found in the provided dir(s)/file(s)")
-                        
-                elif input_path.is_file() and input_path.suffix == ".txt":
-                    with input_path.open(mode="r") as f:
-                        sub_image_paths = [Path(line).absolute() for line in f.read().splitlines()]
-                        
-                    if not disable_check:
-                        for path in sub_image_paths:
-                            if not path.is_file():
-                                raise FileNotFoundError(f"Missing file from the txt file: {input_path}")
-                else:
-                    raise ValueError(f"Invalid file type: {input_path.suffix}")
-
-                image_paths.extend(sub_image_paths)
-            
-            return image_paths
 
     def process(self):
         """
@@ -272,7 +183,7 @@ class SavePredictor(Predictor):
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         
-        input_paths = self.get_file_paths(self.input_paths)
+        input_paths = get_file_paths(self.input_paths, self.image_formats)
         # Single thread
         for inputs in tqdm(input_paths):
             self.save_prediction(inputs)
