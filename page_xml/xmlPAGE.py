@@ -36,7 +36,7 @@ class PageData:
             ),
         }
         self.size = None
-        # self.parse()
+        self.parse()
     
     def set_size(self, size: tuple[int, int]):
         self.size = size
@@ -78,7 +78,7 @@ class PageData:
         """
         return str(element.attrib.get("id"))
 
-    def get_region_type(self, element):
+    def get_region_type(self, element): 
         """
         Returns the type of element
         """

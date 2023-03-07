@@ -114,35 +114,3 @@ def unique_path(path: str|Path, current_count: int=1) -> Path:
     current_count = current_count + 1
         
     return unique_path(path_suggestion, current_count=current_count)
-
-def clean_input(input_list: list[str], suffixes: Iterable[str]) -> list[Path]:
-    """
-    Return only the input paths that exist with a specified suffix
-
-    Args:
-        input_list (list[str]): a list of inputs, either filenames or a len==1 folder name
-        suffixes (Iterable[str]): valid suffixes to check if the file is valid
-
-    Raises:
-        ValueError: No input set for the input_list
-        FileNotFoundError: No files found with the suffixes
-
-    Returns:
-        list[Path]: cleaned Path variables
-    """
-    if len(input_list) == 0:
-        raise ValueError("Must set the input")
-    path_list: list[Path] = [Path(path) for path in input_list]
-    
-    for path in path_list:
-        check_path_accessible(path)
-    
-    if len(path_list) == 1 and path_list[0].is_dir():
-        path_list = [path for path in path_list[0].glob("*")]
-    
-    path_list = os_sorted([path for path in path_list if path.is_file() and path.suffix in suffixes])
-    
-    if len(path_list) == 0:
-        raise FileNotFoundError("No valid files found in input")
-    
-    return path_list

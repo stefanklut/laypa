@@ -194,7 +194,8 @@ def preprocess_datasets(cfg: CfgNode,
         train (str | Path | Sequence[str | Path]): path to dir/txt(s) containing the training images
         val (str | Path | Sequence[str | Path]): path to dir/txt(s) containing the validation images
         output_dir (str | Path): path to output dir, where the processed data will be saved
-
+        save_image_locations (bool): flag to save processed image locations (for retraining)
+        
     Raises:
         FileNotFoundError: a training dir/txt does not exist
         FileNotFoundError: a validation dir/txt does not exist
@@ -216,6 +217,9 @@ def preprocess_datasets(cfg: CfgNode,
         merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE
     )
+    
+    assert (n_regions := len(xml_to_image.get_regions())) == (n_classes := cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES), \
+        f"Number of specified regions ({n_regions}) does not match the number of specified classes ({n_classes})"
     
     process = Preprocess(
         input_paths=None,

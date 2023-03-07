@@ -11,7 +11,7 @@ from detectron2.data import Metadata
 from typing import Optional
 from page_xml.xml_to_image import XMLImage
 from tqdm import tqdm
-from utils.path_utils import clean_input
+from utils.input_utils import get_file_paths
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
@@ -445,18 +445,18 @@ def pretty_print(input_dict: dict[str, float], n_decimals=3):
         input_dict (dict[str, float]): dictionary of 
         n_decimals (int, optional): rounding of the float values. Defaults to 3.
     """
-    len_names = max(len(key) for key in input_dict.keys())+1
+    len_names = max(len(str(key)) for key in input_dict.keys())+1
     len_values = max(len(f"{value:.{n_decimals}f}") for value in input_dict.values())+1
     
     output_string = ""
     for key, value in input_dict.items():
-        output_string += f"{key:<{len_names}}: {value:<{len_values}.{n_decimals}f}\n"
+        output_string += f"{str(key):<{len_names}}: {value:<{len_values}.{n_decimals}f}\n"
         
     print(output_string)
 
 def main(args):
-    xml_list1 = clean_input(args.gt, suffixes=[".xml"])
-    xml_list2 = clean_input(args.input, suffixes=[".xml"])
+    xml_list1 = get_file_paths(args.gt, formats=[".xml"])
+    xml_list2 = get_file_paths(args.input, formats=[".xml"])
     
     xml_to_image = XMLImage(
         mode=args.mode,

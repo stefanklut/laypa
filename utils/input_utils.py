@@ -85,7 +85,7 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path], formats: Sequen
             
             if not disable_check:
                 if len(sub_output_paths) == 0:
-                    raise FileNotFoundError(f"No image files found in the provided dir(s)/file(s)")
+                    raise FileNotFoundError(f"No files found in the provided dir(s)/file(s)")
                 
         elif input_path.is_file() and input_path.suffix == ".txt":
             with input_path.open(mode="r") as f:
