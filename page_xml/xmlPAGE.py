@@ -22,7 +22,7 @@ class PageData:
         self.logger = logging.getLogger(__name__) if logger == None else logger
         self.filepath = filepath
         self.name = self.filepath.stem
-        self.creator = "P2PaLA-PRHLT" if creator == None else creator
+        self.creator = "Laypa" if creator == None else creator
         
         # REVIEW should this be replaced with the newer pageXML standard?
         self.XMLNS = {
