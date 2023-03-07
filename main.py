@@ -28,6 +28,7 @@ from detectron2.engine import hooks, launch
 
 from datasets.augmentations import build_augmentation
 from datasets.preprocess import Preprocess
+from utils.input_utils import clean_input_paths, get_file_paths
 from utils.path_utils import unique_path
 from page_xml.xml_to_image import XMLImage
 from utils.tempdir import OptionalTemporaryDirectory
@@ -193,7 +194,8 @@ def preprocess_datasets(cfg: CfgNode,
         train (str | Path | Sequence[str | Path]): path to dir/txt(s) containing the training images
         val (str | Path | Sequence[str | Path]): path to dir/txt(s) containing the validation images
         output_dir (str | Path): path to output dir, where the processed data will be saved
-
+        save_image_locations (bool): flag to save processed image locations (for retraining)
+        
     Raises:
         FileNotFoundError: a training dir/txt does not exist
         FileNotFoundError: a validation dir/txt does not exist
@@ -216,6 +218,9 @@ def preprocess_datasets(cfg: CfgNode,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE
     )
     
+    assert (n_regions := len(xml_to_image.get_regions())) == (n_classes := cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES), \
+        f"Number of specified regions ({n_regions}) does not match the number of specified classes ({n_classes})"
+    
     process = Preprocess(
         input_paths=None,
         output_dir=None,
@@ -231,14 +236,14 @@ def preprocess_datasets(cfg: CfgNode,
     
     train_output_dir = None
     if train is not None:
-        train = Preprocess.clean_input_paths(train)
+        train = clean_input_paths(train)
         if not all(missing := path.exists() for path in train):
             raise FileNotFoundError(f"Train File/Folder not found: {missing} does not exist")
         
         train_output_dir = output_dir.joinpath('train')
         process.set_input_paths(train)
         process.set_output_dir(train_output_dir)
-        train_image_paths = process.get_file_paths(train)
+        train_image_paths = get_file_paths(train, process.image_formats)
         process.run()
         
         if save_image_locations:
@@ -253,14 +258,14 @@ def preprocess_datasets(cfg: CfgNode,
     
     val_output_dir = None
     if val is not None:
-        val = Preprocess.clean_input_paths(val)
+        val = clean_input_paths(val)
         if not all(missing := path.exists() for path in val):
             raise FileNotFoundError(f"Validation File/Folder not found: {missing} does not exist")
         
         val_output_dir = output_dir.joinpath('val')
         process.set_input_paths(val)
         process.set_output_dir(val_output_dir)
-        val_image_paths = process.get_file_paths(val)
+        val_image_paths = get_file_paths(val, process.image_formats)
         process.run()
         
         if save_image_locations:

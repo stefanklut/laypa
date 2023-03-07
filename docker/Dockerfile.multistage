@@ -1,0 +1,61 @@
+FROM condaforge/mambaforge as builder
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update -y && \
+    apt-get dist-upgrade -y && \
+    apt-get clean -y && \
+    apt-get install -y \
+        apt-utils git \
+        ninja-build gcc g++ \
+        ffmpeg libsm6 libxext6 && \
+        apt-get autoremove && \
+    apt-get clean -y
+
+WORKDIR /src/
+COPY laypa.multistage/ laypa/
+
+
+# When github is open
+# RUN git clone https://github.com/stefanklut/laypa.git
+
+WORKDIR /src/laypa
+# RUN conda update -y --all
+# RUN conda init bash
+RUN mamba env create -p /env -f environment.yml && \
+    mamba clean -y --all
+
+# Removing the nsight-compute folder, hope it does nothing for runtime
+RUN rm -r /env/nsight-compute
+RUN rm -r /env/nsightee_plugins
+
+ENV PATH /env/bin:$PATH
+ENV CONDA_DEFAULT_ENV /env
+ENV ENV_NAME=/env
+
+
+# ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "laypa", "/bin/bash", "-c"]
+
+
+FROM condaforge/mambaforge as runner
+
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update -y && apt-get install -y ffmpeg libsm6 libxext6
+
+COPY --from=builder /env /env
+COPY --from=builder /src/laypa /src/laypa
+
+# SHELL ["conda", "run", "-n", "laypa", "/bin/bash", "-c"]
+# RUN echo "conda activate laypa" >> ~/.bashrc
+ENV PATH /env/bin/:$PATH
+ENV CONDA_DEFAULT_ENV /env
+ENV ENV_NAME=/env
+
+WORKDIR /src/laypa
+COPY _entrypoint.sh /_entrypoint.sh
+
+ENTRYPOINT ["/_entrypoint.sh"]
+CMD ["/bin/bash"]
+
+USER 1000

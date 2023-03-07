@@ -10,12 +10,14 @@ dependencies:
   - pytorch
   - torchaudio
   - torchvision
-  - cudatoolkit=11.7
+  - pytorch-cuda=11.7
   - opencv
   - matplotlib
   - scipy
   - scikit-learn
   - pip
+  - flask
+  - prometheus_client
   - pip:
     - 'git+https://github.com/facebookresearch/detectron2.git'
     - natsort

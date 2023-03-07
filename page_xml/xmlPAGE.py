@@ -22,7 +22,7 @@ class PageData:
         self.logger = logging.getLogger(__name__) if logger == None else logger
         self.filepath = filepath
         self.name = self.filepath.stem
-        self.creator = "P2PaLA-PRHLT" if creator == None else creator
+        self.creator = "Laypa" if creator == None else creator
         
         # REVIEW should this be replaced with the newer pageXML standard?
         self.XMLNS = {
@@ -36,7 +36,7 @@ class PageData:
             ),
         }
         self.size = None
-        # self.parse()
+        self.parse()
     
     def set_size(self, size: tuple[int, int]):
         self.size = size
@@ -78,7 +78,7 @@ class PageData:
         """
         return str(element.attrib.get("id"))
 
-    def get_region_type(self, element):
+    def get_region_type(self, element): 
         """
         Returns the type of element
         """

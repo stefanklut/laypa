@@ -115,6 +115,11 @@ cd $DIR_OF_SCRIPT
 echo "Copy files for building docker..."
 cp -r -T $LAYPA/ laypa
 
+# Checkout to make sure you are not on dev branch
+cd laypa
+git checkout main
+cd ..
+
 echo "Building docker image..."
 # docker build --squash --no-cache . -t docker.laypa
 docker build --no-cache . -t docker.laypa
