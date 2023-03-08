@@ -11,9 +11,10 @@ import imagesize
 from tqdm import tqdm
 import cv2
 
+
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.copy_utils import copy_mode
-from utils.path_utils import clean_input
+from utils.input_utils import get_file_paths
 from page_xml.xmlPAGE import PageData
 from page_xml.xml_regions import XMLRegions
 
@@ -224,8 +225,8 @@ def main(args):
                      ".tiff", ".tif",
                      ".exr",
                      ".hdr", ".pic"]
-    mask_paths = clean_input(args.mask, suffixes=[".png"])
-    image_paths = clean_input(args.input, suffixes=image_formats)
+    mask_paths = get_file_paths(args.mask, formats=[".png"])
+    image_paths = get_file_paths(args.input, formats=image_formats)
     
     gen_page = GenPageXML(mode=args.mode,
                           output_dir=args.output,

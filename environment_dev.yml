@@ -15,11 +15,11 @@ dependencies:
   - scipy
   - scikit-learn
   - pip
+  - opencv
   - tensorboard
   - flask
   - prometheus_client
   - pip:
-    - opencv-python
     - 'git+https://github.com/facebookresearch/detectron2.git'
     - natsort
     - torch-tb-profiler

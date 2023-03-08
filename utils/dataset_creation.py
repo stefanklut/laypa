@@ -149,8 +149,7 @@ def main(args):
     if len(all_image_paths) != len(set(path.stem for path in all_image_paths)):
         duplicates = {k:v for k, v in Counter(path.stem for path in all_image_paths).items() if v > 1}
         
-        print(os_sorted(duplicates.items(), key=lambda s: s[0]))
-        raise ValueError("Found duplicate stems for images")
+        raise ValueError(f"Found duplicate stems for images\n {os_sorted(duplicates.items(), key=lambda s: s[0])}")
     
     
     train_paths, val_test_paths = train_test_split(all_image_paths, test_size=0.2)
