@@ -14,6 +14,8 @@ from prometheus_client import generate_latest, Counter, Gauge
 
 from concurrent.futures import ThreadPoolExecutor
 
+from utils.image_utils import load_image_from_bytes
+
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from main import setup_cfg
 from page_xml.generate_pageXML import GenPageXML
@@ -50,13 +52,12 @@ class DummyArgs():
     output: str = str(output_base_path)
     opts: list[str] = field(default_factory=list)
 
-args = DummyArgs()
 
-@dataclass
 class PredictorGenPageWrapper():
-    model_name: Optional[str] = None
-    predictor: Optional[Predictor] = None
-    gen_page: Optional[GenPageXML] = None
+    def __init__(self) -> None:
+        self.model_name: Optional[str] = None
+        self.predictor: Optional[Predictor] = None
+        self.gen_page: Optional[GenPageXML] = None
 
     def setup_model(self, model_name, args):
         if model_name == self.model_name:
@@ -81,6 +82,7 @@ class PredictorGenPageWrapper():
 
         self.predictor = Predictor(cfg=cfg)
 
+args = DummyArgs()
 predict_gen_page_wrapper = PredictorGenPageWrapper()
 
 max_workers = 1
@@ -88,18 +90,9 @@ max_queue_size = max_workers + max_queue_size
 
 executor = ThreadPoolExecutor(max_workers=max_workers)
 
-queue_size = Gauge('queue_size', "Size of worker queue").set_function(lambda: executor._work_queue.qsize())
-images_processed = Counter('images_processed', "Total number of images processed")
-exception_predict = Counter('exception_predict', 'Exception thrown in predict() function')
-
-
-def load_image(img_bytes):
-    # NOTE Reading images with cv2 removes the color profile, 
-    # so saving the image results in different colors when viewing the image.
-    # This should not affect the pixel values in the loaded image.
-    bytes_array = np.frombuffer(img_bytes, np.uint8)
-    image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR)
-    return image
+queue_size_gauge = Gauge('queue_size', "Size of worker queue").set_function(lambda: executor._work_queue.qsize())
+images_processed_counter = Counter('images_processed', "Total number of images processed")
+exception_predict_counter = Counter('exception_predict', 'Exception thrown in predict() function')
 
 def predict_image(image: np.ndarray, image_path: Path, identifier: str):
     output_path = output_base_path.joinpath(identifier, image_path)
@@ -115,39 +108,81 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str):
     outputs = predict_gen_page_wrapper.predictor(image)
     output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
     predict_gen_page_wrapper.gen_page.generate_single_page(output_image, output_path)
-    images_processed.inc()
+    images_processed_counter.inc()
     return True
 
+
+@dataclass
+class ResponseInfo():
+    success: bool = False
+    identifier: Optional[str] = None
+    filename: Optional[str] = None
+    added_queue_position: Optional[int] = None
+    added_time: Optional[str] = None
+    model_name: Optional[str] = None
+    error_message: Optional[str] = None
+
+
+def abort_with_info(status_code, error_message, info: Optional[ResponseInfo]=None):
+    if info is None:
+        info = ResponseInfo()
+    info.error_message = error_message
+    response = jsonify(info)
+    response.status_code = status_code
+    abort(response)
+
 @app.route('/predict', methods=['POST'])
-@exception_predict.count_exceptions()
+@exception_predict_counter.count_exceptions()
 def predict():
     if request.method != 'POST':
         abort(400)
         
-    # TODO Maybe make slightly more stable/predicable, https://docs.python.org/3/library/threading.html#threading.Semaphore https://gist.github.com/frankcleary/f97fe244ef54cd75278e521ea52a697a
-    if executor._work_queue.qsize() > max_queue_size:
-        abort(429)
+    response_info = ResponseInfo()
         
-    post_file = request.files['image']
+    current_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+    response_info.added_time = current_time
+    
+    try:
+        identifier = request.form["identifier"]
+        response_info.identifier = identifier
+    except KeyError as error:
+        abort_with_info(400, str(error), response_info)
+        
+    try:
+        model_name = request.form["model"]
+        response_info.model_name = model_name
+    except KeyError as error:
+        abort_with_info(400, str(error), response_info)
+        
+    try:
+        post_file = request.files['image']
+    except KeyError as error:
+        abort_with_info(400, str(error), response_info)
     
     if (image_name := post_file.filename) is not None:
         image_name = Path(image_name)
+        response_info.filename = str(image_name)
     else:
-        abort(400)
+        abort_with_info(400, "Missing filename", response_info)
     
-    # To specify the model during requests
-    model_name = request.form["model"]
+    # TODO Maybe make slightly more stable/predicable, https://docs.python.org/3/library/threading.html#threading.Semaphore https://gist.github.com/frankcleary/f97fe244ef54cd75278e521ea52a697a
+    queue_size = executor._work_queue.qsize()
+    response_info.added_queue_position = queue_size
+    if queue_size > max_queue_size:
+        abort_with_info(429, "Exceeding queue size", response_info)
     
     predict_gen_page_wrapper.setup_model(args=args, model_name=model_name)
     
     img_bytes = post_file.read()
-    image = load_image(img_bytes)
+    image = load_image_from_bytes(img_bytes)
     
-    identifier = request.form["identifier"]
+    if image is None:
+        abort_with_info(400, "Corrupted image", response_info)
     
     future = executor.submit(predict_image, image, image_name, identifier)
     # TODO Add callbacks
-    return jsonify({"success": True, "identifier": identifier, "filename": str(image_name), "added_queue_position": executor._work_queue.qsize(), "added_time": time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))})
+    response_info.success = True
+    return jsonify(response_info)
 
 
 @app.route('/prometheus', methods=['GET'])

@@ -11,9 +11,8 @@ from main import setup_cfg
 import torch
 from tqdm import tqdm
 
-from natsort import os_sorted
-
 from page_xml.generate_pageXML import GenPageXML
+from utils.image_utils import load_image_from_path
 from utils.input_utils import clean_input_paths, get_file_paths
 
 def get_arguments() -> argparse.Namespace:
@@ -163,7 +162,10 @@ class SavePredictor(Predictor):
         
         if isinstance(input_path, str):
             input_path = Path(input_path)
-        image = cv2.imread(str(input_path))
+        image = load_image_from_path(input_path)
+        # TODO Skipping of corrupted images should be logged somewhere
+        if image is None:
+            return
         outputs = super().__call__(image)
         output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
         
