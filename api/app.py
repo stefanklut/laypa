@@ -3,7 +3,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 import time
-from typing import Optional
+from typing import Optional, TypedDict
 
 import cv2
 import numpy as np
@@ -112,21 +112,20 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str):
     return True
 
 
-@dataclass
-class ResponseInfo():
-    success: bool = False
-    identifier: Optional[str] = None
-    filename: Optional[str] = None
-    added_queue_position: Optional[int] = None
-    added_time: Optional[str] = None
-    model_name: Optional[str] = None
-    error_message: Optional[str] = None
+class ResponseInfo(TypedDict):
+    success: bool
+    identifier: str
+    filename: str
+    added_queue_position: int
+    added_time: str
+    model_name: str
+    error_message: str
 
 
 def abort_with_info(status_code, error_message, info: Optional[ResponseInfo]=None):
     if info is None:
-        info = ResponseInfo()
-    info.error_message = error_message
+        info = ResponseInfo(success=False) # type: ignore
+    info["error_message"] = error_message
     response = jsonify(info)
     response.status_code = status_code
     abort(response)
@@ -137,37 +136,37 @@ def predict():
     if request.method != 'POST':
         abort(400)
         
-    response_info = ResponseInfo()
+    response_info = ResponseInfo(success=False) # type: ignore
         
     current_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-    response_info.added_time = current_time
+    response_info["added_time"] = current_time
     
     try:
         identifier = request.form["identifier"]
-        response_info.identifier = identifier
+        response_info["identifier"] = identifier
     except KeyError as error:
-        abort_with_info(400, str(error), response_info)
+        abort_with_info(400, "Missing identifier in form", response_info)
         
     try:
         model_name = request.form["model"]
-        response_info.model_name = model_name
+        response_info["model_name"] = model_name
     except KeyError as error:
-        abort_with_info(400, str(error), response_info)
+        abort_with_info(400, "Missing model in form", response_info)
         
     try:
         post_file = request.files['image']
     except KeyError as error:
-        abort_with_info(400, str(error), response_info)
+        abort_with_info(400, "Missing image in form", response_info)
     
     if (image_name := post_file.filename) is not None:
         image_name = Path(image_name)
-        response_info.filename = str(image_name)
+        response_info["filename"] = str(image_name)
     else:
         abort_with_info(400, "Missing filename", response_info)
     
     # TODO Maybe make slightly more stable/predicable, https://docs.python.org/3/library/threading.html#threading.Semaphore https://gist.github.com/frankcleary/f97fe244ef54cd75278e521ea52a697a
     queue_size = executor._work_queue.qsize()
-    response_info.added_queue_position = queue_size
+    response_info["added_queue_position"] = queue_size
     if queue_size > max_queue_size:
         abort_with_info(429, "Exceeding queue size", response_info)
     
@@ -181,7 +180,7 @@ def predict():
     
     future = executor.submit(predict_image, image, image_name, identifier)
     # TODO Add callbacks
-    response_info.success = True
+    response_info["success"] = True
     return jsonify(response_info)
 
 
