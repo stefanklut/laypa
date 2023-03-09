@@ -393,12 +393,9 @@ class GrayscaleTransform(T.Transform):
         """
         super().__init__()
 
-        rgb_weights = np.asarray([0.299, 0.587, 0.114]).astype(np.float32)
+        self.rgb_weights = np.asarray([0.299, 0.587, 0.114]).astype(np.float32)
 
-        if image_format == "RGB":
-            self.weights = rgb_weights
-        elif image_format == "BGR":
-            self.weights = rgb_weights[::-1]
+        self.image_format = image_format
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
         """
@@ -410,10 +407,12 @@ class GrayscaleTransform(T.Transform):
         Returns:
             np.ndarray: grayscale version of image
         """
-        # REVIEW wasn't there a cv2 function I could use
         img = img.astype(np.float32)
-        grayscale = np.tile(img.dot(self.weights),
-                            (3, 1, 1)).transpose((1, 2, 0))
+        if self.image_format == "BGR":
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # grayscale = np.tile(img.dot(self.rgb_weights),
+        #                     (3, 1, 1)).transpose((1, 2, 0))
+        grayscale = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), cv2.COLOR_GRAY2RGB)
         return grayscale
 
     def apply_coords(self, coords: np.ndarray):

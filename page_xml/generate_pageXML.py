@@ -110,7 +110,7 @@ class GenPageXML(XMLRegions):
         
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
         
-        # TODO Double scaling seems bad but need an alternative
+        # REVIEW Double scaling seems bad but need an alternative
         # old_width, old_height = imagesize.get(image_path)
         old_width, old_height = mask.shape
         

@@ -412,8 +412,6 @@ def setup_training(args):
             trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
             if trainer.checkpointer.has_checkpoint():
                 trainer.start_iter = trainer.iter + 1
-
-        # print(trainer.model)
         
         results = trainer.train()
 

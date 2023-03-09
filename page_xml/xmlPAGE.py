@@ -82,18 +82,12 @@ class PageData:
         """
         Returns the type of element
         """
-        # FIXME Excepting all is dangerous
-        try:
-            e_type = re.match(
-                r".*structure {.*type:(.*);.*}", element.attrib["custom"]
-            ).group(1)
-        except:
-            e_type = None
-            self.logger.warning(
-                "No region type defined for {} at {}".format(
-                    self.get_id(element), self.filepath
-                )
-            )
+        re_match = re.match(r".*structure {.*type:(.*);.*}", element.attrib["custom"])
+        if re_match is None:
+            self.logger.warning(f"No region type defined for {self.get_id(element)} at {self.filepath}")
+            return None
+        e_type = re_match.group(1)
+        
         return e_type
 
     def get_size(self):
@@ -131,7 +125,7 @@ class PageData:
             e_type = self.get_region_type(element)
             if e_type == None:
                 self.logger.warning(
-                    'Element type "{}"undefined, set to "other"'.format(e_type)
+                    f"Element type \"{e_type}\" undefined, set to \"other\""
                 )
                 e_type = "other"
 
@@ -155,9 +149,7 @@ class PageData:
                     # ignore would be 0, no loss is 255
                     e_color = 0
                     self.logger.warning(
-                       'Element type "{}" undefined on color dic, set to default={} {}'.format(
-                            e_type, e_color, self.filepath
-                        )
+                        f"Element type \"{e_type}\" undefined on color dic, set to default={e_color} {self.filepath}"
                     )
                     continue
                 else:
@@ -167,9 +159,7 @@ class PageData:
                 coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
                 cv2.fillPoly(mask, [coords], e_color)
         if not mask.any():
-            self.logger.warning(
-                    "File {} does not contains regions".format(self.filepath)
-                    )
+            self.logger.warning(f"File {self.filepath} does not contains regions")
         return mask
     
     # TODO Maybe remove the color argument as it doesn't make much sense with the rest of the pipeline
@@ -196,9 +186,7 @@ class PageData:
             coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
             cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, color, line_width)
         if not mask.any():
-            self.logger.warning(
-                    "File {} does not contains baselines".format(self.filepath)
-                    )
+            self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
     def build_start_mask(self, out_size, color, line_width):
@@ -222,9 +210,7 @@ class PageData:
             coords_start = (coords * np.flip(scale_factor, 0)).astype(np.int32)[0]
             cv2.circle(mask, coords_start, line_width, color, -1)
         if not mask.any():
-            self.logger.warning(
-                    "File {} does not contains baselines".format(self.filepath)
-                    )
+            self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
     def build_end_mask(self, out_size, color, line_width):
@@ -248,9 +234,7 @@ class PageData:
             coords_end = (coords * np.flip(scale_factor, 0)).astype(np.int32)[-1]
             cv2.circle(mask, coords_end, line_width, color, -1)
         if not mask.any():
-            self.logger.warning(
-                    "File {} does not contains baselines".format(self.filepath)
-                    )
+            self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
     def build_separator_mask(self, out_size, color, line_width):
@@ -277,9 +261,7 @@ class PageData:
             coords_end = coords[-1]
             cv2.circle(mask, coords_end, line_width, color, -1)
         if not mask.any():
-            self.logger.warning(
-                    "File {} does not contains baselines".format(self.filepath)
-                    )
+            self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
     def build_baseline_separator_mask(self, out_size, color, line_width):
@@ -311,9 +293,7 @@ class PageData:
             coords_end = coords[-1]
             cv2.circle(mask, coords_end, line_width, separator_color, -1)
         if not mask.any():
-            self.logger.warning(
-                    "File {} does not contains baselines".format(self.filepath)
-                    )
+            self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
 
     def get_text(self, element):
@@ -323,18 +303,14 @@ class PageData:
         text_node = element.find("".join(["./", self.base, "TextEquiv"]))
         if text_node == None:
             self.logger.warning(
-                "No Text node found for line {} at {}".format(
-                    self.get_id(element), self.name
-                )
+                f"No Text node found for line {self.get_id(element)} at {self.name}"
             )
             return ""
         else:
             text_data = text_node.find("*").text
             if text_data == None:
                 self.logger.warning(
-                    "No text found in line {} at {}".format(
-                        self.get_id(element), self.filepath
-                    )
+                    f"No text found in line {self.get_id(element)} at {self.filepath}"
                 )
                 return ""
             else:

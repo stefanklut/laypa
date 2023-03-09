@@ -209,8 +209,7 @@ class Preprocess:
             output_dir = Path(output_dir)
 
         if not output_dir.is_dir():
-            print(
-                f"Could not find output dir ({output_dir}), creating one at specified location")
+            print(f"Could not find output dir ({output_dir}), creating one at specified location")
             output_dir.mkdir(parents=True)
 
         self.output_dir = output_dir.resolve()
@@ -363,8 +362,7 @@ class Preprocess:
         else:
             image_shape = original_image_shape
             
-        out_image_path = self.output_dir.joinpath(
-            "original", image_stem + ".png")
+        out_image_path = self.output_dir.joinpath("original", image_stem + ".png")
         
         def save_image(image_path: Path, out_image_path: Path, image_shape: tuple[int,int]):
             """

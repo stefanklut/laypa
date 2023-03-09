@@ -170,21 +170,14 @@ class XMLRegions:
         if self._merge_regions is None or len(self._merge_regions) == 0:
             return {}
         to_merge = {}
-        msg = ""
         for c in self._merge_regions:
-            try:
-                parent, childs = c.split(":")
-                if parent in self._regions:
-                    to_merge[parent] = childs.split(",")
-                else:
-                    msg = '\nRegion "{}" to merge is not defined as region'.format(
-                        parent
-                    )
-                    raise
-            except:
+            parent, childs = c.split(":")
+            if parent in self._regions:
+                to_merge[parent] = childs.split(",")
+            else:
                 raise argparse.ArgumentTypeError(
-                    "Malformed argument {}".format(c) + msg
-                )
+                        f"Malformed argument {c}\nRegion \"{parent}\" to merge is not defined as region"
+                    )
                 
         seen_childs = set()
         for childs in to_merge.values():
@@ -214,20 +207,15 @@ class XMLRegions:
             return reg_type
         msg = ""
         for c in self._region_type:
-            try:
-                parent, childs = c.split(":")
-                regs = childs.split(",")
-                for reg in regs:
-                    if reg in self._regions:
-                        reg_type[reg] = parent
-                    else:
-                        msg = '\nCannot assign region "{0}" to any type. {0} not defined as region'.format(
-                            reg
-                        )
-            except:
-                raise argparse.ArgumentTypeError(
-                    "Malformed argument {}".format(c) + msg
-                )
+            parent, childs = c.split(":")
+            regs = childs.split(",")
+            for reg in regs:
+                if reg in self._regions:
+                    reg_type[reg] = parent
+                else:
+                    raise argparse.ArgumentTypeError(
+                        f"Malformed argument {c}\nCannot assign region \"{reg}\" to any type. {reg} not defined as region"
+                    )
         return reg_type
     
     def get_regions(self) -> list[str]:

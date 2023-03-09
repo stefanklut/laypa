@@ -141,8 +141,7 @@ class SavePredictor(Predictor):
             output_dir = Path(output_dir)
 
         if not output_dir.is_dir():
-            print(
-                f"Could not find output dir ({output_dir}), creating one at specified location")
+            print(f"Could not find output dir ({output_dir}), creating one at specified location")
             output_dir.mkdir(parents=True)
 
         self.output_dir = output_dir.resolve()

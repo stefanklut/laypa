@@ -1,3 +1,5 @@
+from multiprocessing import Pool
+import os
 from tqdm import tqdm
 import cv2
 import argparse
@@ -14,6 +16,24 @@ def get_arguments() -> argparse.Namespace:
     
     args = parser.parse_args()
     return args
+
+
+def combine(baseline_image_path, start_image_path, end_image_path, output_path):
+    baseline_image = cv2.imread(str(baseline_image_path), cv2.IMREAD_GRAYSCALE)
+    start_image = cv2.imread(str(start_image_path), cv2.IMREAD_GRAYSCALE)
+    end_image = cv2.imread(str(end_image_path), cv2.IMREAD_GRAYSCALE)
+    
+    image = np.stack([end_image, start_image, baseline_image], axis=-1)
+    # image = image[..., ::-1] #Flip for BGR
+    
+    output_image_path = output_path.joinpath(baseline_image_path.name)
+    # print(output_image_path)
+    
+    cv2.imwrite(str(output_image_path), image)
+    
+def combine_wrapper(info):
+    baseline_image_path, start_image_path, end_image_path, output_path = info
+    combine(baseline_image_path, start_image_path, end_image_path, output_path)
 
 def main(args):
     """
@@ -44,8 +64,7 @@ def main(args):
         raise FileNotFoundError(f"End folder ({end_path}) not found")
     
     if not output_path.is_dir():
-        print(
-            f"Could not find output dir ({output_path}), creating one at specified location")
+        print(f"Could not find output dir ({output_path}), creating one at specified location")
         output_path.mkdir(parents=True)
     
     baseline_image_paths = list(baseline_path.glob("*.png"))
@@ -61,23 +80,20 @@ def main(args):
         raise ValueError(f"Number of images in {start_path} does not match number of images in {baseline_path}")
     
     print("Combining Images")
-    # TODO Multithread
-    for i in tqdm(range(len(baseline_image_paths))):
-        baseline_image_path = baseline_image_paths[i]
-        start_image_path = start_image_paths[i]
-        end_image_path = end_image_paths[i]
+    # Single Thread
+    # for i in tqdm(range(len(baseline_image_paths))):
+    #     baseline_image_path = baseline_image_paths[i]
+    #     start_image_path = start_image_paths[i]
+    #     end_image_path = end_image_paths[i]
         
-        baseline_image = cv2.imread(str(baseline_image_path), cv2.IMREAD_GRAYSCALE)
-        start_image = cv2.imread(str(start_image_path), cv2.IMREAD_GRAYSCALE)
-        end_image = cv2.imread(str(end_image_path), cv2.IMREAD_GRAYSCALE)
+    #     combine(baseline_image_path, start_image_path, end_image_path, output_path)
+    
+    # TODO Clean up by creating a class
+    # Multithread    
+    with Pool(os.cpu_count()) as pool:
+        _ = list(tqdm(pool.imap_unordered(
+            combine_wrapper, list(zip(baseline_image_paths, start_image_paths, end_image_paths, [output_path]*len(baseline_image_paths)))), total=len(baseline_image_paths)))
         
-        image = np.stack([end_image, start_image, baseline_image], axis=-1)
-        # image = image[..., ::-1] #Flip for BGR
-        
-        output_image_path = output_path.joinpath(baseline_image_path.name)
-        # print(output_image_path)
-        
-        cv2.imwrite(str(output_image_path), image)
         
     
 if __name__ == "__main__":
