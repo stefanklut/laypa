@@ -26,6 +26,7 @@ def get_arguments() -> argparse.Namespace:
 
 def count_regions_single_page(xml_path: Path) -> Counter:
     page_data = PageData(xml_path)
+    page_data.parse()
     
     region_names = ["TextRegion"] #Assuming this is all there is
     zones = page_data.get_zones(region_names)
