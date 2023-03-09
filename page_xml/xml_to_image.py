@@ -62,6 +62,7 @@ class XMLImage(XMLRegions):
             np.ndarray: mask of labels
         """
         gt_data = PageData(xml_path)
+        gt_data.parse()
         
         if original_image_shape is not None:
             gt_data.set_size(original_image_shape)

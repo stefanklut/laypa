@@ -36,7 +36,7 @@ class PageData:
             ),
         }
         self.size = None
-        self.parse()
+        # self.parse()
     
     def set_size(self, size: tuple[int, int]):
         self.size = size
