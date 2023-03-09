@@ -11,11 +11,11 @@ dependencies:
   - torchaudio
   - torchvision
   - cudatoolkit=11.7
-  - opencv
   - matplotlib
   - scipy
   - scikit-learn
   - pip
+  - opencv
   - tensorboard
   - flask
   - prometheus_client
