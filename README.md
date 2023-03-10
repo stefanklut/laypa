@@ -135,7 +135,6 @@ docker build --no-cache . -t docker.laypa
 <details>
 <summary> Click for minikube install instructions </summary>
 
-<!-- TODO This -->
 Minikube is local Kubernetes, allowing you to test the Laypa tools in a Kubernetes environment. If not already installed start with installing minikube ([install instructions][minikube_install_link])
 
 If the docker images have already been built the minikube can run them straight away. To do so, start minikube without any special arguments:
@@ -336,7 +335,6 @@ The required form information is the image (`image`) that should be processed. A
 
 
 ## Tutorial
-<!-- TODO Small example for training with images and pretrained network -->
 For a small tutorial using some concrete examples see the [`tutorial`][tutorial_link] directory.
 
 ## Evaluation
