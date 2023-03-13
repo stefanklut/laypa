@@ -112,8 +112,7 @@ class GenPageXML(XMLRegions):
         
         # TODO Double scaling seems bad but need an alternative
         # old_width, old_height = imagesize.get(image_path)
-        old_width, old_height = mask.shape
-        
+        old_height, old_width = mask.shape
         
         height, width = mask.shape
         
