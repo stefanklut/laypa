@@ -8,7 +8,6 @@ class XMLRegions:
     def __init__(self,
                  mode: str,
                  line_width: Optional[int]=None,
-                 line_color: Optional[int]=None,
                  regions: Optional[list[str]]=None,
                  merge_regions: Optional[list[str]]=None,
                  region_type: Optional[list[str]]=None) -> None:
@@ -29,10 +28,8 @@ class XMLRegions:
         self.mode = mode
         if self.mode in ["baseline", "start", "end", "separator", "baseline_separator"]:
             assert line_width is not None
-            assert line_color is not None
 
             self.line_width = line_width
-            self.line_color = line_color
 
         elif self.mode == "region":
             assert regions is not None
@@ -84,15 +81,6 @@ class XMLRegions:
             default=5,
             type=int,
             help="Used line width"
-        )
-        
-        region_args.add_argument(
-            "-l", "--line_color", 
-            default=1,
-            choices=list(range(256)), 
-            type=int,
-            metavar="{0-255}",
-            help="Used line color"
         )
         
         region_args.add_argument(

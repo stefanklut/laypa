@@ -212,7 +212,6 @@ def preprocess_datasets(cfg: CfgNode,
     xml_to_image = XMLImage(
         mode=cfg.MODEL.MODE,
         line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
-        line_color=cfg.PREPROCESS.BASELINE.LINE_COLOR,
         regions=cfg.PREPROCESS.REGION.REGIONS,
         merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE

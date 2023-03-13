@@ -162,13 +162,12 @@ class PageData:
             self.logger.warning(f"File {self.filepath} does not contains regions")
         return mask
     
-    # TODO Maybe remove the color argument as it doesn't make much sense with the rest of the pipeline
-    def build_baseline_mask(self, out_size, color, line_width):
+    def build_baseline_mask(self, out_size, line_width):
         """
         Builds a "image" mask of Baselines on XML-PAGE
         """
+        baseline_color = 1
         size = self.get_size()
-        # TODO Check for size in pageXML being 0, causes terrible error
         out_size = np.asarray(out_size)
         # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
         # --- is better to keep mask as np.uint8 to save disk space, then change it
@@ -184,15 +183,16 @@ class PageData:
                 continue
             coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
             coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
-            cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, color, line_width)
+            cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
-    def build_start_mask(self, out_size, color, line_width):
+    def build_start_mask(self, out_size, line_width):
         """
         Builds a "image" mask of Starts on XML-PAGE
         """
+        start_color = 1
         size = self.get_size()
         out_size = np.asarray(out_size)
         # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
@@ -208,15 +208,16 @@ class PageData:
                 continue
             coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
             coords_start = (coords * np.flip(scale_factor, 0)).astype(np.int32)[0]
-            cv2.circle(mask, coords_start, line_width, color, -1)
+            cv2.circle(mask, coords_start, line_width, start_color, -1)
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
-    def build_end_mask(self, out_size, color, line_width):
+    def build_end_mask(self, out_size, line_width):
         """
         Builds a "image" mask of Ends on XML-PAGE
         """
+        end_color = 1
         size = self.get_size()
         out_size = np.asarray(out_size)
         # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
@@ -232,15 +233,16 @@ class PageData:
                 continue
             coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
             coords_end = (coords * np.flip(scale_factor, 0)).astype(np.int32)[-1]
-            cv2.circle(mask, coords_end, line_width, color, -1)
+            cv2.circle(mask, coords_end, line_width, end_color, -1)
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
-    def build_separator_mask(self, out_size, color, line_width):
+    def build_separator_mask(self, out_size, line_width):
         """
         Builds a "image" mask of Separators on XML-PAGE
         """
+        separator_color = 1
         size = self.get_size()
         out_size = np.asarray(out_size)
         # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
@@ -257,14 +259,14 @@ class PageData:
             coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
             coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
             coords_start = coords[0]
-            cv2.circle(mask, coords_start, line_width, color, -1)
+            cv2.circle(mask, coords_start, line_width, separator_color, -1)
             coords_end = coords[-1]
-            cv2.circle(mask, coords_end, line_width, color, -1)
+            cv2.circle(mask, coords_end, line_width, separator_color, -1)
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
-    def build_baseline_separator_mask(self, out_size, color, line_width):
+    def build_baseline_separator_mask(self, out_size, line_width):
         """
         Builds a "image" mask of Separators and Baselines on XML-PAGE
         """
@@ -336,51 +338,6 @@ class PageData:
             )
             fh.write(text + "\n")
             fh.close()
-
-    def get_reading_order(self, element):
-        """get the Reading order of `element` from xml data"""
-        raise NotImplementedError
-        try:
-            e_ro = re.match(
-                r".*readingOrder {.*index:(.*);.*}", element.attrib["custom"]
-            ).group(1)
-        except:
-            e_ro = None
-            self.logger.warning(
-                "No region readingOrder defined for {} at {}".format(
-                    self.get_id(element), self.name
-                )
-            )
-        return e_ro
-
-    def split_image_by_line(self, img, size):
-        """save an PNG image for each line defined on XML-PAGE"""
-        raise NotImplementedError
-        # *** Function is WIP
-        regions = {}
-        for i, element in enumerate(
-            self.root.findall(".//" + self.base + "TextRegion")
-        ):
-            e_ro = self.get_reading_order(element)
-            if e_ro == None:
-                e_ro = i
-            regions[e_ro] = element
-
-        for ro_region in sorted(regions):
-            e_coords = selg.get_coords(regions[ro_region])
-            e_id = self.get_id(regions[ro_region])
-            lines = {}
-            for j, line in enumerate(
-                regions[ro_region].findall(".//" + self.base + "TextLine")
-            ):
-                l_id = self.get_id(line)
-                l_ro = self.get_reading_order(line)
-                if l_ro == None:
-                    l_ro = j
-                lines[l_ro] = (l_id, line)
-            prev = e_corrds  # --- first element is region boundary
-            for ro_line in sorted(lines):
-                ro_line + 1
 
     def new_page(self, name, rows, cols):
         """create a new PAGE xml"""

@@ -25,11 +25,10 @@ def get_arguments() -> argparse.Namespace:
 # IDEA have fixed ordering of the classes, maybe look at what order is best
 class XMLImage(XMLRegions):
     """
-    Class for turning a pageXML into an image with classes
+    Class for turning a pageXML into an image with classes (for segmentation)
     """
     def __init__(self, mode: str, 
-                 line_width: Optional[int] = None, 
-                 line_color: Optional[int] = None, 
+                 line_width: Optional[int] = None,
                  regions: Optional[list[str]] = None, 
                  merge_regions: Optional[list[str]] = None, 
                  region_type: Optional[list[str]] = None) -> None:
@@ -44,7 +43,7 @@ class XMLImage(XMLRegions):
             merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
             region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
-        super().__init__(mode, line_width, line_color, regions, merge_regions, region_type)
+        super().__init__(mode, line_width, regions, merge_regions, region_type)
 
     def run(self, xml_path: Path, original_image_shape=None, image_shape=None) -> np.ndarray:
         """
@@ -73,7 +72,6 @@ class XMLImage(XMLRegions):
         if self.mode == "baseline":
             baseline_mask = gt_data.build_baseline_mask(
                 image_shape,
-                color=self.line_color,
                 line_width=self.line_width
             )
             mask = baseline_mask
@@ -87,28 +85,24 @@ class XMLImage(XMLRegions):
         elif self.mode == "start":
             start_mask = gt_data.build_start_mask(
                 image_shape,
-                color=self.line_color,
                 line_width=self.line_width
             )
             mask = start_mask
         elif self.mode == "end":
             end_mask = gt_data.build_end_mask(
                 image_shape,
-                color=self.line_color,
                 line_width=self.line_width
             )
             mask = end_mask
         elif self.mode == "separator":
             separator_mask = gt_data.build_separator_mask(
                 image_shape,
-                color=self.line_color,
                 line_width=self.line_width
             )
             mask = separator_mask
         elif self.mode == "baseline_separator":
             baseline_separator_mask = gt_data.build_baseline_separator_mask(
                 image_shape,
-                color=self.line_color,
                 line_width=self.line_width
             )
             mask = baseline_separator_mask
@@ -124,7 +118,6 @@ if __name__ == "__main__":
     XMLImage(
         mode=args.mode,
         line_width=args.line_width,
-        line_color=args.line_color,
         regions=args.regions,
         merge_regions=args.merge_regions,
         region_type=args.region_type

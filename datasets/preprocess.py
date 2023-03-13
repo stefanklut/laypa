@@ -222,10 +222,6 @@ class Preprocess:
             Optional[Path]: output path of the processed images
         """
         return self.output_dir
-
-    # @staticmethod
-    # def check_pageXML_exists(image_paths: list[Path]) -> None:
-    #     _ = [image_path_to_xml_path(image_path) for image_path in image_paths]
     
     @staticmethod
     def check_paths_exists(paths: list[Path]) -> None:
@@ -406,6 +402,16 @@ class Preprocess:
             else:
                 # TODO Skipped
                 pass
+            
+        def save_regions(xml_path: Path, out_regions_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+            """
+            Quick helper function for opening->rescaling->saving
+            """
+            json = self.xml_to_image.run(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            
+            #TODO Dump json
+            
+        #TODO The overwrite bit
         
         image_shape = np.asarray(image_shape)
 
