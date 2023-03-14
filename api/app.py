@@ -112,7 +112,7 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str):
     return True
 
 
-class ResponseInfo(TypedDict):
+class ResponseInfo(TypedDict, total=False):
     success: bool
     identifier: str
     filename: str
@@ -136,8 +136,8 @@ def predict():
     if request.method != 'POST':
         abort(400)
         
-    response_info = ResponseInfo(success=False) # type: ignore
-        
+    response_info = ResponseInfo(success=False)
+    
     current_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
     response_info["added_time"] = current_time
     

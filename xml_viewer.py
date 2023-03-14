@@ -9,12 +9,12 @@ from pathlib import Path
 from detectron2.data import Metadata
 from detectron2.utils.visualizer import Visualizer
 
-from page_xml.xml_to_image import XMLImage
+from page_xml.xml_converter import XMLConverter
 from utils.input_utils import get_file_paths
 from utils.path_utils import xml_path_to_image_path
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
+    parser = argparse.ArgumentParser(parents=[XMLConverter.get_parser()],
         description="Visualize XML files for visualization/debugging")
     
     io_args = parser.add_argument_group("IO")
@@ -32,7 +32,7 @@ class Viewer:
     """
     Simple viewer to convert xml files to images (grayscale, color or overlay)
     """
-    def __init__(self, xml_to_image: XMLImage, output_dir: str|Path, output_type='gray') -> None:
+    def __init__(self, xml_to_image: XMLConverter, output_dir: str|Path, output_type='gray') -> None:
         """
         Simple viewer to convert xml files to images (grayscale, color or overlay)
 
@@ -50,7 +50,7 @@ class Viewer:
             output_dir = Path(output_dir)
         
         self.output_dir: Path = output_dir
-        self.xml_to_image: XMLImage = xml_to_image
+        self.xml_to_image: XMLConverter = xml_to_image
         #TODO Load the metadata
         self.metadata = Metadata()
         
@@ -85,7 +85,7 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
-        gray_image = self.xml_to_image.run(xml_path_i)
+        gray_image = self.xml_to_image.to_image(xml_path_i)
         cv2.imwrite(str(output_image_path), gray_image)
         
     def save_color_image(self, xml_path_i: Path):
@@ -96,7 +96,7 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
-        gray_image = self.xml_to_image.run(xml_path_i)
+        gray_image = self.xml_to_image.to_image(xml_path_i)
         
         color_image = np.empty((*gray_image.shape, 3), dtype=np.uint8)
         
@@ -117,7 +117,7 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
-        gray_image = self.xml_to_image.run(xml_path_i)
+        gray_image = self.xml_to_image.to_image(xml_path_i)
         
         image_path_i = xml_path_to_image_path(xml_path_i)
         
@@ -165,7 +165,7 @@ class Viewer:
 def main(args) -> None:
     xml_list = get_file_paths(args.input, formats=[".xml"])
     
-    xml_to_image = XMLImage(
+    xml_to_image = XMLConverter(
         mode=args.mode,
         line_width=args.line_width,
         line_color=args.line_color,

@@ -1,3 +1,4 @@
+import json
 from multiprocessing import Pool
 import os
 from typing import Optional
@@ -23,11 +24,13 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def create_data(input_data: tuple[Path, Path, np.ndarray]) -> dict:
-    """_summary_
+def create_data(input_data: tuple[Path, Path, Path, np.ndarray]) -> dict:
+    """
+    Return a single dict used for training
 
     Args:
-        input_data (tuple[Path, Path, np.ndarray]): input consisting of the image path, the labels mask path, and the shape of the image (use for grouping for example)
+        input_data (tuple[Path, Path, Path, np.ndarray]): input consisting of the image path, 
+            the labels mask path, the instances path, and the shape of the image (use for grouping for example)
 
     Raises:
         FileNotFoundError: image path is missing
@@ -37,29 +40,28 @@ def create_data(input_data: tuple[Path, Path, np.ndarray]) -> dict:
     Returns:
         dict: data used for detectron training
     """
-    image_path, mask_path, output_size = input_data
+    image_path, mask_path, instances_path, output_size = input_data
 
     # Data existence check
     if not image_path.is_file():
         raise FileNotFoundError(f"Image path missing ({image_path})")
     if not mask_path.is_file():
         raise FileNotFoundError(f"Mask path missing ({mask_path})")
+    if not instances_path.is_file():
+        raise FileNotFoundError(f"Instance path missing ({instances_path})")
 
     # Data_ids check
     if image_path.stem != mask_path.stem:
         raise ValueError(
             f"Image id should match mask id ({image_path.stem} vs {mask_path.stem}")
+    if image_path.stem != instances_path.stem:
+        raise ValueError(
+            f"Image id should match instance id ({image_path.stem} vs {instances_path.stem}")
 
-    # IDEA Include the pageXML file and get the segmentation for them for regions, maybe even baselines (for instance prediction)
-
-    # objects = [["bbox": list[float],
-    #            "bbox_mode": int,
-    #            "category_id": int,
-    #            "segmentation": list[list[float]],
-    #            "keypoints": list[float],
-    #            "iscrowd": 0 or 1,
-    #            ] for anno in pagexml]
-
+    with open(instances_path, 'r') as f:
+        annotations = json.load(f)["annotations"]
+    
+    # TODO Panoptic
     # panos = [{"id": int,
     #           "category_id": int,
     #           "iscrowd": 0 or 1} for pano in pagexml
@@ -69,7 +71,7 @@ def create_data(input_data: tuple[Path, Path, np.ndarray]) -> dict:
             "height": output_size[0],
             "width": output_size[1],
             "image_id": image_path.stem,
-            # "annotations": objects
+            "annotations": annotations,
             "sem_seg_file_name": str(mask_path),
             # "pan_seg_file_name": str,
             # "segments_info": panos
@@ -78,7 +80,8 @@ def create_data(input_data: tuple[Path, Path, np.ndarray]) -> dict:
 
 
 def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
-    """_summary_
+    """
+    Create the dicts used for loading during training
 
     Args:
         dataset_dir (str | Path): dir containing three files,
@@ -105,6 +108,10 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
     mask_list = dataset_dir.joinpath("mask_list.txt")
     if not mask_list.is_file():
         raise FileNotFoundError(f"Mask list is missing ({mask_list})")
+    
+    instances_list = dataset_dir.joinpath("instances_list.txt")
+    if not instances_list.is_file():
+        raise FileNotFoundError(f"Instances list is missing ({instances_list})")
 
     output_sizes_list = dataset_dir.joinpath("output_sizes.txt")
     if not output_sizes_list.is_file():
@@ -116,6 +123,9 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
 
     with open(mask_list, mode='r') as f:
         mask_paths = [dataset_dir.joinpath(line.strip()) for line in f.readlines()]
+        
+    with open(instances_list, mode='r') as f:
+        instances_paths = [dataset_dir.joinpath(line.strip()) for line in f.readlines()]
 
     with open(output_sizes_list, mode='r') as f:
         output_sizes = f.readlines()
@@ -123,19 +133,19 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
                         for output_size in output_sizes]
 
     # Data formatting check
-    if not (len(image_paths) == len(mask_paths) == len(output_sizes)):
+    if not (len(image_paths) == len(mask_paths) == len(instances_paths) == len(output_sizes)):
         raise ValueError(
-            f"expecting the images, mask and output_sizes to be the same length: {len(image_paths)}, {len(mask_paths)}, {len(output_sizes)}")
+            f"expecting the images, mask and output_sizes to be the same length: {len(image_paths)}, {len(mask_paths)}, {len(instances_paths)} {len(output_sizes)}")
 
     # Single Thread
     # input_dicts = []
-    # for image_path, mask_path, output_size in zip(image_paths, mask_paths, output_sizes):
-    #     input_dicts.append(create_data((image_path, mask_path, output_size)))
+    # for image_path, mask_path, instances_path, output_size in zip(image_paths, mask_paths, instances_paths, output_sizes):
+    #     input_dicts.append(create_data((image_path, mask_path, instances_path, output_size)))
 
     # Multi Thread
     with Pool(os.cpu_count()) as pool:
         input_dicts = list(pool.imap_unordered(
-            create_data, zip(image_paths, mask_paths, output_sizes)))
+            create_data, zip(image_paths, mask_paths, instances_paths, output_sizes)))
 
     return input_dicts
 
@@ -383,6 +393,7 @@ def register_dataset(train: Optional[str|Path]=None,
     assert train is None or train_name is not None, "If train is not None, then train_name has to be set"
     assert val is None or val_name is not None, "If val is not None, then val_name has to be set"
     
+    # IDEA Replace with mapping dict
     if mode == "baseline":
         return register_baseline(train, val, train_name, val_name, ignore_label=ignore_label)
     elif mode == "region":

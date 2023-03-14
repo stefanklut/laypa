@@ -30,7 +30,7 @@ from datasets.augmentations import build_augmentation
 from datasets.preprocess import Preprocess
 from utils.input_utils import clean_input_paths, get_file_paths
 from utils.path_utils import unique_path
-from page_xml.xml_to_image import XMLImage
+from page_xml.xml_converter import XMLConverter
 from utils.tempdir import OptionalTemporaryDirectory
 
 import models
@@ -120,7 +120,7 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
         seed = cfg.SEED
         rank = comm.get_rank()
         seed_all_rng(None if seed < 0 else seed + rank)
-        # TODO What to do with this, NLL is not deterministic. Only during training
+        # REVIEW What to do with this, NLL is not deterministic. Only during training
         # torch.use_deterministic_algorithms(True)
     
     # For saving/documentation purposes
@@ -209,7 +209,7 @@ def preprocess_datasets(cfg: CfgNode,
     if not output_dir.exists():
         raise FileNotFoundError(f"Output Folder not found: {output_dir} does not exist")
     
-    xml_to_image = XMLImage(
+    xml_to_image = XMLConverter(
         mode=cfg.MODEL.MODE,
         line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
         regions=cfg.PREPROCESS.REGION.REGIONS,

@@ -1,3 +1,4 @@
+import json
 from tqdm import tqdm
 import argparse
 import os
@@ -11,14 +12,14 @@ import imagesize
 import numpy as np
 from multiprocessing import Pool
 
-from utils.input_utils import clean_input_paths, get_file_paths
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.xml_to_image import XMLImage
+from page_xml.xml_converter import XMLConverter
+from utils.input_utils import clean_input_paths, get_file_paths
 from utils.path_utils import image_path_to_xml_path, check_path_accessible
 
 def get_arguments() -> argparse.Namespace:    
-    parser = argparse.ArgumentParser(parents=[Preprocess.get_parser(), XMLImage.get_parser()],
+    parser = argparse.ArgumentParser(parents=[Preprocess.get_parser(), XMLConverter.get_parser()],
         description="Preprocessing an annotated dataset of documents with pageXML")
     
     io_args = parser.add_argument_group("IO")
@@ -72,7 +73,7 @@ class Preprocess:
         if output_dir is not None:
             self.set_output_dir(output_dir)
             
-        if not isinstance(xml_to_image, XMLImage):
+        if not isinstance(xml_to_image, XMLConverter):
             raise ValueError(f"Must provide conversion from xml to image. Current type is {type(xml_to_image)}, not XMLImage")
 
         self.xml_to_image = xml_to_image
@@ -325,8 +326,9 @@ class Preprocess:
 
         return resized_image
 
-    def process_single_file(self, image_path: Path) -> tuple[Path, Path, np.ndarray]:
-        """_summary_
+    def process_single_file(self, image_path: Path) -> tuple[Path, Path, Path, np.ndarray]:
+        """
+        Process a single image and pageXML to be used during training
 
         Args:
             image_path (Path): path to input image
@@ -388,7 +390,7 @@ class Preprocess:
             """
             Quick helper function for opening->converting to image->saving
             """
-            mask = self.xml_to_image.run(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            mask = self.xml_to_image.to_image(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
             
             cv2.imwrite(str(out_mask_path), mask)
         
@@ -403,19 +405,33 @@ class Preprocess:
                 # TODO Skipped
                 pass
             
-        def save_regions(xml_path: Path, out_regions_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+        out_instances_path = self.output_dir.joinpath("instances", image_stem + ".json")
+            
+        def save_instances(xml_path: Path, out_instances_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
             """
             Quick helper function for opening->rescaling->saving
             """
-            json = self.xml_to_image.run(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-            
-            #TODO Dump json
-            
-        #TODO The overwrite bit
+            instances = self.xml_to_image.to_json(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            json_instances = {"image_size": image_shape,
+                              "annotations": instances}
+            with open(out_instances_path, 'w') as f:
+                json.dump(json_instances, f)
+                
+        # Check if image already exist and if it doesn't need resizing
+        if self.overwrite or not out_instances_path.exists():
+            save_instances(xml_path, out_instances_path, original_image_shape, image_shape)
+        else:
+            with open(out_instances_path, 'r') as f:
+                out_mask_shape = json.load(f)["image_size"]
+            if out_mask_shape != image_shape:
+                save_instances(xml_path, out_mask_path, original_image_shape, image_shape)
+            else:
+                # TODO Skipped
+                pass
         
         image_shape = np.asarray(image_shape)
 
-        return out_image_path, out_mask_path, image_shape
+        return out_image_path, out_mask_path, out_instances_path, image_shape
 
     def run(self) -> None:
         """
@@ -450,6 +466,7 @@ class Preprocess:
 
         self.output_dir.joinpath("original").mkdir(parents=True, exist_ok=True)
         self.output_dir.joinpath("ground_truth").mkdir(parents=True, exist_ok=True)
+        self.output_dir.joinpath("instances").mkdir(parents=True, exist_ok=True)
 
         # Single thread
         # for image_path in tqdm(image_paths):
@@ -460,9 +477,9 @@ class Preprocess:
             results = list(tqdm(pool.imap_unordered(
                 self.process_single_file, image_paths), total=len(image_paths)))
 
-        zipped_results: tuple[list[Path], list[Path], list[np.ndarray]] = tuple(zip(*results))
+        zipped_results: tuple[list[Path], list[Path], list[Path], list[np.ndarray]] = tuple(zip(*results))
          
-        image_list, mask_list, output_sizes = zipped_results
+        image_list, mask_list, instances_list, output_sizes = zipped_results
 
         with open(self.output_dir.joinpath("image_list.txt"), mode='w') as f:
             for new_image_path in image_list:
@@ -473,6 +490,11 @@ class Preprocess:
             for new_mask_path in mask_list:
                 relative_new_mask_path = new_mask_path.relative_to(self.output_dir)
                 f.write(f"{relative_new_mask_path}\n")
+                
+        with open(self.output_dir.joinpath("instances_list.txt"), mode='w') as f:
+            for new_instance_path in instances_list:
+                relative_new_instances_path = new_instance_path.relative_to(self.output_dir)
+                f.write(f"{relative_new_instances_path}\n")
 
         with open(self.output_dir.joinpath("output_sizes.txt"), mode='w') as f:
             for output_size in output_sizes:
@@ -480,10 +502,9 @@ class Preprocess:
 
 
 def main(args) -> None:
-    xml_to_image = XMLImage(
+    xml_to_image = XMLConverter(
         mode=args.mode,
         line_width=args.line_width,
-        line_color=args.line_color,
         regions=args.regions,
         merge_regions=args.merge_regions,
         region_type=args.region_type

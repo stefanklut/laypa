@@ -2,6 +2,7 @@
 
 import os
 import logging
+from typing import TypedDict
 
 import numpy as np
 import xml.etree.ElementTree as ET
@@ -9,7 +10,15 @@ import cv2
 import re
 import datetime
 from pathlib import Path
+from detectron2 import structures
 
+class Instance(TypedDict):
+    bbox: list[float]
+    bbox_mode: int
+    category_id: int
+    segmentation: list[list[float]]
+    keypoints: list[float]
+    iscrowd: bool
 
 class PageData:
     """ Class to process PAGE xml files"""
@@ -120,7 +129,7 @@ class PageData:
         returns a list of polygons for the element desired
         """
         polygons = []
-        for element in self.root.findall("".join([".//", self.base, element_name])):
+        for element in self._iter_element(element_name):
             # --- get element type
             e_type = self.get_region_type(element)
             if e_type == None:
@@ -132,32 +141,86 @@ class PageData:
             polygons.append([self.get_coords(element), e_type])
 
         return polygons
+    
+    def _iter_element(self, element):
+        return self.root.iterfind("".join([".//", self.base, element]))
+    
+    def _iter_class_coords(self, element, class_dict):
+        for node in self._iter_element(element):
+            element_type = self.get_region_type(node)
+            if element_type is None or element_type not in class_dict:
+                self.logger.warning(
+                    f"Element type \"{element_type}\" undefined in class dict {self.filepath}"
+                )
+                continue
+            element_class = class_dict[element_type]
+            element_coords = self.get_coords(node)
+            
+            # Ignore lines
+            if element_coords.shape[0] < 3:
+                continue
+            
+            yield element_class, element_coords
+            
+    def _iter_baseline_coords(self):
+        for node in self._iter_element("Baseline"):
+            str_coords = node.attrib.get("points")
+            if str_coords is None:
+                continue
+            split_str_coords = str_coords.split()
+            # REVIEW currently ignoring empty baselines
+            if len(split_str_coords) == 0:
+                continue
+            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
+            yield coords
+            
+    def _iter_text_line_coords(self):
+        for node in self._iter_element("TextLine"):
+            coords = self.get_coords(node)
+            yield coords
 
-    def build_region_mask(self, out_size, element_name, color_dic):
+    @staticmethod            
+    def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]):
+        scale_factor = np.asarray(out_size) / np.asarray(size)
+        scaled_coords = (coords * scale_factor[::-1]).astype(np.float32)
+        return scaled_coords
+    
+    @staticmethod
+    def _bounding_box(array: np.ndarray):
+        min_x, min_y = np.min(array, axis=0)
+        max_x, max_y = np.max(array, axis=0)
+        bbox =  np.asarray([min_x, min_y, max_x, max_y]).astype(np.float32).tolist()
+        return bbox
+    
+    def build_region_instances(self, out_size, elements, class_dict) -> list[Instance]:
+        size = self.get_size()
+        instances = []
+        for element in elements:
+            for element_class, element_coords in self._iter_class_coords(element, class_dict):
+                coords = self._scale_coords(element_coords, out_size, size)
+                bbox = self._bounding_box(coords)
+                bbox_mode = structures.BoxMode.XYXY_ABS
+                flattened_coords = coords.flatten().tolist()
+                instance: Instance = {"bbox": bbox, 
+                                      "bbox_mode": bbox_mode,
+                                      "category_id": element_class,
+                                      "segmentation": [flattened_coords],
+                                      "keypoints": [],
+                                      "iscrowd": False}
+                instances.append(instance)
+        return instances
+        
+    def build_region_mask(self, out_size, elements, class_dict):
         """
         Builds a "image" mask of desired elements
         """
         size = self.get_size()
         mask = np.zeros(out_size, np.uint8)
-        out_size = np.asarray(out_size)
-        scale_factor = out_size / size
-        for element in element_name:
-            for node in self.root.findall("".join([".//", self.base, element])):
-                # --- get element type
-                e_type = self.get_region_type(node)
-                if e_type == None or e_type not in color_dic:
-                    # ignore would be 0, no loss is 255
-                    e_color = 0
-                    self.logger.warning(
-                        f"Element type \"{e_type}\" undefined on color dic, set to default={e_color} {self.filepath}"
-                    )
-                    continue
-                else:
-                    e_color = color_dic[e_type]
-                # --- get element coords
-                coords = self.get_coords(node)
-                coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
-                cv2.fillPoly(mask, [coords], e_color)
+        for element in elements:
+            for element_class, element_coords in self._iter_class_coords(element, class_dict):
+                coords = self._scale_coords(element_coords, out_size, size)
+                rounded_coords = np.round(coords).astype(np.int32)
+                cv2.fillPoly(mask, [rounded_coords], element_class)
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains regions")
         return mask
@@ -168,22 +231,11 @@ class PageData:
         """
         baseline_color = 1
         size = self.get_size()
-        out_size = np.asarray(out_size)
-        # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
-        # --- is better to keep mask as np.uint8 to save disk space, then change it
-        # --- to np.int @ dataloader only if NNLLoss is going to be used.
-        mask = np.zeros((out_size[0], out_size[1]), np.uint8)
-        # print(out_size)
-        scale_factor = out_size / size
-        for element in self.root.findall("".join([".//", self.base, "Baseline"])):
-            # --- get element coords
-            str_coords = element.attrib.get("points").split()
-            # REVIEW currently ignoring empty baselines
-            if len(str_coords) == 0:
-                continue
-            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
-            coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
-            cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+        mask = np.zeros(out_size, np.uint8)
+        for baseline_coords in self._iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            cv2.polylines(mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
@@ -194,21 +246,11 @@ class PageData:
         """
         start_color = 1
         size = self.get_size()
-        out_size = np.asarray(out_size)
-        # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
-        # --- is better to keep mask as np.uint8 to save disk space, then change it
-        # --- to np.int @ dataloader only if NNLLoss is going to be used.
-        mask = np.zeros((out_size[0], out_size[1]), np.uint8)
-        # print(out_size)
-        scale_factor = out_size / size
-        for element in self.root.findall("".join([".//", self.base, "Baseline"])):
-            # --- get element coords
-            str_coords = element.attrib.get("points").split()
-            if len(str_coords) == 0:
-                continue
-            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
-            coords_start = (coords * np.flip(scale_factor, 0)).astype(np.int32)[0]
-            cv2.circle(mask, coords_start, line_width, start_color, -1)
+        mask = np.zeros(out_size, np.uint8)
+        for baseline_coords in self._iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)[0]
+            rounded_coords = np.round(coords).astype(np.int32)
+            cv2.circle(mask, rounded_coords, line_width, start_color, -1)
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
@@ -219,21 +261,11 @@ class PageData:
         """
         end_color = 1
         size = self.get_size()
-        out_size = np.asarray(out_size)
-        # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
-        # --- is better to keep mask as np.uint8 to save disk space, then change it
-        # --- to np.int @ dataloader only if NNLLoss is going to be used.
-        mask = np.zeros((out_size[0], out_size[1]), np.uint8)
-        # print(out_size)
-        scale_factor = out_size / size
-        for element in self.root.findall("".join([".//", self.base, "Baseline"])):
-            # --- get element coords
-            str_coords = element.attrib.get("points").split()
-            if len(str_coords) == 0:
-                continue
-            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
-            coords_end = (coords * np.flip(scale_factor, 0)).astype(np.int32)[-1]
-            cv2.circle(mask, coords_end, line_width, end_color, -1)
+        mask = np.zeros(out_size, np.uint8)
+        for baseline_coords in self._iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)[-1]
+            rounded_coords = np.round(coords).astype(np.int32)
+            cv2.circle(mask, rounded_coords, line_width, end_color, -1)
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
@@ -244,23 +276,13 @@ class PageData:
         """
         separator_color = 1
         size = self.get_size()
-        out_size = np.asarray(out_size)
-        # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
-        # --- is better to keep mask as np.uint8 to save disk space, then change it
-        # --- to np.int @ dataloader only if NNLLoss is going to be used.
-        mask = np.zeros((out_size[0], out_size[1]), np.uint8)
-        # print(out_size)
-        scale_factor = out_size / size
-        for element in self.root.findall("".join([".//", self.base, "Baseline"])):
-            # --- get element coords
-            str_coords = element.attrib.get("points").split()
-            if len(str_coords) == 0:
-                continue
-            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
-            coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
-            coords_start = coords[0]
+        mask = np.zeros(out_size, np.uint8)
+        for baseline_coords in self._iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            coords_start = rounded_coords[0]
             cv2.circle(mask, coords_start, line_width, separator_color, -1)
-            coords_end = coords[-1]
+            coords_end = rounded_coords[-1]
             cv2.circle(mask, coords_end, line_width, separator_color, -1)
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
@@ -274,25 +296,15 @@ class PageData:
         separator_color = 2
         
         size = self.get_size()
-        out_size = np.asarray(out_size)
-        # --- Although NNLLoss requires an Long Tensor (np.int -> torch.LongTensor)
-        # --- is better to keep mask as np.uint8 to save disk space, then change it
-        # --- to np.int @ dataloader only if NNLLoss is going to be used.
-        mask = np.zeros((out_size[0], out_size[1]), np.uint8)
-        # print(out_size)
-        scale_factor = out_size / size
-        for element in self.root.findall("".join([".//", self.base, "Baseline"])):
-            # --- get element coords
-            str_coords = element.attrib.get("points").split()
-            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
-            if len(str_coords) == 0:
-                continue
-            coords = (coords * np.flip(scale_factor, 0)).astype(np.int32)
+        mask = np.zeros(out_size, np.uint8)
+        for baseline_coords in self._iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
             cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
             
-            coords_start = coords[0]
+            coords_start = rounded_coords[0]
             cv2.circle(mask, coords_start, line_width, separator_color, -1)
-            coords_end = coords[-1]
+            coords_end = rounded_coords[-1]
             cv2.circle(mask, coords_end, line_width, separator_color, -1)
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")

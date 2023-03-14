@@ -9,12 +9,12 @@ import numpy as np
 import cv2
 from detectron2.data import Metadata
 from typing import Optional
-from page_xml.xml_to_image import XMLImage
+from page_xml.xml_converter import XMLConverter
 from tqdm import tqdm
 from utils.input_utils import get_file_paths
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
+    parser = argparse.ArgumentParser(parents=[XMLConverter.get_parser()],
         description="Compare two sets of pagexml, based on pixel level metrics")
     
     io_args = parser.add_argument_group("IO")
@@ -258,7 +258,7 @@ class EvalWrapper:
     """
     Wrapper to run the IOUEvaluator with pageXML, requires conversion to mask images first
     """
-    def __init__(self, xml_to_image: XMLImage, evaluator: IOUEvaluator) -> None:
+    def __init__(self, xml_to_image: XMLConverter, evaluator: IOUEvaluator) -> None:
         """
         Wrapper to run the IOUEvaluator with pageXML, requires conversion to mask images first
 
@@ -266,7 +266,7 @@ class EvalWrapper:
             xml_to_image (XMLImage): converter from pageXML to mask image
             evaluator (IOUEvaluator): evaluator for the XML
         """
-        self.xml_to_image: XMLImage = xml_to_image
+        self.xml_to_image: XMLConverter = xml_to_image
         self.evaluator: IOUEvaluator = evaluator
     
     def compare_xml(self, info: tuple[Path, Path]):
@@ -286,8 +286,8 @@ class EvalWrapper:
         if xml_i_1.stem != xml_i_2.stem:
             raise ValueError(f"XMLs {xml_i_1} & {xml_i_2} do not match")
     
-        image_i_1 = self.xml_to_image.run(xml_i_1)
-        image_i_2 = self.xml_to_image.run(xml_i_2)
+        image_i_1 = self.xml_to_image.to_image(xml_i_1)
+        image_i_2 = self.xml_to_image.to_image(xml_i_2)
         
         self.evaluator.process([image_i_1], [image_i_2])
     
@@ -313,8 +313,8 @@ class EvalWrapper:
         if xml_i_1.stem != xml_i_2.stem:
             raise ValueError(f"XMLs {xml_i_1} & {xml_i_2} do not match")
     
-        image_i_1 = self.xml_to_image.run(xml_i_1)
-        image_i_2 = self.xml_to_image.run(xml_i_2)
+        image_i_1 = self.xml_to_image.to_image(xml_i_1)
+        image_i_2 = self.xml_to_image.to_image(xml_i_2)
         
         confusion_matrix  = self.evaluator.process_output([image_i_1], [image_i_2])
         
@@ -458,7 +458,7 @@ def main(args):
     xml_list1 = get_file_paths(args.gt, formats=[".xml"])
     xml_list2 = get_file_paths(args.input, formats=[".xml"])
     
-    xml_to_image = XMLImage(
+    xml_to_image = XMLConverter(
         mode=args.mode,
         line_width=args.line_width,
         line_color=args.line_color,

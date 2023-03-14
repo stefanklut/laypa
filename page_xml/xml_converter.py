@@ -1,4 +1,5 @@
 import argparse
+import json
 from pathlib import Path
 import sys
 import numpy as np
@@ -10,7 +11,7 @@ from typing import Optional
 
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(parents=[XMLImage.get_parser()],
+    parser = argparse.ArgumentParser(parents=[XMLConverter.get_parser()],
         description="Code to turn an xml file into an array")
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input file",
@@ -23,7 +24,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 # IDEA have fixed ordering of the classes, maybe look at what order is best
-class XMLImage(XMLRegions):
+class XMLConverter(XMLRegions):
     """
     Class for turning a pageXML into an image with classes (for segmentation)
     """
@@ -45,7 +46,7 @@ class XMLImage(XMLRegions):
         """
         super().__init__(mode, line_width, regions, merge_regions, region_type)
 
-    def run(self, xml_path: Path, original_image_shape=None, image_shape=None) -> np.ndarray:
+    def to_image(self, xml_path: Path, original_image_shape=None, image_shape=None) -> np.ndarray:
         """
         Turn a single pageXML into a mask of labels
 
@@ -68,54 +69,83 @@ class XMLImage(XMLRegions):
 
         if image_shape is None:
             image_shape = gt_data.get_size()
-
-        if self.mode == "baseline":
-            baseline_mask = gt_data.build_baseline_mask(
-                image_shape,
-                line_width=self.line_width
-            )
-            mask = baseline_mask
-        elif self.mode == "region":
+        if self.mode == "region":
             region_mask = gt_data.build_region_mask(
                 image_shape,
                 set(self.region_types.values()),
                 self.region_classes
             )
-            mask = region_mask
+            return region_mask
+        elif self.mode == "baseline":
+            baseline_mask = gt_data.build_baseline_mask(
+                image_shape,
+                line_width=self.line_width
+            )
+            return baseline_mask
         elif self.mode == "start":
             start_mask = gt_data.build_start_mask(
                 image_shape,
                 line_width=self.line_width
             )
-            mask = start_mask
+            return start_mask
         elif self.mode == "end":
             end_mask = gt_data.build_end_mask(
                 image_shape,
                 line_width=self.line_width
             )
-            mask = end_mask
+            return end_mask
         elif self.mode == "separator":
             separator_mask = gt_data.build_separator_mask(
                 image_shape,
                 line_width=self.line_width
             )
-            mask = separator_mask
+            return separator_mask
         elif self.mode == "baseline_separator":
             baseline_separator_mask = gt_data.build_baseline_separator_mask(
                 image_shape,
                 line_width=self.line_width
             )
-            mask = baseline_separator_mask
+            return baseline_separator_mask
         else:
             raise NotImplementedError
 
-        return mask
+    def to_json(self, xml_path: Path, original_image_shape=None, image_shape=None) -> list:
+        """
+        Turn a single pageXML into a dict with scaled coordinates
 
+        Args:
+            xml_path (Path): path to pageXML
+            original_image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
+            image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
 
+        Raises:
+            NotImplementedError: mode is not known
+
+        Returns:
+            dict: scaled coordinates about the location of the objects in the image
+        """
+        gt_data = PageData(xml_path)
+        gt_data.parse()
+        
+        if original_image_shape is not None:
+            gt_data.set_size(original_image_shape)
+
+        if image_shape is None:
+            image_shape = gt_data.get_size()
+            
+        if self.mode == "region":
+            instances = gt_data.build_region_instances(
+                image_shape,
+                set(self.region_types.values()),
+                self.region_classes
+            )
+            return instances
+        else:
+            raise NotImplementedError
 
 if __name__ == "__main__":
     args = get_arguments()
-    XMLImage(
+    XMLConverter(
         mode=args.mode,
         line_width=args.line_width,
         regions=args.regions,
