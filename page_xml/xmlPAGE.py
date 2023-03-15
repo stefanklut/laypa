@@ -241,7 +241,7 @@ class PageData:
         size = self.get_size()
         mask = np.zeros((*out_size, 3), np.uint8)
         segments_info = []
-        _id = 0
+        _id = 1
         for element in elements:
             for element_class, element_coords in self._iter_class_coords(element, class_dict):
                 coords = self._scale_coords(element_coords, out_size, size)
