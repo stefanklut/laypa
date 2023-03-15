@@ -24,7 +24,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def create_data(input_data: tuple[Path, Path, Path, np.ndarray]) -> dict:
+def create_data(input_data: tuple[Path, Path, Path, Path, Path, np.ndarray]) -> dict:
     """
     Return a single dict used for training
 
@@ -40,7 +40,7 @@ def create_data(input_data: tuple[Path, Path, Path, np.ndarray]) -> dict:
     Returns:
         dict: data used for detectron training
     """
-    image_path, mask_path, instances_path, output_size = input_data
+    image_path, mask_path, instances_path, pano_path, segments_info_path, output_size = input_data
 
     # Data existence check
     if not image_path.is_file():
@@ -49,23 +49,21 @@ def create_data(input_data: tuple[Path, Path, Path, np.ndarray]) -> dict:
         raise FileNotFoundError(f"Mask path missing ({mask_path})")
     if not instances_path.is_file():
         raise FileNotFoundError(f"Instance path missing ({instances_path})")
+    if not pano_path.is_file():
+        raise FileNotFoundError(f"Pano path missing ({pano_path})")
+    if not segments_info_path.is_file():
+        raise FileNotFoundError(f"Segments Info path missing ({segments_info_path})")
 
     # Data_ids check
-    if image_path.stem != mask_path.stem:
+    if len(set(path.stem for path in input_data[:-1])) != 1:
         raise ValueError(
-            f"Image id should match mask id ({image_path.stem} vs {mask_path.stem}")
-    if image_path.stem != instances_path.stem:
-        raise ValueError(
-            f"Image id should match instance id ({image_path.stem} vs {instances_path.stem}")
+            f"Ids should match ({image_path.stem} vs {mask_path.stem}")
 
     with open(instances_path, 'r') as f:
         annotations = json.load(f)["annotations"]
     
-    # TODO Panoptic
-    # panos = [{"id": int,
-    #           "category_id": int,
-    #           "iscrowd": 0 or 1} for pano in pagexml
-    #          ]
+    with open(segments_info_path, 'r') as f:
+        segments_info = json.load(f)["segments_info"]
 
     data = {"file_name": str(image_path),
             "height": output_size[0],
@@ -73,10 +71,18 @@ def create_data(input_data: tuple[Path, Path, Path, np.ndarray]) -> dict:
             "image_id": image_path.stem,
             "annotations": annotations,
             "sem_seg_file_name": str(mask_path),
-            # "pan_seg_file_name": str,
-            # "segments_info": panos
+            "pan_seg_file_name": str(pano_path),
+            "segments_info": segments_info
             }
     return data
+
+def read_txt_file(dataset_dir: Path, txt_name: str):
+    paths_list = dataset_dir.joinpath(txt_name)
+    if not paths_list.is_file():
+        raise FileNotFoundError(f"Image list is missing ({paths_list})")
+    with open(paths_list, mode='r') as f:
+        paths = [dataset_dir.joinpath(line.strip()) for line in f.readlines()]
+    return paths
 
 
 def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
@@ -101,31 +107,16 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
     if isinstance(dataset_dir, str):
         dataset_dir = Path(dataset_dir)
 
-    image_list = dataset_dir.joinpath("image_list.txt")
-    if not image_list.is_file():
-        raise FileNotFoundError(f"Image list is missing ({image_list})")
-
-    mask_list = dataset_dir.joinpath("mask_list.txt")
-    if not mask_list.is_file():
-        raise FileNotFoundError(f"Mask list is missing ({mask_list})")
+    image_paths = read_txt_file(dataset_dir, "image_list.txt")
+    mask_paths = read_txt_file(dataset_dir, "mask_list.txt")
+    instances_paths = read_txt_file(dataset_dir, "instances_list.txt")
+    pano_paths = read_txt_file(dataset_dir, "pano_list.txt")
+    segments_info_paths = read_txt_file(dataset_dir, "segments_info_list.txt")
     
-    instances_list = dataset_dir.joinpath("instances_list.txt")
-    if not instances_list.is_file():
-        raise FileNotFoundError(f"Instances list is missing ({instances_list})")
-
+    
     output_sizes_list = dataset_dir.joinpath("output_sizes.txt")
     if not output_sizes_list.is_file():
-        raise FileNotFoundError(
-            f"Output sizes is missing ({output_sizes_list})")
-
-    with open(image_list, mode='r') as f:
-        image_paths = [dataset_dir.joinpath(line.strip()) for line in f.readlines()]
-
-    with open(mask_list, mode='r') as f:
-        mask_paths = [dataset_dir.joinpath(line.strip()) for line in f.readlines()]
-        
-    with open(instances_list, mode='r') as f:
-        instances_paths = [dataset_dir.joinpath(line.strip()) for line in f.readlines()]
+        raise FileNotFoundError(f"Image list is missing ({output_sizes_list})")
 
     with open(output_sizes_list, mode='r') as f:
         output_sizes = f.readlines()
@@ -133,9 +124,9 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
                         for output_size in output_sizes]
 
     # Data formatting check
-    if not (len(image_paths) == len(mask_paths) == len(instances_paths) == len(output_sizes)):
+    if not (len(image_paths) == len(mask_paths) == len(instances_paths) == len(output_sizes) == len(pano_paths) == len(segments_info_paths)):
         raise ValueError(
-            f"expecting the images, mask and output_sizes to be the same length: {len(image_paths)}, {len(mask_paths)}, {len(instances_paths)} {len(output_sizes)}")
+            f"Mismatch in lengths loaded data: {len(image_paths)}, {len(mask_paths)}, {len(instances_paths)}, {len(pano_paths)}, {len(segments_info_paths)}, {len(output_sizes)}")
 
     # Single Thread
     # input_dicts = []
@@ -145,7 +136,7 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
     # Multi Thread
     with Pool(os.cpu_count()) as pool:
         input_dicts = list(pool.imap_unordered(
-            create_data, zip(image_paths, mask_paths, instances_paths, output_sizes)))
+            create_data, zip(image_paths, mask_paths, instances_paths, pano_paths, segments_info_paths, output_sizes)))
 
     return input_dicts
 

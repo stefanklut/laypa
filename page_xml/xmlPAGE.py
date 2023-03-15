@@ -19,6 +19,11 @@ class Instance(TypedDict):
     segmentation: list[list[float]]
     keypoints: list[float]
     iscrowd: bool
+    
+class SegmentsInfo(TypedDict):
+    id: int
+    category_id: int
+    iscrowd: bool
 
 class PageData:
     """ Class to process PAGE xml files"""
@@ -192,6 +197,23 @@ class PageData:
         bbox =  np.asarray([min_x, min_y, max_x, max_y]).astype(np.float32).tolist()
         return bbox
     
+    # Taken from https://github.com/cocodataset/panopticapi/blob/master/panopticapi/utils.py
+    @staticmethod
+    def id2rgb(id_map):
+        if isinstance(id_map, np.ndarray):
+            id_map_copy = id_map.copy()
+            rgb_shape = tuple(list(id_map.shape) + [3])
+            rgb_map = np.zeros(rgb_shape, dtype=np.uint8)
+            for i in range(3):
+                rgb_map[..., i] = id_map_copy % 256
+                id_map_copy //= 256
+            return rgb_map
+        color = []
+        for _ in range(3):
+            color.append(id_map % 256)
+            id_map //= 256
+        return color
+    
     def build_region_instances(self, out_size, elements, class_dict) -> list[Instance]:
         size = self.get_size()
         instances = []
@@ -201,14 +223,43 @@ class PageData:
                 bbox = self._bounding_box(coords)
                 bbox_mode = structures.BoxMode.XYXY_ABS
                 flattened_coords = coords.flatten().tolist()
-                instance: Instance = {"bbox": bbox, 
-                                      "bbox_mode": bbox_mode,
-                                      "category_id": element_class,
-                                      "segmentation": [flattened_coords],
-                                      "keypoints": [],
-                                      "iscrowd": False}
+                instance: Instance = {
+                    "bbox"        : bbox,
+                    "bbox_mode"   : bbox_mode,
+                    "category_id" : element_class,
+                    "segmentation": [flattened_coords],
+                    "keypoints"   : [],
+                    "iscrowd"     : False
+                }
                 instances.append(instance)
         return instances
+    
+    def build_region_pano(self, out_size, elements, class_dict):
+        """
+        Create the pano version of the regions
+        """
+        size = self.get_size()
+        mask = np.zeros((*out_size, 3), np.uint8)
+        segments_info = []
+        _id = 0
+        for element in elements:
+            for element_class, element_coords in self._iter_class_coords(element, class_dict):
+                coords = self._scale_coords(element_coords, out_size, size)
+                rounded_coords = np.round(coords).astype(np.int32)
+                rgb_color = self.id2rgb(_id)
+                cv2.fillPoly(mask, [rounded_coords], rgb_color)
+                
+                segment: SegmentsInfo = {
+                    "id": _id,
+                    "category_id": element_class,
+                    "iscrowd": False
+                }
+                segments_info.append(segment)
+                
+                _id += 1
+        if not mask.any():
+            self.logger.warning(f"File {self.filepath} does not contains regions")
+        return mask, segments_info
         
     def build_region_mask(self, out_size, elements, class_dict):
         """
@@ -366,8 +417,8 @@ class PageData:
         self.page = ET.SubElement(self.xml, "Page")
         self.page.attrib = {
             "imageFilename": name,
-            "imageWidth": cols,
-            "imageHeight": rows,
+            "imageWidth"   : cols,
+            "imageHeight"  : rows,
         }
 
     def add_element(self, r_class, r_id, r_type, r_coords, parent=None):

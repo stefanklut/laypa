@@ -209,7 +209,7 @@ def preprocess_datasets(cfg: CfgNode,
     if not output_dir.exists():
         raise FileNotFoundError(f"Output Folder not found: {output_dir} does not exist")
     
-    xml_to_image = XMLConverter(
+    xml_converter = XMLConverter(
         mode=cfg.MODEL.MODE,
         line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
         regions=cfg.PREPROCESS.REGION.REGIONS,
@@ -217,7 +217,7 @@ def preprocess_datasets(cfg: CfgNode,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE
     )
     
-    assert (n_regions := len(xml_to_image.get_regions())) == (n_classes := cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES), \
+    assert (n_regions := len(xml_converter.get_regions())) == (n_classes := cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES), \
         f"Number of specified regions ({n_regions}) does not match the number of specified classes ({n_classes})"
     
     process = Preprocess(
@@ -227,7 +227,7 @@ def preprocess_datasets(cfg: CfgNode,
         resize_mode=cfg.PREPROCESS.RESIZE.RESIZE_MODE,
         min_size=cfg.PREPROCESS.RESIZE.MIN_SIZE,
         max_size=cfg.PREPROCESS.RESIZE.MAX_SIZE,
-        xml_to_image=xml_to_image,
+        xml_converter=xml_converter,
         disable_check=cfg.PREPROCESS.DISABLE_CHECK,
         overwrite=cfg.PREPROCESS.OVERWRITE
     )

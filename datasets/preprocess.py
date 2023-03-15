@@ -40,7 +40,7 @@ class Preprocess:
                  resize_mode="choice",
                  min_size=[1024],
                  max_size=2048,
-                 xml_to_image=None,
+                 xml_converter=None,
                  disable_check=False,
                  overwrite=False
                  ) -> None:
@@ -73,10 +73,10 @@ class Preprocess:
         if output_dir is not None:
             self.set_output_dir(output_dir)
             
-        if not isinstance(xml_to_image, XMLConverter):
-            raise ValueError(f"Must provide conversion from xml to image. Current type is {type(xml_to_image)}, not XMLImage")
+        if not isinstance(xml_converter, XMLConverter):
+            raise ValueError(f"Must provide conversion from xml to image. Current type is {type(xml_converter)}, not XMLImage")
 
-        self.xml_to_image = xml_to_image
+        self.xml_converter = xml_converter
         
         self.disable_check = disable_check
         self.overwrite = overwrite
@@ -326,7 +326,7 @@ class Preprocess:
 
         return resized_image
 
-    def process_single_file(self, image_path: Path) -> tuple[Path, Path, Path, np.ndarray]:
+    def process_single_file(self, image_path: Path) -> tuple[Path, Path, Path, Path, Path, np.ndarray]:
         """
         Process a single image and pageXML to be used during training
 
@@ -390,7 +390,7 @@ class Preprocess:
             """
             Quick helper function for opening->converting to image->saving
             """
-            mask = self.xml_to_image.to_image(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            mask = self.xml_converter.to_image(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
             
             cv2.imwrite(str(out_mask_path), mask)
         
@@ -411,7 +411,7 @@ class Preprocess:
             """
             Quick helper function for opening->rescaling->saving
             """
-            instances = self.xml_to_image.to_json(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            instances = self.xml_converter.to_json(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
             json_instances = {"image_size": image_shape,
                               "annotations": instances}
             with open(out_instances_path, 'w') as f:
@@ -428,10 +428,48 @@ class Preprocess:
             else:
                 # TODO Skipped
                 pass
+            
+        out_pano_path = self.output_dir.joinpath("panos", image_stem + ".png")
+        out_segments_info_path = self.output_dir.joinpath("panos", image_stem + ".json")
+            
+        def save_panos(xml_path: Path, out_pano_path: Path, out_segments_info_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+            """
+            Quick helper function for opening->rescaling->saving
+            """
+            pano, segments_info = self.xml_converter.to_pano(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            
+            cv2.imwrite(str(out_pano_path), pano)
+            
+            json_pano = {"image_size": image_shape,
+                         "segments_info": segments_info}
+            with open(out_segments_info_path, 'w') as f:
+                json.dump(json_pano, f)
+                
+        # Check if image already exist and if it doesn't need resizing
+        if self.overwrite or not out_pano_path.exists():
+            save_panos(xml_path, out_pano_path, out_segments_info_path, original_image_shape, image_shape)
+        else:
+            out_mask_shape = tuple(int(value) for value in imagesize.get(out_pano_path)[::-1])
+            if out_mask_shape != image_shape:
+                save_panos(xml_path, out_mask_path, out_segments_info_path, original_image_shape, image_shape)
+            else:
+                # TODO Skipped
+                pass
         
         image_shape = np.asarray(image_shape)
 
-        return out_image_path, out_mask_path, out_instances_path, image_shape
+        return out_image_path, out_mask_path, out_instances_path, out_pano_path, out_segments_info_path, image_shape
+    
+    def save_to_txt(self, txt_name: str, paths: list[Path]):
+        if self.output_dir is None:
+            raise ValueError("Cannot run when the output dir is not set")
+        txt_path = Path(txt_name)
+        if txt_path.suffix != ".txt":
+            raise ValueError(f"Must have \".txt\" as the suffix ({txt_name})")
+        with open(self.output_dir.joinpath(txt_name), mode='w') as f:
+            for path in paths:
+                relative_path = path.relative_to(self.output_dir)
+                f.write(f"{relative_path}\n")
 
     def run(self) -> None:
         """
@@ -467,6 +505,7 @@ class Preprocess:
         self.output_dir.joinpath("original").mkdir(parents=True, exist_ok=True)
         self.output_dir.joinpath("ground_truth").mkdir(parents=True, exist_ok=True)
         self.output_dir.joinpath("instances").mkdir(parents=True, exist_ok=True)
+        self.output_dir.joinpath("panos").mkdir(parents=True, exist_ok=True)
 
         # Single thread
         # for image_path in tqdm(image_paths):
@@ -477,24 +516,15 @@ class Preprocess:
             results = list(tqdm(pool.imap_unordered(
                 self.process_single_file, image_paths), total=len(image_paths)))
 
-        zipped_results: tuple[list[Path], list[Path], list[Path], list[np.ndarray]] = tuple(zip(*results))
+        zipped_results: tuple[list[Path], list[Path], list[Path], list[Path], list[Path], list[np.ndarray]] = tuple(zip(*results))
          
-        image_list, mask_list, instances_list, output_sizes = zipped_results
-
-        with open(self.output_dir.joinpath("image_list.txt"), mode='w') as f:
-            for new_image_path in image_list:
-                relative_new_image_path = new_image_path.relative_to(self.output_dir)
-                f.write(f"{relative_new_image_path}\n")
-
-        with open(self.output_dir.joinpath("mask_list.txt"), mode='w') as f:
-            for new_mask_path in mask_list:
-                relative_new_mask_path = new_mask_path.relative_to(self.output_dir)
-                f.write(f"{relative_new_mask_path}\n")
-                
-        with open(self.output_dir.joinpath("instances_list.txt"), mode='w') as f:
-            for new_instance_path in instances_list:
-                relative_new_instances_path = new_instance_path.relative_to(self.output_dir)
-                f.write(f"{relative_new_instances_path}\n")
+        image_list, mask_list, instances_list, pano_list, segments_info_list, output_sizes = zipped_results
+        
+        self.save_to_txt("image_list.txt", image_list)
+        self.save_to_txt("mask_list.txt", mask_list)
+        self.save_to_txt("instances_list.txt", instances_list)
+        self.save_to_txt("pano_list.txt", pano_list)
+        self.save_to_txt("segments_info_list.txt", segments_info_list)
 
         with open(self.output_dir.joinpath("output_sizes.txt"), mode='w') as f:
             for output_size in output_sizes:
@@ -516,7 +546,7 @@ def main(args) -> None:
         resize_mode=args.resize_mode,
         min_size=args.min_size,
         max_size=args.max_size,
-        xml_to_image=xml_to_image,
+        xml_converter=xml_to_image,
         disable_check=args.disable_check,
         overwrite=args.overwrite
     )

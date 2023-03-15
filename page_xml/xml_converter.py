@@ -142,6 +142,40 @@ class XMLConverter(XMLRegions):
             return instances
         else:
             raise NotImplementedError
+        
+    def to_pano(self, xml_path: Path, original_image_shape=None, image_shape=None) -> tuple[np.ndarray, list]:
+        """
+        Turn a single pageXML into a pano image with corresponding pixel info
+
+        Args:
+            xml_path (Path): path to pageXML
+            original_image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
+            image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
+
+        Raises:
+            NotImplementedError: mode is not known
+
+        Returns:
+            dict: scaled coordinates about the location of the objects in the image
+        """
+        gt_data = PageData(xml_path)
+        gt_data.parse()
+        
+        if original_image_shape is not None:
+            gt_data.set_size(original_image_shape)
+
+        if image_shape is None:
+            image_shape = gt_data.get_size()
+            
+        if self.mode == "region":
+            pano_mask, segments_info = gt_data.build_region_pano(
+                image_shape,
+                set(self.region_types.values()),
+                self.region_classes
+            )
+            return pano_mask, segments_info
+        else:
+            raise NotImplementedError
 
 if __name__ == "__main__":
     args = get_arguments()
