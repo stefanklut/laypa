@@ -176,7 +176,7 @@ class PageData:
             # REVIEW currently ignoring empty baselines
             if len(split_str_coords) == 0:
                 continue
-            coords = np.array([i.split(",") for i in str_coords]).astype(np.int32)
+            coords = np.array([i.split(",") for i in split_str_coords]).astype(np.int32)
             yield coords
             
     def _iter_text_line_coords(self):
@@ -239,7 +239,7 @@ class PageData:
         Create the pano version of the regions
         """
         size = self.get_size()
-        mask = np.zeros((*out_size, 3), np.uint8)
+        pano_mask = np.zeros((*out_size, 3), np.uint8)
         segments_info = []
         _id = 1
         for element in elements:
@@ -247,7 +247,7 @@ class PageData:
                 coords = self._scale_coords(element_coords, out_size, size)
                 rounded_coords = np.round(coords).astype(np.int32)
                 rgb_color = self.id2rgb(_id)
-                cv2.fillPoly(mask, [rounded_coords], rgb_color)
+                cv2.fillPoly(pano_mask, [rounded_coords], rgb_color)
                 
                 segment: SegmentsInfo = {
                     "id": _id,
@@ -257,9 +257,31 @@ class PageData:
                 segments_info.append(segment)
                 
                 _id += 1
-        if not mask.any():
+        if not pano_mask.any():
             self.logger.warning(f"File {self.filepath} does not contains regions")
-        return mask, segments_info
+        return pano_mask, segments_info
+    
+    def build_baseline_pano(self, out_size, line_width):
+        baseline_class = 1
+        size = self.get_size()
+        pano_mask = np.zeros((*out_size, 3), np.uint8)
+        segments_info = []
+        _id = 1
+        for baseline_coords in self._iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            rgb_color = self.id2rgb(_id)
+            cv2.polylines(pano_mask, [rounded_coords.reshape(-1, 1, 2)], False, rgb_color, line_width)
+            segment: SegmentsInfo = {
+                "id": _id,
+                "category_id": baseline_class,
+                "iscrowd": False
+            }
+            segments_info.append(segment)
+            _id += 1
+        if not pano_mask.any():
+            self.logger.warning(f"File {self.filepath} does not contains baselines")
+        return pano_mask, segments_info
         
     def build_region_mask(self, out_size, elements, class_dict):
         """

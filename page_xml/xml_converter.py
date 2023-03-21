@@ -18,7 +18,6 @@ def get_arguments() -> argparse.Namespace:
                         required=True, type=str)
     io_args.add_argument(
         "-o", "--output", help="Output file", required=True, type=str)
-    
 
     args = parser.parse_args()
     return args
@@ -172,6 +171,12 @@ class XMLConverter(XMLRegions):
                 image_shape,
                 set(self.region_types.values()),
                 self.region_classes
+            )
+            return pano_mask, segments_info
+        elif self.mode == "baseline":
+            pano_mask, segments_info = gt_data.build_baseline_pano(
+                image_shape,
+                self.line_width
             )
             return pano_mask, segments_info
         else:

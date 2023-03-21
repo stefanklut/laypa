@@ -398,7 +398,7 @@ class Preprocess:
         if self.overwrite or not out_mask_path.exists():
             save_mask(xml_path, out_mask_path, original_image_shape, image_shape)
         else:
-            out_mask_shape = tuple(int(value) for value in imagesize.get(out_mask_path)[::-1])
+            out_mask_shape = imagesize.get(out_mask_path)[::-1]
             if out_mask_shape != image_shape:
                 save_mask(xml_path, out_mask_path, original_image_shape, image_shape)
             else:
@@ -449,7 +449,7 @@ class Preprocess:
         if self.overwrite or not out_pano_path.exists():
             save_panos(xml_path, out_pano_path, out_segments_info_path, original_image_shape, image_shape)
         else:
-            out_mask_shape = tuple(int(value) for value in imagesize.get(out_pano_path)[::-1])
+            out_mask_shape = imagesize.get(out_pano_path)[::-1]
             if out_mask_shape != image_shape:
                 save_panos(xml_path, out_mask_path, out_segments_info_path, original_image_shape, image_shape)
             else:
@@ -532,7 +532,7 @@ class Preprocess:
 
 
 def main(args) -> None:
-    xml_to_image = XMLConverter(
+    xml_converter = XMLConverter(
         mode=args.mode,
         line_width=args.line_width,
         regions=args.regions,
@@ -546,7 +546,7 @@ def main(args) -> None:
         resize_mode=args.resize_mode,
         min_size=args.min_size,
         max_size=args.max_size,
-        xml_converter=xml_to_image,
+        xml_converter=xml_converter,
         disable_check=args.disable_check,
         overwrite=args.overwrite
     )
