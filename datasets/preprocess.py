@@ -325,6 +325,101 @@ class Preprocess:
         resized_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)
 
         return resized_image
+    
+    def save_image(self, image_path: Path, out_image_path: Path, image_shape: tuple[int,int]):
+        
+        def _save_image_helper():
+            """
+            Quick helper function for opening->resizing->saving
+            """
+            image = cv2.imread(str(image_path))
+
+            if self.resize:
+                image = self.resize_image(image, image_shape=image_shape)
+            #REVIEW This can maybe also be replaced with copying/linking the original image, if no resize
+            cv2.imwrite(str(out_image_path), image)
+        
+        # Check if image already exist and if it doesn't need resizing
+        if self.overwrite or not out_image_path.exists():
+            _save_image_helper()
+        else:
+            out_image_shape = imagesize.get(out_image_path)[::-1]
+            if out_image_shape != image_shape:
+                _save_image_helper()
+            else:
+                #TODO Skipped
+                pass
+            
+    def save_mask(self, xml_path: Path, out_mask_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int,int]):
+        
+        def _save_mask_helper():
+            """
+            Quick helper function for opening->converting to image->saving
+            """
+            mask = self.xml_converter.to_image(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            
+            cv2.imwrite(str(out_mask_path), mask)
+        
+        # Check if image already exist and if it doesn't need resizing
+        if self.overwrite or not out_mask_path.exists():
+            _save_mask_helper()
+        else:
+            out_mask_shape = imagesize.get(out_mask_path)[::-1]
+            if out_mask_shape != image_shape:
+                _save_mask_helper()
+            else:
+                # TODO Skipped
+                pass
+            
+    def save_instances(self, xml_path: Path, out_instances_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+        
+        def _save_instances_helper():
+            """
+            Quick helper function for opening->rescaling->saving
+            """
+            instances = self.xml_converter.to_json(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            json_instances = {"image_size": image_shape,
+                              "annotations": instances}
+            with open(out_instances_path, 'w') as f:
+                json.dump(json_instances, f)
+                
+        # Check if image already exist and if it doesn't need resizing
+        if self.overwrite or not out_instances_path.exists():
+            _save_instances_helper()
+        else:
+            with open(out_instances_path, 'r') as f:
+                out_mask_shape = json.load(f)["image_size"]
+            if out_mask_shape != image_shape:
+                _save_instances_helper()
+            else:
+                # TODO Skipped
+                pass
+
+    def save_panos(self, xml_path: Path, out_pano_path: Path, out_segments_info_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+        
+        def _save_panos_helper():
+            """
+            Quick helper function for opening->rescaling->saving
+            """
+            pano, segments_info = self.xml_converter.to_pano(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            
+            cv2.imwrite(str(out_pano_path), pano)
+            
+            json_pano = {"image_size": image_shape,
+                         "segments_info": segments_info}
+            with open(out_segments_info_path, 'w') as f:
+                json.dump(json_pano, f)
+                
+        # Check if image already exist and if it doesn't need resizing
+        if self.overwrite or not out_pano_path.exists():
+            _save_panos_helper()
+        else:
+            out_mask_shape = imagesize.get(out_pano_path)[::-1]
+            if out_mask_shape != image_shape:
+                _save_panos_helper()
+            else:
+                # TODO Skipped
+                pass
 
     def process_single_file(self, image_path: Path) -> tuple[Path, Path, Path, Path, Path, np.ndarray]:
         """
@@ -362,99 +457,20 @@ class Preprocess:
             
         out_image_path = self.output_dir.joinpath("original", image_stem + ".png")
         
-        def save_image(image_path: Path, out_image_path: Path, image_shape: tuple[int,int]):
-            """
-            Quick helper function for opening->resizing->saving
-            """
-            image = cv2.imread(str(image_path))
-
-            if self.resize:
-                image = self.resize_image(image, image_shape=image_shape)
-            #REVIEW This can maybe also be replaced with copying/linking the original image, if no resize
-            cv2.imwrite(str(out_image_path), image)
+        self.save_image(image_path, out_image_path, image_shape)
         
-        # Check if image already exist and if it doesn't need resizing
-        if self.overwrite or not out_image_path.exists():
-            save_image(image_path, out_image_path, image_shape)
-        else:
-            out_image_shape = imagesize.get(out_image_path)[::-1]
-            if out_image_shape != image_shape:
-                save_image(image_path, out_image_path, image_shape)
-            else:
-                #TODO Skipped
-                pass
-
-        out_mask_path = self.output_dir.joinpath("ground_truth", image_stem + ".png")
+        out_mask_path = self.output_dir.joinpath("sem_seg", image_stem + ".png")
         
-        def save_mask(xml_path: Path, out_mask_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int,int]):
-            """
-            Quick helper function for opening->converting to image->saving
-            """
-            mask = self.xml_converter.to_image(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-            
-            cv2.imwrite(str(out_mask_path), mask)
-        
-        # Check if image already exist and if it doesn't need resizing
-        if self.overwrite or not out_mask_path.exists():
-            save_mask(xml_path, out_mask_path, original_image_shape, image_shape)
-        else:
-            out_mask_shape = imagesize.get(out_mask_path)[::-1]
-            if out_mask_shape != image_shape:
-                save_mask(xml_path, out_mask_path, original_image_shape, image_shape)
-            else:
-                # TODO Skipped
-                pass
+        self.save_mask(xml_path, out_mask_path, original_image_shape, image_shape)
             
         out_instances_path = self.output_dir.joinpath("instances", image_stem + ".json")
             
-        def save_instances(xml_path: Path, out_instances_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
-            """
-            Quick helper function for opening->rescaling->saving
-            """
-            instances = self.xml_converter.to_json(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-            json_instances = {"image_size": image_shape,
-                              "annotations": instances}
-            with open(out_instances_path, 'w') as f:
-                json.dump(json_instances, f)
-                
-        # Check if image already exist and if it doesn't need resizing
-        if self.overwrite or not out_instances_path.exists():
-            save_instances(xml_path, out_instances_path, original_image_shape, image_shape)
-        else:
-            with open(out_instances_path, 'r') as f:
-                out_mask_shape = json.load(f)["image_size"]
-            if out_mask_shape != image_shape:
-                save_instances(xml_path, out_mask_path, original_image_shape, image_shape)
-            else:
-                # TODO Skipped
-                pass
+        self.save_instances(xml_path, out_instances_path, original_image_shape, image_shape)
             
         out_pano_path = self.output_dir.joinpath("panos", image_stem + ".png")
         out_segments_info_path = self.output_dir.joinpath("panos", image_stem + ".json")
             
-        def save_panos(xml_path: Path, out_pano_path: Path, out_segments_info_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
-            """
-            Quick helper function for opening->rescaling->saving
-            """
-            pano, segments_info = self.xml_converter.to_pano(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-            
-            cv2.imwrite(str(out_pano_path), pano)
-            
-            json_pano = {"image_size": image_shape,
-                         "segments_info": segments_info}
-            with open(out_segments_info_path, 'w') as f:
-                json.dump(json_pano, f)
-                
-        # Check if image already exist and if it doesn't need resizing
-        if self.overwrite or not out_pano_path.exists():
-            save_panos(xml_path, out_pano_path, out_segments_info_path, original_image_shape, image_shape)
-        else:
-            out_mask_shape = imagesize.get(out_pano_path)[::-1]
-            if out_mask_shape != image_shape:
-                save_panos(xml_path, out_mask_path, out_segments_info_path, original_image_shape, image_shape)
-            else:
-                # TODO Skipped
-                pass
+        self.save_panos(xml_path, out_pano_path, out_segments_info_path, original_image_shape, image_shape)
         
         image_shape = np.asarray(image_shape)
 
@@ -503,7 +519,7 @@ class Preprocess:
             self.check_paths_exists(xml_paths)
 
         self.output_dir.joinpath("original").mkdir(parents=True, exist_ok=True)
-        self.output_dir.joinpath("ground_truth").mkdir(parents=True, exist_ok=True)
+        self.output_dir.joinpath("sem_seg").mkdir(parents=True, exist_ok=True)
         self.output_dir.joinpath("instances").mkdir(parents=True, exist_ok=True)
         self.output_dir.joinpath("panos").mkdir(parents=True, exist_ok=True)
 
@@ -521,7 +537,7 @@ class Preprocess:
         image_list, mask_list, instances_list, pano_list, segments_info_list, output_sizes = zipped_results
         
         self.save_to_txt("image_list.txt", image_list)
-        self.save_to_txt("mask_list.txt", mask_list)
+        self.save_to_txt("sem_seg_list.txt", mask_list)
         self.save_to_txt("instances_list.txt", instances_list)
         self.save_to_txt("pano_list.txt", pano_list)
         self.save_to_txt("segments_info_list.txt", segments_info_list)

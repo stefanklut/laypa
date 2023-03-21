@@ -108,7 +108,7 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
         dataset_dir = Path(dataset_dir)
 
     image_paths = read_txt_file(dataset_dir, "image_list.txt")
-    mask_paths = read_txt_file(dataset_dir, "mask_list.txt")
+    mask_paths = read_txt_file(dataset_dir, "sem_seg_list.txt")
     instances_paths = read_txt_file(dataset_dir, "instances_list.txt")
     pano_paths = read_txt_file(dataset_dir, "pano_list.txt")
     segments_info_paths = read_txt_file(dataset_dir, "segments_info_list.txt")
@@ -124,6 +124,7 @@ def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
                         for output_size in output_sizes]
 
     # Data formatting check
+    # TODO This can be done much better
     if not (len(image_paths) == len(mask_paths) == len(instances_paths) == len(output_sizes) == len(pano_paths) == len(segments_info_paths)):
         raise ValueError(
             f"Mismatch in lengths loaded data: {len(image_paths)}, {len(mask_paths)}, {len(instances_paths)}, {len(pano_paths)}, {len(segments_info_paths)}, {len(output_sizes)}")
