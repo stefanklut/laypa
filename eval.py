@@ -93,11 +93,11 @@ def main(args) -> None:
             outputs = predictor(im)
             outputs["sem_seg"] = torch.argmax(outputs["sem_seg"], dim=-3)
             print(inputs["file_name"])
-            vis_im = Visualizer(im[:, :, ::-1].copy(),
+            vis_im = Visualizer(im[..., ::-1].copy(),
                                 metadata=metadata,
                                 scale=1
                                 )
-            vis_im_gt = Visualizer(im[:, :, ::-1].copy(),
+            vis_im_gt = Visualizer(im[..., ::-1].copy(),
                                 metadata=metadata,
                                 scale=1
                                 )

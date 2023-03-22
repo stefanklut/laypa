@@ -167,6 +167,7 @@ def register_region(train: Optional[str|Path]=None,
             name=train_name,
             func=lambda path=train: dataset_dict_loader(path)
         )
+        # HACK This only works for one type of stuff classes
         MetadataCatalog.get(train_name).set(
             stuff_classes=["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"],
             stuff_colors=[(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)],
@@ -215,6 +216,7 @@ def register_start(train: Optional[str|Path]=None,
             name=val_name,
             func=lambda path=val: dataset_dict_loader(path)
         )
+        # TODO Add Thing classes for each part of the segmentation
         MetadataCatalog.get(val_name).set(
             stuff_classes=["background", "start"],
             stuff_colors=[(0,0,0), (0,255,0)],
@@ -377,11 +379,21 @@ def register_dataset(train: Optional[str|Path]=None,
         raise NotImplementedError(
             f"Only have \"baseline\", \"start\", \"end\" and \"region\", given {mode}")
 
-def main(args) -> None:
+def main(args):
     results = dataset_dict_loader(args.input)
-    print(results)
+    return results
 
 
 if __name__ == "__main__":
     args = get_arguments()
-    main(args)
+    results = main(args)
+    from detectron2.utils.visualizer import Visualizer
+    import cv2
+    import matplotlib.pyplot as plt
+    metadata = register_region(train=args.input, train_name="train")
+    for result in results:
+        image = cv2.imread(result["file_name"])
+        visualizer = Visualizer(image[..., ::-1].copy(), metadata=metadata, scale=1)
+        vis = visualizer.draw_dataset_dict(result)
+        plt.imshow(vis.get_image())
+        plt.show()

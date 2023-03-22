@@ -214,6 +214,8 @@ class PageData:
             id_map //= 256
         return color
     
+    ## REGIONS
+    
     def build_region_instances(self, out_size, elements, class_dict) -> list[Instance]:
         size = self.get_size()
         instances = []
@@ -260,7 +262,55 @@ class PageData:
         if not pano_mask.any():
             self.logger.warning(f"File {self.filepath} does not contains regions")
         return pano_mask, segments_info
+        
+    def build_region_mask(self, out_size, elements, class_dict):
+        """
+        Builds a "image" mask of desired elements
+        """
+        size = self.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        for element in elements:
+            for element_class, element_coords in self._iter_class_coords(element, class_dict):
+                coords = self._scale_coords(element_coords, out_size, size)
+                rounded_coords = np.round(coords).astype(np.int32)
+                cv2.fillPoly(mask, [rounded_coords], element_class)
+        if not mask.any():
+            self.logger.warning(f"File {self.filepath} does not contains regions")
+        return mask
     
+    ## BASELINE
+    
+    def build_baseline_instances(self, out_size, line_width):
+        baseline_class = 1
+        size = self.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        instances = []
+        for baseline_coords in self._iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            mask.fill(0)
+            # HACK Currenty the most simple quickest solution used can probably be optimized
+            cv2.polylines(mask, [rounded_coords.reshape(-1, 1, 2)], False, 255, line_width)
+            contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            if len(contours) > 1:
+                continue
+            contour_coords = np.asarray(contours[0]).reshape(-1,2)
+            
+            bbox = self._bounding_box(coords)
+            bbox_mode = structures.BoxMode.XYXY_ABS
+            flattened_coords = contour_coords.flatten().tolist()
+            instance: Instance = {
+                "bbox"        : bbox,
+                "bbox_mode"   : bbox_mode,
+                "category_id" : baseline_class,
+                "segmentation": [flattened_coords],
+                "keypoints"   : [],
+                "iscrowd"     : False
+            }
+            instances.append(instance)
+            
+        return instances
+        
     def build_baseline_pano(self, out_size, line_width):
         baseline_class = 1
         size = self.get_size()
@@ -282,21 +332,6 @@ class PageData:
         if not pano_mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return pano_mask, segments_info
-        
-    def build_region_mask(self, out_size, elements, class_dict):
-        """
-        Builds a "image" mask of desired elements
-        """
-        size = self.get_size()
-        mask = np.zeros(out_size, np.uint8)
-        for element in elements:
-            for element_class, element_coords in self._iter_class_coords(element, class_dict):
-                coords = self._scale_coords(element_coords, out_size, size)
-                rounded_coords = np.round(coords).astype(np.int32)
-                cv2.fillPoly(mask, [rounded_coords], element_class)
-        if not mask.any():
-            self.logger.warning(f"File {self.filepath} does not contains regions")
-        return mask
     
     def build_baseline_mask(self, out_size, line_width):
         """
@@ -313,6 +348,9 @@ class PageData:
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
+    
+    ## START
+    
     def build_start_mask(self, out_size, line_width):
         """
         Builds a "image" mask of Starts on XML-PAGE
@@ -328,6 +366,8 @@ class PageData:
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
+    ## START
+    
     def build_end_mask(self, out_size, line_width):
         """
         Builds a "image" mask of Ends on XML-PAGE
@@ -342,6 +382,8 @@ class PageData:
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
+    
+    ## SEPARATOR
     
     def build_separator_mask(self, out_size, line_width):
         """
@@ -360,6 +402,8 @@ class PageData:
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
+    
+    ## BASELINE + SEPARATOR
     
     def build_baseline_separator_mask(self, out_size, line_width):
         """
@@ -382,6 +426,8 @@ class PageData:
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
+    
+    ## TEXT
 
     def get_text(self, element):
         """
@@ -423,6 +469,8 @@ class PageData:
             )
             fh.write(text + "\n")
             fh.close()
+            
+    ## NEW PAGEXML
 
     def new_page(self, name, rows, cols):
         """create a new PAGE xml"""

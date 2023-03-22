@@ -139,6 +139,11 @@ class XMLConverter(XMLRegions):
                 self.region_classes
             )
             return instances
+        elif self.mode == "baseline":
+            instances = gt_data.build_baseline_instances(
+                image_shape,
+                self.line_width
+            )
         else:
             raise NotImplementedError
         

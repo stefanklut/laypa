@@ -123,7 +123,7 @@ class Viewer:
         
         image = cv2.imread(str(image_path_i))
         
-        vis_im = Visualizer(image[:, :, ::-1].copy(),
+        vis_im = Visualizer(image[..., ::-1].copy(),
                             metadata=self.metadata,
                             scale=1
                             )
