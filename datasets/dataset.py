@@ -24,12 +24,12 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def create_data(input_data: tuple[Path, Path, Path, Path, Path, np.ndarray]) -> dict:
+def create_data(input_data: dict) -> dict:
     """
     Return a single dict used for training
 
     Args:
-        input_data (tuple[Path, Path, Path, np.ndarray]): input consisting of the image path, 
+        input_data (dict): input consisting of the image path, 
             the labels mask path, the instances path, and the shape of the image (use for grouping for example)
 
     Raises:
@@ -40,10 +40,15 @@ def create_data(input_data: tuple[Path, Path, Path, Path, Path, np.ndarray]) -> 
     Returns:
         dict: data used for detectron training
     """
-    image_path, mask_path, instances_path, pano_path, segments_info_path, output_size = input_data
+    image_path = Path(input_data["image_paths"])
+    mask_path = Path(input_data["sem_seg_paths"])
+    instances_path = Path(input_data["instances_paths"])
+    pano_path = Path(input_data["pano_paths"])
+    segments_info_path = Path(input_data["segments_info_paths"])
+    output_size = input_data["output_sizes"]
 
     # Data existence check
-    if not image_path.is_file():
+    if not image_path.is_file(): 
         raise FileNotFoundError(f"Image path missing ({image_path})")
     if not mask_path.is_file():
         raise FileNotFoundError(f"Mask path missing ({mask_path})")
@@ -52,12 +57,7 @@ def create_data(input_data: tuple[Path, Path, Path, Path, Path, np.ndarray]) -> 
     if not pano_path.is_file():
         raise FileNotFoundError(f"Pano path missing ({pano_path})")
     if not segments_info_path.is_file():
-        raise FileNotFoundError(f"Segments Info path missing ({segments_info_path})")
-
-    # Data_ids check
-    if len(set(path.stem for path in input_data[:-1])) != 1:
-        raise ValueError(
-            f"Ids should match ({image_path.stem} vs {mask_path.stem}")
+        raise FileNotFoundError(f"Segments info path missing ({segments_info_path})")
 
     with open(instances_path, 'r') as f:
         annotations = json.load(f)["annotations"]
@@ -76,68 +76,43 @@ def create_data(input_data: tuple[Path, Path, Path, Path, Path, np.ndarray]) -> 
             }
     return data
 
-def read_txt_file(dataset_dir: Path, txt_name: str):
-    paths_list = dataset_dir.joinpath(txt_name)
-    if not paths_list.is_file():
-        raise FileNotFoundError(f"Image list is missing ({paths_list})")
-    with open(paths_list, mode='r') as f:
-        paths = [dataset_dir.joinpath(line.strip()) for line in f.readlines()]
-    return paths
-
 
 def dataset_dict_loader(dataset_dir: str | Path) -> list[dict]:
     """
     Create the dicts used for loading during training
 
     Args:
-        dataset_dir (str | Path): dir containing three files,
-            image_list.txt: containing the locations of the images, 
-            mask_list.txt: containing the locations of the mask, 
-            output_sizes.txt: containing the image shapes
+        dataset_dir (str | Path): dir containing the dataset
 
     Raises:
-        FileNotFoundError: image_list.txt does not exist
-        FileNotFoundError: mask_list.txt does not exist
-        FileNotFoundError: output_sizes.txt
-        ValueError: length of the three list does not match
+
+        ValueError: length of the info does not match
 
     Returns:
         list[dict]: list of dicts used to feed the dataloader
     """
     if isinstance(dataset_dir, str):
         dataset_dir = Path(dataset_dir)
+        
+    info_path = dataset_dir.joinpath("info.json")
+        
+    with open(info_path, 'r') as f:
+        input_data = json.load(f)
 
-    image_paths = read_txt_file(dataset_dir, "image_list.txt")
-    mask_paths = read_txt_file(dataset_dir, "sem_seg_list.txt")
-    instances_paths = read_txt_file(dataset_dir, "instances_list.txt")
-    pano_paths = read_txt_file(dataset_dir, "pano_list.txt")
-    segments_info_paths = read_txt_file(dataset_dir, "segments_info_list.txt")
-    
-    
-    output_sizes_list = dataset_dir.joinpath("output_sizes.txt")
-    if not output_sizes_list.is_file():
-        raise FileNotFoundError(f"Image list is missing ({output_sizes_list})")
-
-    with open(output_sizes_list, mode='r') as f:
-        output_sizes = f.readlines()
-        output_sizes = [ast.literal_eval(output_size)
-                        for output_size in output_sizes]
-
-    # Data formatting check
-    # TODO This can be done much better
-    if not (len(image_paths) == len(mask_paths) == len(instances_paths) == len(output_sizes) == len(pano_paths) == len(segments_info_paths)):
-        raise ValueError(
-            f"Mismatch in lengths loaded data: {len(image_paths)}, {len(mask_paths)}, {len(instances_paths)}, {len(pano_paths)}, {len(segments_info_paths)}, {len(output_sizes)}")
+    # FIXME Totally not readable
+    # Unpack from dict of list -> list of dicts, add dataset dir to all str (assume they are paths)
+    input_data = [{key: (dataset_dir.joinpath(value) if isinstance(value, str) else value) 
+                    for (key, value) in zip(input_data.keys(), t)} for t in zip(*input_data.values())]
 
     # Single Thread
     # input_dicts = []
-    # for image_path, mask_path, instances_path, output_size in zip(image_paths, mask_paths, instances_paths, output_sizes):
-    #     input_dicts.append(create_data((image_path, mask_path, instances_path, output_size)))
+    # for input_data_i in input_data:
+    #     input_dicts.append(create_data(input_data_i))
 
     # Multi Thread
     with Pool(os.cpu_count()) as pool:
         input_dicts = list(pool.imap_unordered(
-            create_data, zip(image_paths, mask_paths, instances_paths, pano_paths, segments_info_paths, output_sizes)))
+            create_data, input_data))
 
     return input_dicts
 

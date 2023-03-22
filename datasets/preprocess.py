@@ -326,7 +326,12 @@ class Preprocess:
 
         return resized_image
     
-    def save_image(self, image_path: Path, out_image_path: Path, image_shape: tuple[int,int]):
+    def save_image(self, image_path: Path, image_stem: str, image_shape: tuple[int,int]):
+        if self.output_dir is None:
+            raise ValueError("Cannot run when the output dir is not set")
+        image_dir = self.output_dir.joinpath("original")
+        image_dir.mkdir(parents=True, exist_ok=True) 
+        out_image_path = image_dir.joinpath(image_stem + ".png")
         
         def _save_image_helper():
             """
@@ -349,8 +354,15 @@ class Preprocess:
             else:
                 #TODO Skipped
                 pass
+        
+        return str(out_image_path.relative_to(self.output_dir))
             
-    def save_mask(self, xml_path: Path, out_mask_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int,int]):
+    def save_mask(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int,int]):
+        if self.output_dir is None:
+            raise ValueError("Cannot run when the output dir is not set")
+        mask_dir = self.output_dir.joinpath("sem_seg")
+        mask_dir.mkdir(parents=True, exist_ok=True)
+        out_mask_path = mask_dir.joinpath(image_stem + ".png")
         
         def _save_mask_helper():
             """
@@ -370,8 +382,15 @@ class Preprocess:
             else:
                 # TODO Skipped
                 pass
+        
+        return str(out_mask_path.relative_to(self.output_dir))
             
-    def save_instances(self, xml_path: Path, out_instances_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+    def save_instances(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+        if self.output_dir is None:
+            raise ValueError("Cannot run when the output dir is not set")
+        instances_dir = self.output_dir.joinpath("instances")
+        instances_dir.mkdir(parents=True, exist_ok=True) 
+        out_instances_path = instances_dir.joinpath(image_stem + ".json")
         
         def _save_instances_helper():
             """
@@ -394,8 +413,16 @@ class Preprocess:
             else:
                 # TODO Skipped
                 pass
+            
+        return str(out_instances_path.relative_to(self.output_dir))
 
-    def save_panos(self, xml_path: Path, out_pano_path: Path, out_segments_info_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+    def save_panos(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+        if self.output_dir is None:
+            raise ValueError("Cannot run when the output dir is not set")
+        panos_dir = self.output_dir.joinpath("panos")
+        panos_dir.mkdir(parents=True, exist_ok=True) 
+        out_pano_path = panos_dir.joinpath(image_stem + ".png")
+        out_segments_info_path = panos_dir.joinpath(image_stem + ".json")
         
         def _save_panos_helper():
             """
@@ -420,8 +447,10 @@ class Preprocess:
             else:
                 # TODO Skipped
                 pass
+        
+        return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
 
-    def process_single_file(self, image_path: Path) -> tuple[Path, Path, Path, Path, Path, np.ndarray]:
+    def process_single_file(self, image_path: Path) -> dict:
         """
         Process a single image and pageXML to be used during training
 
@@ -454,38 +483,24 @@ class Preprocess:
                                                 )
         else:
             image_shape = original_image_shape
-            
-        out_image_path = self.output_dir.joinpath("original", image_stem + ".png")
         
-        self.save_image(image_path, out_image_path, image_shape)
+        results = {}
+        results["output_sizes"] = image_shape
         
-        out_mask_path = self.output_dir.joinpath("sem_seg", image_stem + ".png")
+        out_image_path = self.save_image(image_path, image_stem, image_shape)
+        results["image_paths"] = out_image_path
         
-        self.save_mask(xml_path, out_mask_path, original_image_shape, image_shape)
+        out_mask_path = self.save_mask(xml_path, image_stem, original_image_shape, image_shape)
+        results["sem_seg_paths"] = out_mask_path
             
-        out_instances_path = self.output_dir.joinpath("instances", image_stem + ".json")
-            
-        self.save_instances(xml_path, out_instances_path, original_image_shape, image_shape)
-            
-        out_pano_path = self.output_dir.joinpath("panos", image_stem + ".png")
-        out_segments_info_path = self.output_dir.joinpath("panos", image_stem + ".json")
-            
-        self.save_panos(xml_path, out_pano_path, out_segments_info_path, original_image_shape, image_shape)
+        out_instances_path = self.save_instances(xml_path, image_stem, original_image_shape, image_shape)
+        results["instances_paths"] = out_instances_path
         
-        image_shape = np.asarray(image_shape)
+        out_pano_path, out_segments_info_path = self.save_panos(xml_path, image_stem, original_image_shape, image_shape)
+        results["pano_paths"] = out_pano_path
+        results["segments_info_paths"] = out_segments_info_path
 
-        return out_image_path, out_mask_path, out_instances_path, out_pano_path, out_segments_info_path, image_shape
-    
-    def save_to_txt(self, txt_name: str, paths: list[Path]):
-        if self.output_dir is None:
-            raise ValueError("Cannot run when the output dir is not set")
-        txt_path = Path(txt_name)
-        if txt_path.suffix != ".txt":
-            raise ValueError(f"Must have \".txt\" as the suffix ({txt_name})")
-        with open(self.output_dir.joinpath(txt_name), mode='w') as f:
-            for path in paths:
-                relative_path = path.relative_to(self.output_dir)
-                f.write(f"{relative_path}\n")
+        return results
 
     def run(self) -> None:
         """
@@ -518,11 +533,6 @@ class Preprocess:
             self.check_paths_exists(image_paths)
             self.check_paths_exists(xml_paths)
 
-        self.output_dir.joinpath("original").mkdir(parents=True, exist_ok=True)
-        self.output_dir.joinpath("sem_seg").mkdir(parents=True, exist_ok=True)
-        self.output_dir.joinpath("instances").mkdir(parents=True, exist_ok=True)
-        self.output_dir.joinpath("panos").mkdir(parents=True, exist_ok=True)
-
         # Single thread
         # for image_path in tqdm(image_paths):
         #     self.process_single_file(image_path)
@@ -532,19 +542,12 @@ class Preprocess:
             results = list(tqdm(pool.imap_unordered(
                 self.process_single_file, image_paths), total=len(image_paths)))
 
-        zipped_results: tuple[list[Path], list[Path], list[Path], list[Path], list[Path], list[np.ndarray]] = tuple(zip(*results))
-         
-        image_list, mask_list, instances_list, pano_list, segments_info_list, output_sizes = zipped_results
+        # Assuming all key are the same make one dict
+        results = {key: [item[key] for item in results] for key in results[0].keys()}
         
-        self.save_to_txt("image_list.txt", image_list)
-        self.save_to_txt("sem_seg_list.txt", mask_list)
-        self.save_to_txt("instances_list.txt", instances_list)
-        self.save_to_txt("pano_list.txt", pano_list)
-        self.save_to_txt("segments_info_list.txt", segments_info_list)
-
-        with open(self.output_dir.joinpath("output_sizes.txt"), mode='w') as f:
-            for output_size in output_sizes:
-                f.write(f"{output_size[0]}, {output_size[1]}\n")
+        output_path = self.output_dir.joinpath("info.json")
+        with open(output_path, 'w') as f:
+            json.dump(results, f)
 
 
 def main(args) -> None:
