@@ -3,7 +3,6 @@
 # Laypa
 Laypa is a segmentation network, with the goal of finding regions (paragraph, page number, etc.) and baselines in documents. The current approach is using a ResNet backbone and a feature pyramid head, which made pixel wise classifications. The models are built using the [detectron2][detectron_link] framework. The baselines and region classifications are then made available for further processing. This post-processing turn the classification into instances. So that they can be used by other programs (OCR/HTR), either as masks or directly as pageXML.
 
-<!-- TODO Table of contents -->
 ## Table of Contents
 - [Laypa](#laypa)
   - [Table of Contents](#table-of-contents)

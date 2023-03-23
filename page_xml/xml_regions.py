@@ -48,7 +48,7 @@ class XMLRegions:
             self.merged_regions = self._build_merged_regions()
             self.merge_classes()
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"{self.mode}")
     
     #REVIEW is this the best place for this
     @classmethod
@@ -217,7 +217,6 @@ class XMLRegions:
         Returns:
             list[str]: the names of all the classes currently used
         """
-        # FIXME background as 0 does not work with the instance prediction [0-n_regions-1] should be used
         remaining_regions = ["background"]
         if self.mode == 'region':
             if self.merged_regions is None:

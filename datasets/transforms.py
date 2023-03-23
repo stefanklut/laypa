@@ -278,7 +278,9 @@ class WarpFieldTransform(T.Transform):
         Coords moving might be possible but might move some out of bounds
         """
         # TODO This may be possible, and seems necessary for the instance predictions
-        raise NotImplementedError
+        # raise NotImplementedError
+        # HACK Currently just returning original coordinates
+        return coords
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
         """

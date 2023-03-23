@@ -1,0 +1,20 @@
+_BASE_: ../panoptic_base.yaml
+
+OUTPUT_DIR: ./output/region
+
+MODEL:
+  MODE: region
+
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 7
+  ROI_HEADS:
+    NUM_CLASSES: 6
+  
+  WEIGHTS: 
+
+TRAIN:
+  WEIGHTS:
+
+TEST:
+  WEIGHTS: pretrained_models/region_model_best_mIoU.pth
+

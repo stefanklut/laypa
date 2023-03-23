@@ -268,7 +268,6 @@ def preprocess_datasets(cfg: CfgNode,
         process.run()
         
         if save_image_locations:
-            #FIXME This should have a flag (eval.py)
             #Saving the images used to a txt file
             os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
             val_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("validation_images.txt")
@@ -341,15 +340,7 @@ class Trainer(DefaultTrainer):
 
     @classmethod
     def build_train_loader(cls, cfg):
-        if "SemanticSegmentor" in cfg.MODEL.META_ARCHITECTURE:
-            mapper = DatasetMapper(is_train=True,
-                                   augmentations=build_augmentation(
-                                       cfg, is_train=True),
-                                   image_format=cfg.INPUT.FORMAT,
-                                   use_instance_mask=cfg.MODEL.MASK_ON,
-                                   instance_mask_format=cfg.INPUT.MASK_FORMAT,
-                                   use_keypoint=cfg.MODEL.KEYPOINT_ON)
-        elif "MaskFormer" in cfg.MODEL.META_ARCHITECTURE:
+        if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
             mapper = DatasetMapper(is_train=True,
                                    augmentations=build_augmentation(
                                        cfg, is_train=True),
@@ -365,18 +356,10 @@ class Trainer(DefaultTrainer):
 
     @classmethod
     def build_test_loader(cls, cfg, dataset_name):
-        if "SemanticSegmentor" in cfg.MODEL.META_ARCHITECTURE:
+        if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
             mapper = DatasetMapper(is_train=False,
                                    augmentations=build_augmentation(
                                        cfg, is_train=False),
-                                   image_format=cfg.INPUT.FORMAT,
-                                   use_instance_mask=cfg.MODEL.MASK_ON,
-                                   instance_mask_format=cfg.INPUT.MASK_FORMAT,
-                                   use_keypoint=cfg.MODEL.KEYPOINT_ON)
-        elif "MaskFormer" in cfg.MODEL.META_ARCHITECTURE:
-            mapper = DatasetMapper(is_train=True,
-                                   augmentations=build_augmentation(
-                                       cfg, is_train=True),
                                    image_format=cfg.INPUT.FORMAT,
                                    use_instance_mask=cfg.MODEL.MASK_ON,
                                    instance_mask_format=cfg.INPUT.MASK_FORMAT,

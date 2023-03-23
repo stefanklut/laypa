@@ -352,7 +352,7 @@ class Preprocess:
             if out_image_shape != image_shape:
                 _save_image_helper()
             else:
-                #TODO Skipped
+                # Skipped
                 pass
         
         return str(out_image_path.relative_to(self.output_dir))
@@ -380,7 +380,7 @@ class Preprocess:
             if out_mask_shape != image_shape:
                 _save_mask_helper()
             else:
-                # TODO Skipped
+                # Skipped
                 pass
         
         return str(out_mask_path.relative_to(self.output_dir))
@@ -411,7 +411,7 @@ class Preprocess:
             if out_mask_shape != image_shape:
                 _save_instances_helper()
             else:
-                # TODO Skipped
+                # Skipped
                 pass
             
         return str(out_instances_path.relative_to(self.output_dir))
@@ -445,7 +445,7 @@ class Preprocess:
             if out_mask_shape != image_shape:
                 _save_panos_helper()
             else:
-                # TODO Skipped
+                # Skipped
                 pass
         
         return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))

@@ -144,6 +144,7 @@ class XMLConverter(XMLRegions):
                 image_shape,
                 self.line_width
             )
+            return instances
         else:
             raise NotImplementedError
         

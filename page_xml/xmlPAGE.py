@@ -228,7 +228,7 @@ class PageData:
                 instance: Instance = {
                     "bbox"        : bbox,
                     "bbox_mode"   : bbox_mode,
-                    "category_id" : element_class,
+                    "category_id" : element_class - 1, # -1 for not having background as class
                     "segmentation": [flattened_coords],
                     "keypoints"   : [],
                     "iscrowd"     : False
@@ -281,7 +281,7 @@ class PageData:
     ## BASELINE
     
     def build_baseline_instances(self, out_size, line_width):
-        baseline_class = 1
+        baseline_class = 0
         size = self.get_size()
         mask = np.zeros(out_size, np.uint8)
         instances = []
@@ -312,7 +312,7 @@ class PageData:
         return instances
         
     def build_baseline_pano(self, out_size, line_width):
-        baseline_class = 1
+        baseline_class = 0
         size = self.get_size()
         pano_mask = np.zeros((*out_size, 3), np.uint8)
         segments_info = []
