@@ -326,6 +326,7 @@ class Trainer(DefaultTrainer):
     def build_evaluator(cls, cfg, dataset_name):
         sem_seg_output_dir = os.path.join(cfg.OUTPUT_DIR, "semantic_segmentation")
         evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
+        # TODO Other Evaluator types
         if evaluator_type == "sem_seg":
             evaluator = SemSegEvaluator(
                 dataset_name=dataset_name,
