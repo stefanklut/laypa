@@ -21,8 +21,6 @@ PREPROCESS:
     RESIZE_MODE: "choice"
     MIN_SIZE: [1024]
     MAX_SIZE: 2048
-  BASELINE:
-    LINE_COLOR: 1
   REGION:
     REGIONS: ["marginalia", "page-number", "resolution", "date",
               "index", "attendance", "Resumption", "resumption", 

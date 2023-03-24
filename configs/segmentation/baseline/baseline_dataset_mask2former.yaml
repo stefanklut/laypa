@@ -5,6 +5,9 @@ OUTPUT_DIR: ./output/baseline
 MODEL:
   MODE: baseline
 
+  MASK_ON: True
+  
+
   META_ARCHITECTURE: "MaskFormer"
 
   SEM_SEG_HEAD:
@@ -62,7 +65,10 @@ MODEL:
     PATCH_NORM: True
 
   
-  WEIGHTS: 
+  WEIGHTS:
+
+INPUT:
+    MASK_FORMAT: bitmask
 
 SOLVER:
   IMS_PER_BATCH: 1
@@ -71,6 +77,6 @@ TRAIN:
   WEIGHTS:
 
 TEST:
-  WEIGHTS: pretrained_models/baseline_model_best_mIoU.pth
+  WEIGHTS:
   
   

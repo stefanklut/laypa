@@ -75,7 +75,6 @@ class PredictorGenPageWrapper():
         self.gen_page = GenPageXML(mode=cfg.MODEL.MODE,
                                    output_dir=None,
                                    line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
-                                   line_color=cfg.PREPROCESS.BASELINE.LINE_COLOR,
                                    regions=cfg.PREPROCESS.REGION.REGIONS,
                                    merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
                                    region_type=cfg.PREPROCESS.REGION.REGION_TYPE)
