@@ -96,7 +96,11 @@ class PageData:
         """
         Returns the type of element
         """
-        re_match = re.match(r".*structure {.*type:(.*);.*}", element.attrib["custom"])
+        try:
+            re_match = re.match(r".*structure {.*type:(.*);.*}", element.attrib["custom"])
+        except KeyError:
+            self.logger.warning(f"No region type defined for {self.get_id(element)} at {self.filepath}")
+            return None
         if re_match is None:
             self.logger.warning(f"No region type defined for {self.get_id(element)} at {self.filepath}")
             return None
