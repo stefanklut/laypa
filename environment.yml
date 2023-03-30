@@ -18,7 +18,9 @@ dependencies:
   - pip
   - flask
   - prometheus_client
+  - imagesize
   - pip:
     - 'git+https://github.com/facebookresearch/detectron2.git'
+    - 'git+https://github.com/cocodataset/panopticapi.git'
+    - ./models/pixel_decoder/ops/
     - natsort
-    - imagesize

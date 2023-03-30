@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
 import re
-from typing import Iterable
-from natsort import os_sorted
 
 def check_path_accessible(path: Path):
     """
