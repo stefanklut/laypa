@@ -257,7 +257,7 @@ class PageData:
                 
                 segment: SegmentsInfo = {
                     "id": _id,
-                    "category_id": element_class,
+                    "category_id": element_class - 1, # -1 for not having background as class
                     "iscrowd": False
                 }
                 segments_info.append(segment)

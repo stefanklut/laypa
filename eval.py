@@ -1,4 +1,6 @@
 import argparse
+
+import numpy as np
 from datasets.augmentations import ResizeShortestEdge
 from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
@@ -10,6 +12,7 @@ from main import preprocess_datasets, setup_cfg
 import torch
 from natsort import os_sorted
 from utils.tempdir import OptionalTemporaryDirectory
+from panopticapi.utils import rgb2id
 
 
 def get_arguments() -> argparse.Namespace:
@@ -85,13 +88,20 @@ def main(args) -> None:
         # train_loader = DatasetCatalog.get("train")
         val_loader = DatasetCatalog.get("val")
         metadata = MetadataCatalog.get("val")
+        # print(metadata)
         
         # for inputs in np.random.choice(val_loader, 3):
         for inputs in os_sorted(val_loader, key=lambda x: x["file_name"]):
             im = cv2.imread(inputs["file_name"])
-            gt = cv2.imread(inputs["sem_seg_file_name"], cv2.IMREAD_GRAYSCALE)
+            sem_seg_gt = cv2.imread(inputs["sem_seg_file_name"], cv2.IMREAD_GRAYSCALE)
+            pano_gt = torch.IntTensor(rgb2id(cv2.imread(inputs["pan_seg_file_name"], cv2.IMREAD_COLOR)))
+            # print(inputs["segments_info"])
+            
             outputs = predictor(im)
-            outputs["sem_seg"] = torch.argmax(outputs["sem_seg"], dim=-3)
+            # print(outputs)
+            outputs["sem_seg"] = torch.argmax(outputs["sem_seg"], dim=-3).to("cpu")
+            outputs["panoptic_seg"] = (outputs["panoptic_seg"][0].to("cpu"), 
+                                       outputs["panoptic_seg"][1])
             print(inputs["file_name"])
             vis_im = Visualizer(im[..., ::-1].copy(),
                                 metadata=metadata,
@@ -101,8 +111,8 @@ def main(args) -> None:
                                 metadata=metadata,
                                 scale=1
                                 )
-            vis_im = vis_im.draw_sem_seg(outputs["sem_seg"].to("cpu"))
-            vis_im_gt = vis_im_gt.draw_sem_seg(gt)
+            vis_im = vis_im.draw_panoptic_seg(outputs["panoptic_seg"][0], outputs["panoptic_seg"][1])
+            vis_im_gt = vis_im_gt.draw_panoptic_seg(pano_gt, [item | {"isthing": True} for item in inputs["segments_info"]])
             f, ax = plt.subplots(1, 2)
             ax[0].imshow(vis_im.get_image())
             ax[0].axis('off')
