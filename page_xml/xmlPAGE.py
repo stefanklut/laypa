@@ -282,6 +282,70 @@ class PageData:
             self.logger.warning(f"File {self.filepath} does not contains regions")
         return mask
     
+    ## TEXT LINE
+    
+    def build_text_line_instances(self, out_size) -> list[Instance]:
+        text_line_class = 0
+        size = self.get_size()
+        instances = []
+        for element_coords in self._iter_text_line_coords():
+            coords = self._scale_coords(element_coords, out_size, size)
+            bbox = self._bounding_box(coords)
+            bbox_mode = structures.BoxMode.XYXY_ABS
+            flattened_coords = coords.flatten().tolist()
+            instance: Instance = {
+                "bbox"        : bbox,
+                "bbox_mode"   : bbox_mode,
+                "category_id" : text_line_class,
+                "segmentation": [flattened_coords],
+                "keypoints"   : [],
+                "iscrowd"     : False
+            }
+            instances.append(instance)
+        return instances
+    
+    def build_text_line_pano(self, out_size):
+        """
+        Create the pano version of the textline
+        """
+        text_line_class = 0
+        size = self.get_size()
+        pano_mask = np.zeros((*out_size, 3), np.uint8)
+        segments_info = []
+        _id = 1
+        for element_coords in self._iter_text_line_coords():
+            coords = self._scale_coords(element_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            rgb_color = self.id2rgb(_id)
+            cv2.fillPoly(pano_mask, [rounded_coords], rgb_color)
+            
+            segment: SegmentsInfo = {
+                "id": _id,
+                "category_id": text_line_class, 
+                "iscrowd": False
+            }
+            segments_info.append(segment)
+            
+            _id += 1
+        if not pano_mask.any():
+            self.logger.warning(f"File {self.filepath} does not contains regions")
+        return pano_mask, segments_info
+        
+    def build_text_line_mask(self, out_size):
+        """
+        Builds a "image" mask of desired elements
+        """
+        text_line_class = 1
+        size = self.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        for element_coords in self._iter_text_line_coords():
+            coords = self._scale_coords(element_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            cv2.fillPoly(mask, [rounded_coords], text_line_class)
+        if not mask.any():
+            self.logger.warning(f"File {self.filepath} does not contains regions")
+        return mask
+    
     ## BASELINE
     
     def build_baseline_instances(self, out_size, line_width):

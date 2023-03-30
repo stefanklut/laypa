@@ -69,18 +69,18 @@ class XMLConverter(XMLRegions):
         if image_shape is None:
             image_shape = gt_data.get_size()
         if self.mode == "region":
-            region_mask = gt_data.build_region_mask(
+            mask = gt_data.build_region_mask(
                 image_shape,
                 set(self.region_types.values()),
                 self.region_classes
             )
-            return region_mask
+            return mask
         elif self.mode == "baseline":
-            baseline_mask = gt_data.build_baseline_mask(
+            mask = gt_data.build_baseline_mask(
                 image_shape,
                 line_width=self.line_width
             )
-            return baseline_mask
+            return mask
         elif self.mode == "start":
             start_mask = gt_data.build_start_mask(
                 image_shape,
@@ -88,23 +88,28 @@ class XMLConverter(XMLRegions):
             )
             return start_mask
         elif self.mode == "end":
-            end_mask = gt_data.build_end_mask(
+            mask = gt_data.build_end_mask(
                 image_shape,
                 line_width=self.line_width
             )
-            return end_mask
+            return mask
         elif self.mode == "separator":
-            separator_mask = gt_data.build_separator_mask(
+            mask = gt_data.build_separator_mask(
                 image_shape,
                 line_width=self.line_width
             )
-            return separator_mask
+            return mask
         elif self.mode == "baseline_separator":
-            baseline_separator_mask = gt_data.build_baseline_separator_mask(
+            mask = gt_data.build_baseline_separator_mask(
                 image_shape,
                 line_width=self.line_width
             )
-            return baseline_separator_mask
+            return mask
+        elif self.mode == "text_line":
+            mask = gt_data.build_text_line_mask(
+                image_shape
+            )
+            return mask
         else:
             raise NotImplementedError
 
@@ -145,6 +150,11 @@ class XMLConverter(XMLRegions):
                 self.line_width
             )
             return instances
+        elif self.mode == "text_line":
+            instances = gt_data.build_text_line_instances(
+                image_shape
+            )
+            return instances
         else:
             raise NotImplementedError
         
@@ -183,6 +193,11 @@ class XMLConverter(XMLRegions):
             pano_mask, segments_info = gt_data.build_baseline_pano(
                 image_shape,
                 self.line_width
+            )
+            return pano_mask, segments_info
+        elif self.mode == "text_line":
+            pano_mask, segments_info = gt_data.build_text_line_pano(
+                image_shape
             )
             return pano_mask, segments_info
         else:

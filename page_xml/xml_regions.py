@@ -47,8 +47,6 @@ class XMLRegions:
             self.region_types = self._build_region_types()
             self.merged_regions = self._build_merged_regions()
             self.merge_classes()
-        else:
-            raise NotImplementedError(f"{self.mode}")
     
     #REVIEW is this the best place for this
     @classmethod
@@ -236,6 +234,8 @@ class XMLRegions:
             remaining_regions.extend(["separator"])
         elif self.mode == "baseline_separator":
             remaining_regions.extend(["baseline","separator"])
+        elif self.mode == "text_line":
+            remaining_regions.extend('["text_line]')
         else:
             raise NotImplementedError
         
