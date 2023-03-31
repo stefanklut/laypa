@@ -177,9 +177,11 @@ class PageData:
             if str_coords is None:
                 continue
             split_str_coords = str_coords.split()
-            # REVIEW currently ignoring empty baselines
+            # REVIEW currently ignoring empty baselines, doubling single value baselines (otherwise they are not drawn)
             if len(split_str_coords) == 0:
                 continue
+            if len(split_str_coords) == 1:
+                split_str_coords = split_str_coords * 2 #double for polyline
             coords = np.array([i.split(",") for i in split_str_coords]).astype(np.int32)
             yield coords
             
@@ -256,9 +258,9 @@ class PageData:
                 cv2.fillPoly(pano_mask, [rounded_coords], rgb_color)
                 
                 segment: SegmentsInfo = {
-                    "id": _id,
+                    "id"         : _id,
                     "category_id": element_class - 1, # -1 for not having background as class
-                    "iscrowd": False
+                    "iscrowd"    : False
                 }
                 segments_info.append(segment)
                 
@@ -320,9 +322,9 @@ class PageData:
             cv2.fillPoly(pano_mask, [rounded_coords], rgb_color)
             
             segment: SegmentsInfo = {
-                "id": _id,
-                "category_id": text_line_class, 
-                "iscrowd": False
+                "id"         : _id,
+                "category_id": text_line_class,
+                "iscrowd"    : False
             }
             segments_info.append(segment)
             
@@ -360,18 +362,23 @@ class PageData:
             # HACK Currenty the most simple quickest solution used can probably be optimized
             cv2.polylines(mask, [rounded_coords.reshape(-1, 1, 2)], False, 255, line_width)
             contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            if len(contours) > 1:
-                continue
-            contour_coords = np.asarray(contours[0]).reshape(-1,2)
+            if len(contours) == 0:
+                raise ValueError(f"{self.filepath} has no contours")
+
+            # Multiple contours should really not happen, but when it does it can still be supported
+            all_coords = []
+            for contour in contours:
+                contour_coords = np.asarray(contour).reshape(-1,2)
+                all_coords.append(contour_coords)
+            flattened_coords_list = [coords.flatten().tolist() for coords in all_coords]
             
-            bbox = self._bounding_box(coords)
+            bbox = self._bounding_box(np.concatenate(all_coords, axis=0))
             bbox_mode = structures.BoxMode.XYXY_ABS
-            flattened_coords = contour_coords.flatten().tolist()
             instance: Instance = {
                 "bbox"        : bbox,
                 "bbox_mode"   : bbox_mode,
                 "category_id" : baseline_class,
-                "segmentation": [flattened_coords],
+                "segmentation": flattened_coords_list,
                 "keypoints"   : [],
                 "iscrowd"     : False
             }
@@ -391,9 +398,9 @@ class PageData:
             rgb_color = self.id2rgb(_id)
             cv2.polylines(pano_mask, [rounded_coords.reshape(-1, 1, 2)], False, rgb_color, line_width)
             segment: SegmentsInfo = {
-                "id": _id,
+                "id"         : _id,
                 "category_id": baseline_class,
-                "iscrowd": False
+                "iscrowd"    : False
             }
             segments_info.append(segment)
             _id += 1
