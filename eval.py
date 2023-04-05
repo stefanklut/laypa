@@ -78,7 +78,7 @@ def main(args) -> None:
         args (argparse.Namespace): arguments for where to find the images
     """
     # Setup config
-    cfg = setup_cfg(args, save_config=False)
+    cfg = setup_cfg(args)
 
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
         

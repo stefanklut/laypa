@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from utils.image_utils import load_image_from_bytes
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from main import setup_cfg
+from main import setup_cfg, setup_logging
 from page_xml.generate_pageXML import GenPageXML
 from run import Predictor
 
@@ -70,7 +70,8 @@ class PredictorGenPageWrapper():
         args.config = str(config_path)
         args.opts = ["TEST.WEIGHTS", str(weights_path)]
         
-        cfg = setup_cfg(args, save_config=False)
+        cfg = setup_cfg(args)
+        setup_logging(cfg, args, save_log=False)
 
         self.gen_page = GenPageXML(mode=cfg.MODEL.MODE,
                                    output_dir=None,

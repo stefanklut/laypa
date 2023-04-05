@@ -1,4 +1,5 @@
 import argparse
+import logging
 from multiprocessing import Pool
 import os
 from pathlib import Path
@@ -7,13 +8,14 @@ from detectron2.engine import DefaultPredictor
 from detectron2.checkpoint import DetectionCheckpointer
 from datasets.augmentations import ResizeShortestEdge
 import cv2
-from main import setup_cfg
+from main import setup_cfg, setup_logging
 import torch
 from tqdm import tqdm
 
 from page_xml.generate_pageXML import GenPageXML
 from utils.image_utils import load_image_from_path
 from utils.input_utils import clean_input_paths, get_file_paths
+from utils.logging_utils import get_logger_name
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run file to inference using the model found in the config file")
@@ -101,6 +103,7 @@ class SavePredictor(Predictor):
                               ".tiff", ".tif",
                               ".exr",
                               ".hdr", ".pic"]
+        self.logger = logging.getLogger(get_logger_name())
         
     def set_input_paths(self, input_paths: str | Path | Sequence[str|Path]) -> None:
         """
@@ -141,7 +144,7 @@ class SavePredictor(Predictor):
             output_dir = Path(output_dir)
 
         if not output_dir.is_dir():
-            print(f"Could not find output dir ({output_dir}), creating one at specified location")
+            self.logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
             output_dir.mkdir(parents=True)
 
         self.output_dir = output_dir.resolve()
@@ -164,7 +167,8 @@ class SavePredictor(Predictor):
         image = load_image_from_path(input_path)
         # TODO Skipping of corrupted images should be logged somewhere
         if image is None:
-            print(f"Corrupted image ({input_path}) skipping for now")
+            
+            self.logger.warning(f"Corrupted image ({input_path}) skipping for now")
             return
         outputs = super().__call__(image)
         output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
@@ -197,7 +201,8 @@ class SavePredictor(Predictor):
     
     
 def main(args) -> None:
-    cfg = setup_cfg(args, save_config=False)
+    cfg = setup_cfg(args)
+    setup_logging(cfg, save_log=False)
     
     gen_page = GenPageXML(mode=cfg.MODEL.MODE,
                           output_dir=args.output,

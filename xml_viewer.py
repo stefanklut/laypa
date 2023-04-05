@@ -1,3 +1,4 @@
+import logging
 from multiprocessing import Pool
 from tqdm import tqdm
 import cv2
@@ -11,6 +12,7 @@ from detectron2.utils.visualizer import Visualizer
 
 from page_xml.xml_converter import XMLConverter
 from utils.input_utils import get_file_paths
+from utils.logging_utils import get_logger_name
 from utils.path_utils import xml_path_to_image_path
 
 def get_arguments() -> argparse.Namespace:
@@ -67,6 +69,8 @@ class Viewer:
                           ignore_label=255)
         
         self.output_type = output_type
+        
+        self.logger = logging.getLogger(get_logger_name())
         
         if self.output_type == 'gray':
             self.save_function = self.save_gray_image
@@ -150,7 +154,7 @@ class Viewer:
             self.check_image_exists(cleaned_xml_list)
             
         if not self.output_dir.is_dir():
-            print(f"Could not find output dir ({self.output_dir}), creating one at specified location")
+            self.logger.info(f"Could not find output dir ({self.output_dir}), creating one at specified location")
             self.output_dir.mkdir(parents=True)
         
         # Single thread

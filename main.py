@@ -4,7 +4,10 @@ import os
 from pathlib import Path
 import sys
 from typing import List, Optional, Sequence
+import weakref
 import torch
+import logging
+root_logger = logging.getLogger()
 
 from datasets import dataset
 from configs.defaults import _C as _C_default
@@ -18,17 +21,26 @@ from detectron2.data import (
     DatasetMapper
 )
 from detectron2.utils import comm
-from detectron2.engine import DefaultTrainer
-from detectron2.config import CfgNode
+from detectron2.engine import (
+    DefaultTrainer, 
+    TrainerBase,
+    SimpleTrainer,
+    AMPTrainer,
+    create_ddp_model,
+    hooks, 
+    launch
+)
+from detectron2.checkpoint import DetectionCheckpointer
+from detectron2.config import CfgNode, LazyConfig
 from detectron2.evaluation import SemSegEvaluator
 from detectron2.utils.env import seed_all_rng
-from detectron2.data import transforms as T
-from detectron2.engine import hooks, launch
-
+from detectron2.utils.collect_env import collect_env_info
+from detectron2.engine.defaults import _highlight
 
 from datasets.augmentations import build_augmentation
 from datasets.preprocess import Preprocess
 from utils.input_utils import clean_input_paths, get_file_paths
+from utils.logging_utils import get_logger_name, setup_logger
 from utils.path_utils import unique_path
 from page_xml.xml_converter import XMLConverter
 from utils.tempdir import OptionalTemporaryDirectory
@@ -90,7 +102,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
+def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     """
     Create the config used for training and evaluation. 
     Loads from default configs and merges with specific config file specified in the command line arguments
@@ -98,7 +110,6 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     Args:
         args (argparse.Namespace): arguments used to load a config file, also used for overwriting values directly (--opts)
         cfg (Optional[CfgNode], optional): possible overwrite of default config. Defaults to None.
-        save_config (bool, optional): flag whether or not to save the config (should be True during training). Defaults to True.
 
     Returns:
         CfgNode: config
@@ -115,13 +126,6 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
 
     cfg.merge_from_file(args.config)
     cfg.merge_from_list(args.opts)
-    
-    if not cfg.SEED < 0:
-        seed = cfg.SEED
-        rank = comm.get_rank()
-        seed_all_rng(None if seed < 0 else seed + rank)
-        # REVIEW What to do with this, NLL is not deterministic. Only during training
-        # torch.use_deterministic_algorithms(True)
     
     # For saving/documentation purposes
     now = datetime.now()
@@ -171,15 +175,60 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
             cfg.MODEL.DEVICE = 'cpu'
 
     cfg.freeze()
-    
-    # Save the config with all (changed) parameters to a yaml
-    if comm.is_main_process() and cfg.OUTPUT_DIR and save_config:
-        os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
-        cfg_output_path = Path(cfg.OUTPUT_DIR).joinpath("config.yaml")
-        cfg_output_path = unique_path(cfg_output_path)
-        with open(cfg_output_path, mode="w") as f:
-            f.write(cfg.dump())
     return cfg
+
+def setup_logging(cfg=None, args=None, save_log=True):
+    rank = comm.get_rank()
+    if save_log and cfg is not None:
+        output_dir = cfg.OUTPUT_DIR
+    else:
+        output_dir = None
+    root_logger = logging.getLogger()
+    logging.getLogger("fvcore")
+    logging.getLogger("detectron2")
+    
+    logger = setup_logger(output_dir, distributed_rank=rank, name=get_logger_name())
+    
+    for item in root_logger.manager.loggerDict:
+        if item.startswith('detectron2') or item.startswith('fvcore'):
+            root_logger.manager.loggerDict[item] = logger
+            
+    logger.info("Rank of current process: {}. World size: {}".format(rank, comm.get_world_size()))
+    logger.info("Environment info:\n" + collect_env_info())
+
+    if args is not None:
+        logger.info("Command line arguments: " + str(args))
+        if hasattr(args, "config") and args.config != "":
+            logger.info(
+                "Contents of args.config: {}:\n{}".format(
+                    args.config,
+                    _highlight(Path(args.config).open("r").read(), args.config),
+                )
+            )
+    return logger
+    
+def setup_saving(cfg: CfgNode):
+    output_dir = Path(cfg.OUTPUT_DIR)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger(get_logger_name())
+    
+    if comm.is_main_process() and output_dir:
+        cfg_output_path = output_dir.joinpath("config.yaml")
+        cfg_output_path = unique_path(cfg_output_path)
+        if isinstance(cfg, CfgNode):
+            logger.info("Running with full config:\n{}".format(_highlight(cfg.dump(), ".yaml")))
+            with cfg_output_path.open(mode="w") as f:
+                f.write(cfg.dump())
+        else:
+            LazyConfig.save(cfg, str(cfg_output_path))
+        logger.info("Full config saved to {}".format(cfg_output_path))
+        
+def setup_seed(cfg: CfgNode):
+        seed = cfg.SEED if cfg.SEED else -1
+        rank = comm.get_rank()
+        seed_all_rng(None if seed < 0 else seed + rank)
+        # REVIEW What to do with this, NLL is not deterministic. Only during training
+        # torch.use_deterministic_algorithms(True)
 
 def preprocess_datasets(cfg: CfgNode, 
                         train: Optional[str | Path | Sequence[str|Path]], 
@@ -202,8 +251,6 @@ def preprocess_datasets(cfg: CfgNode,
         FileNotFoundError: the output dir does not exist
     """
     
-    
-        
     if isinstance(output_dir, str):
         output_dir = Path(output_dir)
     if not output_dir.exists():
@@ -287,10 +334,36 @@ class Trainer(DefaultTrainer):
     Trainer class
     """
     def __init__(self, cfg):
-        super().__init__(cfg)
+        TrainerBase.__init__(self)
         
-        self.checkpointer.save_dir = os.path.join(cfg.OUTPUT_DIR, "checkpoints")
-        os.makedirs(self.checkpointer.save_dir, exist_ok=True)
+        # logger = logging.getLogger("detectron2")
+        # if not logger.isEnabledFor(logging.INFO):  # setup_logger is not called for d2
+        #     setup_logger()
+        cfg = DefaultTrainer.auto_scale_workers(cfg, comm.get_world_size())
+
+        # Assume these objects must be constructed in this order.
+        model = self.build_model(cfg)
+        optimizer = self.build_optimizer(cfg, model)
+        data_loader = self.build_train_loader(cfg)
+
+        model = create_ddp_model(model, broadcast_buffers=False)
+        self._trainer = (AMPTrainer if cfg.SOLVER.AMP.ENABLED else SimpleTrainer)(
+            model, data_loader, optimizer
+        )
+
+        self.scheduler = self.build_lr_scheduler(cfg, optimizer)
+        
+        checkpoint_save_dir = os.path.join(cfg.OUTPUT_DIR, "checkpoints")
+        os.makedirs(checkpoint_save_dir, exist_ok=True)
+        
+        self.checkpointer = DetectionCheckpointer(
+            model,
+            checkpoint_save_dir,
+            trainer=weakref.proxy(self),
+        )
+        self.start_iter = 0
+        self.max_iter = cfg.SOLVER.MAX_ITER
+        self.cfg = cfg
         
         
         miou_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
@@ -317,7 +390,8 @@ class Trainer(DefaultTrainer):
                                                    mode='max',
                                                    file_prefix='model_best_pACC')
         
-        self.register_hooks([miou_checkpointer, 
+        self.register_hooks(self.build_hooks() +
+                            [miou_checkpointer, 
                              fwiou_checkpointer, 
                              macc_checkpointer, 
                              pacc_checkpointer])
@@ -382,6 +456,9 @@ def setup_training(args):
         OrderedDict|None: results, if evaluation is enabled. Otherwise None.
     """
     cfg = setup_cfg(args)
+    setup_logging(cfg, args)
+    setup_seed(cfg)
+    setup_saving(cfg)
 
     # Temp dir for preprocessing in case no temporary dir was specified
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:

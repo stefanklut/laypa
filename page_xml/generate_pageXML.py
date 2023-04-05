@@ -1,4 +1,5 @@
 import argparse
+import logging
 from multiprocessing import Pool
 import os
 import sys
@@ -10,6 +11,8 @@ import imagesize
 
 from tqdm import tqdm
 import cv2
+
+from utils.logging_utils import get_logger_name
 
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
@@ -42,7 +45,6 @@ class GenPageXML(XMLRegions):
                  mode: str,
                  output_dir: Optional[str|Path] = None,
                  line_width: Optional[int] = None,
-                 line_color: Optional[int] = None,
                  regions: Optional[list[str]] = None,
                  merge_regions: Optional[list[str]] = None,
                  region_type: Optional[list[str]] = None) -> None:
@@ -58,13 +60,15 @@ class GenPageXML(XMLRegions):
             merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
             region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
-        super().__init__(mode, line_width, line_color, regions, merge_regions, region_type)
+        super().__init__(mode, line_width, regions, merge_regions, region_type)
         
         self.output_dir = None
         self.page_dir = None
         
         if output_dir is not None:
             self.set_output_dir(output_dir)
+            
+        self.logger = logging.getLogger(get_logger_name())
         
         self.regions = self.get_regions()
         
@@ -73,13 +77,13 @@ class GenPageXML(XMLRegions):
             output_dir = Path(output_dir)
             
         if not output_dir.is_dir():
-            print(f"Could not find output dir ({output_dir}), creating one at specified location")
+            self.logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
             output_dir.mkdir(parents=True)
         self.output_dir = output_dir
         
         page_dir = self.output_dir.joinpath("page")
         if not page_dir.is_dir():
-            print(f"Could not find page dir ({page_dir}), creating one at specified location")
+            self.logger.info(f"Could not find page dir ({page_dir}), creating one at specified location")
             page_dir.mkdir(parents=True)
         self.page_dir = page_dir
         

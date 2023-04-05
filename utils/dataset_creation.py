@@ -109,6 +109,7 @@ def main(args):
         ValueError: found duplicates in the images
         FileNotFoundError: no images found in sub dir
     """
+    
     if args.input == []:
         raise ValueError("Must give an input")
     if args.output == "":

@@ -1,4 +1,5 @@
 import json
+import logging
 from tqdm import tqdm
 import argparse
 import os
@@ -11,6 +12,8 @@ import imagesize
 
 import numpy as np
 from multiprocessing import Pool
+
+from utils.logging_utils import get_logger_name
 
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
@@ -93,6 +96,8 @@ class Preprocess:
                               ".tiff", ".tif",
                               ".exr",
                               ".hdr", ".pic"]
+        
+        self.logger = logging.getLogger(get_logger_name())
 
         self.resize = resize
         self.resize_mode = resize_mode
@@ -210,7 +215,7 @@ class Preprocess:
             output_dir = Path(output_dir)
 
         if not output_dir.is_dir():
-            print(f"Could not find output dir ({output_dir}), creating one at specified location")
+            self.logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
             output_dir.mkdir(parents=True)
 
         self.output_dir = output_dir.resolve()
