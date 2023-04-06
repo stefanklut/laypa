@@ -29,7 +29,7 @@ Developed using the following software and hardware:
 
 Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
 -|-|-|-|-|-|-|-
- Ubuntu 22.04 | 3.10 | 1.13.0 | 11.7 | RTX 3080 Ti Laptop | 12.0 | Intel i9-12900H | :white_check_mark:
+ Ubuntu 22.04 | 3.10 | 1.13.1 | 11.7 | RTX 3080 Ti Laptop | 12.0 | Intel i9-12900H | :white_check_mark:
 
 <details>
 <summary> Click here to show all tested environments </summary>
@@ -39,7 +39,7 @@ More coming soon
 
 Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
 -|-|-|-|-|-|-|-
- Ubuntu 22.04 | 3.10 | 1.13.0 | 11.7 | RTX 3080 Ti Laptop | 12.0 | Intel i9-12900H | :white_check_mark:
+ Ubuntu 22.04 | 3.10 | 1.13.1 | 11.7 | RTX 3080 Ti Laptop | 12.0 | Intel i9-12900H | :white_check_mark:
 
 </details>
 
@@ -106,7 +106,7 @@ Or the multistage build with some profiler tools taken out (might be smaller):
 
 Or the alternative docker using micromamba (might be more unstable, but builds are faster):
 ```sh
-buildImage.micromamba.sh <PATH_TO_LAYPA>
+./buildImage.micromamba.sh <PATH_TO_LAYPA>
 ```
 
 
@@ -123,7 +123,14 @@ Change the working dir to the docker directory:
 cd $tmpdir/docker
 ```
 
-Build the docker using docker build
+Checkout to make sure you are not on the development branch:
+```sh
+cd laypa
+git checkout main
+cd ..
+```
+
+Build the docker using docker build:
 ```sh
 docker build --no-cache . -t docker.laypa
 ```
