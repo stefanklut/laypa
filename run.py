@@ -6,7 +6,8 @@ from typing import Optional, Sequence
 from detectron2.engine import DefaultPredictor
 from detectron2.checkpoint import DetectionCheckpointer
 from datasets.augmentations import ResizeShortestEdge
-import cv2
+from detectron2.modeling import build_model
+from detectron2.data import MetadataCatalog
 from main import setup_cfg
 import torch
 from tqdm import tqdm
@@ -42,7 +43,14 @@ class Predictor(DefaultPredictor):
         Args:
             cfg (CfgNode): config
         """
-        super().__init__(cfg)
+        self.cfg = cfg.clone()  # cfg can be modified by model
+        self.model = build_model(self.cfg)
+        self.model.eval()
+        if len(cfg.DATASETS.TEST):
+            self.metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
+            
+        self.input_format = cfg.INPUT.FORMAT
+        assert self.input_format in ["RGB", "BGR"], self.input_format
         
         checkpointer = DetectionCheckpointer(self.model)
         checkpointer.load(cfg.TEST.WEIGHTS)
@@ -50,6 +58,7 @@ class Predictor(DefaultPredictor):
         self.aug = ResizeShortestEdge(
             [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST
         )
+        
     def __call__(self, original_image):
         """
         Not really useful, but shows what call needs to be made
