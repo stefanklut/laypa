@@ -13,10 +13,8 @@ import imagesize
 import numpy as np
 from multiprocessing import Pool
 
-from utils.logging_utils import get_logger_name
-
-
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from utils.logging_utils import get_logger_name
 from page_xml.xml_converter import XMLConverter
 from utils.input_utils import clean_input_paths, get_file_paths
 from utils.path_utils import image_path_to_xml_path, check_path_accessible

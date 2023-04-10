@@ -1,6 +1,7 @@
 # Modified from P2PaLA
 
 import os
+import sys
 import logging
 from typing import TypedDict
 
@@ -11,6 +12,9 @@ import re
 import datetime
 from pathlib import Path
 from detectron2 import structures
+
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from utils.logging_utils import get_logger_name
 
 class Instance(TypedDict):
     bbox: list[float]
@@ -33,7 +37,7 @@ class PageData:
         Args:
             filepath (string): Path to PAGE-xml file.
         """
-        self.logger = logging.getLogger(__name__) if logger == None else logger
+        self.logger = logging.getLogger(get_logger_name())
         self.filepath = filepath
         self.name = self.filepath.stem
         self.creator = "Laypa" if creator == None else creator
