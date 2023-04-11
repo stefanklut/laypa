@@ -79,7 +79,7 @@ class ResizeShortestEdge(T.Augmentation):
         Resize image alternative using cv2 instead of PIL or Pytorch
 
         Args:
-            min_size (int | Sequence[int]): shortest edge length
+            min_size (int | Sequence[int]): edge length
             max_size (int, optional): max other length. Defaults to sys.maxsize.
             sample_style (str, optional): type of sampling used to get the output shape. Defaults to "choice".
         """
@@ -89,7 +89,7 @@ class ResizeShortestEdge(T.Augmentation):
             min_size = (min_size, min_size)
         if sample_style == "range":
             assert len(min_size) == 2, (
-                    "short_edge_length must be two values using 'range' sample style."
+                    "edge_length must be two values using 'range' sample style."
                     f" Got {min_size}!"
                 )
         self.sample_style = sample_style
