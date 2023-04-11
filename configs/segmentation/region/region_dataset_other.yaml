@@ -1,0 +1,28 @@
+_BASE_: ../segmentation_base.yaml
+
+OUTPUT_DIR: ./output/region
+
+PREPROCESS:
+  REGION:
+    REGIONS: ["paragraph", "signature-mark", "catch-word", "page-number",
+              "header", "heading", "marginalia"]
+    MERGE_REGIONS: []
+    REGION_TYPE: []
+
+MODEL:
+  MODE: region
+
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 8
+
+  ROI_HEADS:
+    NUM_CLASSES: 7
+  
+  WEIGHTS: 
+
+TRAIN:
+  WEIGHTS:
+
+TEST:
+  WEIGHTS: pretrained_models/region_model_best_mIoU.pth
+
