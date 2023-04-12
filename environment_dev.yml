@@ -27,4 +27,5 @@ dependencies:
     - 'git+https://github.com/cocodataset/panopticapi.git'
     - ./models/pixel_decoder/ops/
     - natsort
+    - distinctipy
     - torch-tb-profiler

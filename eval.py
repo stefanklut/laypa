@@ -111,8 +111,10 @@ def main(args) -> None:
                                 metadata=metadata,
                                 scale=1
                                 )
-            vis_im = vis_im.draw_panoptic_seg(outputs["panoptic_seg"][0], outputs["panoptic_seg"][1])
-            vis_im_gt = vis_im_gt.draw_panoptic_seg(pano_gt, [item | {"isthing": True} for item in inputs["segments_info"]])
+            vis_im = vis_im.draw_sem_seg(outputs["sem_seg"])
+            vis_im_gt = vis_im_gt.draw_sem_seg(sem_seg_gt)
+            # vis_im = vis_im.draw_panoptic_seg(outputs["panoptic_seg"][0], outputs["panoptic_seg"][1])
+            # vis_im_gt = vis_im_gt.draw_panoptic_seg(pano_gt, [item | {"isthing": True} for item in inputs["segments_info"]])
             f, ax = plt.subplots(1, 2)
             ax[0].imshow(vis_im.get_image())
             ax[0].axis('off')

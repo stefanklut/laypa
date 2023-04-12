@@ -546,12 +546,16 @@ class Preprocess:
                 self.process_single_file, image_paths), total=len(image_paths)))
 
         # Assuming all key are the same make one dict
-        results = {key: [item[key] for item in results] for key in results[0].keys()}
+        results = {"data": list_of_dict_to_dict_of_list(results),
+                   "classes": self.xml_converter.get_regions()}
         
         output_path = self.output_dir.joinpath("info.json")
         with open(output_path, 'w') as f:
             json.dump(results, f)
-
+            
+def list_of_dict_to_dict_of_list(input_list: list[dict]):
+    output_dict = {key: [item[key] for item in input_list] for key in input_list[0].keys()}
+    return output_dict
 
 def main(args) -> None:
     xml_converter = XMLConverter(

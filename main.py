@@ -323,11 +323,10 @@ def preprocess_datasets(cfg: CfgNode,
                 for path in val_image_paths:
                     f.write(f"{path}\n")
     
-    dataset.register_dataset(train_output_dir, 
-                             val_output_dir, 
-                             train_name="train", 
-                             val_name="val", 
-                             mode=cfg.MODEL.MODE)
+    dataset.register_datasets(train_output_dir, 
+                              val_output_dir, 
+                              train_name="train", 
+                              val_name="val")
 
 class Trainer(DefaultTrainer):
     """

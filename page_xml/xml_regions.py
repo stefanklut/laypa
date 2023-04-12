@@ -217,10 +217,8 @@ class XMLRegions:
         """
         remaining_regions = ["background"]
         if self.mode == 'region':
-            if self.merged_regions is None:
-                removed_regions = set()
-            else:
-                removed_regions = set()
+            removed_regions = set()
+            if self.merged_regions is not None:
                 for values in self.merged_regions.values():
                     removed_regions = removed_regions.union(set(values))
             remaining_regions.extend(region for region in self._regions if not region in removed_regions)

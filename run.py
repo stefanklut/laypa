@@ -175,9 +175,7 @@ class SavePredictor(Predictor):
         if isinstance(input_path, str):
             input_path = Path(input_path)
         image = load_image_from_path(input_path)
-        # TODO Skipping of corrupted images should be logged somewhere
         if image is None:
-            
             self.logger.warning(f"Corrupted image ({input_path}) skipping for now")
             return
         outputs = super().__call__(image)
