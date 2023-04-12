@@ -79,7 +79,7 @@ class ResizeShortestEdge(T.Augmentation):
         Resize image alternative using cv2 instead of PIL or Pytorch
 
         Args:
-            min_size (int | Sequence[int]): shortest edge length
+            min_size (int | Sequence[int]): edge length
             max_size (int, optional): max other length. Defaults to sys.maxsize.
             sample_style (str, optional): type of sampling used to get the output shape. Defaults to "choice".
         """
@@ -89,7 +89,7 @@ class ResizeShortestEdge(T.Augmentation):
             min_size = (min_size, min_size)
         if sample_style == "range":
             assert len(min_size) == 2, (
-                    "short_edge_length must be two values using 'range' sample style."
+                    "edge_length must be two values using 'range' sample style."
                     f" Got {min_size}!"
                 )
         self.sample_style = sample_style
@@ -98,24 +98,24 @@ class ResizeShortestEdge(T.Augmentation):
         
 
     @staticmethod
-    def get_output_shape(old_height: int, old_width: int, short_edge_length: int, max_size: int) -> tuple[int, int]:
+    def get_output_shape(old_height: int, old_width: int, edge_length: int, max_size: int) -> tuple[int, int]:
         """
         Compute the output size given input size and target short edge length.
 
         Args:
             old_height (int): original height of image
             old_width (int): original width of image
-            short_edge_length (int): desired shortest edge length
+            edge_length (int): desired shortest edge length
             max_size (int): max length of other edge
 
         Returns:
             tuple[int, int]: new height and width
         """
-        scale = float(short_edge_length) / min(old_height, old_width)
+        scale = float(edge_length) / min(old_height, old_width)
         if old_height < old_width:
-            height, width = short_edge_length, scale * old_width
+            height, width = edge_length, scale * old_width
         else:
-            height, width = scale * old_height, short_edge_length
+            height, width = scale * old_height, edge_length
         if max(height, width) > max_size:
             scale = max_size * 1.0 / max(height, width)
             height = height * scale
@@ -129,24 +129,52 @@ class ResizeShortestEdge(T.Augmentation):
         old_height, old_width, channels = image.shape
 
         if self.sample_style == "range":
-            short_edge_length = np.random.randint(
+            edge_length = np.random.randint(
                 self.min_size[0], self.min_size[1] + 1)
         elif self.sample_style == "choice":
-            short_edge_length = np.random.choice(self.min_size)
+            edge_length = np.random.choice(self.min_size)
         else:
             raise NotImplementedError(
                 "Only \"choice\" and \"range\" are accepted values")
 
-        if short_edge_length == 0:
+        if edge_length == 0:
             return T.NoOpTransform()
 
         height, width = self.get_output_shape(
-            old_height, old_width, short_edge_length, self.max_size)
+            old_height, old_width, edge_length, self.max_size)
         if (old_height, old_width) == (height, width):
             return T.NoOpTransform()
 
         return ResizeTransform(old_height, old_width, height, width)
+    
+class ResizeLongestEdge(ResizeShortestEdge):
+    @staticmethod
+    def get_output_shape(old_height: int, old_width: int, edge_length: int, max_size: int) -> tuple[int, int]:
+        """
+        Compute the output size given input size and target short edge length.
 
+        Args:
+            old_height (int): original height of image
+            old_width (int): original width of image
+            edge_length (int): desired longest edge length
+            max_size (int): max length of other edge
+
+        Returns:
+            tuple[int, int]: new height and width
+        """
+        scale = float(edge_length) / max(old_height, old_width)
+        if old_height < old_width:
+            height, width = edge_length, scale * old_width
+        else:
+            height, width = scale * old_height, edge_length
+        if min(height, width) > max_size:
+            scale = max_size * 1.0 / min(height, width)
+            height = height * scale
+            width = width * scale
+
+        height = int(height + 0.5)
+        width = int(width + 0.5)
+        return (height, width)
 
 class Flip(T.Augmentation):
     """
