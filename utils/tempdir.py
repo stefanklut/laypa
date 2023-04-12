@@ -1,9 +1,12 @@
+import logging
 import os
 import tempfile
 from typing import Optional
 import weakref
 import warnings
 from pathlib import Path
+
+from utils.logging_utils import get_logger_name
 
 
 class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
@@ -51,6 +54,7 @@ class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
         """
         
         self._do_cleanup = cleanup
+        self.logger = logging.getLogger(get_logger_name())
         
         if name is None:
             self.name = tempfile.mkdtemp(suffix, prefix, dir)
@@ -65,6 +69,7 @@ class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
             
             # Don't cleanup existing folders
             if name.exists():
+                self.logger.warning(f"Reusing TMP dir: {name}, make sure this is intended")
                 self._do_cleanup = False
             else:
             # Create non existing folders
