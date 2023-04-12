@@ -191,10 +191,16 @@ def register_region(train: Optional[str|Path]=None,
             func=lambda path=val: dataset_dict_loader(path)
         )
         MetadataCatalog.get(val_name).set(
-            thing_classes  = ["marginalia", "page-number", "resolution", "date", "index", "attendance"],
-            thing_colors   = [(228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)],
-            stuff_classes  = ["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"],
-            stuff_colors   = [(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)],
+            # thing_classes  = ["marginalia", "page-number", "resolution", "date", "index", "attendance"],
+            # thing_colors   = [(228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)],
+            # stuff_classes  = ["background", "marginalia", "page-number", "resolution", "date", "index", "attendance"],
+            # stuff_colors   = [(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)],
+            thing_classes  = ["paragraph", "signature-mark", "catch-word", "page-number",
+              "header", "heading", "marginalia"],
+            thing_colors   = [(228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135), (0,140,255)],
+            stuff_classes  = ["background", "paragraph", "signature-mark", "catch-word", "page-number",
+              "header", "heading", "marginalia"],
+            stuff_colors   = [(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135), (0,140,255)],
             evaluator_type = "sem_seg",
             ignore_label   = ignore_label
         )
