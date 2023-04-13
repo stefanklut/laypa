@@ -10,6 +10,7 @@ from detectron2.data import Metadata
 from detectron2.utils.visualizer import Visualizer
 
 from page_xml.xml_to_image import XMLImage
+from utils.image_utils import load_image_from_path, save_image_to_path
 from utils.input_utils import get_file_paths
 from utils.path_utils import xml_path_to_image_path
 
@@ -86,7 +87,7 @@ class Viewer:
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
         gray_image = self.xml_to_image.run(xml_path_i)
-        cv2.imwrite(str(output_image_path), gray_image)
+        save_image_to_path(str(output_image_path), gray_image)
         
     def save_color_image(self, xml_path_i: Path):
         """
@@ -107,7 +108,7 @@ class Viewer:
         for i, color in enumerate(colors):
             color_image[gray_image == i] = np.asarray(color).reshape((1,1,3))
             
-        cv2.imwrite(str(output_image_path), color_image[..., ::-1])
+        save_image_to_path(str(output_image_path), color_image[..., ::-1])
                 
     def save_overlay_image(self, xml_path_i: Path):
         """
@@ -121,7 +122,9 @@ class Viewer:
         
         image_path_i = xml_path_to_image_path(xml_path_i)
         
-        image = cv2.imread(str(image_path_i))
+        image = load_image_from_path(str(image_path_i))
+        if image is None:
+            return
         
         vis_im = Visualizer(image[:, :, ::-1].copy(),
                             metadata=self.metadata,
@@ -129,7 +132,7 @@ class Viewer:
                             )
         vis_im = vis_im.draw_sem_seg(gray_image)
         overlay_image = vis_im.get_image()
-        cv2.imwrite(str(output_image_path), overlay_image[..., ::-1])
+        save_image_to_path(str(output_image_path), overlay_image[..., ::-1])
         
     @staticmethod
     def check_image_exists(xml_paths: list[Path]):

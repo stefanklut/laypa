@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 import numpy as np
 
+from utils.image_utils import save_image_to_path
+
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="load an decode the json_predictions to arrays")
     io_args = parser.add_argument_group("IO")
@@ -77,7 +79,7 @@ def main(args):
         output_image_path = output_path.joinpath(baseline_image_path.name)
         # print(output_image_path)
         
-        cv2.imwrite(str(output_image_path), image)
+        save_image_to_path(str(output_image_path), image)
         
     
 if __name__ == "__main__":
