@@ -66,10 +66,10 @@ class GenPageXML(XMLRegions):
         self.output_dir = None
         self.page_dir = None
         
+        self.logger = logging.getLogger(get_logger_name())
+        
         if output_dir is not None:
             self.set_output_dir(output_dir)
-            
-        self.logger = logging.getLogger(get_logger_name())
         
         self.regions = self.get_regions()
         
