@@ -12,10 +12,11 @@ import imagesize
 from tqdm import tqdm
 import cv2
 
-from utils.logging_utils import get_logger_name
 
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from utils.logging_utils import get_logger_name
+from utils.image_utils import save_image_to_path
 from utils.copy_utils import copy_mode
 from utils.input_utils import get_file_paths
 from page_xml.xmlPAGE import PageData
@@ -169,10 +170,10 @@ class GenPageXML(XMLRegions):
         elif self.mode in ['baseline', 'start', 'end', "separator"]:
             # Push the calculation to outside of the python code <- mask is used by minion
             mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            cv2.imwrite(str(mask_output_path), (mask * 255).astype(np.uint8))
+            save_image_to_path(str(mask_output_path), (mask * 255).astype(np.uint8))
         elif self.mode in ["baseline_separator"]:
             mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            cv2.imwrite(str(mask_output_path), (mask * 128).clip(0,255).astype(np.uint8))
+            save_image_to_path(str(mask_output_path), (mask * 128).clip(0,255).astype(np.uint8))
         else:
             raise NotImplementedError
                 

@@ -176,7 +176,6 @@ class SavePredictor(Predictor):
             input_path = Path(input_path)
         image = load_image_from_path(input_path)
         if image is None:
-            self.logger.warning(f"Corrupted image ({input_path}) skipping for now")
             return
         outputs = super().__call__(image)
         output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()

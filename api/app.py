@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 from dataclasses import dataclass, field
@@ -15,6 +16,7 @@ from prometheus_client import generate_latest, Counter, Gauge
 from concurrent.futures import ThreadPoolExecutor
 
 from utils.image_utils import load_image_from_bytes
+from utils.logging_utils import get_logger_name
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from main import setup_cfg, setup_logging
@@ -95,28 +97,34 @@ images_processed_counter = Counter('images_processed', "Total number of images p
 exception_predict_counter = Counter('exception_predict', 'Exception thrown in predict() function')
 
 def predict_image(image: np.ndarray, image_path: Path, identifier: str):
-    output_path = output_base_path.joinpath(identifier, image_path)
-    if predict_gen_page_wrapper.gen_page is None:
-        raise ValueError
-    if predict_gen_page_wrapper.predictor is None:
-        raise ValueError
+    input_args = locals()
+    try:
+        output_path = output_base_path.joinpath(identifier, image_path)
+        if predict_gen_page_wrapper.gen_page is None:
+            raise ValueError
+        if predict_gen_page_wrapper.predictor is None:
+            raise ValueError
+        
+        predict_gen_page_wrapper.gen_page.set_output_dir(output_path.parent)
+        if not output_path.parent.exists():
+            output_path.parent.mkdir()
+        
+        outputs = predict_gen_page_wrapper.predictor(image)
+        output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
+        predict_gen_page_wrapper.gen_page.generate_single_page(output_image, output_path)
+        images_processed_counter.inc()
+        return input_args
+    except Exception as e:
+        return input_args | {"exception": e.with_traceback(e.__traceback__)}
     
-    predict_gen_page_wrapper.gen_page.set_output_dir(output_path.parent)
-    if not output_path.parent.exists():
-        output_path.parent.mkdir()
-    
-    outputs = predict_gen_page_wrapper.predictor(image)
-    output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
-    predict_gen_page_wrapper.gen_page.generate_single_page(output_image, output_path)
-    images_processed_counter.inc()
-    return True
 
 
 class ResponseInfo(TypedDict, total=False):
-    success: bool
+    submission_success: bool
     identifier: str
     filename: str
     added_queue_position: int
+    remaining_queue_size: int
     added_time: str
     model_name: str
     error_message: str
@@ -124,11 +132,18 @@ class ResponseInfo(TypedDict, total=False):
 
 def abort_with_info(status_code, error_message, info: Optional[ResponseInfo]=None):
     if info is None:
-        info = ResponseInfo(success=False) # type: ignore
+        info = ResponseInfo(submission_success=False) # type: ignore
     info["error_message"] = error_message
     response = jsonify(info)
     response.status_code = status_code
     abort(response)
+    
+def check_exception_callback(future):
+    logger = logging.getLogger(get_logger_name())
+    results = future.result()
+    if "exception" in results:
+        logger.exception(results, exc_info=results["exception"])
+        
 
 @app.route('/predict', methods=['POST'])
 @exception_predict_counter.count_exceptions()
@@ -136,8 +151,8 @@ def predict():
     if request.method != 'POST':
         abort(400)
         
-    response_info = ResponseInfo(success=False)
-    
+    response_info = ResponseInfo(submission_success=False)
+        
     current_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
     response_info["added_time"] = current_time
     
@@ -167,20 +182,22 @@ def predict():
     # TODO Maybe make slightly more stable/predicable, https://docs.python.org/3/library/threading.html#threading.Semaphore https://gist.github.com/frankcleary/f97fe244ef54cd75278e521ea52a697a
     queue_size = executor._work_queue.qsize()
     response_info["added_queue_position"] = queue_size
+    response_info["remaining_queue_size"] = max_queue_size - queue_size
     if queue_size > max_queue_size:
         abort_with_info(429, "Exceeding queue size", response_info)
     
     predict_gen_page_wrapper.setup_model(args=args, model_name=model_name)
     
     img_bytes = post_file.read()
-    image = load_image_from_bytes(img_bytes)
+    image = load_image_from_bytes(img_bytes, image_path=image_name)
     
     if image is None:
         abort_with_info(400, "Corrupted image", response_info)
     
     future = executor.submit(predict_image, image, image_name, identifier)
-    # TODO Add callbacks
-    response_info["success"] = True
+    future.add_done_callback(check_exception_callback)
+    
+    response_info["submission_success"] = True
     return jsonify(response_info)
 
 

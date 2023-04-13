@@ -12,6 +12,7 @@ import imagesize
 
 import numpy as np
 from multiprocessing import Pool
+from utils.image_utils import save_image_to_path
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
