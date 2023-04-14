@@ -7,12 +7,9 @@ from typing import Optional
 import numpy as np
 from pathlib import Path
 import uuid
-import imagesize
 
 from tqdm import tqdm
 import cv2
-
-
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name

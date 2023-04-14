@@ -63,14 +63,15 @@ def create_data(input_data: dict) -> dict:
         segments_info = json.load(f)["segments_info"]
 
     data = {
-        "file_name"        : str(image_path),
-        "height"           : output_size[0],
-        "width"            : output_size[1],
-        "image_id"         : image_path.stem,
-        "annotations"      : annotations,
-        "sem_seg_file_name": str(mask_path),
-        "pan_seg_file_name": str(pano_path),
-        "segments_info"    : segments_info
+        "file_name"         : str(image_path),
+        "original_file_name": str(input_data["original_image_paths"]),
+        "height"            : output_size[0],
+        "width"             : output_size[1],
+        "image_id"          : image_path.stem,
+        "annotations"       : annotations,
+        "sem_seg_file_name" : str(mask_path),
+        "pan_seg_file_name" : str(pano_path),
+        "segments_info"     : segments_info
     }
     return data
 

@@ -5,6 +5,7 @@ from typing import Optional
 import weakref
 import warnings
 from pathlib import Path
+from contextlib import contextmanager
 
 from utils.logging_utils import get_logger_name
 
@@ -106,3 +107,18 @@ class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
         """
         if self._do_cleanup:
             self.cleanup()
+            
+@contextmanager        
+def AtomicFile(file_path: Path|str):
+    if isinstance(file_path, str):
+        file_path = Path(file_path)
+    tmp_dir = tempfile.TemporaryDirectory(dir=file_path.parent, suffix=file_path.stem)
+    tmp_file = Path(tmp_dir.name).joinpath(file_path.name)
+    try:
+        yield tmp_file
+    finally:
+        try:
+            os.replace(tmp_file, file_path)
+        except FileNotFoundError:
+            pass
+        tmp_dir.cleanup()
