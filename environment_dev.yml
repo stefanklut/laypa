@@ -8,7 +8,6 @@ dependencies:
   - python=3
   - numpy<1.24
   - pytorch
-  - torchaudio
   - torchvision
   - cudatoolkit=11.7
   - cudatoolkit-dev
