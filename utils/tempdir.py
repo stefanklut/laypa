@@ -4,6 +4,7 @@ from typing import Optional
 import weakref
 import warnings
 from pathlib import Path
+from contextlib import contextmanager
 
 
 class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
@@ -101,3 +102,34 @@ class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
         """
         if self._do_cleanup:
             self.cleanup()
+            
+@contextmanager        
+def AtomicFileName(file_path: Path|str):
+    if isinstance(file_path, str):
+        file_path = Path(file_path)
+    tmp_dir = tempfile.TemporaryDirectory(dir=file_path.parent, prefix=".tmp", suffix=file_path.stem)
+    tmp_file = Path(tmp_dir.name).joinpath(file_path.name)
+    try:
+        yield tmp_file
+    finally:
+        try:
+            os.replace(tmp_file, file_path)
+        except FileNotFoundError:
+            pass
+        tmp_dir.cleanup()
+        
+@contextmanager
+def AtomicDir(dir_path: Path|str):
+    if isinstance(dir_path, str):
+        dir_path = Path(dir_path)
+    tmp_dir = tempfile.TemporaryDirectory(dir=dir_path.parent, prefix=".tmp", suffix=dir_path.stem)
+    try:
+        yield Path(tmp_dir.name)
+    finally:
+        try:
+            os.replace(tmp_dir.name, dir_path)
+        except FileNotFoundError:
+            pass
+        tmp_dir.cleanup()
+        
+

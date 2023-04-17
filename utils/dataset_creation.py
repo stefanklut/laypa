@@ -1,14 +1,20 @@
 import argparse
 from collections import Counter
+import logging
 from pathlib import Path
+import numpy as np
 from sklearn.model_selection import train_test_split
 from natsort import os_sorted
 from datetime import datetime
 import sys
 
+
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from utils.logging_utils import get_logger_name
 from utils.copy_utils import copy_mode
 from utils.path_utils import image_path_to_xml_path, xml_path_to_image_path
+
+logger = logging.getLogger(get_logger_name())
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -22,6 +28,7 @@ def get_arguments() -> argparse.Namespace:
     
     parser.add_argument("-c", "--copy", action="store_true", )
     parser.add_argument("-m", "--mode", choices=["link", "symlink", "copy"], help="Mode for moving the images", default='copy')
+    parser.add_argument("--split", nargs=3, type=float, help="The percentages of each split (train,val,test), if the sum does not equal 1 relative percentage are taken(6,2,2 -> 0.6,0.2,0.2)", default=[0.8,0.1,0.1])
     
     args = parser.parse_args()
     return args
@@ -40,13 +47,13 @@ def copy_xml_paths(xml_paths: list[Path], output_dir: Path, mode="copy") -> list
         list[Path]: output paths
     """
     if not output_dir.is_dir():
-        print(f"Could not find output dir ({output_dir}), creating one at specified location")
+        logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
         output_dir.mkdir(parents=True)
     
     page_dir = output_dir.joinpath("page")
     
     if not page_dir.is_dir():
-        print(f"Could not find output page dir ({page_dir}), creating one at specified location")
+        logger.info(f"Could not find output page dir ({page_dir}), creating one at specified location")
         page_dir.mkdir(parents=True)
         
     output_paths = []
@@ -74,13 +81,13 @@ def copy_image_paths(image_paths: list[Path], output_dir: Path, mode="copy") -> 
         list[Path]: output paths
     """
     if not output_dir.is_dir():
-        print(f"Could not find output dir ({output_dir}), creating one at specified location")
+        logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
         output_dir.mkdir(parents=True)
     
     page_dir = output_dir.joinpath("page")
     
     if not page_dir.is_dir():
-        print(f"Could not find output page dir ({page_dir}), creating one at specified location")
+        logger.info(f"Could not find output page dir ({page_dir}), creating one at specified location")
         page_dir.mkdir(parents=True)
         
     output_paths = []
@@ -136,12 +143,12 @@ def main(args):
     for input_dir in input_dirs:
         if not input_dir.exists():
             raise FileNotFoundError(f"{input_dir} does not exist")
-        # Find all images
         
+        # Get all pageXMLs somewhere in the folders
         xml_paths = list(input_dir.rglob(f"**/page/*.xml"))
         if len(xml_paths) == 0:
             raise FileNotFoundError(f"No xml_files found within {input_dir}")
-        all_xml_paths.extend(xml_paths) # Assume depth 2
+        all_xml_paths.extend(xml_paths)
         
     all_image_paths = [xml_path_to_image_path(path).absolute() for path in all_xml_paths]
     
@@ -152,18 +159,40 @@ def main(args):
         raise ValueError(f"Found duplicate stems for images\n {os_sorted(duplicates.items(), key=lambda s: s[0])}")
     
     
-    train_paths, val_test_paths = train_test_split(all_image_paths, test_size=0.2)
+    train_size, val_size, test_size = (split := np.asarray(args.split)) / np.sum(split)
+    if train_size == 1:
+        train_paths = all_image_paths
+        val_paths = []
+        test_paths = []
+    elif val_size == 1:
+        train_paths = []
+        val_paths = all_image_paths
+        test_paths = []
+    elif test_size == 1:
+        train_paths = []
+        val_paths = []
+        test_paths = all_image_paths
+    else:
+        train_paths, val_test_paths = train_test_split(all_image_paths, train_size=train_size)
     
-    val_paths, test_paths = train_test_split(val_test_paths, test_size=0.5)
+        relative_val_size = val_size / (val_size + test_size)
+        if relative_val_size == 1:
+            val_paths = val_test_paths
+            test_paths = []
+        elif relative_val_size == 0:
+            val_paths = []
+            test_paths = val_test_paths
+        else:
+            val_paths, test_paths = train_test_split(val_test_paths, train_size=relative_val_size)
     
-    print("Number of train images:", len(train_paths))
-    print("Number of validation images:", len(val_paths))
-    print("Number of test images:", len(test_paths))
+    logger.info("Number of train images:", len(train_paths))
+    logger.info("Number of validation images:", len(val_paths))
+    logger.info("Number of test images:", len(test_paths))
     
     output_dir = Path(args.output)
 
     if not output_dir.is_dir():
-        print(f"Could not find output dir ({output_dir}), creating one at specified location")
+        logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
         output_dir.mkdir(parents=True)
     
     train_dir = output_dir.joinpath("train")
@@ -175,20 +204,22 @@ def main(args):
         val_paths = copy_image_paths(val_paths, val_dir, mode=args.mode)
         test_paths = copy_image_paths(test_paths, test_dir, mode=args.mode)
         
-        train_paths = [path.relative_to(output_dir) for path in train_paths]
-        val_paths = [path.relative_to(output_dir) for path in val_paths]
-        test_paths= [path.relative_to(output_dir) for path in test_paths]
+    train_paths = [path.relative_to(output_dir) if path.is_relative_to(output_dir) else path.resolve() for path in train_paths]
+    val_paths = [path.relative_to(output_dir) if path.is_relative_to(output_dir) else path.resolve() for path in val_paths]
+    test_paths= [path.relative_to(output_dir) if path.is_relative_to(output_dir) else path.resolve() for path in test_paths]
     
-    
-    with open(output_dir.joinpath("train_filelist.txt"), mode='w') as f:
-        for train_path in train_paths:
-            f.write(f"{train_path}\n")
-    with open(output_dir.joinpath("val_filelist.txt"), mode='w') as f:
-        for val_path in val_paths:
-            f.write(f"{val_path}\n")
-    with open(output_dir.joinpath("test_filelist.txt"), mode='w') as f:
-        for test_path in test_paths:
-            f.write(f"{test_path}\n")
+    if train_paths:
+        with open(output_dir.joinpath("train_filelist.txt"), mode='w') as f:
+            for train_path in train_paths:
+                f.write(f"{train_path}\n")
+    if val_paths:
+        with open(output_dir.joinpath("val_filelist.txt"), mode='w') as f:
+            for val_path in val_paths:
+                f.write(f"{val_path}\n")
+    if test_paths:
+        with open(output_dir.joinpath("test_filelist.txt"), mode='w') as f:
+            for test_path in test_paths:
+                f.write(f"{test_path}\n")
             
     with open(output_dir.joinpath("info.txt"), mode='w') as f:
         f.write(f"Created: {datetime.now()}\n")
