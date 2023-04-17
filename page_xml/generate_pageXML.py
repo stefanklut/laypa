@@ -232,7 +232,6 @@ def main(args):
     gen_page = GenPageXML(mode=args.mode,
                           output_dir=args.output,
                           line_width=args.line_width,
-                          line_color=args.line_color,
                           regions=args.regions,
                           merge_regions=args.merge_regions,
                           region_type=args.region_type)
