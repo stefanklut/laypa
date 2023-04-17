@@ -89,8 +89,9 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path], formats: Sequen
                 
         elif input_path.is_file() and input_path.suffix == ".txt":
             with input_path.open(mode="r") as f:
-                sub_output_paths = [Path(line).absolute() for line in f.read().splitlines()]
-                
+                paths_from_file = [Path(line) for line in f.read().splitlines()]
+                sub_output_paths = [path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file]
+            
             if not disable_check:
                 for path in sub_output_paths:
                     if not path.is_file():
