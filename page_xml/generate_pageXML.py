@@ -12,6 +12,7 @@ from tqdm import tqdm
 import cv2
 
 from utils.image_utils import save_image_to_path
+from utils.tempdir import AtomicFileName
 
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
@@ -167,10 +168,12 @@ class GenPageXML(XMLRegions):
         elif self.mode in ['baseline', 'start', 'end', "separator"]:
             # Push the calculation to outside of the python code <- mask is used by minion
             mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            save_image_to_path(str(mask_output_path), (mask * 255).astype(np.uint8))
+            with AtomicFileName(file_path=mask_output_path) as path:
+                save_image_to_path(str(path), (mask * 255).astype(np.uint8))
         elif self.mode in ["baseline_separator"]:
             mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            save_image_to_path(str(mask_output_path), (mask * 128).clip(0,255).astype(np.uint8))
+            with AtomicFileName(file_path=mask_output_path) as path:
+                save_image_to_path(str(path), (mask * 128).clip(0,255).astype(np.uint8))
         else:
             raise NotImplementedError
                 
