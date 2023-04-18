@@ -447,7 +447,7 @@ Distributed under the MIT License. See [`LICENSE`][license_link] for more inform
 ## Contact
 This project was made while working at the [KNAW Humanities Cluster Digital Infrastructure][huc_di_link]
 ### Issues
-Please let report any bugs or errors that you find to the [issues][issues_link] page. So that they can be looked into. Try to see if an issue with the same problem/bug is not still open. Feature requests should also be done through the [issues][issues_link] page.
+Please report any bugs or errors that you find to the [issues][issues_link] page, so that they can be looked into. Try to see if an issue with the same problem/bug is not still open. Feature requests should also be done through the [issues][issues_link] page.
 
 ### Contributions
 If you discover a bug or missing feature that you would like to help with please feel free to send a [pull request][pull_request_link]. 
