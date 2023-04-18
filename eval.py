@@ -1,15 +1,13 @@
 import argparse
-from datasets.augmentations import ResizeShortestEdge
-from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import DatasetCatalog, MetadataCatalog
-from detectron2.checkpoint import DetectionCheckpointer
 import matplotlib.pyplot as plt
 import cv2
 from main import preprocess_datasets, setup_cfg
 import torch
 from natsort import os_sorted
 from utils.tempdir import OptionalTemporaryDirectory
+from run import Predictor
 
 
 def get_arguments() -> argparse.Namespace:
@@ -38,33 +36,6 @@ def get_arguments() -> argparse.Namespace:
     args = parser.parse_args()
 
     return args
-
-
-class Predictor(DefaultPredictor):
-    """
-    Predictor runs the model specified in the config, on call the image is processed and the results dict is output
-    """
-    def __init__(self, cfg):
-        """
-        Predictor runs the model specified in the config, on call the image is processed and the results dict is output
-
-        Args:
-            cfg (CfgNode): config
-        """
-        super().__init__(cfg)
-
-        checkpointer = DetectionCheckpointer(self.model)
-        checkpointer.load(cfg.TEST.WEIGHTS)
-
-        self.aug = ResizeShortestEdge(
-            [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST,
-        )
-
-    def __call__(self, original_image):
-        """
-        Not really useful, but shows what call needs to be made
-        """
-        return super().__call__(original_image)
 
 
 def main(args) -> None:
