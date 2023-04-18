@@ -134,7 +134,7 @@ class Viewer:
                             metadata=self.metadata,
                             scale=1
                             )
-        vis_im = vis_im.draw_sem_seg(gray_image)
+        vis_im = vis_im.draw_sem_seg(gray_image, alpha=0.4)
         overlay_image = vis_im.get_image()
         save_image_to_path(str(output_image_path), overlay_image[..., ::-1])
         

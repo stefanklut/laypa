@@ -123,9 +123,9 @@ def main(args) -> None:
             # pano_gt = torch.IntTensor(rgb2id(cv2.imread(inputs["pan_seg_file_name"], cv2.IMREAD_COLOR)))
             # print(inputs["segments_info"])
             
-            # outputs = predictor(im)
+            outputs = predictor(im)
             # print(outputs)
-            # outputs["sem_seg"] = torch.argmax(outputs["sem_seg"], dim=-3).to("cpu")
+            outputs["sem_seg"] = torch.argmax(outputs["sem_seg"], dim=-3).to("cpu")
             # outputs["panoptic_seg"] = (outputs["panoptic_seg"][0].to("cpu"), 
             #                            outputs["panoptic_seg"][1])
             vis_im = Visualizer(im[..., ::-1].copy(),
@@ -136,7 +136,7 @@ def main(args) -> None:
                                 metadata=metadata,
                                 scale=1
                                 )
-            # vis_im = vis_im.draw_sem_seg(outputs["sem_seg"], alpha=0.4)
+            vis_im = vis_im.draw_sem_seg(outputs["sem_seg"], alpha=0.4)
             vis_im_gt = vis_im_gt.draw_sem_seg(sem_seg_gt, alpha=0.4)
             # vis_im = vis_im.draw_panoptic_seg(outputs["panoptic_seg"][0], outputs["panoptic_seg"][1])
             # vis_im_gt = vis_im_gt.draw_panoptic_seg(pano_gt, [item | {"isthing": True} for item in inputs["segments_info"]])
