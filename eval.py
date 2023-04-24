@@ -118,7 +118,7 @@ def main(args) -> None:
         @lru_cache(maxsize=10)
         def create_pred_visualization(image_filename):
             image = load_image(image_filename)
-            print(f"Predict: {image_filename}")
+            logger.info(f"Predict: {image_filename}")
             outputs = predictor(image)
             outputs["sem_seg"] = torch.argmax(outputs["sem_seg"], dim=-3).to("cpu")
             # outputs["panoptic_seg"] = (outputs["panoptic_seg"][0].to("cpu"), 
