@@ -15,10 +15,10 @@ MODEL:
   MODE: region
 
   SEM_SEG_HEAD:
-    NUM_CLASSES: 8
+    NUM_CLASSES: 7
 
   ROI_HEADS:
-    NUM_CLASSES: 7
+    NUM_CLASSES: 6
   
   WEIGHTS: 
 
