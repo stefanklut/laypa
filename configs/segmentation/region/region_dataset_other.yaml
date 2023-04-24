@@ -8,7 +8,7 @@ PREPROCESS:
   REGION:
     REGIONS: ["paragraph", "signature-mark", "catch-word", "page-number",
               "header", "heading", "marginalia"]
-    MERGE_REGIONS: []
+    MERGE_REGIONS: ["paragraph:heading"]
     REGION_TYPE: []
 
 MODEL:
