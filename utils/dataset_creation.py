@@ -122,7 +122,7 @@ def main(args):
     if args.output == "":
         raise ValueError("Must give an output")
     
-    input_dirs = [Path(path) for path in args.input]
+    input_paths = [Path(path) for path in args.input]
     
     
     # image_formats = [".bmp", ".dib",
@@ -140,18 +140,33 @@ def main(args):
     
     # image_formats = ['.jpg']
     
-    all_xml_paths = []
-    for input_dir in input_dirs:
-        if not input_dir.exists():
-            raise FileNotFoundError(f"{input_dir} does not exist")
+    dir_image_paths = []
+    txt_image_paths = []
+    for input_path in input_paths:
+        if not input_path.exists():
+            raise FileNotFoundError(f"{input_path} does not exist")
         
-        # Get all pageXMLs somewhere in the folders
-        xml_paths = list(input_dir.rglob(f"**/page/*.xml"))
-        if len(xml_paths) == 0:
-            raise FileNotFoundError(f"No xml_files found within {input_dir}")
-        all_xml_paths.extend(xml_paths)
-        
-    all_image_paths = os_sorted([xml_path_to_image_path(path).absolute() for path in all_xml_paths], key=str)
+        if input_path.is_dir():
+            # Get all pageXMLs somewhere in the folders
+            xml_paths = list(input_path.rglob(f"**/page/*.xml"))
+            if len(xml_paths) == 0:
+                raise FileNotFoundError(f"No xml_files found within {input_path}")
+            dir_image_paths.extend(xml_paths)
+        elif input_path.is_file and input_path.suffix == ".txt":            
+            with input_path.open(mode="r") as f:
+                paths_from_file = [Path(line) for line in f.read().splitlines()]
+            txt_image_paths.extend([path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file])
+            
+            for path in txt_image_paths:
+                if not path.is_file():
+                    raise FileNotFoundError(f"Missing file from the txt file: {input_path}")
+                    
+        else:
+            raise ValueError(f"Invalid file type: {input_path.suffix}")
+    
+    dir_image_paths = [xml_path_to_image_path(path).absolute() for path in dir_image_paths]
+    txt_image_paths = [path.absolute() for path in txt_image_paths]     
+    all_image_paths = os_sorted(dir_image_paths + txt_image_paths, key=str)
     
     if len(all_image_paths) != len(set(path.stem for path in all_image_paths)):
         duplicates = {k:v for k, v in Counter(path.stem for path in all_image_paths).items() if v > 1}

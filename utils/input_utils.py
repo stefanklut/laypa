@@ -79,7 +79,8 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path], formats: Sequen
         if not os.access(path=input_path, mode=os.R_OK):
             raise PermissionError(
                 f"No access to {input_path} for read operations")
-            
+        
+        # IDEA This could be replaces with input_path.rglob(f"**/page/*.xml"), con: this remove the supported format check
         if input_path.is_dir():
             sub_output_paths = [image_path.absolute() for image_path in input_path.glob("*") if image_path.suffix in formats]
             
@@ -90,12 +91,16 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path], formats: Sequen
         elif input_path.is_file() and input_path.suffix == ".txt":
             with input_path.open(mode="r") as f:
                 paths_from_file = [Path(line) for line in f.read().splitlines()]
-                sub_output_paths = [path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file]
+            sub_output_paths = [path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file if path.suffix in formats]
+            
+            if len(sub_output_paths) == 0:
+                    raise FileNotFoundError(f"No files found in the provided dir(s)/file(s)")
             
             if not disable_check:
                 for path in sub_output_paths:
                     if not path.is_file():
                         raise FileNotFoundError(f"Missing file from the txt file: {input_path}")
+                        
         else:
             raise ValueError(f"Invalid file type: {input_path.suffix}")
 
