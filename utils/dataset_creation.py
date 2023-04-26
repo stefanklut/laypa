@@ -151,13 +151,12 @@ def main(args):
             raise FileNotFoundError(f"No xml_files found within {input_dir}")
         all_xml_paths.extend(xml_paths)
         
-    all_image_paths = [xml_path_to_image_path(path).absolute() for path in all_xml_paths]
-    
+    all_image_paths = os_sorted([xml_path_to_image_path(path).absolute() for path in all_xml_paths], key=str)
     
     if len(all_image_paths) != len(set(path.stem for path in all_image_paths)):
         duplicates = {k:v for k, v in Counter(path.stem for path in all_image_paths).items() if v > 1}
         
-        raise ValueError(f"Found duplicate stems for images\n {os_sorted(duplicates.items(), key=lambda s: s[0])}")
+        raise ValueError(f"Found duplicate stems for images\n {os_sorted(duplicates.items(), key=lambda s: str(s[0]))}")
     
     
     train_size, val_size, test_size = (split := np.asarray(args.split)) / np.sum(split)

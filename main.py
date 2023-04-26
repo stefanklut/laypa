@@ -308,7 +308,7 @@ def preprocess_datasets(cfg: CfgNode,
     val_output_dir = None
     if val is not None:
         val = clean_input_paths(val)
-        if not all(missing := path.exists() for path in val):
+        if not all((missing := path).exists() for path in val):
             raise FileNotFoundError(f"Validation File/Folder not found: {missing} does not exist")
         
         val_output_dir = output_dir.joinpath('val')
