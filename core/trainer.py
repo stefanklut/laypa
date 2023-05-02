@@ -29,8 +29,10 @@ from datasets.augmentations import build_augmentation
 def get_default_optimizer_params(
     model: torch.nn.Module,
     base_lr: Optional[float] = None,
+    backbone_multiplier: Optional[float] = 1.0,
     weight_decay: Optional[float] = None,
     weight_decay_norm: Optional[float] = None,
+    weight_decay_embed: Optional[float] = None,
     bias_lr_factor: Optional[float] = 1.0,
     weight_decay_bias: Optional[float] = None,
     lr_factor_func: Optional[Callable] = None,
@@ -112,8 +114,23 @@ def get_default_optimizer_params(
             memo.add(value)
 
             hyperparams = copy.copy(defaults)
+            
+            if "backbone" in module_name:
+                hyperparams["lr"] = hyperparams["lr"] * backbone_multiplier
+                
+            if (
+                "relative_position_bias_table" in module_param_name
+                or "absolute_pos_embed" in module_param_name
+            ):
+                print(module_param_name)
+                hyperparams["weight_decay"] = 0.0
+                
+            if isinstance(module, torch.nn.Embedding):
+                hyperparams["weight_decay"] = weight_decay_embed
+    
             if isinstance(module, norm_module_types) and weight_decay_norm is not None:
                 hyperparams["weight_decay"] = weight_decay_norm
+                
             if lr_factor_func is not None:
                 hyperparams["lr"] *= lr_factor_func(f"{module_name}.{module_param_name}")
 
@@ -128,7 +145,9 @@ def build_optimizer(cfg: CfgNode, model: torch.nn.Module) -> torch.optim.Optimiz
     params = get_default_optimizer_params(
         model,
         base_lr=cfg.SOLVER.BASE_LR,
+        backbone_multiplier=cfg.SOLVER.BACKBONE_MULTIPLIER,
         weight_decay_norm=cfg.SOLVER.WEIGHT_DECAY_NORM,
+        weight_decay_embed=cfg.SOLVER.WEIGHT_DECAY_EMBED,
         bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
         weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
     )
