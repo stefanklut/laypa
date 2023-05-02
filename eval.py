@@ -10,7 +10,8 @@ from detectron2.data import DatasetCatalog, MetadataCatalog
 import matplotlib.pyplot as plt
 import cv2
 import numpy as np
-from main import preprocess_datasets, setup_cfg
+from core.preprocess import preprocess_datasets
+from core.setup import setup_cfg
 import torch
 from natsort import os_sorted
 from utils.logging_utils import get_logger_name

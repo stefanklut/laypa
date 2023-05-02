@@ -47,8 +47,6 @@ _C.PREPROCESS.RESIZE.MAX_SIZE = 2048
 _C.PREPROCESS.DISABLE_CHECK = False
 _C.PREPROCESS.OVERWRITE = False
 
-
-
 # Input augmentations
 _C.INPUT = CN()
 _C.INPUT.RANDOM_FLIP = "both"
@@ -107,6 +105,16 @@ _C.INPUT.AFFINE.SCALE.PROBABILITY = 0.5
 _C.INPUT.AFFINE.SCALE.STANDARD_DEVIATION = 0.12
 
 
+# Solver
+_C.SOLVER = CN()
+# weight decay on embedding
+_C.SOLVER.WEIGHT_DECAY_EMBED = 0.0
+# optimizer
+_C.SOLVER.OPTIMIZER = "ADAMW"
+_C.SOLVER.BACKBONE_MULTIPLIER = 0.1
+_C.SOLVER.AMSGRAD = True
+
+
 # Added for mask2former
 _C.INPUT.DATASET_MAPPER_NAME = "mask_former_semantic"
 # Color augmentation
@@ -117,14 +125,6 @@ _C.INPUT.CROP = CN()
 _C.INPUT.CROP.SINGLE_CATEGORY_MAX_AREA = 1.0
 # Pad image and segmentation GT in dataset mapper.
 _C.INPUT.SIZE_DIVISIBILITY = -1
-
-# solver config
-_C.SOLVER = CN()
-# weight decay on embedding
-_C.SOLVER.WEIGHT_DECAY_EMBED = 0.0
-# optimizer
-_C.SOLVER.OPTIMIZER = "ADAMW"
-_C.SOLVER.BACKBONE_MULTIPLIER = 0.1
 
 # mask_former model config
 _C.MODEL.MASK_FORMER = CN()

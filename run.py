@@ -8,7 +8,7 @@ from detectron2.engine import DefaultPredictor
 from detectron2.checkpoint import DetectionCheckpointer
 from datasets.augmentations import ResizeShortestEdge
 import cv2
-from main import setup_cfg, setup_logging
+from core.setup import setup_cfg, setup_logging
 from detectron2.modeling import build_model
 from detectron2.data import MetadataCatalog
 import torch
