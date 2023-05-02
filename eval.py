@@ -44,7 +44,8 @@ def get_arguments() -> argparse.Namespace:
         "--keep_tmp_dir", action="store_true", help="Don't remove tmp dir after execution")
     
     parser.add_argument("--eval_path", type=str, help="Save location for eval")
-    parser.add_argument("--sorted", action="store_true", help="Save location for eval")
+    parser.add_argument("--sorted", action="store_true", help="Sorted iteration")
+    parser.add_argument("--save", action="store_true", help="Save images instead of displaying")
 
     args = parser.parse_args()
 
@@ -79,8 +80,10 @@ def main(args) -> None:
     Args:
         args (argparse.Namespace): arguments for where to find the images
     """
-    # Setup config
+    if args.save and not args.eval_path:
+        raise ValueError("Cannot run saving when there is not save location given (--eval_path)")
 
+    # Setup config
     cfg = setup_cfg(args)
 
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
@@ -132,12 +135,14 @@ def main(args) -> None:
             return vis_im.get_image()
         
         fig, axes = plt.subplots(1, 2)
+        fig.tight_layout()
         fig.canvas.mpl_connect('key_press_event', keypress)
         fig.canvas.mpl_connect('close_event', on_close)
         axes[0].axis('off')
         axes[1].axis('off')
-        fig_manager = plt.get_current_fig_manager()
-        fig_manager.window.showMaximized()
+        if not args.save:
+            fig_manager = plt.get_current_fig_manager()
+            fig_manager.window.showMaximized()
         
         # for i, inputs in enumerate(np.random.choice(val_loader, 3)):
         if args.sorted:
@@ -161,10 +166,10 @@ def main(args) -> None:
             
             # vis_im = vis_im.draw_panoptic_seg(outputs["panoptic_seg"][0], outputs["panoptic_seg"][1])
             # vis_im_gt = vis_im_gt.draw_panoptic_seg(pano_gt, [item | {"isthing": True} for item in inputs["segments_info"]])
+            if not args.save:
+                fig_manager.window.setWindowTitle(inputs["file_name"])
             
-            fig_manager.window.setWindowTitle(inputs["file_name"])
-            
-            # TODO Replace with faster viewer or something
+            # HACK Just remove the previous axes, I can't find how to resize the image otherwise
             axes[0].clear()
             axes[1].clear()
             axes[0].axis('off')
@@ -172,6 +177,20 @@ def main(args) -> None:
 
             axes[0].imshow(vis_pred)
             axes[1].imshow(vis_gt)
+            
+            if args.save:
+                output_dir = Path(args.eval_path)
+                if not output_dir.is_dir():
+                    logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
+                    output_dir.mkdir(parents=True)
+                save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + ".png")
+                
+                # Save to 4K res
+                
+                fig.set_size_inches(16, 9)
+                fig.savefig(str(save_path), dpi=240)
+                i += 1
+                continue
             
             if delete_results[i]:
                 fig.suptitle('Delete')
