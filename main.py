@@ -111,9 +111,12 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None, save_config=True) -> CfgNode:
     # Merge with extra defaults, config file and command line args
     cfg.set_new_allowed(True)
     cfg.merge_from_other_cfg(_C_extra)
-    cfg.set_new_allowed(False)
 
+    # Allow setting new to allow for deprecated values in the config
+    cfg.set_new_allowed(True)
     cfg.merge_from_file(args.config)
+    
+    cfg.set_new_allowed(False)
     cfg.merge_from_list(args.opts)
     
     if not cfg.SEED < 0:
