@@ -9,7 +9,6 @@ import torch
 from detectron2.utils import comm
 from detectron2.config import CfgNode, LazyConfig
 from detectron2.utils.env import seed_all_rng
-from detectron2.utils.collect_env import collect_env_info
 from detectron2.engine.defaults import _highlight
 
 from configs.defaults import _C as _C_default
@@ -97,7 +96,7 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     cfg.freeze()
     return cfg
 
-def setup_logging(cfg=None, args=None, save_log=True):
+def setup_logging(cfg=None, save_log=True):
     rank = comm.get_rank()
     if save_log and cfg is not None:
         output_dir = cfg.OUTPUT_DIR
@@ -112,19 +111,8 @@ def setup_logging(cfg=None, args=None, save_log=True):
     for item in root_logger.manager.loggerDict:
         if item.startswith('detectron2') or item.startswith('fvcore'):
             root_logger.manager.loggerDict[item] = logger
-            
-    logger.info("Rank of current process: {}. World size: {}".format(rank, comm.get_world_size()))
-    logger.info("Environment info:\n" + collect_env_info())
 
-    if args is not None:
-        logger.info("Command line arguments: " + str(args))
-        if hasattr(args, "config") and args.config != "":
-            logger.info(
-                "Contents of args.config: {}:\n{}".format(
-                    args.config,
-                    _highlight(Path(args.config).open("r").read(), args.config),
-                )
-            )
+    
     return logger
     
 def setup_saving(cfg: CfgNode):

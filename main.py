@@ -10,13 +10,18 @@ from core.setup import (
     setup_saving, 
     setup_seed
 )
+
+from pathlib import Path
 root_logger = logging.getLogger()
 
 from detectron2.engine import launch
-
-from utils.tempdir import OptionalTemporaryDirectory
+from detectron2.utils import comm
+from detectron2.utils.collect_env import collect_env_info
+from detectron2.engine.defaults import _highlight
 
 from core.trainer import Trainer
+from utils.tempdir import OptionalTemporaryDirectory
+from utils.logging_utils import get_logger_name
 
 import models
 
@@ -83,9 +88,26 @@ def setup_training(args):
         OrderedDict|None: results, if evaluation is enabled. Otherwise None.
     """
     cfg = setup_cfg(args)
-    setup_logging(cfg, args)
+    setup_logging(cfg)
     setup_seed(cfg)
     setup_saving(cfg)
+    
+    logger = logging.getLogger(get_logger_name())
+    
+    rank = comm.get_rank()
+    
+    logger.info("Rank of current process: {}. World size: {}".format(rank, comm.get_world_size()))
+    logger.info("Environment info:\n" + collect_env_info())
+    
+    if args is not None:
+        logger.info("Command line arguments: " + str(args))
+        if hasattr(args, "config") and args.config != "":
+            logger.info(
+                "Contents of args.config: {}:\n{}".format(
+                    args.config,
+                    _highlight(Path(args.config).open("r").read(), args.config),
+                )
+            )
 
     # Temp dir for preprocessing in case no temporary dir was specified
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
