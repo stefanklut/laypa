@@ -15,6 +15,7 @@ from detectron2 import structures
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
+from utils.tempdir import AtomicFileName
 
 class Instance(TypedDict):
     bbox: list[float]
@@ -28,6 +29,7 @@ class SegmentsInfo(TypedDict):
     id: int
     category_id: int
     iscrowd: bool
+
 
 class PageData:
     """ Class to process PAGE xml files"""
@@ -595,7 +597,8 @@ class PageData:
         """write out XML file of current PAGE data"""
         self._indent(self.xml)
         tree = ET.ElementTree(self.xml)
-        tree.write(self.filepath, encoding="UTF-8", xml_declaration=True)
+        with AtomicFileName(self.filepath) as path:
+            tree.write(path, encoding="UTF-8", xml_declaration=True)
 
     def _indent(self, elem, level=0):
         """
