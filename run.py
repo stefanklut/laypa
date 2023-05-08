@@ -68,6 +68,7 @@ class Predictor(DefaultPredictor):
         """
         return super().__call__(original_image)
 
+
 class SavePredictor(Predictor):
     """
     Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
@@ -179,7 +180,7 @@ class SavePredictor(Predictor):
             return
         outputs = super().__call__(image)
         output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
-        
+
         self.gen_page.link_image(input_path)
         self.gen_page.generate_single_page(output_image, input_path)
 
