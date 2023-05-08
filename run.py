@@ -136,6 +136,7 @@ def collate_numpy(batch):
     collate_map.update({np.ndarray: new_map, type(None): new_map})
     return collate(batch, collate_fn_map=collate_map)
 
+
 class SavePredictor(Predictor):
     """
     Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML

@@ -279,6 +279,7 @@ class WarpFieldTransform(T.Transform):
         """
         # TODO This may be possible, and seems necessary for the instance predictions
         # raise NotImplementedError
+        # IDEA self.recompute_boxes in dataset_mapper, with moving polygon values 
         # HACK Currently just returning original coordinates
         return coords
 
