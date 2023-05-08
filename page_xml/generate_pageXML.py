@@ -93,7 +93,7 @@ class GenPageXML(XMLRegions):
         
         copy_mode(image_path, image_output_path, mode="symlink")
     
-    def generate_single_page(self, mask: np.ndarray, image_path: Path):
+    def generate_single_page(self, mask: np.ndarray, image_path: Path, old_height: Optional[int] = None, old_width: Optional[int] = None):
         """
         Convert a single prediction into a page
 
@@ -115,11 +115,12 @@ class GenPageXML(XMLRegions):
         
         # REVIEW Double scaling seems bad but need an alternative
         # old_width, old_height = imagesize.get(image_path)
-        old_height, old_width = mask.shape
+        if old_height is None or old_width is None:
+            old_height, old_width = mask.shape
         
         height, width = mask.shape
         
-        scaling = np.asarray([width, height]) / np.asarray([old_width, old_height])
+        scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
         # scaling = np.asarray((1,1))
         
         page = PageData(xml_output_path)
@@ -151,7 +152,7 @@ class GenPageXML(XMLRegions):
                     region_id += 1
                     
                     # --- soft a bit the region to prevent spikes
-                    epsilon = 0.005 * cv2.arcLength(cnt, True)
+                    epsilon = 0.0005 * cv2.arcLength(cnt, True)
                     approx_poly = cv2.approxPolyDP(cnt, epsilon, True)
                 
                     approx_poly = np.round((approx_poly * scaling)).astype(np.int32)

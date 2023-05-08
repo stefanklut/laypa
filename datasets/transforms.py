@@ -48,7 +48,7 @@ class ResizeTransform(T.Transform):
         assert (old_height, old_width) == (self.height,
                                            self.width), "Input dims do not match specified dims"
 
-        res_image = cv2.resize(img, (self.new_width, self.new_height), interpolation=cv2.INTER_CUBIC)
+        res_image = cv2.resize(img, (self.new_width, self.new_height), interpolation=cv2.INTER_LINEAR)
 
         return res_image
 

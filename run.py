@@ -3,7 +3,7 @@ import logging
 from multiprocessing import Pool
 import os
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Callable, Dict, Optional, Sequence, Tuple, Type, Union
 from detectron2.engine import DefaultPredictor
 from detectron2.checkpoint import DetectionCheckpointer
 from datasets.augmentations import ResizeShortestEdge
@@ -12,7 +12,10 @@ from core.setup import setup_cfg, setup_logging
 from detectron2.modeling import build_model
 from detectron2.data import MetadataCatalog
 import torch
+from torch.utils.data import Dataset, DataLoader
+from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from tqdm import tqdm
+import numpy as np
 
 from page_xml.generate_pageXML import GenPageXML
 from utils.image_utils import load_image_from_path
@@ -61,12 +64,77 @@ class Predictor(DefaultPredictor):
         self.aug = ResizeShortestEdge(
             [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST
         )
-        
+    
+    @staticmethod
+    def get_output_shape(old_height: int, old_width: int, edge_length: int, max_size: int) -> tuple[int, int]:
+        """
+        Compute the output size given input size and target short edge length.
+
+        Args:
+            old_height (int): original height of image
+            old_width (int): original width of image
+            edge_length (int): desired shortest edge length
+            max_size (int): max length of other edge
+
+        Returns:
+            tuple[int, int]: new height and width
+        """
+        scale = float(edge_length) / min(old_height, old_width)
+        if old_height < old_width:
+            height, width = edge_length, scale * old_width
+        else:
+            height, width = scale * old_height, edge_length
+        if max(height, width) > max_size:
+            scale = max_size * 1.0 / max(height, width)
+            height = height * scale
+            width = width * scale
+
+        height = int(height + 0.5)
+        width = int(width + 0.5)
+        return (height, width)
+    
+    def gpu_call(self, original_image):
+        with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
+            # Apply pre-processing to image.
+            if self.input_format == "RGB":
+                # whether the model expects BGR inputs or RGB
+                original_image = original_image[:, :, [2, 1, 0]]
+            height, width = original_image.shape[:2]
+            
+            new_height, new_width = self.get_output_shape(
+            height, width, self.cfg.INPUT.MIN_SIZE_TEST, self.cfg.INPUT.MAX_SIZE_TEST)
+            
+            # image = self.aug.get_transform(original_image).apply_image(original_image)
+            image = torch.as_tensor(original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
+            image = torch.nn.functional.interpolate(image[None], mode="nearest", size=(new_height,new_width))[0]
+
+            inputs = {"image": image, "height": new_height, "width": new_width}
+            predictions = self.model([inputs])[0]
+            return predictions, height, width
+    
     def __call__(self, original_image):
         """
         Not really useful, but shows what call needs to be made
         """
-        return super().__call__(original_image)
+        return self.gpu_call(original_image)
+        
+        # return super().__call__(original_image)
+    
+class LoadingDataset(Dataset):
+    def __init__(self, data):
+        self.data = data
+    
+    def __len__(self):
+        return len(self.data)
+    def __getitem__(self, index):
+        return load_image_from_path(self.data[index]), index
+
+def collate_numpy(batch):
+    collate_map = default_collate_fn_map
+    def new_map(batch, *, collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None):
+        return batch
+    collate_map.update({np.ndarray: new_map, type(None): new_map})
+    return collate(batch, collate_fn_map=collate_map)
 
 class SavePredictor(Predictor):
     """
@@ -159,7 +227,8 @@ class SavePredictor(Predictor):
 
         self.output_dir = output_dir.resolve()
     
-    def save_prediction(self, input_path: Path | str):
+    # def save_prediction(self, input_path: Path | str):
+    def save_prediction(self, image, input_path):
         """
         Run the model and get the prediction, and save pageXML or a mask image depending on the mode
 
@@ -171,17 +240,14 @@ class SavePredictor(Predictor):
         """
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
-        
-        if isinstance(input_path, str):
-            input_path = Path(input_path)
-        image = load_image_from_path(input_path)
         if image is None:
+            self.logger.warning(f"Image at {input_path} has not loaded correctly, ignoring for now")
             return
         outputs = super().__call__(image)
-        output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
+        output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
         
         self.gen_page.link_image(input_path)
-        self.gen_page.generate_single_page(output_image, input_path)
+        self.gen_page.generate_single_page(output_image, input_path, old_height=outputs[1], old_width=outputs[2])
 
     def process(self):
         """
@@ -197,9 +263,16 @@ class SavePredictor(Predictor):
             raise ValueError("Cannot run when the output dir is not set")
         
         input_paths = get_file_paths(self.input_paths, self.image_formats)
+    
         # Single thread
-        for inputs in tqdm(input_paths):
-            self.save_prediction(inputs)
+        # for inputs in tqdm(input_paths):
+        #     self.save_prediction(inputs)
+        dataset = LoadingDataset(input_paths)
+        dataloader = DataLoader(dataset, shuffle=False, batch_size=None, num_workers=4, pin_memory=False, collate_fn=None)
+        for inputs in tqdm(dataloader):
+            # self.logger.warning(inputs)
+            self.save_prediction(inputs[0], input_paths[inputs[1]])
+        
         
         # Multithread <- does not work with cuda
         # with Pool(os.cpu_count()) as pool:

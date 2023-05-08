@@ -6,6 +6,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import sys
+import torchvision
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
@@ -30,8 +31,10 @@ def load_image_from_path(image_path: Path | str, mode="color") -> Optional[np.nd
         raise NotImplementedError
     
     try:
-        image = Image.open(image_path)
-        image = cv2.cvtColor(np.asarray(image), conversion)
+        # image = Image.open(image_path)
+        # image = cv2.cvtColor(np.asarray(image), conversion)
+        # image = torchvision.io.read_image(str(image_path)).permute(1,2,0).numpy()
+        image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
         return image
     except OSError:
         logger = logging.getLogger(get_logger_name())
@@ -51,6 +54,8 @@ def load_image_from_bytes(img_bytes: bytes, image_path: Optional[Path]=None) -> 
         Optional[np.ndarray]: the loaded image or None
     """
     try:
+        # bytes_array = np.frombuffer(img_bytes, np.uint8)
+        # image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR)
         image = Image.open(BytesIO(img_bytes))
         image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
         return image
@@ -69,6 +74,7 @@ def save_image_to_path(image_path: Path | str, array: np.ndarray):
         array (np.ndarray): image in array form (BGR between 0 and 255)
     """
     try:
+        # cv2.imwrite(str(image_path), array)
         array = cv2.cvtColor(array.astype(np.uint8), cv2.COLOR_BGR2RGB)
         image = Image.fromarray(array)
         image.save(image_path)
