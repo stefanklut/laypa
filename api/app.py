@@ -73,7 +73,7 @@ class PredictorGenPageWrapper():
         args.opts = ["TEST.WEIGHTS", str(weights_path)]
         
         cfg = setup_cfg(args)
-        setup_logging(cfg, args, save_log=False)
+        setup_logging(cfg, save_log=False)
 
         self.gen_page = GenPageXML(mode=cfg.MODEL.MODE,
                                    output_dir=None,
@@ -110,8 +110,8 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str):
             output_path.parent.mkdir()
         
         outputs = predict_gen_page_wrapper.predictor(image)
-        output_image = torch.argmax(outputs["sem_seg"], dim=-3).cpu().numpy()
-        predict_gen_page_wrapper.gen_page.generate_single_page(output_image, output_path)
+        output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
+        predict_gen_page_wrapper.gen_page.generate_single_page(output_image, output_path, old_height=outputs[1], old_width=outputs[2])
         images_processed_counter.inc()
         return input_args
     except Exception as e:
