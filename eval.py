@@ -124,7 +124,7 @@ def main(args) -> None:
             image = load_image(image_filename)
             logger.info(f"Predict: {image_filename}")
             outputs = predictor(image)
-            outputs["sem_seg"] = torch.argmax(outputs["sem_seg"], dim=-3).to("cpu")
+            pred = torch.argmax(outputs[0]["sem_seg"], dim=-3).to("cpu")
             # outputs["panoptic_seg"] = (outputs["panoptic_seg"][0].to("cpu"), 
             #                            outputs["panoptic_seg"][1])
             vis_im = Visualizer(image[..., ::-1].copy(),
@@ -132,7 +132,7 @@ def main(args) -> None:
                                 scale=1
                                 )
             
-            vis_im = vis_im.draw_sem_seg(outputs["sem_seg"], alpha=0.4)
+            vis_im = vis_im.draw_sem_seg(pred, alpha=0.4)
             return vis_im.get_image()
         
         fig, axes = plt.subplots(1, 2)
