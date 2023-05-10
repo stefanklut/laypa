@@ -34,7 +34,7 @@ def load_image_from_path(image_path: Path | str, mode="color") -> Optional[np.nd
         # image = Image.open(image_path)
         # image = cv2.cvtColor(np.asarray(image), conversion)
         # image = torchvision.io.read_image(str(image_path)).permute(1,2,0).numpy()
-        image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+        image = cv2.imread(str(image_path), cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
         return image
     except OSError:
         logger = logging.getLogger(get_logger_name())
