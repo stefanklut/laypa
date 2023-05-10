@@ -75,7 +75,8 @@ def save_image_to_path(image_path: Path | str, array: np.ndarray):
     """
     try:
         # cv2.imwrite(str(image_path), array)
-        array = cv2.cvtColor(array.astype(np.uint8), cv2.COLOR_BGR2RGB)
+        if len(array.shape) == 3:
+            array = cv2.cvtColor(array.astype(np.uint8), cv2.COLOR_BGR2RGB)
         image = Image.fromarray(array)
         image.save(image_path)
     except OSError:
