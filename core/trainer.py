@@ -292,7 +292,7 @@ class Trainer(DefaultTrainer):
     def build_train_loader(cls, cfg):
         if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
             mapper = DatasetMapper(is_train=True,
-                                   recompute_boxes=True,
+                                   recompute_boxes=cfg.MODEL.MASK_ON,
                                    augmentations=build_augmentation(
                                        cfg, is_train=True),
                                    image_format=cfg.INPUT.FORMAT,
@@ -309,7 +309,7 @@ class Trainer(DefaultTrainer):
     def build_test_loader(cls, cfg, dataset_name):
         if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
             mapper = DatasetMapper(is_train=False,
-                                   recompute_boxes=True,
+                                   recompute_boxes=cfg.MODEL.MASK_ON,
                                    augmentations=build_augmentation(
                                        cfg, is_train=False),
                                    image_format=cfg.INPUT.FORMAT,
