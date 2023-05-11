@@ -12,7 +12,7 @@ import imagesize
 
 import numpy as np
 from multiprocessing import Pool
-from utils.image_utils import save_image_to_path
+from utils.image_utils import save_image_to_path, load_image_from_path
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
@@ -341,12 +341,15 @@ class Preprocess:
             """
             Quick helper function for opening->resizing->saving
             """
-            image = cv2.imread(str(image_path))
+            image = load_image_from_path(image_path)
+            
+            if image is None:
+                raise ValueError(f"Image {image_path} loading failed")
 
             if self.resize:
                 image = self.resize_image(image, image_shape=image_shape)
             #REVIEW This can maybe also be replaced with copying/linking the original image, if no resize
-            cv2.imwrite(str(out_image_path), image)
+            save_image_to_path(out_image_path, image)
         
         # Check if image already exist and if it doesn't need resizing
         if self.overwrite or not out_image_path.exists():
@@ -374,7 +377,7 @@ class Preprocess:
             """
             mask = self.xml_converter.to_image(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
             
-            cv2.imwrite(str(out_mask_path), mask)
+            save_image_to_path(out_mask_path, mask)
         
         # Check if image already exist and if it doesn't need resizing
         if self.overwrite or not out_mask_path.exists():
@@ -434,7 +437,7 @@ class Preprocess:
             """
             pano, segments_info = self.xml_converter.to_pano(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
             
-            cv2.imwrite(str(out_pano_path), pano)
+            save_image_to_path(out_pano_path, pano)
             
             json_pano = {"image_size": image_shape,
                          "segments_info": segments_info}
