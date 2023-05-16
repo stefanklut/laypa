@@ -20,8 +20,8 @@ dependencies:
   - imagesize
   - timm
   - pip:
+    - natsort
+    - distinctipy
     - 'git+https://github.com/facebookresearch/detectron2.git'
     - 'git+https://github.com/cocodataset/panopticapi.git'
     - ./models/pixel_decoder/ops/
-    - natsort
-    - distinctipy

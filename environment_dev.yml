@@ -22,9 +22,9 @@ dependencies:
   - imagesize
   - timm
   - pip:
-    - 'git+https://github.com/facebookresearch/detectron2.git'
-    - 'git+https://github.com/cocodataset/panopticapi.git'
-    - ./models/pixel_decoder/ops/
     - natsort
     - distinctipy
     - torch-tb-profiler
+    - 'git+https://github.com/facebookresearch/detectron2.git'
+    - 'git+https://github.com/cocodataset/panopticapi.git'
+    - ./models/pixel_decoder/ops/
