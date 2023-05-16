@@ -61,7 +61,7 @@ class Preprocess:
             overwrite (bool, optional): flag to force overwrite of images. Defaults to False.
 
         Raises:
-            ValueError: Did not provide a XMLImage object to convert from XML to image
+            TypeError: Did not provide a XMLImage object to convert from XML to image
             ValueError: If resize mode is choice must provide the min size with 2 or more values
             ValueError: If resize mode is range must provide the min size with 2 values
             NotImplementedError: resize mode given is not 
@@ -76,7 +76,7 @@ class Preprocess:
             self.set_output_dir(output_dir)
             
         if not isinstance(xml_converter, XMLConverter):
-            raise ValueError(f"Must provide conversion from xml to image. Current type is {type(xml_converter)}, not XMLImage")
+            raise TypeError(f"Must provide conversion from xml to image. Current type is {type(xml_converter)}, not XMLImage")
 
         self.xml_converter = xml_converter
         
@@ -105,14 +105,12 @@ class Preprocess:
 
         if self.resize_mode == "choice":
             if len(self.min_size) < 1:
-                raise ValueError(
-                    "Must specify at least one choice when using the choice option.")
+                raise ValueError("Must specify at least one choice when using the choice option.")
         elif self.resize_mode == "range":
             if len(self.min_size) != 2:
                 raise ValueError("Must have two int to set the range")
         else:
-            raise NotImplementedError(
-                "Only \"choice\" and \"range\" are accepted values")
+            raise NotImplementedError("Only \"choice\" and \"range\" are accepted values")
     
     @classmethod
     def get_parser(cls) -> argparse.ArgumentParser:
@@ -332,7 +330,7 @@ class Preprocess:
     
     def save_image(self, image_path: Path, image_stem: str, image_shape: tuple[int,int]):
         if self.output_dir is None:
-            raise ValueError("Cannot run when the output dir is not set")
+            raise TypeError("Cannot run when the output dir is None")
         image_dir = self.output_dir.joinpath("original")
         image_dir.mkdir(parents=True, exist_ok=True) 
         out_image_path = image_dir.joinpath(image_stem + ".png")
@@ -344,7 +342,7 @@ class Preprocess:
             image = load_image_from_path(image_path)
             
             if image is None:
-                raise ValueError(f"Image {image_path} loading failed")
+                raise TypeError(f"Image {image_path} is None, loading failed")
 
             if self.resize:
                 image = self.resize_image(image, image_shape=image_shape)
@@ -366,7 +364,7 @@ class Preprocess:
             
     def save_mask(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int,int]):
         if self.output_dir is None:
-            raise ValueError("Cannot run when the output dir is not set")
+            raise TypeError("Cannot run when the output dir is None")
         mask_dir = self.output_dir.joinpath("sem_seg")
         mask_dir.mkdir(parents=True, exist_ok=True)
         out_mask_path = mask_dir.joinpath(image_stem + ".png")
@@ -425,7 +423,7 @@ class Preprocess:
 
     def save_panos(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
         if self.output_dir is None:
-            raise ValueError("Cannot run when the output dir is not set")
+            raise TypeError("Cannot run when the output dir is None")
         panos_dir = self.output_dir.joinpath("panos")
         panos_dir.mkdir(parents=True, exist_ok=True) 
         out_pano_path = panos_dir.joinpath(image_stem + ".png")
@@ -465,7 +463,7 @@ class Preprocess:
             image_path (Path): path to input image
 
         Raises:
-            ValueError: cannot return if output dir is not set
+            TypeError: cannot return if output dir is not set
 
         Returns:
             (tuple containing)
@@ -474,7 +472,7 @@ class Preprocess:
             np.ndarray: shape of the image
         """
         if self.output_dir is None:
-            raise ValueError("Cannot run when the output dir is not set")
+            raise TypeError("Cannot run when the output dir is None")
         
         image_stem = image_path.stem
         xml_path = image_path_to_xml_path(image_path, self.disable_check)
@@ -515,27 +513,25 @@ class Preprocess:
         Run preprocessing on all images currently on input paths, save to output dir
 
         Raises:
-            ValueError: input paths must be set
-            ValueError: output dir must be set
+            TypeError: input paths must be set
+            TypeError: output dir must be set
             ValueError: Must find at least one image in all input paths
             ValueError: Must find at least one pageXML in all input paths
         """
         if self.input_paths is None:
-            raise ValueError("Cannot run when the input path is not set")
+            raise TypeError("Cannot run when the input path is None")
         if self.output_dir is None:
-            raise ValueError("Cannot run when the output dir is not set")
+            raise TypeError("Cannot run when the output dir is None")
 
         
         image_paths = get_file_paths(self.input_paths, self.image_formats, self.disable_check)
         xml_paths = [image_path_to_xml_path(image_path, self.disable_check) for image_path in image_paths]
 
         if len(image_paths) == 0:
-            raise ValueError(
-                f"No images found when checking input ({self.input_paths})")
+            raise ValueError(f"No images found when checking input ({self.input_paths})")
             
         if len(xml_paths) == 0:
-            raise ValueError(
-                f"No pagexml found when checking input  ({self.input_paths})")
+            raise ValueError(f"No pagexml found when checking input  ({self.input_paths})")
 
         if not self.disable_check:
             self.check_paths_exists(image_paths)

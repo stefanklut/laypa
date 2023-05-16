@@ -72,10 +72,10 @@ class IOUEvaluator:
         Reset the internal confusion matrices
 
         Raises:
-            ValueError: number of classes has not been set
+            TypeError: number of classes has not been set
         """
         if self._num_classes is None:
-            raise ValueError
+            raise TypeError
         
         self._conf_matrix = np.zeros(
             (self._num_classes + 1, self._num_classes + 1), dtype=np.int64)
@@ -92,16 +92,16 @@ class IOUEvaluator:
             outputs (list[np.ndarray]): array of predictions
 
         Raises:
-            ValueError: confusion matrix has not been initialized
-            ValueError: boundary confusion matrix has not been initialized
-            ValueError: number of classes has not been set
+            TypeError: confusion matrix has not been initialized
+            TypeError: boundary confusion matrix has not been initialized
+            TypeError: number of classes has not been set
         """
         if self._conf_matrix is None:
-            raise ValueError("Must set/reset the confusion matrix")
+            raise TypeError("Must set/reset the confusion matrix")
         if self._b_conf_matrix is None:
-            raise ValueError("Must set/reset the boundary confusion matrix")
+            raise TypeError("Must set/reset the boundary confusion matrix")
         if self._num_classes is None:
-            raise ValueError("Must set number of classes")
+            raise TypeError("Must set number of classes")
         
         for input_i, output_i in zip(inputs, outputs):
 
@@ -136,17 +136,17 @@ class IOUEvaluator:
             outputs (list[np.ndarray]): array of predictions
 
         Raises:
-            ValueError: confusion matrix has not been initialized
-            ValueError: boundary confusion matrix has not been initialized
-            ValueError: number of classes has not been set
+            TypeError: confusion matrix has not been initialized
+            TypeError: boundary confusion matrix has not been initialized
+            TypeError: number of classes has not been set
         """
         # Does not update the internal confusion matrix
         if self._conf_matrix is None:
-            raise ValueError("Must set/reset the confusion matrix")
+            raise TypeError("Must set/reset the confusion matrix")
         if self._b_conf_matrix is None:
-            raise ValueError("Must set/reset the boundary confusion matrix")
+            raise TypeError("Must set/reset the boundary confusion matrix")
         if self._num_classes is None:
-            raise ValueError("Must set number of classes")
+            raise TypeError("Must set number of classes")
         
         full_conf_matrix = np.zeros_like(self._b_conf_matrix)
         full_b_conf_matrix = np.zeros_like(self._b_conf_matrix)
@@ -188,13 +188,13 @@ class IOUEvaluator:
         * Pixel Accuracy (pACC)
         """
         if self._conf_matrix is None:
-            raise ValueError("Must set/reset the confusion matrix")
+            raise TypeError("Must set/reset the confusion matrix")
         if self._b_conf_matrix is None:
-            raise ValueError("Must set/reset the boundry confusion matrix")
+            raise TypeError("Must set/reset the boundry confusion matrix")
         if self._num_classes is None:
-            raise ValueError("Must set number of classes")
+            raise TypeError("Must set number of classes")
         if self._class_names is None:
-            raise ValueError("Must set class names")
+            raise TypeError("Must set class names")
         
         acc = np.full(self._num_classes, np.nan, dtype=np.float64)
         iou = np.full(self._num_classes, np.nan, dtype=np.float64)
@@ -458,10 +458,10 @@ def main(args):
     xml_list1 = get_file_paths(args.gt, formats=[".xml"])
     xml_list2 = get_file_paths(args.input, formats=[".xml"])
     
+    # REVIEW Maybe this should also use the config file.
     xml_to_image = XMLConverter(
         mode=args.mode,
         line_width=args.line_width,
-        line_color=args.line_color,
         regions=args.regions,
         merge_regions=args.merge_regions,
         region_type=args.region_type

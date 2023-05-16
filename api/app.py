@@ -101,9 +101,9 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str):
     try:
         output_path = output_base_path.joinpath(identifier, image_path)
         if predict_gen_page_wrapper.gen_page is None:
-            raise ValueError
+            raise TypeError("")
         if predict_gen_page_wrapper.predictor is None:
-            raise ValueError
+            raise TypeError("")
         
         predict_gen_page_wrapper.gen_page.set_output_dir(output_path.parent)
         if not output_path.parent.exists():

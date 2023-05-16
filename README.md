@@ -242,7 +242,7 @@ python main.py \
     [--num-machines NUM_MACHINES] \
     [--machine-rank MACHINE_RANK] \
     [--dist-url DIST_URL] \
-    [--opts ...]
+    [--opts OPTS [OPTS ...]]
 ```
 
 The optional arguments are shown using square brackets. The `--tmp_dir` parameter specifies a folder in which to store temporary files. While the `--keep_tmp_dir` parameter prevents the temporary files from being deleted after a run (mostly for debugging).
@@ -287,7 +287,7 @@ python run.py \
     -c/--config CONFIG \ 
     -i/--input INPUT \ 
     -o/--output OUTPUT
-    [--opts ...]
+    [--opts OPTS [OPTS ...]]
 ``` 
 The optional arguments are shown using square brackets. The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8.
 </details>
@@ -367,7 +367,11 @@ python eval.py \
     -v/--val VAL [VAL ...] \
     [--tmp_dir TMP_DIR] \
     [--keep_tmp_dir]
-    [--opts]
+    [--opts OPTS [OPTS ...]] \
+    [--eval_path EVAL_PATH] \
+    [--sorted] \
+    [--save SAVE]
+
 ```
 
 The optional arguments are shown using square brackets. The `--tmp_dir` parameter specifies a folder in which to store temporary files. While the `--keep_tmp_dir` parameter prevents the temporary files from being deleted after a run (mostly for debugging). The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8.
@@ -376,7 +380,7 @@ The optional arguments are shown using square brackets. The `--tmp_dir` paramete
 Example of running [`eval.py`][eval_link]:
 
 ```sh
-python eval.py -c config.yml -t training_dir -v validation_dir
+python eval.py -c config.yml -i input_dir
 ```
 
 The [`eval.py`][eval_link] will then open a window with both the prediction and the ground truth side by side. Allowing for easier comparison. The visualization masks are created in the same way the preprocessing converts pageXML to masks.
@@ -402,20 +406,22 @@ python xml_comparison.py \
     [--regions REGIONS [REGIONS ...]] \
     [--merge_regions [MERGE_REGIONS]] \
     [--region_type REGION_TYPE [REGION_TYPE ...]] \
-    [-w/--line_width LINE_WIDTH] \
-    [-l/line_color {0-255}]  
+    [-w/--line_width LINE_WIDTH] 
 ```
 
 The optional arguments are shown using square brackets. The `--mode` parameter specifies what type of prediction the model has to do. If the mode is region, the `--regions` argument specifies which regions need to be extracted from the pageXML (for example "page-number"). The `--merge_regions` then specifies if any of these regions need to be merged. This could mean converting "insertion" into "resolution" since they are talking about the same thing `resolution:insertion`. The final region argument is `--region_type` which can specify the region type of a region. In the other modes lines are used. The line arguments are `--line_width`, which specifies the line width, and `--line_color`, which specifies the line color.
 </details>
 
+
 The final tool is a program for showing the pageXML as mask images. This can help with showing how the pageXML regions and baseline look. This can be done in gray scale, color, or as a colored overlay over the original image. This tool is located in the [xml_viewer.py][xml_viewer_link] file. It requires an input directory (`--input`) argument and output directory (`--output`) argument.
+
 
 Required arguments:
 ```sh
-python xml_comparison.py \ 
+python xml_viewer.py \ 
+    -c/--config CONFIG \
     -i/--input INPUT [INPUT ...] \
-    -o/--output OUTPUT [OUTPUT ...]
+    -o/--output OUTPUT [OUTPUT ...] 
 ```
 
 <details>
@@ -423,19 +429,15 @@ python xml_comparison.py \
 
 Optional arguments:
 ```sh
-python xml_comparison.py \ 
-    -g/--gt GT [GT ...] \
+python xml_viewer.py \ 
+    -c/--config CONFIG \
+    -i/--input INPUT [INPUT ...] \
     -o/--output OUTPUT [OUTPUT ...] \
-    [-m/--mode {baseline,region,start,end,separator,baseline_separator}] \
-    [--regions REGIONS [REGIONS ...]] \
-    [--merge_regions [MERGE_REGIONS]] \
-    [--region_type REGION_TYPE [REGION_TYPE ...]] \
-    [-w/--line_width LINE_WIDTH] \
-    [-l/line_color {0-255}] \
+    [--opts OPTS [OPTS ...]] \
     [-t/--output_type {gray,color,overlay}]
 ```
 
-The optional arguments are shown using square brackets. The `--mode` parameter specifies what type of prediction the model has to do. If the mode is region, the `--regions` argument specifies which regions need to be extracted from the pageXML (for example "page-number"). The `--merge_regions` then specifies if any of these regions need to be merged. This could mean converting "insertion" into "resolution" since they are talking about the same thing `resolution:insertion`. The final region argument is `--region_type` which can specify the region type of a region. In the other modes lines are used. The line arguments are `--line_width`, which specifies the line width, and `--line_color`, which specifies the line color. The final argument `--output_type` is used to select an output style as either gray scale, color, or a colored overlay.
+The optional arguments are shown using square brackets. The parameter `--opts` allows you to change values specified in the config files. The `--output_type` parameter specifies which type of 
 </details>
 
 ## License

@@ -8,7 +8,7 @@ import argparse
 
 from pathlib import Path
 
-from detectron2.data import DatasetCatalog, MetadataCatalog
+from detectron2.data import DatasetCatalog, MetadataCatalog, Metadata
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -32,7 +32,6 @@ def create_data(input_data: dict) -> dict:
     Raises:
         FileNotFoundError: image path is missing
         FileNotFoundError: mask path is missing
-        ValueError: the image and mask path have a different stem
 
     Returns:
         dict: data used for detectron training
@@ -127,6 +126,19 @@ def classes_to_colors(classes) -> list[tuple[int,int,int]]:
     colors = [background_color] + [tuple(map(lambda channel: int(channel*255),color)) for color in distinct_colors]
     return colors
 
+def metadata_from_classes(classes: list[str],
+                          ignore_label: int=255):
+    colors = classes_to_colors(classes)
+    metadata = Metadata(
+        thing_classes  = classes[1:],
+        thing_colors   = colors[1:],
+        stuff_classes  = classes,
+        stuff_colors   = colors,
+        evaluator_type = "sem_seg",
+        ignore_label   = ignore_label
+    )
+    return metadata
+
 def register_dataset(path:str | Path, 
                    name: str, 
                    ignore_label: int=255):
@@ -140,22 +152,14 @@ def register_dataset(path:str | Path,
     
     data = convert_to_paths(path, info["data"])
     classes = info["classes"]
-    colors = classes_to_colors(classes)
     
     DatasetCatalog.register(
         name=name,
         func=lambda data=data: dataset_dict_loader(data)
     )
-    MetadataCatalog.get(name).set(
-        thing_classes  = classes[1:],
-        thing_colors   = colors[1:],
-        stuff_classes  = classes,
-        stuff_colors   = colors,
-        evaluator_type = "sem_seg",
-        ignore_label   = ignore_label
-    )
-    metadata = MetadataCatalog.get(name)
-    return metadata
+    
+    MetadataCatalog[name] = metadata_from_classes(classes, ignore_label)
+    return MetadataCatalog.get(name)
 
 def register_datasets(train: Optional[str|Path]=None, 
                      val: Optional[str|Path]=None, 
@@ -174,27 +178,3 @@ def register_datasets(train: Optional[str|Path]=None,
         metadata = register_dataset(val, val_name, ignore_label)
     assert metadata is not None, "Metadata has not been set"
     return metadata
-
-if __name__ == "__main__":
-    args = get_arguments()
-    results = main(args)
-    print(results[0])
-    from detectron2.utils.visualizer import Visualizer
-    import cv2
-    import matplotlib.pyplot as plt
-    metadata = register_dataset(train=args.input, train_name="train", mode="region")
-    for result in results:
-        image = cv2.imread(result["file_name"])
-        sem_seg = cv2.imread(result["sem_seg_file_name"])
-        pano = cv2.imread(result["pan_seg_file_name"], cv2.IMREAD_COLOR)
-        visualizer = Visualizer(image[..., ::-1].copy(), metadata=metadata, scale=1)
-        # vis = visualizer.overlay_instances(
-        #     boxes=[result['bbox'] for result in result["annotations"]],
-        #     labels=[result['category_id'] for result in result["annotations"]],
-        #     masks=[result['segmentation'] for result in result["annotations"]],
-        # )
-        vis = visualizer.draw_dataset_dict(result)
-        # DOES NOT WORK FOR SOME REASON
-        # vis = visualizer.draw_panoptic_seg(panoptic_seg=pano, segments_info=result["segments_info"], area_threshold=0, alpha=0.5)
-        plt.imshow(vis.get_image())
-        plt.show()

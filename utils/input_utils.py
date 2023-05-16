@@ -47,8 +47,8 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path], formats: Sequen
         disable_check (bool, optional): Run a check to see if all extracted files exist. Defaults to False.
 
     Raises:
-        ValueError: input_paths is not set
-        ValueError: formats are not set
+        TypeError: input_paths is not set
+        TypeError: formats are not set
         ValueError: formats are empty
         FileNotFoundError: input path not found on the filesystem
         PermissionError: input path not accessible
@@ -60,13 +60,13 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path], formats: Sequen
         list[Path]: output paths
     """
     if input_paths is None:
-        raise ValueError("Cannot run when the input path is not set")
+        raise TypeError("Cannot run when the input path is None")
     
     if formats is None:
-        raise ValueError("Cannot run when the formats is not set")
+        raise TypeError("Cannot run when the formats is None")
     
     if len(formats) == 0:
-        raise ValueError("Must provide the accepted image ")
+        raise ValueError("Must provide the accepted image types")
     
     input_paths = clean_input_paths(input_paths)
         

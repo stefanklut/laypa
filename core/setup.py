@@ -111,7 +111,6 @@ def setup_logging(cfg=None, save_log=True):
     for item in root_logger.manager.loggerDict:
         if item.startswith('detectron2') or item.startswith('fvcore'):
             root_logger.manager.loggerDict[item] = logger
-
     
     return logger
     

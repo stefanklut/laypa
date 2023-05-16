@@ -8,12 +8,12 @@ def check_path_accessible(path: Path):
     Args:
         path (Path): path to check
     Raises:
-        ValueError: path is not a Path object
+        TypeError: path is not a Path object
         FileNotFoundError: folder/file does not exist at location
         PermissionError: no read access for folder/file
     """
     if not isinstance(path, Path):
-        raise ValueError(f"provided object {path} is not Path, but {type(path)}")
+        raise TypeError(f"provided object {path} is not Path, but {type(path)}")
     if not path.exists():
         raise FileNotFoundError(f"Missing path: {path}")
     if not os.access(path=path, mode=os.R_OK):
@@ -22,15 +22,12 @@ def check_path_accessible(path: Path):
     return True
 
 def image_path_to_xml_path(image_path: Path, check: bool=True) -> Path:
+    
     """
     Return the corresponding xml path for a image
 
     Args:
         image_path (Path): image path
-
-    Raises:
-        FileNotFoundError: no xml for image path
-        PermissionError: xml file is not readable
 
     Returns:
         Path: xml path
@@ -51,7 +48,6 @@ def xml_path_to_image_path(xml_path: Path, check: bool=True) -> Path:
 
     Raises:
         FileNotFoundError: no image for xml path
-        PermissionError: image file in not readable
 
     Returns:
         Path: image_path

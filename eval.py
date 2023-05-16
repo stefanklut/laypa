@@ -16,6 +16,7 @@ import torch
 from natsort import os_sorted
 from utils.logging_utils import get_logger_name
 from utils.tempdir import OptionalTemporaryDirectory
+from utils.image_utils import load_image_from_path, save_image_to_path
 from run import Predictor
 
 
@@ -33,9 +34,9 @@ def get_arguments() -> argparse.Namespace:
         "--opts", nargs="+", help="optional args to change", default=[])
 
     io_args = parser.add_argument_group("IO")
-    io_args.add_argument("-t", "--train", help="Train input folder/file",
-                            nargs="+", action="extend", type=str, default=None)
-    io_args.add_argument("-v", "--val", help="Validation input folder/file",
+    # io_args.add_argument("-t", "--train", help="Train input folder/file",
+    #                         nargs="+", action="extend", type=str, default=None)
+    io_args.add_argument("-i", "--input", help="Input folder/file",
                             nargs="+", action="extend", type=str, default=None)
     
     tmp_args = parser.add_argument_group("tmp files")
@@ -44,9 +45,9 @@ def get_arguments() -> argparse.Namespace:
     tmp_args.add_argument(
         "--keep_tmp_dir", action="store_true", help="Don't remove tmp dir after execution")
     
-    parser.add_argument("--eval_path", type=str, help="Save location for eval")
+    parser.add_argument("--eval_path", type=str, help="Save location for eval", default=None)
     parser.add_argument("--sorted", action="store_true", help="Sorted iteration")
-    parser.add_argument("--save", action="store_true", help="Save images instead of displaying")
+    parser.add_argument("--save", nargs="?", const="all", default=None, help="Save images instead of displaying")
 
     args = parser.parse_args()
 
@@ -89,7 +90,7 @@ def main(args) -> None:
 
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
         
-        preprocess_datasets(cfg, args.train, args.val, tmp_dir, save_image_locations=False)
+        preprocess_datasets(cfg, None, args.input, tmp_dir, save_image_locations=False)
         predictor = Predictor(cfg=cfg)
         
         # train_loader = DatasetCatalog.get("train")
@@ -100,12 +101,16 @@ def main(args) -> None:
         
         @lru_cache(maxsize=10)
         def load_image(filename):
-            image = cv2.imread(filename, cv2.IMREAD_COLOR)
+            image = load_image_from_path(filename, mode="color")
+            if image is None:
+                raise TypeError(f"Image {filename} is None, loading failed")
             return image
 
         @lru_cache(maxsize=10)
         def load_sem_seg(filename):
-            sem_seg_gt = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+            sem_seg_gt = load_image_from_path(filename, mode="grayscale")
+            if sem_seg_gt is None:
+                raise TypeError(f"Image {filename} is None, loading failed")
             return sem_seg_gt
 
         @lru_cache(maxsize=10)
@@ -141,6 +146,8 @@ def main(args) -> None:
         fig.canvas.mpl_connect('close_event', on_close)
         axes[0].axis('off')
         axes[1].axis('off')
+        
+        fig_manager = None
         if not args.save:
             fig_manager = plt.get_current_fig_manager()
             fig_manager.window.showMaximized()
@@ -179,17 +186,27 @@ def main(args) -> None:
             axes[0].imshow(vis_pred)
             axes[1].imshow(vis_gt)
             
-            if args.save:
+            if args.save is not None:
+                if args.save not in ["all", "both", "pred", "gt"]:
+                    raise ValueError(f"{args.save} is not a valid save mode")
+                
                 output_dir = Path(args.eval_path)
                 if not output_dir.is_dir():
                     logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
                     output_dir.mkdir(parents=True)
-                save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + ".png")
                 
-                # Save to 4K res
+                if args.save == "all" or args.save == "both":
+                    save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + "_both.jpg")
+                    # Save to 4K res
+                    fig.set_size_inches(16, 9)
+                    fig.savefig(str(save_path), dpi=240)
+                if args.save == "all" or args.save == "pred":
+                    save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + "_pred.jpg")
+                    save_image_to_path(save_path, vis_pred[..., ::-1])
+                if args.save == "all" or args.save == "gt":
+                    save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + "_gt.jpg")
+                    save_image_to_path(save_path, vis_gt[..., ::-1])
                 
-                fig.set_size_inches(16, 9)
-                fig.savefig(str(save_path), dpi=240)
                 i += 1
                 continue
             

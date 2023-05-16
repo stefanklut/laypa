@@ -192,8 +192,7 @@ class Flip(T.Augmentation):
         super().__init__()
 
         if horizontal and vertical:
-            raise ValueError(
-                "Cannot do both horizontal and vertical. Please use two Flip instead.")
+            raise ValueError("Cannot do both horizontal and vertical. Please use two Flip instead.")
         if not horizontal and not vertical:
             raise ValueError("At least one of horizontal or vertical has to be True!")
         self.horizontal = horizontal

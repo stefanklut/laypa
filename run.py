@@ -166,7 +166,7 @@ class SavePredictor(Predictor):
             self.set_output_dir(output_dir)
             
         if not isinstance(gen_page, GenPageXML):
-            raise ValueError(f"Must provide conversion from mask to pageXML. Current type is {type(gen_page)}, not GenPageXML")
+            raise TypeError(f"Must provide conversion from mask to pageXML. Current type is {type(gen_page)}, not GenPageXML")
             
         self.gen_page = gen_page
             
@@ -237,10 +237,10 @@ class SavePredictor(Predictor):
             input_path (Path | str): path to single image
 
         Raises:
-            ValueError: no output dir is specified
+            TypeError: no output dir is specified
         """
         if self.output_dir is None:
-            raise ValueError("Cannot run when the output dir is not set")
+            raise TypeError("Cannot run when the output dir is None")
         if image is None:
             self.logger.warning(f"Image at {input_path} has not loaded correctly, ignoring for now")
             return
@@ -255,13 +255,13 @@ class SavePredictor(Predictor):
         Run the model on all images within the input dir
 
         Raises:
-            ValueError: no input dir is specified
-            ValueError: no output dir is specified
+            TypeError: no input dir is specified
+            TypeError: no output dir is specified
         """
         if self.input_paths is None:
-            raise ValueError("Cannot run when the input dir is not set")
+            raise TypeError("Cannot run when the input dir is None")
         if self.output_dir is None:
-            raise ValueError("Cannot run when the output dir is not set")
+            raise TypeError("Cannot run when the output dir is None")
         
         input_paths = get_file_paths(self.input_paths, self.image_formats)
     

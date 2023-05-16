@@ -9,6 +9,8 @@ from pathlib import Path
 
 from detectron2.data import Metadata
 from detectron2.utils.visualizer import Visualizer
+from core.setup import setup_cfg
+from datasets.dataset import metadata_from_classes
 
 from page_xml.xml_converter import XMLConverter
 from utils.image_utils import load_image_from_path, save_image_to_path
@@ -17,8 +19,14 @@ from utils.logging_utils import get_logger_name
 from utils.path_utils import xml_path_to_image_path
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(parents=[XMLConverter.get_parser()],
-        description="Visualize XML files for visualization/debugging")
+    parser = argparse.ArgumentParser(description="Visualize XML files for visualization/debugging")
+    
+    detectron2_args = parser.add_argument_group("detectron2")
+
+    detectron2_args.add_argument(
+        "-c", "--config", help="config file", required=True)
+    detectron2_args.add_argument(
+        "--opts", nargs="+", help="optional args to change", default=[])
     
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input folder/files", nargs="+", default=[],
@@ -32,10 +40,11 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 class Viewer:
+    # TODO Resize the output image to a specified size / percentage, maybe use ResizeShortestEdge
     """
     Simple viewer to convert xml files to images (grayscale, color or overlay)
     """
-    def __init__(self, xml_to_image: XMLConverter, output_dir: str|Path, output_type='gray') -> None:
+    def __init__(self, xml_converter: XMLConverter, output_dir: str|Path, output_type='gray') -> None:
         """
         Simple viewer to convert xml files to images (grayscale, color or overlay)
 
@@ -53,21 +62,10 @@ class Viewer:
             output_dir = Path(output_dir)
         
         self.output_dir: Path = output_dir
-        self.xml_converter: XMLConverter = xml_to_image
-        #TODO Load the metadata
-        self.metadata = Metadata()
+        self.xml_converter: XMLConverter = xml_converter
         
-        region_names = xml_to_image.get_regions()
-        # region_colors = [(0,0,0), (228,3,3), (255,140,0), (255,237,0), (0,128,38), (0,77,255), (117,7,135)]
-        region_colors = [(0,0,0), (255,255,255)]
-        
-        if len(region_names) != len(region_colors):
-            raise ValueError(f"Colors must match names in length: {len(region_names)} v. {len(region_colors)}")
-        
-        self.metadata.set(stuff_classes=region_names,
-                          stuff_colors=region_colors,
-                          evaluator_type="sem_seg",
-                          ignore_label=255)
+        region_names = xml_converter.get_regions()
+        self.metadata = metadata_from_classes(region_names)
         
         self.output_type = output_type
         
@@ -121,7 +119,7 @@ class Viewer:
         Args:
             xml_path_i (Path): single pageXML path
         """
-        output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
+        output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".jpg")
         gray_image = self.xml_converter.to_image(xml_path_i)
         
         image_path_i = xml_path_to_image_path(xml_path_i)
@@ -170,17 +168,19 @@ class Viewer:
                 self.save_function, cleaned_xml_list), total=len(cleaned_xml_list)))
         
 def main(args) -> None:
+    cfg = setup_cfg(args)
+    
     xml_list = get_file_paths(args.input, formats=[".xml"])
     
-    xml_to_image = XMLConverter(
-        mode=args.mode,
-        line_width=args.line_width,
-        regions=args.regions,
-        merge_regions=args.merge_regions,
-        region_type=args.region_type
+    xml_converter = XMLConverter(
+        mode=cfg.MODEL.MODE,
+        line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
+        regions=cfg.PREPROCESS.REGION.REGIONS,
+        merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
+        region_type=cfg.PREPROCESS.REGION.REGION_TYPE
     )
     
-    viewer = Viewer(xml_to_image=xml_to_image, output_dir=args.output, output_type=args.output_type)
+    viewer = Viewer(xml_converter=xml_converter, output_dir=args.output, output_type=args.output_type)
     viewer.run(xml_list)
 
 if __name__ == "__main__":
