@@ -2,7 +2,7 @@
 
 import argparse
 from collections import OrderedDict
-from multiprocessing import Pool
+from multiprocessing.pool import Pool
 import os
 from pathlib import Path
 import numpy as np

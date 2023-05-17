@@ -1,4 +1,4 @@
-from multiprocessing import Pool
+from multiprocessing.pool import Pool
 import os
 from tqdm import tqdm
 import cv2

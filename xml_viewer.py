@@ -1,5 +1,6 @@
 import logging
-from multiprocessing import Pool
+from multiprocessing.pool import Pool
+# from multiprocessing.pool import ThreadPool as Pool
 from tqdm import tqdm
 import cv2
 import numpy as np

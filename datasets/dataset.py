@@ -1,5 +1,5 @@
 import json
-from multiprocessing import Pool
+from multiprocessing.pool import Pool
 import os
 from typing import Optional
 

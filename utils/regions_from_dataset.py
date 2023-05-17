@@ -1,5 +1,5 @@
 import argparse
-from multiprocessing import Pool
+from multiprocessing.pool import Pool
 import os
 import sys
 

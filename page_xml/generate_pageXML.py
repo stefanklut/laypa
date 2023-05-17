@@ -1,6 +1,6 @@
 import argparse
 import logging
-from multiprocessing import Pool
+from multiprocessing.pool import Pool
 import os
 import sys
 from typing import Optional

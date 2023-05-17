@@ -1,6 +1,6 @@
 import argparse
 import logging
-from multiprocessing import Pool
+from multiprocessing.pool import Pool
 import os
 from pathlib import Path
 from typing import Callable, Dict, Optional, Sequence, Tuple, Type, Union

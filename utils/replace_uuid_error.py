@@ -3,7 +3,7 @@ import argparse
 import uuid
 from pathlib import Path
 from tqdm import tqdm
-from multiprocessing import Pool
+from multiprocessing.pool import Pool
 import os
 
 def get_arguments() -> argparse.Namespace:
