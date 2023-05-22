@@ -1,6 +1,9 @@
 import argparse
+from multiprocessing import Pool
 import cv2
 from pathlib import Path
+
+from tqdm import tqdm
 
 from core.preprocess import preprocess_datasets
 from core.setup import setup_cfg
@@ -37,29 +40,37 @@ def get_arguments() -> argparse.Namespace:
 
     return args
 
+def load(x):
+    cv2.imread(str(x))
+
 def main(args):
     
-    cfg = setup_cfg(args)
+    # cfg = setup_cfg(args)
     
-    with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
+    # with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
         
-        preprocess_datasets(cfg, args.train, args.val, tmp_dir)
+    #     preprocess_datasets(cfg, args.train, args.val, tmp_dir)
         
-        mapper = DatasetMapper(is_train=True,
-                                recompute_boxes=cfg.MODEL.MASK_ON,
-                                augmentations=build_augmentation(
-                                    cfg, is_train=True),
-                                image_format=cfg.INPUT.FORMAT,
-                                use_instance_mask=cfg.MODEL.MASK_ON,
-                                instance_mask_format=cfg.INPUT.MASK_FORMAT,
-                                use_keypoint=cfg.MODEL.KEYPOINT_ON)
+    #     mapper = DatasetMapper(is_train=True,
+    #                             recompute_boxes=cfg.MODEL.MASK_ON,
+    #                             augmentations=build_augmentation(
+    #                                 cfg, is_train=True),
+    #                             image_format=cfg.INPUT.FORMAT,
+    #                             use_instance_mask=cfg.MODEL.MASK_ON,
+    #                             instance_mask_format=cfg.INPUT.MASK_FORMAT,
+    #                             use_keypoint=cfg.MODEL.KEYPOINT_ON)
         
-        dataloader = iter(build_detection_train_loader(cfg=cfg, mapper=mapper))
+    #     dataloader = iter(build_detection_train_loader(cfg=cfg, mapper=mapper))
         
-        for i in range(100):
-            print(i)
-            with ContextTimer(label="Load"):
-                next(dataloader)
+    #     for i in range(100):
+    #         print(i)
+    #         with ContextTimer(label="Load"):
+    #             next(dataloader)
+    paths = list(Path(args.train[0]).glob("*.jpg"))
+    with ContextTimer(), Pool(os.cpu_count()) as pool:
+        # for image_path in tqdm(paths):
+        #     cv2.imread(str(image_path))
+        _ = list(tqdm(pool.imap_unordered(load, paths), total=len(paths)))
         
         
         
@@ -68,10 +79,12 @@ if __name__ == "__main__":
     args = get_arguments()
     import torch
     import os
+    # os.sched_setaffinity(os.getpid(), list(range(20)))
+    # os.system("taskset -p 0xFFFFFFFFFF %d" % os.getpid())
     import multiprocessing
     print(multiprocessing.cpu_count())
     
-    torch.set_num_threads(100)
+    # torch.set_num_threads(100)
     print(os.cpu_count(), torch.get_num_threads())
     main(args)
     print(ContextTimer.stats)

@@ -9,8 +9,9 @@ dependencies:
   - numpy<1.24
   - pytorch
   - torchvision
-  # - pytorch-cuda=11.7
+  - pytorch-cuda=11.7
   - cudatoolkit=11.7
+  - cudatoolkit-dev
   - opencv
   - matplotlib
   - scipy
