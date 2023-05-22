@@ -12,6 +12,7 @@ import imagesize
 
 import numpy as np
 from multiprocessing.pool import Pool
+# from multiprocessing.pool import ThreadPool as Pool
 from utils.image_utils import save_image_to_path, load_image_from_path
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))

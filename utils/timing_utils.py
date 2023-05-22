@@ -4,7 +4,7 @@ import time
 import contextlib
 from typing import Callable, Optional
 
-class Timer(contextlib.ContextDecorator):
+class ContextTimer(contextlib.ContextDecorator):
     stats = defaultdict(list)
     
     def __new__(cls, arg=None, **kwargs):
