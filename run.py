@@ -22,6 +22,8 @@ from utils.image_utils import load_image_from_path
 from utils.input_utils import clean_input_paths, get_file_paths
 from utils.logging_utils import get_logger_name
 
+from torch.profiler import profile, record_function, ProfilerActivity
+
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run file to inference using the model found in the config file")
     
@@ -96,29 +98,42 @@ class Predictor(DefaultPredictor):
     def gpu_call(self, original_image):
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
+            height, width = original_image.shape[:2]
+            image = torch.as_tensor(original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
             if self.input_format == "RGB":
                 # whether the model expects BGR inputs or RGB
-                original_image = original_image[:, :, [2, 1, 0]]
-            height, width = original_image.shape[:2]
+                image = image[[2, 1, 0], :, :]
             
             new_height, new_width = self.get_output_shape(
             height, width, self.cfg.INPUT.MIN_SIZE_TEST, self.cfg.INPUT.MAX_SIZE_TEST)
             
             # image = self.aug.get_transform(original_image).apply_image(original_image)
-            image = torch.as_tensor(original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
             image = torch.nn.functional.interpolate(image[None], mode="nearest", size=(new_height,new_width))[0]
 
             inputs = {"image": image, "height": new_height, "width": new_width}
             predictions = self.model([inputs])[0]
             return predictions, height, width
     
+    def cpu_call(self, original_image):      
+        with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
+            # Apply pre-processing to image.
+            if self.input_format == "RGB":
+                # whether the model expects BGR inputs or RGB
+                original_image = original_image[:, :, ::-1]
+            height, width = original_image.shape[:2]
+            image = self.aug.get_transform(original_image).apply_image(original_image)
+            image = torch.as_tensor(image.astype("float32").transpose(2, 0, 1))
+
+            inputs = {"image": image, "height": height, "width": width}
+            predictions = self.model([inputs])[0]
+        
+        return predictions, height, width 
+    
     def __call__(self, original_image):
         """
         Not really useful, but shows what call needs to be made
         """
-        return self.gpu_call(original_image)
-        
-        # return super().__call__(original_image)
+        return self.cpu_call(original_image)
     
 class LoadingDataset(Dataset):
     def __init__(self, data):
@@ -244,7 +259,9 @@ class SavePredictor(Predictor):
         if image is None:
             self.logger.warning(f"Image at {input_path} has not loaded correctly, ignoring for now")
             return
-        outputs = super().__call__(image)
+        
+        outputs = self.gpu_call(image)
+            
         output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
         
         self.gen_page.link_image(input_path)
@@ -269,7 +286,7 @@ class SavePredictor(Predictor):
         # for inputs in tqdm(input_paths):
         #     self.save_prediction(inputs)
         dataset = LoadingDataset(input_paths)
-        dataloader = DataLoader(dataset, shuffle=False, batch_size=None, num_workers=4, pin_memory=False, collate_fn=None)
+        dataloader = DataLoader(dataset, shuffle=False, batch_size=None, num_workers=16, pin_memory=False, collate_fn=None)
         for inputs in tqdm(dataloader):
             # self.logger.warning(inputs)
             self.save_prediction(inputs[0], input_paths[inputs[1]])
@@ -293,9 +310,10 @@ def main(args) -> None:
                           region_type=cfg.PREPROCESS.REGION.REGION_TYPE)
     
     predictor = SavePredictor(cfg=cfg, input_paths=args.input, output_dir=args.output, gen_page=gen_page)
-    
+    # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], with_stack=True, record_shapes=True) as prof:
     predictor.process()
-
+        
+    # print(prof.key_averages(group_by_stack_n=5).table(sort_by="cpu_time_total", row_limit=10))
 if __name__ == "__main__":
     args = get_arguments()
     main(args)
