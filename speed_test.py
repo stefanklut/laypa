@@ -75,7 +75,7 @@ def main(args):
     
     # with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
         
-    #     preprocess_datasets(cfg, args.train, args.val, tmp_dir)
+    #     preprocess_datasets(cfg, args.train, args.val, tmp_dir, save_image_locations=False)
         
     #     mapper = DatasetMapper(is_train=True,
     #                             recompute_boxes=cfg.MODEL.MASK_ON,
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     
     # torch.set_num_threads(100)
     main(args=None)
-    print(ContextTimer.stats)
+    print(dict(ContextTimer.stats))
     import numpy as np
     print({key: np.mean(value) for key, value in ContextTimer.stats.items()})
     print({key: np.sum(value) for key, value in ContextTimer.stats.items()})
