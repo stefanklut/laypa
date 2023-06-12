@@ -195,15 +195,15 @@ def main(args) -> None:
                     logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
                     output_dir.mkdir(parents=True)
                 
-                if args.save == "all" or args.save == "both":
+                if args.save in ["all", "both"]:
                     save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + "_both.jpg")
                     # Save to 4K res
                     fig.set_size_inches(16, 9)
                     fig.savefig(str(save_path), dpi=240)
-                if args.save == "all" or args.save == "pred":
+                if args.save in ["all", "pred"]:
                     save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + "_pred.jpg")
                     save_image_to_path(save_path, vis_pred[..., ::-1])
-                if args.save == "all" or args.save == "gt":
+                if args.save in ["all", "gt"]:
                     save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + "_gt.jpg")
                     save_image_to_path(save_path, vis_gt[..., ::-1])
                 

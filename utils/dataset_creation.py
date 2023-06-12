@@ -10,6 +10,8 @@ import sys
 
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from utils.image_utils import load_image_from_path
+from utils.regions_from_dataset import count_regions_single_page
 from utils.logging_utils import get_logger_name
 from utils.copy_utils import copy_mode
 from utils.path_utils import image_path_to_xml_path, xml_path_to_image_path
@@ -26,9 +28,10 @@ def get_arguments() -> argparse.Namespace:
     io_args.add_argument("-o", "--output", help="Output folder",
                         required=True, type=str)
     
-    parser.add_argument("-c", "--copy", action="store_true", )
+    parser.add_argument("-c", "--copy", action="store_true", help="Copy the images to the output folder location")
     parser.add_argument("-m", "--mode", choices=["link", "symlink", "copy"], help="Mode for moving the images", default='copy')
     parser.add_argument("--split", nargs=3, type=float, help="The percentages of each split (train,val,test), if the sum does not equal 1 relative percentage are taken(6,2,2 -> 0.6,0.2,0.2)", default=[0.8,0.1,0.1])
+    parser.add_argument("--check", nargs="?", const="all", default=None, help="Check if images is not corrupted, and if pageXML is properly formatted")
     
     args = parser.parse_args()
     return args
@@ -157,8 +160,8 @@ def main(args):
                 paths_from_file = [Path(line) for line in f.read().splitlines()]
             txt_image_paths.extend([path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file])
             
-            for path in txt_image_paths:
-                if not path.is_file():
+            for image_path in txt_image_paths:
+                if not image_path.is_file():
                     raise FileNotFoundError(f"Missing file from the txt file: {input_path}")
                     
         else:
@@ -167,6 +170,26 @@ def main(args):
     dir_image_paths = [xml_path_to_image_path(path).absolute() for path in dir_image_paths]
     txt_image_paths = [path.absolute() for path in txt_image_paths]     
     all_image_paths = os_sorted(dir_image_paths + txt_image_paths, key=str)
+    
+    if args.check is not None:
+        if args.check not in ["all", "image", "page"]:
+            raise ValueError(f"{args.save} is not a valid check mode")
+        temp_image_paths = []
+        for image_path in all_image_paths:
+            image = load_image_from_path(image_path)
+            if args.check in ["all", "image"]:
+                if image is None:
+                    continue
+            if args.check in ["all", "page"]:
+                xml_path = image_path_to_xml_path(image_path)
+                counter = count_regions_single_page(xml_path)
+                if None in counter.keys():
+                    continue
+            
+            temp_image_paths.append(image_path)
+        all_image_paths = temp_image_paths
+            
+        
     
     if len(all_image_paths) != len(set(path.stem for path in all_image_paths)):
         duplicates = {k:v for k, v in Counter(path.stem for path in all_image_paths).items() if v > 1}
