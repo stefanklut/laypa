@@ -134,5 +134,5 @@ def setup_seed(cfg: CfgNode):
         seed = cfg.SEED if cfg.SEED else -1
         rank = comm.get_rank()
         seed_all_rng(None if seed < 0 else seed + rank)
-        # REVIEW What to do with this, NLL is not deterministic. Only during training
+        # REVIEW What to do with this, NLL is not deterministic. Only an issue during training
         # torch.use_deterministic_algorithms(True)

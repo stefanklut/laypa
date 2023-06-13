@@ -1,4 +1,7 @@
-<!-- TODO Shields (e.g. Licence Issues KNAW) -->
+![GitHub](https://img.shields.io/github/license/stefanklut/laypa)
+![GitHub issues](https://img.shields.io/github/issues/stefanklut/laypa)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/stefanklut/laypa)
+![GitHub last commit](https://img.shields.io/github/last-commit/stefanklut/laypa)
 
 # Laypa
 Laypa is a segmentation network, with the goal of finding regions (paragraph, page number, etc.) and baselines in documents. The current approach is using a ResNet backbone and a feature pyramid head, which made pixel wise classifications. The models are built using the [detectron2][detectron_link] framework. The baselines and region classifications are then made available for further processing. This post-processing turn the classification into instances. So that they can be used by other programs (OCR/HTR), either as masks or directly as pageXML.
@@ -10,6 +13,8 @@ Laypa is a segmentation network, with the goal of finding regions (paragraph, pa
   - [Setup](#setup)
     - [Conda](#conda)
     - [Docker](#docker)
+      - [Download from dockerhub](#download-from-dockerhub)
+      - [Manual Installation](#manual-installation)
     - [Pretrained models](#pretrained-models)
   - [Dataset(s)](#datasets)
   - [Training](#training)
@@ -84,6 +89,10 @@ conda activate laypa
 ### Docker
 If not already installed, install the Docker Engine ([install instructions][docker_install_link]). The docker environment can most easily be build with the provided script.
 
+#### Download from dockerhub
+Laypa now has a release on dockerhub. Using the docker of `loghi/docker.laypa`, should pull the corresponding laypa docker directly from docker hub. If this fails from some reason it can be pulled manually from [here][dockerhub_link]. If it is outdated or requires differences to the source code, please try the [Manual Installation](#manual-installation).
+
+#### Manual Installation
 Copy the docker install scripts and Dockerfile(s) to a temporary directory. This is necessary due to the script having to copy the directory it is in. This is not allowed and thus a different external directory is used as build context.
 
 ```sh
@@ -178,8 +187,7 @@ docker image ls
 And checking if docker.laypa is present in the list of built images.
 
 ### Pretrained models
-<!-- TODO Add the pretrained models as a download -->
-Coming soon
+Some initial pretrained models can be found [here][pretrained_models_link].
 
 ## Dataset(s)
 
@@ -458,6 +466,8 @@ If you discover a bug or missing feature that you would like to help with please
 [mamba_install_link]: https://mamba.readthedocs.io/en/latest/installation.html
 [docker_install_link]: https://docs.docker.com/engine/install/
 [minikube_install_link]: https://minikube.sigs.k8s.io/docs/start/
+[dockerhub_link]: https://hub.docker.com/r/loghi/docker.laypa
+[pretrained_models_link]: https://surfdrive.surf.nl/files/index.php/s/YA8HJuukIUKznSP?path=%2Flaypa
 
 [cbad_link]: https://doi.org/10.5281/zenodo.2567397
 [voc_link]: https://doi.org/10.5281/zenodo.3517776

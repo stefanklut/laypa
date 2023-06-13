@@ -114,8 +114,6 @@ class GenPageXML(XMLRegions):
         
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
         
-        # REVIEW Double scaling seems bad but need an alternative
-        # old_width, old_height = imagesize.get(image_path)
         if old_height is None or old_width is None:
             old_height, old_width = mask.shape
         
@@ -182,6 +180,18 @@ class GenPageXML(XMLRegions):
         page.save_xml()
     
     def generate_single_page_wrapper(self, info):
+        """
+        Convert a single prediction into a page
+
+        Args:
+            info (tuple[np.ndarray | Path, Path]):
+                (tuple containing)
+                np.ndarray | Path: mask as array or path of mask
+                Path: original image 
+
+        Raises:
+            NotImplementedError: mode is not known
+        """
         mask, image_path = info
         if isinstance(mask, Path):
             mask = cv2.imread(str(mask), cv2.IMREAD_GRAYSCALE)
