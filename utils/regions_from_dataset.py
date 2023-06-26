@@ -62,8 +62,9 @@ def main(args):
         
     # Multithread
     with Pool(os.cpu_count()) as pool:
-        regions_per_page = list(tqdm(pool.imap_unordered(
-            count_regions_single_page, xml_paths), total=len(xml_paths)))
+        regions_per_page = list(tqdm(iterable=pool.imap_unordered(count_regions_single_page, xml_paths), 
+                                     total=len(xml_paths),
+                                     desc="Extracting Regions"))
     
     total_regions = sum(regions_per_page, Counter())
     

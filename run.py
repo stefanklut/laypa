@@ -287,7 +287,7 @@ class SavePredictor(Predictor):
         #     self.save_prediction(inputs)
         dataset = LoadingDataset(input_paths)
         dataloader = DataLoader(dataset, shuffle=False, batch_size=None, num_workers=16, pin_memory=False, collate_fn=None)
-        for inputs in tqdm(dataloader):
+        for inputs in tqdm(dataloader, desc="Predicting PageXML"):
             # self.logger.warning(inputs)
             self.save_prediction(inputs[0], input_paths[inputs[1]])
         

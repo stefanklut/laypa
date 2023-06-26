@@ -49,7 +49,9 @@ def main(args):
         
     #Multi Thread
     with Pool(os.cpu_count()) as pool:
-        _ = list(tqdm(pool.imap_unordered(replace_error, file_paths), total=len(file_paths)))
+        _ = list(tqdm(iterable=pool.imap_unordered(replace_error, file_paths), 
+                      total=len(file_paths),
+                      desc="Fixing Error"))
             
 if __name__ == "__main__":
     args = get_arguments()

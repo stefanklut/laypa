@@ -225,8 +225,9 @@ class GenPageXML(XMLRegions):
         
         # Multi thread
         with Pool(os.cpu_count()) as pool:
-            _ = list(tqdm(pool.imap_unordered(
-                self.generate_single_page_wrapper, list(zip(mask_list, image_path_list))), total=len(mask_list)))
+            _ = list(tqdm(iterable=pool.imap_unordered(self.generate_single_page_wrapper, list(zip(mask_list, image_path_list))), 
+                          total=len(mask_list),
+                          desc="Generating PageXML"))
 
 def main(args):
     # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread

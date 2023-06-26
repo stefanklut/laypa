@@ -165,8 +165,9 @@ class Viewer:
         
         # Multithread
         with Pool(os.cpu_count()) as pool:
-            _ = list(tqdm(pool.imap_unordered(
-                self.save_function, cleaned_xml_list), total=len(cleaned_xml_list)))
+            _ = list(tqdm(iterable=pool.imap_unordered(self.save_function, cleaned_xml_list), 
+                          total=len(cleaned_xml_list), 
+                          desc="Creating Images"))
         
 def main(args) -> None:
     cfg = setup_cfg(args)

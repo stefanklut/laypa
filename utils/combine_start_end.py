@@ -82,8 +82,9 @@ class CombineStartEnd():
         # Multithread   
         info_iter = list(zip(baseline_image_paths, start_image_paths, end_image_paths))
         with Pool(os.cpu_count()) as pool:
-            _ = list(tqdm(pool.imap_unordered(
-                self.combine_wrapper, info_iter), total=len(info_iter)))
+            _ = list(tqdm(iterable=pool.imap_unordered(self.combine_wrapper, info_iter), 
+                          total=len(info_iter),
+                          desc="Combining Start-End"))
 
 def main(args):
     """

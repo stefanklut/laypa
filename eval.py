@@ -10,6 +10,7 @@ from detectron2.data import DatasetCatalog, MetadataCatalog
 import matplotlib.pyplot as plt
 import cv2
 import numpy as np
+from tqdm import tqdm
 from core.preprocess import preprocess_datasets
 from core.setup import setup_cfg
 import torch
@@ -38,6 +39,7 @@ def get_arguments() -> argparse.Namespace:
     #                         nargs="+", action="extend", type=str, default=None)
     io_args.add_argument("-i", "--input", help="Input folder/file",
                             nargs="+", action="extend", type=str, default=None)
+    io_args.add_argument("-o", "--output", help="Output folder", type=str, required=True)
     
     tmp_args = parser.add_argument_group("tmp files")
     tmp_args.add_argument(
@@ -45,7 +47,6 @@ def get_arguments() -> argparse.Namespace:
     tmp_args.add_argument(
         "--keep_tmp_dir", action="store_true", help="Don't remove tmp dir after execution")
     
-    parser.add_argument("--eval_path", type=str, help="Save location for eval", default=None)
     parser.add_argument("--sorted", action="store_true", help="Sorted iteration")
     parser.add_argument("--save", nargs="?", const="all", default=None, help="Save images instead of displaying")
 
@@ -82,8 +83,8 @@ def main(args) -> None:
     Args:
         args (argparse.Namespace): arguments for where to find the images
     """
-    if args.save and not args.eval_path:
-        raise ValueError("Cannot run saving when there is not save location given (--eval_path)")
+    if args.save and not args.output:
+        raise ValueError("Cannot run saving when there is not save location given (--output)")
 
     # Setup config
     cfg = setup_cfg(args)
@@ -152,6 +153,9 @@ def main(args) -> None:
             fig_manager = plt.get_current_fig_manager()
             fig_manager.window.showMaximized()
         
+        if args.save:
+            pbar = tqdm(total=len(val_loader), desc="Saving")
+        
         # for i, inputs in enumerate(np.random.choice(val_loader, 3)):
         if args.sorted:
             loader = os_sorted(val_loader, key=lambda x: x["file_name"])
@@ -187,10 +191,12 @@ def main(args) -> None:
             axes[1].imshow(vis_gt)
             
             if args.save is not None:
+                # TODO Move saving to separate function
+                pbar.update(1)
                 if args.save not in ["all", "both", "pred", "gt"]:
                     raise ValueError(f"{args.save} is not a valid save mode")
                 
-                output_dir = Path(args.eval_path)
+                output_dir = Path(args.output)
                 if not output_dir.is_dir():
                     logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
                     output_dir.mkdir(parents=True)
@@ -236,22 +242,25 @@ def main(args) -> None:
             elif _keypress_result == "back":
                 # print(i+1, f"{inputs['original_file_name']}: DELETE")
                 i -= 1
+    
+        if args.save:
+            pbar.close()
                 
-    if args.eval_path and (delete_results.any() or bad_results.any()):
-        output_dir = Path(args.eval_path)
+    if args.output and (delete_results.any() or bad_results.any()):
+        output_dir = Path(args.output)
         if not output_dir.is_dir():
             logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
             output_dir.mkdir(parents=True)
         if delete_results.any():
-            eval_path_delete = output_dir.joinpath("delete.txt")
-            with eval_path_delete.open(mode="w") as f:
+            output_delete = output_dir.joinpath("delete.txt")
+            with output_delete.open(mode="w") as f:
                 for i in delete_results.nonzero()[0]:
                     path = Path(loader[i]["original_file_name"])
                     line = path.relative_to(output_dir) if path.is_relative_to(output_dir) else path.resolve()
                     f.write(f"{line}\n")
         if bad_results.any():
-            eval_path_bad = output_dir.joinpath("bad.txt")
-            with eval_path_bad.open(mode="w") as f:
+            output_bad = output_dir.joinpath("bad.txt")
+            with output_bad.open(mode="w") as f:
                 for i in bad_results.nonzero()[0]:
                     path = Path(loader[i]["original_file_name"])
                     line = path.relative_to(output_dir) if path.is_relative_to(output_dir) else path.resolve()
@@ -259,8 +268,8 @@ def main(args) -> None:
             
         remaining_results = np.logical_not(np.logical_or(bad_results, delete_results))
         if remaining_results.any():
-            eval_path_remaining = output_dir.joinpath("correct.txt")
-            with eval_path_remaining.open(mode="w") as f:
+            output_remaining = output_dir.joinpath("correct.txt")
+            with output_remaining.open(mode="w") as f:
                 for i in remaining_results.nonzero()[0]:
                     path = Path(loader[i]["original_file_name"])
                     line = path.relative_to(output_dir) if path.is_relative_to(output_dir) else path.resolve()

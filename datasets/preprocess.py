@@ -544,8 +544,9 @@ class Preprocess:
 
         # Multithread
         with Pool(os.cpu_count()) as pool:
-            results = list(tqdm(pool.imap_unordered(
-                self.process_single_file, image_paths), total=len(image_paths)))
+            results = list(tqdm(iterable=pool.imap_unordered(self.process_single_file, image_paths), 
+                                total=len(image_paths), 
+                                desc="Preprocessing Images"))
 
         # Assuming all key are the same make one dict
         results = {"data": list_of_dict_to_dict_of_list(results),
