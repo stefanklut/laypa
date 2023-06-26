@@ -546,7 +546,7 @@ class Preprocess:
         with Pool(os.cpu_count()) as pool:
             results = list(tqdm(iterable=pool.imap_unordered(self.process_single_file, image_paths), 
                                 total=len(image_paths), 
-                                desc="Preprocessing Images"))
+                                desc="Preprocessing"))
 
         # Assuming all key are the same make one dict
         results = {"data": list_of_dict_to_dict_of_list(results),
