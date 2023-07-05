@@ -122,12 +122,12 @@ if !(docker -v &> /dev/null); then
     exit 1
 fi
 
-if !(docker image inspect docker.loghi-tooling:latest &> /dev/null); then
+if !(docker image inspect loghi/docker.loghi-tooling:latest &> /dev/null); then
     echo "Loghi tooling is not installed please follow https://github.com/MMaas3/dockerize-images to install"
     exit 1
 fi
 
-if !(docker image inspect docker.laypa:latest &> /dev/null); then
+if !(docker image inspect loghi/docker.laypa:latest &> /dev/null); then
     echo "Laypa is not installed please follow https://github.com/MMaas3/dockerize-images to install"
     exit 1
 fi
@@ -158,7 +158,7 @@ if [[ $GPU -gt -1 ]]; then
         echo "using GPU ${GPU}"
 fi
 
-docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir docker.laypa:latest \
+docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir loghi/docker.laypa:latest \
     python run.py \
     -c configs/segmentation/baseline/baseline_dataset_imagenet_freeze.yaml \
     -i $input_dir \
@@ -171,7 +171,7 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir docker.laypa:latest \
+docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir loghi/docker.laypa:latest \
     python run.py \
     -c configs/segmentation/region/region_dataset_imagenet_freeze.yaml \
     -i $input_dir \
@@ -184,7 +184,7 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-docker run --rm -v $output_dir:$output_dir docker.loghi-tooling /src/loghi-tooling/minions/target/appassembler/bin/MinionExtractBaselines \
+docker run --rm -v $output_dir:$output_dir loghi/docker.loghi-tooling:latest /src/loghi-tooling/minions/target/appassembler/bin/MinionExtractBaselines \
     -input_path_png $output_dir/page/ \
     -input_path_page $output_dir/page/ \
     -output_path_page $output_dir/page/

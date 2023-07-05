@@ -141,7 +141,7 @@ cd ..
 
 Build the docker using docker build:
 ```sh
-docker build --no-cache . -t docker.laypa
+docker build --no-cache . -t loghi/docker.laypa
 ```
 
 </details>
@@ -157,9 +157,9 @@ If the docker images have already been built the minikube can run them straight 
 minikube start
 ```
 
-Afterwards the docker for Laypa can be added to the running minikube instance using the following command (assuming the Laypa docker was built under the name docker.laypa):
+Afterwards the docker for Laypa can be added to the running minikube instance using the following command (assuming the Laypa docker was built under the name loghi/docker.laypa):
 ```sh
-minikube image load docker.laypa
+minikube image load loghi/docker.laypa
 ```
 
 It is also possible to build the Laypa docker using the minikube docker instance. This means minikube will need access to the Laypa code. As it stand, this is current still done using a copy command from the local storage. In order to do so start the minikube with the mount argument:
@@ -180,11 +180,11 @@ And follow the instructions for install a docker version of Laypa as described [
 
 </details>
 
-When successful the docker image should be available under the name `docker.laypa`. This can be verified using the following command:
+When successful the docker image should be available under the name `loghi/docker.laypa`. This can be verified using the following command:
 ```sh
 docker image ls
 ```
-And checking if docker.laypa is present in the list of built images.
+And checking if loghi/docker.laypa is present in the list of built images.
 
 ### Pretrained models
 Some initial pretrained models can be found [here][pretrained_models_link].

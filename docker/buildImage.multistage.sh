@@ -106,7 +106,7 @@ if [[ ! -d $LAYPA ]]; then
     exit 1
 fi
 
-docker rmi docker.laypa
+docker rmi loghi/docker.laypa
 
 echo "Change to directory of script..."
 DIR_OF_SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
@@ -121,8 +121,8 @@ git checkout main
 cd ..
 
 echo "Building docker image..."
-# docker build --squash --no-cache . -t docker.laypa
-docker build --no-cache . -t docker.laypa -f Dockerfile.multistage
+# docker build --squash --no-cache . -t loghi/docker.laypa
+docker build --no-cache . -t loghi/docker.laypa -f Dockerfile.multistage
 
 rm -rf laypa.multistage
 docker system prune -f
