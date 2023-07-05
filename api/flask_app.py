@@ -15,10 +15,9 @@ from prometheus_client import generate_latest, Counter, Gauge
 
 from concurrent.futures import ThreadPoolExecutor
 
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.image_utils import load_image_from_bytes
 from utils.logging_utils import get_logger_name
-
-sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from main import setup_cfg, setup_logging
 from page_xml.generate_pageXML import GenPageXML
 from run import Predictor

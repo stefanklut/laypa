@@ -6,4 +6,4 @@ if [[ $( builtin cd "$( dirname ${BASH_SOURCE[0]} )/.."; pwd ) != $( pwd ) ]]; t
     cd $DIR_OF_SCRIPT
 fi
 
-FLASK_DEBUG=true FLASK_APP=api.app.py flask run
+FLASK_DEBUG=true FLASK_APP=api.flask_app.py flask run

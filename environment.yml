@@ -22,6 +22,7 @@ dependencies:
   - prometheus_client
   - imagesize
   - timm
+  - gunicorn
   - pip:
     - natsort
     - distinctipy
