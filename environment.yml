@@ -8,11 +8,12 @@ dependencies:
   - python=3
   - numpy<1.24 # For int problem with detectron2 (https://github.com/facebookresearch/detectron2/pull/4975)
   - llvm-openmp<16 # For CPU affinity pytorch issues (https://github.com/pytorch/pytorch/issues/102269)
-  - pytorch
-  - torchvision
   - pytorch-cuda=11.7
   - cudatoolkit=11.7
   - cudatoolkit-dev
+  # - pytorch==2.0.0 # For dependency issue of pytorch https://github.com/pytorch/pytorch/issues/100974
+  - pytorch
+  - torchvision
   - opencv
   - matplotlib
   - scipy
