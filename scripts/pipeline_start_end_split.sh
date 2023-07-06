@@ -163,7 +163,7 @@ fi
 
 docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_dir:$tmp_dir loghi/docker.laypa:latest \
     python run.py \
-    -c configs/segmentation/baseline/baseline_dataset_imagenet_freeze.yaml \
+    -c configs/segmentation/baseline/baseline_dataset.yaml \
     -i $input_dir \
     -o $tmp_dir/baseline \
     --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/baseline_model_best_mIoU.pth
@@ -176,7 +176,7 @@ fi
 
 docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_dir:$tmp_dir loghi/docker.laypa:latest \
     python run.py \
-    -c configs/segmentation/start/start_dataset_imagenet_freeze.yaml \
+    -c configs/segmentation/start/start_dataset.yaml \
     -i $input_dir \
     -o $tmp_dir/start \
     --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/start_model_best_mIoU.pth
@@ -189,7 +189,7 @@ fi
 
 docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_dir:$tmp_dir loghi/docker.laypa:latest \
     python run.py \
-    -c configs/segmentation/end/end_dataset_imagenet_freeze.yaml \
+    -c configs/segmentation/end/end_dataset.yaml \
     -i $input_dir \
     -o $tmp_dir/end \
     --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/end_model_best_mIoU.pth

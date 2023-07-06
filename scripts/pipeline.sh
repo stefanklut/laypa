@@ -163,7 +163,7 @@ fi
 
 docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir loghi/docker.laypa:latest \
     python run.py \
-    -c configs/segmentation/baseline/baseline_dataset_imagenet_freeze.yaml \
+    -c configs/segmentation/baseline/baseline_dataset.yaml \
     -i $input_dir \
     -o $output_dir \
     --opts MODEL.WEIGHTS "" TEST.WEIGHTS pretrained_models/baseline_model_best_mIoU.pth
