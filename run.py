@@ -261,8 +261,9 @@ class SavePredictor(Predictor):
             return
         
         outputs = self.gpu_call(image)
-            
-        output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
+        
+        output_image = outputs[0]["sem_seg"]
+        # output_image = torch.argmax(output_image, dim=-3).cpu().numpy()
         
         self.gen_page.link_image(input_path)
         self.gen_page.generate_single_page(output_image, input_path, old_height=outputs[1], old_width=outputs[2])

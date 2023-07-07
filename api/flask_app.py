@@ -109,7 +109,10 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str):
             output_path.parent.mkdir()
         
         outputs = predict_gen_page_wrapper.predictor(image)
-        output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
+        
+        output_image = outputs[0]["sem_seg"]
+        # output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
+        
         predict_gen_page_wrapper.gen_page.generate_single_page(output_image, output_path, old_height=outputs[1], old_width=outputs[2])
         images_processed_counter.inc()
         return input_args

@@ -8,6 +8,7 @@ from typing import Optional
 import numpy as np
 from pathlib import Path
 import uuid
+import torch
 
 from tqdm import tqdm
 import cv2
@@ -94,7 +95,7 @@ class GenPageXML(XMLRegions):
         
         copy_mode(image_path, image_output_path, mode="symlink")
     
-    def generate_single_page(self, mask: np.ndarray, image_path: Path, old_height: Optional[int] = None, old_width: Optional[int] = None):
+    def generate_single_page(self, mask: torch.Tensor, image_path: Path, old_height: Optional[int] = None, old_width: Optional[int] = None):
         """
         Convert a single prediction into a page
 
@@ -115,9 +116,9 @@ class GenPageXML(XMLRegions):
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
         
         if old_height is None or old_width is None:
-            old_height, old_width = mask.shape
+            old_height, old_width = mask.shape[-2:]
         
-        height, width = mask.shape
+        height, width = mask.shape[-2:]
         
         scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
         # scaling = np.asarray((1,1))
@@ -126,6 +127,8 @@ class GenPageXML(XMLRegions):
         page.new_page(image_path.name, str(old_height), str(old_width))
         
         if self.mode == 'region':
+            mask = torch.argmax(mask, dim=-3).cpu().numpy()
+            
             region_id = 0
             
             for i, region in enumerate(self.regions):
@@ -168,10 +171,18 @@ class GenPageXML(XMLRegions):
         elif self.mode in ['baseline', 'start', 'end', "separator"]:
             # Push the calculation to outside of the python code <- mask is used by minion
             mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
+            mask = torch.nn.functional.interpolate(
+                mask[None], size=(old_height,old_width), mode="bilinear", align_corners=False
+            )[0]
+            mask = torch.argmax(mask, dim=-3).cpu().numpy()
             with AtomicFileName(file_path=mask_output_path) as path:
                 save_image_to_path(str(path), (mask * 255).astype(np.uint8))
         elif self.mode in ["baseline_separator"]:
             mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
+            mask = torch.nn.functional.interpolate(
+                mask[None], size=(old_height,old_width), mode="bilinear", align_corners=False
+            )[0]
+            mask = torch.argmax(mask, dim=-3).cpu().numpy()
             with AtomicFileName(file_path=mask_output_path) as path:
                 save_image_to_path(str(path), (mask * 128).clip(0,255).astype(np.uint8))
         else:
