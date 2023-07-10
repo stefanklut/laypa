@@ -158,7 +158,7 @@ if [[ $GPU -gt -1 ]]; then
         echo "using GPU ${GPU}"
 fi
 
-docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir loghi/docker.laypa:latest \
+echo docker run $DOCKERGPUPARAMS --shm-size 8G --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir loghi/docker.laypa:latest \
     python run.py \
     -c configs/segmentation/baseline/baseline_dataset.yaml \
     -i $input_dir \
@@ -171,7 +171,7 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-docker run $DOCKERGPUPARAMS --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir loghi/docker.laypa:latest \
+docker run $DOCKERGPUPARAMS --shm-size 8G --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir loghi/docker.laypa:latest \
     python run.py \
     -c configs/segmentation/region/region_dataset.yaml \
     -i $input_dir \
