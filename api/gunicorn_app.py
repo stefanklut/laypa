@@ -7,9 +7,16 @@ class GunicornApp(BaseApplication):
         self.application = app
         super().__init__()
         
+    def load_config(self):
+        for key, value in self.options.items():
+            self.cfg.set(key, value)
+        
+    def load(self):
+        return self.application
+        
 if __name__ == "__main__":
     options = {
-        'bind': '0.0.0.0:8000',
+        'bind': '0.0.0.0:5000',
         'workers': 1,
         'threads': 1,
     }
