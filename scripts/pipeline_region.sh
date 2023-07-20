@@ -184,14 +184,14 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
-docker run --rm -v $output_dir:$output_dir loghi/docker.loghi-tooling:latest /src/loghi-tooling/minions/target/appassembler/bin/MinionExtractBaselines \
-    -input_path_png $output_dir/page/ \
-    -input_path_page $output_dir/page/ \
-    -output_path_page $output_dir/page/
+# docker run --rm -v $output_dir:$output_dir loghi/docker.loghi-tooling:latest /src/loghi-tooling/minions/target/appassembler/bin/MinionExtractBaselines \
+#     -input_path_png $output_dir/page/ \
+#     -input_path_page $output_dir/page/ \
+#     -output_path_page $output_dir/page/
 
-if [[ $? -ne 0 ]]; then
-    echo "Extract baselines has errored, stopping program"
-    exit 1
-fi
+# if [[ $? -ne 0 ]]; then
+#     echo "Extract baselines has errored, stopping program"
+#     exit 1
+# fi
 
 # ] <-- needed because of Argbash

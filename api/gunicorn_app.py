@@ -1,3 +1,4 @@
+import os
 from gunicorn.app.base import BaseApplication
 from flask_app import app
 
@@ -15,11 +16,19 @@ class GunicornApp(BaseApplication):
         return self.application
         
 if __name__ == "__main__":
+    try:
+        bind = os.environ["GUNICORN_RUN_HOST"]
+        workers = os.environ["GUNICORN_WORKERS"]
+        threads = os.environ["GUNICORN_THREADS"]
+        accesslog = os.environ["GUNICORN_ACCESSLOG"]
+    except KeyError as error:
+        raise KeyError(f"Missing Gunicorn Environment variable: {error.args[0]}")
+    
     options = {
-        'bind': '0.0.0.0:5000',
-        'workers': 1,
-        'threads': 1,
-        'accesslog': '-',
+        'bind': bind,
+        'workers': workers,
+        'threads': threads,
+        'accesslog': accesslog,
     }
     
     gunicorn_app = GunicornApp(app, options)
