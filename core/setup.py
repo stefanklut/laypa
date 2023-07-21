@@ -3,6 +3,7 @@ import os
 from typing import Optional, Sequence
 from datetime import datetime
 from pathlib import Path
+import uuid
 
 import torch
 
@@ -50,6 +51,9 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     now = datetime.now()
     formatted_datetime = f"{now:%Y-%m-%d_%H-%M-%S}"
     cfg.SETUP_TIME = formatted_datetime
+    
+    _uuid = uuid.uuid4()
+    cfg.LAYPA_UUID = str(_uuid)
     
     cfg.CONFIG_PATH = str(Path(args.config).resolve())
     

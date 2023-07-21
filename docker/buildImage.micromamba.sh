@@ -119,6 +119,7 @@ cp -r -T $LAYPA/ laypa.micromamba
 # Checkout to make sure you are not on dev branch
 cd laypa.micromamba
 git checkout main
+# git checkout dev
 cd ..
 
 echo "Building docker image..."

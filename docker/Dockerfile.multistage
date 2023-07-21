@@ -26,8 +26,8 @@ RUN mamba env create -p /env -f environment.yml && \
     mamba clean -y --all
 
 # Removing the nsight-compute folder, hope it does nothing for runtime
-RUN rm -r /env/nsight-compute
-RUN rm -r /env/nsightee_plugins
+# RUN rm -r /env/nsight-compute
+# RUN rm -r /env/nsightee_plugins
 
 ENV PATH /env/bin:$PATH
 ENV CONDA_DEFAULT_ENV /env
@@ -51,6 +51,8 @@ COPY --from=builder /src/laypa /src/laypa
 ENV PATH /env/bin/:$PATH
 ENV CONDA_DEFAULT_ENV /env
 ENV ENV_NAME=/env
+
+RUN chmod go+rx /env/pkgs/cuda-toolkit/
 
 WORKDIR /src/laypa
 COPY _entrypoint.sh /_entrypoint.sh

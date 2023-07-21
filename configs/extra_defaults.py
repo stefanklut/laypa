@@ -10,6 +10,7 @@ _C.VALIDATION_PATHS = []
 
 _C.RUN_DIR = True
 _C.NAME = ""
+_C.LAYPA_UUID = ""
 _C.SETUP_TIME = ""
 
 

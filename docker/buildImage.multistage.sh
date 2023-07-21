@@ -118,6 +118,7 @@ cp -r -T $LAYPA/ laypa.multistage
 # Checkout to make sure you are not on dev branch
 cd laypa.multistage
 git checkout main
+# git checkout dev
 cd ..
 
 echo "Building docker image..."

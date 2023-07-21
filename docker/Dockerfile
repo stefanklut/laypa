@@ -26,13 +26,11 @@ RUN mamba env create -f environment.yml && \
     mamba clean -y --all
 
 SHELL ["conda", "run", "-n", "laypa", "/bin/bash", "-c"]
-RUN echo "conda activate laypa" >> ~/.bashrc
 ENV PATH /opt/conda/envs/laypa/bin:$PATH
 ENV CONDA_DEFAULT_ENV laypa
 ENV ENV_NAME=laypa
+RUN chmod go+rx /opt/conda/envs/laypa/pkgs/cuda-toolkit/
 
 ENTRYPOINT ["/usr/local/bin/_entrypoint.sh"]
 CMD ["/bin/bash"]
 # ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "laypa", "/bin/bash", "-c"]
-
-USER 1000

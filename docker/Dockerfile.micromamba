@@ -7,7 +7,7 @@ RUN apt-get update -y && \
     apt-get dist-upgrade -y && \
     apt-get clean -y && \
     apt-get install -y \
-        apt-utils git \
+        apt-utils git wget \
         ninja-build gcc g++ \
         ffmpeg libsm6 libxext6 && \
         apt-get autoremove && \
@@ -28,6 +28,7 @@ RUN micromamba create -y -n laypa -f environment.yml && \
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 ENV ENV_NAME=laypa
 
+RUN chmod go+rx /opt/conda/envs/laypa/pkgs/cuda-toolkit/
 
 # RUN conda install -y mamba -n base -c conda-forge
 # RUN mamba update -y --all
