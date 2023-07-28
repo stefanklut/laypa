@@ -55,8 +55,12 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     
     _uuid = uuid.uuid4()
     cfg.LAYPA_UUID = str(_uuid)
-    
-    git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent).strip().decode()
+
+    if os.path.exists("version_info"):
+        with open("version_info") as file:
+            git_hash = file.read()
+    else:
+        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent).strip().decode()
     cfg.LAYPA_GIT_HASH = git_hash
     
     cfg.CONFIG_PATH = str(Path(args.config).resolve())
