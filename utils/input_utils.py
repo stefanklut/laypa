@@ -74,7 +74,7 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path], formats: Sequen
     
     for input_path in input_paths:
         if not input_path.exists():
-            raise FileNotFoundError(f"Input dir/file ({input}) is not found")
+            raise FileNotFoundError(f"Input dir/file ({input_path}) is not found")
         
         if not os.access(path=input_path, mode=os.R_OK):
             raise PermissionError(
@@ -86,7 +86,7 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path], formats: Sequen
             
             if not disable_check:
                 if len(sub_output_paths) == 0:
-                    raise FileNotFoundError(f"No files found in the provided dir(s)/file(s)")
+                    raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
                 
         elif input_path.is_file() and input_path.suffix == ".txt":
             with input_path.open(mode="r") as f:
@@ -94,7 +94,7 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path], formats: Sequen
             sub_output_paths = [path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file if path.suffix in formats]
             
             if len(sub_output_paths) == 0:
-                    raise FileNotFoundError(f"No files found in the provided dir(s)/file(s)")
+                    raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
             
             if not disable_check:
                 for path in sub_output_paths:
