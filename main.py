@@ -116,7 +116,6 @@ def setup_training(args):
     
         trainer = Trainer(cfg=cfg)
         if not cfg.TRAIN.WEIGHTS:
-            sys.exit()
             trainer.resume_or_load(resume=cfg.MODEL.RESUME)
         else:
             trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
