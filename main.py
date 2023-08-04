@@ -36,7 +36,7 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args.add_argument(
         "-c", "--config", help="config file", required=True)
     detectron2_args.add_argument(
-        "--opts", nargs="+", help="optional args to change", default=[])
+        "--opts", nargs="+", action="extend", help="optional args to change", default=[])
 
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-t", "--train", help="Train input folder/file",
@@ -116,6 +116,7 @@ def setup_training(args):
     
         trainer = Trainer(cfg=cfg)
         if not cfg.TRAIN.WEIGHTS:
+            sys.exit()
             trainer.resume_or_load(resume=cfg.MODEL.RESUME)
         else:
             trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
