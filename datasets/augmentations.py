@@ -69,6 +69,31 @@ class RandomApply(T.RandomApply):
 
     __str__ = __repr__
     
+class ResizePercentage(T.Augmentation):
+    def __init__(self, percentage: float) -> None:
+        super().__init__()
+        self.percentage = percentage
+        assert 0 < self.percentage <= 1, "percentage must be in range (0,1]"
+    
+    @staticmethod
+    def get_output_shape(old_height: int, old_width: int, scale) -> tuple[int, int]:
+        height, width = scale * old_height, scale * old_width
+
+        height = int(height + 0.5)
+        width = int(width + 0.5)
+        return (height, width)
+    
+    def get_transform(self, image: np.ndarray) -> T.Transform:
+        if self.percentage == 1:
+            return T.NoOpTransform()
+        old_height, old_width, channels = image.shape
+        
+        height, width = self.get_output_shape(
+            old_height, old_width, self.percentage)
+        if (old_height, old_width) == (height, width):
+            return T.NoOpTransform()
+
+        return ResizeTransform(old_height, old_width, height, width)
 
 class ResizeShortestEdge(T.Augmentation):
     """
@@ -142,6 +167,7 @@ class ResizeShortestEdge(T.Augmentation):
 
         height, width = self.get_output_shape(
             old_height, old_width, edge_length, self.max_size)
+        
         if (old_height, old_width) == (height, width):
             return T.NoOpTransform()
 
@@ -647,6 +673,7 @@ def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.
     Returns:
         list[T.Augmentation | T.Transform]: list of augmentations to apply to an image
     """
+    augmentation: list[T.Augmentation | T.Transform] = []
     if is_train:
         min_size = cfg.INPUT.MIN_SIZE_TRAIN
         max_size = cfg.INPUT.MAX_SIZE_TRAIN
@@ -655,8 +682,8 @@ def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.
         min_size = cfg.INPUT.MIN_SIZE_TEST
         max_size = cfg.INPUT.MAX_SIZE_TEST
         sample_style = "choice"
-    augmentation: list[T.Augmentation | T.Transform] = [
-        ResizeShortestEdge(min_size, max_size, sample_style)]
+    # augmentation.append(ResizeShortestEdge(min_size, max_size, sample_style))
+    augmentation.append(ResizePercentage(0.25))
 
     if not is_train:
         return augmentation
