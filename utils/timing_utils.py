@@ -23,18 +23,12 @@ class ContextTimer(contextlib.ContextDecorator):
             return self
     
     def __init__(self, label: Optional[str]=None) -> None:
-        # super().__init__()
         self.label = label
         if self.label is None:
             frame = sys._getframe(1)
             while frame:
                 code = frame.f_code
                 if os.path.join("utils", "timing_utils") not in code.co_filename:
-                    mod_name = frame.f_globals["__name__"]
-                    if mod_name == "__main__":
-                        mod_name = "laypa"
-                    else:
-                        mod_name = "laypa." + mod_name
                     break
                 frame = frame.f_back
             filename = frame.f_globals["__file__"]
