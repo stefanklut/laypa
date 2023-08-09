@@ -13,9 +13,9 @@ import imagesize
 import numpy as np
 from multiprocessing.pool import Pool
 # from multiprocessing.pool import ThreadPool as Pool
-from utils.image_utils import save_image_to_path, load_image_from_path
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from utils.image_utils import save_image_to_path, load_image_from_path
 from utils.logging_utils import get_logger_name
 from page_xml.xml_converter import XMLConverter
 from utils.input_utils import clean_input_paths, get_file_paths
@@ -357,12 +357,9 @@ class Preprocess:
             out_image_shape = imagesize.get(out_image_path)[::-1]
             if out_image_shape != image_shape:
                 _save_image_helper()
-            else:
-                # Skipped
-                pass
         
         return str(out_image_path.relative_to(self.output_dir))
-            
+    
     def save_mask(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int,int]):
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
@@ -385,18 +382,16 @@ class Preprocess:
             out_mask_shape = imagesize.get(out_mask_path)[::-1]
             if out_mask_shape != image_shape:
                 _save_mask_helper()
-            else:
-                # Skipped
-                pass
         
         return str(out_mask_path.relative_to(self.output_dir))
-            
+    
     def save_instances(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         instances_dir = self.output_dir.joinpath("instances")
         instances_dir.mkdir(parents=True, exist_ok=True) 
         out_instances_path = instances_dir.joinpath(image_stem + ".json")
+        out_instances_size_path = instances_dir.joinpath(image_stem + ".txt")
         
         def _save_instances_helper():
             """
@@ -407,21 +402,20 @@ class Preprocess:
                               "annotations": instances}
             with open(out_instances_path, 'w') as f:
                 json.dump(json_instances, f)
+            with open(out_instances_size_path, 'w') as f:
+                f.write(f"{image_shape[0]},{image_shape[1]}")
                 
         # Check if image already exist and if it doesn't need resizing
-        if self.overwrite or not out_instances_path.exists():
+        if self.overwrite or not out_instances_path.exists() or not out_instances_size_path.exists():
             _save_instances_helper()
         else:
-            with open(out_instances_path, 'r') as f:
-                out_mask_shape = json.load(f)["image_size"]
-            if out_mask_shape != image_shape:
+            with open(out_instances_size_path, 'r') as f:
+                out_intstances_shape = tuple(int(x) for x in f.read().strip().split(','))
+            if out_intstances_shape != image_shape:
                 _save_instances_helper()
-            else:
-                # Skipped
-                pass
             
         return str(out_instances_path.relative_to(self.output_dir))
-
+    
     def save_panos(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
@@ -450,9 +444,6 @@ class Preprocess:
             out_mask_shape = imagesize.get(out_pano_path)[::-1]
             if out_mask_shape != image_shape:
                 _save_panos_helper()
-            else:
-                # Skipped
-                pass
         
         return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
 
@@ -539,8 +530,9 @@ class Preprocess:
             self.check_paths_exists(xml_paths)
 
         # Single thread
-        # for image_path in tqdm(image_paths):
-        #     self.process_single_file(image_path)
+        # results = []
+        # for image_path in tqdm(image_paths, desc="Preprocessing"):
+        #     results.append(self.process_single_file(image_path))
 
         # Multithread
         with Pool(os.cpu_count()) as pool:
