@@ -16,6 +16,7 @@ from multiprocessing.pool import Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.image_utils import save_image_to_path, load_image_from_path
+from utils.copy_utils import copy_mode
 from utils.logging_utils import get_logger_name
 from page_xml.xml_converter import XMLConverter
 from utils.input_utils import clean_input_paths, get_file_paths
@@ -334,22 +335,27 @@ class Preprocess:
             raise TypeError("Cannot run when the output dir is None")
         image_dir = self.output_dir.joinpath("original")
         image_dir.mkdir(parents=True, exist_ok=True) 
-        out_image_path = image_dir.joinpath(image_stem + ".png")
+        if self.resize:
+            out_image_path = image_dir.joinpath(image_stem + ".png")
+        else:
+            out_image_path = image_dir.joinpath(image_path.name)
         
         def _save_image_helper():
             """
             Quick helper function for opening->resizing->saving
             """
-            image = load_image_from_path(image_path)
             
-            if image is None:
-                raise TypeError(f"Image {image_path} is None, loading failed")
-
             if self.resize:
+                image = load_image_from_path(image_path)
+            
+                if image is None:
+                    raise TypeError(f"Image {image_path} is None, loading failed")
                 image = self.resize_image(image, image_shape=image_shape)
-            #REVIEW This can maybe also be replaced with copying/linking the original image, if no resize
-            save_image_to_path(out_image_path, image)
+                save_image_to_path(out_image_path, image)
+            else:
+                copy_mode(image_path, out_image_path, mode="symlink")
         
+        #TODO Maybe replace with guard clauses
         # Check if image already exist and if it doesn't need resizing
         if self.overwrite or not out_image_path.exists():
             _save_image_helper()
