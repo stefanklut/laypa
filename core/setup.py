@@ -5,6 +5,7 @@ from typing import Optional, Sequence
 from datetime import datetime
 from pathlib import Path
 import uuid
+import warnings
 
 import torch
 
@@ -104,6 +105,12 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
             cfg.MODEL.DEVICE = 'cuda'
         else:
             cfg.MODEL.DEVICE = 'cpu'
+            
+    # Deprication warnings
+    if cfg.PREPROCESS.RESIZE.USE:
+        warnings.warn("PREPROCESS.RESIZE.USE is losing support please switch to PREPROCESS.RESIZE.RESIZE_MODE", DeprecationWarning)
+        cfg.PREPROCESS.RESIZE.RESIZE_MODE = "shortest_edge"
+        
 
     cfg.freeze()
     return cfg

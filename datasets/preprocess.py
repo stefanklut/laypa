@@ -12,6 +12,7 @@ import imagesize
 
 import numpy as np
 from multiprocessing.pool import Pool
+from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
 # from multiprocessing.pool import ThreadPool as Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
@@ -40,8 +41,9 @@ class Preprocess:
     """
     def __init__(self, input_paths=None,
                  output_dir=None,
-                 resize=False,
-                 resize_mode="choice",
+                 resize_mode="none",
+                 resize_sampling="choice",
+                 scaling=0.5,
                  min_size=[1024],
                  max_size=2048,
                  xml_converter=None,
@@ -54,8 +56,8 @@ class Preprocess:
         Args:
             input_paths (Sequence[Path], optional): the used input dir/files to generate the dataset. Defaults to None.
             output_dir (Path, optional): the destination dir of the generated dataset. Defaults to None.
-            resize (bool, optional): resize images before saving. Defaults to False.
-            resize_mode (str, optional): sample type used when resizing. Defaults to "choice".
+            resize_mode (str, optional): resize images before saving. Defaults to none.
+            resize_sampling (str, optional): sample type used when resizing. Defaults to "choice".
             min_size (list, optional): when resizing, the length the shortest edge is resized to. Defaults to [1024].
             max_size (int, optional): when resizing, the max length a side may have. Defaults to 2048.
             xml_to_image (XMLImage, optional): Class for turning pageXML to an image format. Defaults to None.
@@ -99,16 +101,17 @@ class Preprocess:
                               ".hdr", ".pic"]
         
         self.logger = logging.getLogger(get_logger_name())
-
-        self.resize = resize
+        
         self.resize_mode = resize_mode
+        self.scaling = scaling
+        self.resize_sampling = resize_sampling
         self.min_size = min_size
         self.max_size = max_size
 
-        if self.resize_mode == "choice":
+        if self.resize_sampling == "choice":
             if len(self.min_size) < 1:
                 raise ValueError("Must specify at least one choice when using the choice option.")
-        elif self.resize_mode == "range":
+        elif self.resize_sampling == "range":
             if len(self.min_size) != 2:
                 raise ValueError("Must have two int to set the range")
         else:
@@ -131,7 +134,7 @@ class Preprocess:
             help="Resize input images"
         )
         pre_process_args.add_argument(
-            "--resize_mode", 
+            "--resize_sampling", 
             default="choice",
             choices=["range", "choice"],
             type=str, 
@@ -261,7 +264,7 @@ class Preprocess:
 
         return res_image
 
-    def sample_short_edge_length(self):
+    def sample_edge_length(self):
         """
         Samples the shortest edge for resizing
 
@@ -271,10 +274,10 @@ class Preprocess:
         Returns:
             int: shortest edge length
         """
-        if self.resize_mode == "range":
+        if self.resize_sampling == "range":
             short_edge_length = np.random.randint(
                 self.min_size[0], self.min_size[1] + 1)
-        elif self.resize_mode == "choice":
+        elif self.resize_sampling == "choice":
             short_edge_length = np.random.choice(self.min_size)
         else:
             raise NotImplementedError(
@@ -282,27 +285,28 @@ class Preprocess:
         
         return short_edge_length
     
-    @staticmethod
-    def get_output_shape(old_height: int, old_width: int, short_edge_length: int, max_size: int) -> tuple[int, int]:
+    def get_output_shape(self, old_height, old_width) -> tuple[int, int]:
         """
         Compute the output size given input size and target short edge length.
 
         Returns:
             tuple[int, int]: height and width
         """
-        scale = float(short_edge_length) / min(old_height, old_width)
-        if old_height < old_width:
-            height, width = short_edge_length, scale * old_width
+        if self.resize_mode == "none":
+            return old_height, old_width
+        elif self.resize_mode in ["shortest_edge", "longest_edge"]:
+            edge_length = self.sample_edge_length()
+            if edge_length == 0:
+                return old_height, old_width
+            if self.resize_mode == "shortest_edge":
+                return ResizeShortestEdge.get_output_shape(old_height, old_width, edge_length, self.max_size)
+            else:
+                return ResizeLongestEdge.get_output_shape(old_height, old_width, edge_length, self.max_size)
+        elif self.resize_mode == "scaling":
+            return ResizeScaling.get_output_shape(old_height, old_width, self.scaling)
         else:
-            height, width = scale * old_height, short_edge_length
-        if max(height, width) > max_size:
-            scale = max_size * 1.0 / max(height, width)
-            height = height * scale
-            width = width * scale
-
-        height = int(height + 0.5)
-        width = int(width + 0.5)
-        return (height, width)
+            raise NotImplementedError(f"{self.resize_mode} is not a known resize mode")
+        
     
     def resize_image(self, image: np.ndarray, image_shape: Optional[tuple[int, int]] = None) -> np.ndarray:
         """
@@ -320,11 +324,7 @@ class Preprocess:
         if image_shape is not None:
             height, width = image_shape
         else:
-            short_edge_length = self.sample_short_edge_length()
-            if short_edge_length == 0:
-                return image
-            height, width = self.get_output_shape(
-                old_height, old_width, short_edge_length, self.max_size)
+            height, width = self.get_output_shape(old_height, old_width)
 
         resized_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)
 
@@ -335,7 +335,7 @@ class Preprocess:
             raise TypeError("Cannot run when the output dir is None")
         image_dir = self.output_dir.joinpath("original")
         image_dir.mkdir(parents=True, exist_ok=True) 
-        if self.resize:
+        if self.resize_mode == "none":
             out_image_path = image_dir.joinpath(image_stem + ".png")
         else:
             out_image_path = image_dir.joinpath(image_path.name)
@@ -345,15 +345,15 @@ class Preprocess:
             Quick helper function for opening->resizing->saving
             """
             
-            if self.resize:
+            if self.resize_mode == "none":
+                copy_mode(image_path, out_image_path, mode="symlink")
+            else:
                 image = load_image_from_path(image_path)
             
                 if image is None:
                     raise TypeError(f"Image {image_path} is None, loading failed")
                 image = self.resize_image(image, image_shape=image_shape)
                 save_image_to_path(out_image_path, image)
-            else:
-                copy_mode(image_path, out_image_path, mode="symlink")
         
         #TODO Maybe replace with guard clauses
         # Check if image already exist and if it doesn't need resizing
@@ -477,13 +477,10 @@ class Preprocess:
         # xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
         
         original_image_shape = tuple(int(value) for value in imagesize.get(image_path)[::-1])
-        if self.resize:
-            short_edge_length = self.sample_short_edge_length()
+        if self.resize_mode != "none":
+            short_edge_length = self.sample_edge_length()
             image_shape = self.get_output_shape(old_height=original_image_shape[0],
-                                                old_width=original_image_shape[1],
-                                                short_edge_length=short_edge_length,
-                                                max_size=self.max_size
-                                                )
+                                                old_width=original_image_shape[1])
         else:
             image_shape = original_image_shape
         
@@ -569,8 +566,8 @@ def main(args) -> None:
     process = Preprocess(
         input_paths=args.input,
         output_dir=args.output,
-        resize=args.resize,
         resize_mode=args.resize_mode,
+        resize_sampling=args.resize_sampling,
         min_size=args.min_size,
         max_size=args.max_size,
         xml_converter=xml_converter,

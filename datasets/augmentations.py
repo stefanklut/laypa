@@ -69,7 +69,7 @@ class RandomApply(T.RandomApply):
 
     __str__ = __repr__
     
-class ResizePercentage(T.Augmentation):
+class ResizeScaling(T.Augmentation):
     def __init__(self, percentage: float) -> None:
         super().__init__()
         self.percentage = percentage
@@ -674,16 +674,26 @@ def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.
         list[T.Augmentation | T.Transform]: list of augmentations to apply to an image
     """
     augmentation: list[T.Augmentation | T.Transform] = []
-    if is_train:
-        min_size = cfg.INPUT.MIN_SIZE_TRAIN
-        max_size = cfg.INPUT.MAX_SIZE_TRAIN
-        sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
+    
+    if cfg.INPUT.RESIZE_MODE == "none":
+        pass
+    elif cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
+        if is_train:
+            min_size = cfg.INPUT.MIN_SIZE_TRAIN
+            max_size = cfg.INPUT.MAX_SIZE_TRAIN
+            sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
+        else:
+            min_size = cfg.INPUT.MIN_SIZE_TEST
+            max_size = cfg.INPUT.MAX_SIZE_TEST
+            sample_style = "choice"
+        if cfg.INPUT.RESIZE_MODE == "shortest_edge":
+            augmentation.append(ResizeShortestEdge(min_size, max_size, sample_style))
+        elif cfg.INPUT.RESIZE_MODE == "longest_edge":
+            augmentation.append(ResizeLongestEdge(min_size, max_size, sample_style))
+    elif cfg.INPUT.RESIZE_MODE == "scaling":
+        augmentation.append(ResizeScaling(cfg.INPUT.SCALING))
     else:
-        min_size = cfg.INPUT.MIN_SIZE_TEST
-        max_size = cfg.INPUT.MAX_SIZE_TEST
-        sample_style = "choice"
-    # augmentation.append(ResizeShortestEdge(min_size, max_size, sample_style))
-    augmentation.append(ResizePercentage(0.25))
+        raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 
     if not is_train:
         return augmentation

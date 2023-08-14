@@ -18,8 +18,8 @@ PREPROCESS:
   DISABLE_CHECK: False
   
   RESIZE:
-    USE: True
-    RESIZE_MODE: "choice"
+    RESIZE_MODE: "shortest_edge"
+    RESIZE_SAMPLING: "choice"
     MIN_SIZE: [1024]
     MAX_SIZE: 2048
   REGION:

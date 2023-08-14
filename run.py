@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional, Sequence, Tuple, Type, Union
 from detectron2.engine import DefaultPredictor
 from detectron2.checkpoint import DetectionCheckpointer
-from datasets.augmentations import ResizeShortestEdge
+from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
 import cv2
 from core.setup import setup_cfg, setup_logging
 from detectron2.modeling import build_model
@@ -63,37 +63,20 @@ class Predictor(DefaultPredictor):
         checkpointer = DetectionCheckpointer(self.model)
         checkpointer.load(cfg.TEST.WEIGHTS)
         
-        self.aug = ResizeShortestEdge(
-            [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST
-        )
-    
-    @staticmethod
-    def get_output_shape(old_height: int, old_width: int, edge_length: int, max_size: int) -> tuple[int, int]:
-        """
-        Compute the output size given input size and target short edge length.
-
-        Args:
-            old_height (int): original height of image
-            old_width (int): original width of image
-            edge_length (int): desired shortest edge length
-            max_size (int): max length of other edge
-
-        Returns:
-            tuple[int, int]: new height and width
-        """
-        scale = float(edge_length) / min(old_height, old_width)
-        if old_height < old_width:
-            height, width = edge_length, scale * old_width
+        if cfg.INPUT.RESIZE_MODE == "none":
+            pass
+        elif cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
+            min_size = cfg.INPUT.MIN_SIZE_TEST
+            max_size = cfg.INPUT.MAX_SIZE_TEST
+            sample_style = "choice"
+            if cfg.INPUT.RESIZE_MODE == "shortest_edge":
+                self.aug = ResizeShortestEdge(min_size, max_size, sample_style)
+            elif cfg.INPUT.RESIZE_MODE == "longest_edge":
+                self.aug = ResizeLongestEdge(min_size, max_size, sample_style)
+        elif cfg.INPUT.RESIZE_MODE == "scaling":
+            self.aug = ResizeScaling(cfg.INPUT.SCALING)
         else:
-            height, width = scale * old_height, edge_length
-        if max(height, width) > max_size:
-            scale = max_size * 1.0 / max(height, width)
-            height = height * scale
-            width = width * scale
-
-        height = int(height + 0.5)
-        width = int(width + 0.5)
-        return (height, width)
+            raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
     
     def gpu_call(self, original_image):
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
@@ -103,12 +86,20 @@ class Predictor(DefaultPredictor):
             if self.input_format == "RGB":
                 # whether the model expects BGR inputs or RGB
                 image = image[[2, 1, 0], :, :]
+                
+            if self.cfg.INPUT.RESIZE_MODE == "none":
+                pass
+            if self.cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
+                new_height, new_width = self.aug.get_output_shape(
+                    height, width, self.cfg.INPUT.MIN_SIZE_TEST, self.cfg.INPUT.MAX_SIZE_TEST)
+            elif self.cfg.INPUT.RESIZE_MODE == "scaling":
+                new_height, new_width = self.aug.get_output_shape(
+                    height, width, self.cfg.INPUT.SCALING)
+            else:
+                raise NotImplementedError(f"{self.cfg.INPUT.RESIZE_MODE} is not a known resize mode")
             
-            new_height, new_width = self.get_output_shape(
-            height, width, self.cfg.INPUT.MIN_SIZE_TEST, self.cfg.INPUT.MAX_SIZE_TEST)
-            
-            # image = self.aug.get_transform(original_image).apply_image(original_image)
-            image = torch.nn.functional.interpolate(image[None], mode="nearest", size=(new_height,new_width))[0]
+            if self.cfg.INPUT.RESIZE_MODE != "none":
+                image = torch.nn.functional.interpolate(image[None], mode="nearest", size=(new_height,new_width))[0]
 
             inputs = {"image": image, "height": new_height, "width": new_width}
             predictions = self.model([inputs])[0]
