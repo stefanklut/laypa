@@ -336,9 +336,9 @@ class Preprocess:
         image_dir = self.output_dir.joinpath("original")
         image_dir.mkdir(parents=True, exist_ok=True) 
         if self.resize_mode == "none":
-            out_image_path = image_dir.joinpath(image_stem + ".png")
-        else:
             out_image_path = image_dir.joinpath(image_path.name)
+        else:
+            out_image_path = image_dir.joinpath(image_stem + ".png")
         
         def _save_image_helper():
             """

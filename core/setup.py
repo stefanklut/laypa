@@ -33,6 +33,8 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     Returns:
         CfgNode: config
     """
+    
+    logger = logging.getLogger(get_logger_name())
     if cfg is None:
         cfg = _C_default
         
@@ -108,9 +110,8 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
             
     # Deprication warnings
     if cfg.PREPROCESS.RESIZE.USE:
-        warnings.warn("PREPROCESS.RESIZE.USE is losing support please switch to PREPROCESS.RESIZE.RESIZE_MODE", DeprecationWarning)
+        logger.warning("DeprecationWarning PREPROCESS.RESIZE.USE is losing support please switch to PREPROCESS.RESIZE.RESIZE_MODE")
         cfg.PREPROCESS.RESIZE.RESIZE_MODE = "shortest_edge"
-        
 
     cfg.freeze()
     return cfg
