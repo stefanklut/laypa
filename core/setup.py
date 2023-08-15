@@ -19,6 +19,24 @@ from configs.extra_defaults import _C as _C_extra
 from utils.logging_utils import get_logger_name, setup_logger
 from utils.path_utils import unique_path
 
+def setup_logging(cfg=None, save_log=True):
+    rank = comm.get_rank()
+    if save_log and cfg is not None:
+        output_dir = cfg.OUTPUT_DIR
+    else:
+        output_dir = None
+    root_logger = logging.getLogger()
+    logging.getLogger("fvcore")
+    logging.getLogger("detectron2")
+    
+    logger = setup_logger(output_dir, distributed_rank=rank, name="laypa")
+    
+    for item in root_logger.manager.loggerDict:
+        if item.startswith('detectron2') or item.startswith('fvcore'):
+            root_logger.manager.loggerDict[item] = logger
+    
+    return logger
+
 # TODO Replace with LazyConfig
 def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     """
@@ -107,24 +125,6 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
 
     cfg.freeze()
     return cfg
-
-def setup_logging(cfg=None, save_log=True):
-    rank = comm.get_rank()
-    if save_log and cfg is not None:
-        output_dir = cfg.OUTPUT_DIR
-    else:
-        output_dir = None
-    root_logger = logging.getLogger()
-    logging.getLogger("fvcore")
-    logging.getLogger("detectron2")
-    
-    logger = setup_logger(output_dir, distributed_rank=rank, name=get_logger_name())
-    
-    for item in root_logger.manager.loggerDict:
-        if item.startswith('detectron2') or item.startswith('fvcore'):
-            root_logger.manager.loggerDict[item] = logger
-    
-    return logger
     
 def setup_saving(cfg: CfgNode):
     output_dir = Path(cfg.OUTPUT_DIR)
