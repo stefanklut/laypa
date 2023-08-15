@@ -99,16 +99,19 @@ def setup_training(args):
     logger.info("Rank of current process: {}. World size: {}".format(rank, comm.get_world_size()))
     logger.info("Environment info:\n" + collect_env_info())
     
+    
     if args is not None:
         logger.info("Command line arguments: " + str(args))
         if hasattr(args, "config") and args.config != "":
+            with Path(args.config).open("r") as f:
+                config_contents = f.read()
             logger.info(
                 "Contents of args.config: {}:\n{}".format(
                     args.config,
-                    _highlight(Path(args.config).open("r").read(), args.config),
+                    _highlight(config_contents, args.config),
                 )
             )
-
+            
     # Temp dir for preprocessing in case no temporary dir was specified
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not(args.keep_tmp_dir)) as tmp_dir:
         
