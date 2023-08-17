@@ -64,7 +64,7 @@ class Predictor(DefaultPredictor):
         checkpointer.load(cfg.TEST.WEIGHTS)
         
         if cfg.INPUT.RESIZE_MODE == "none":
-            pass
+            self.aug = ResizeScaling(percentage=1) #HACK percentage of 1 is no scaling
         elif cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
             min_size = cfg.INPUT.MIN_SIZE_TEST
             max_size = cfg.INPUT.MAX_SIZE_TEST
