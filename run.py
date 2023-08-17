@@ -88,8 +88,8 @@ class Predictor(DefaultPredictor):
                 image = image[[2, 1, 0], :, :]
                 
             if self.cfg.INPUT.RESIZE_MODE == "none":
-                pass
-            if self.cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
+                new_height, new_width = height, width
+            elif self.cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
                 new_height, new_width = self.aug.get_output_shape(
                     height, width, self.cfg.INPUT.MIN_SIZE_TEST, self.cfg.INPUT.MAX_SIZE_TEST)
             elif self.cfg.INPUT.RESIZE_MODE == "scaling":
