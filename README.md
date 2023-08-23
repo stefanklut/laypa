@@ -4,6 +4,12 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/stefanklut/laypa)
 
 # Laypa
+HIP'23 paper: https://doi.org/10.1145/3604951.3605520
+
+ArXiv paper: Coming soon!
+
+Part of the [Loghi pipeline][loghi_link]
+
 Laypa is a segmentation network, with the goal of finding regions (paragraph, page number, etc.) and baselines in documents. The current approach is using a ResNet backbone and a feature pyramid head, which made pixel wise classifications. The models are built using the [detectron2][detectron_link] framework. The baselines and region classifications are then made available for further processing. This post-processing turn the classification into instances. So that they can be used by other programs (OCR/HTR), either as masks or directly as pageXML.
 
 ## Table of Contents
@@ -338,6 +344,7 @@ The positional arguments input and output refer to the input and output director
 ```
 
 ### Flask Server
+<!-- TODO Add the Gunicorn server info -->
 The Flask Server is set up to run the inference code in a Kubernetes environment. To run the Flask API run the [`start_flask.sh`][start_flask_link] application with the environment variables set. This can generally be set when running a docker, which can set the environment variables beforehand depending on the docker internal file structure.  To quickly test locally you can run the [`start_flask_local.sh`][start_flask_local_link] application, which sets the environment variables at runtime.
 
 The flask server will run on port 5000 and can be called from outside using a `curl` command. When testing on a localhost the command will look as follows:
@@ -489,4 +496,5 @@ If you discover a bug or missing feature that you would like to help with please
 [start_flask_link]: /api/start_flask.sh
 [start_flask_local_link]: /api/start_flask_local.sh
 
+[loghi_link]: https://github.com/knaw-huc/loghi
 [huc_di_link]: https://di.huc.knaw.nl/
