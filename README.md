@@ -5,7 +5,7 @@
 
 # Laypa
 HIP'23 paper: https://doi.org/10.1145/3604951.3605520
-
+<!-- TODO Add ArXiv paper -->
 ArXiv paper: Coming soon!
 
 Part of the [Loghi pipeline][loghi_link]
@@ -37,7 +37,7 @@ Laypa is a segmentation network, with the goal of finding regions (paragraph, pa
 
 ## Tested Environments
 Developed using the following software and hardware:
-
+<!-- TODO Change to recent information, maybe write small script te generate this information -->
 Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
 -|-|-|-|-|-|-|-
  Ubuntu 22.04 | 3.10 | 1.13.1 | 11.7 | RTX 3080 Ti Laptop | 12.0 | Intel i9-12900H | :white_check_mark:
@@ -386,7 +386,6 @@ python eval.py \
     [--eval_path EVAL_PATH] \
     [--sorted] \
     [--save SAVE]
-
 ```
 
 The optional arguments are shown using square brackets. The `--tmp_dir` parameter specifies a folder in which to store temporary files. While the `--keep_tmp_dir` parameter prevents the temporary files from being deleted after a run (mostly for debugging). The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8.
