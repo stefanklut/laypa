@@ -4,6 +4,8 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/stefanklut/laypa)
 
 # Laypa
+Laypa: A Novel Framework for Applying Segmentation Networks to Historical Documents
+
 HIP'23 paper: https://doi.org/10.1145/3604951.3605520
 <!-- TODO Add ArXiv paper -->
 ArXiv paper: Coming soon!
