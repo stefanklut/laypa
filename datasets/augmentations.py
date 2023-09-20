@@ -80,6 +80,9 @@ class ResizeScaling(T.Augmentation):
     def get_output_shape(old_height: int, old_width: int, scale: float, max_size: int=sys.maxsize) -> tuple[int, int]:
         height, width = scale * old_height, scale * old_width
         
+        # If max size is 0 or smaller assume no maxsize
+        if max_size <= 0:
+            max_size = sys.maxsize
         if max(height, width) > max_size:
             scale = max_size * 1.0 / max(height, width)
             height = height * scale
@@ -147,6 +150,10 @@ class ResizeShortestEdge(T.Augmentation):
             height, width = edge_length, scale * old_width
         else:
             height, width = scale * old_height, edge_length
+            
+        # If max size is 0 or smaller assume no maxsize
+        if max_size <= 0:
+            max_size = sys.maxsize
         if max(height, width) > max_size:
             scale = max_size * 1.0 / max(height, width)
             height = height * scale
@@ -199,8 +206,12 @@ class ResizeLongestEdge(ResizeShortestEdge):
             height, width = edge_length, scale * old_width
         else:
             height, width = scale * old_height, edge_length
-        if min(height, width) > max_size:
-            scale = max_size * 1.0 / min(height, width)
+            
+        # If max size is 0 or smaller assume no maxsize
+        if max_size <= 0:
+            max_size = sys.maxsize
+        if max(height, width) > max_size:
+            scale = max_size * 1.0 / max(height, width)
             height = height * scale
             width = width * scale
 
