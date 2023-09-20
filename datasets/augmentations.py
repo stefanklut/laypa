@@ -70,26 +70,32 @@ class RandomApply(T.RandomApply):
     __str__ = __repr__
     
 class ResizeScaling(T.Augmentation):
-    def __init__(self, percentage: float) -> None:
+    def __init__(self, scale: float, max_size: int=sys.maxsize) -> None:
         super().__init__()
-        self.percentage = percentage
-        assert 0 < self.percentage <= 1, "percentage must be in range (0,1]"
+        self.scale = scale
+        self.max_size = max_size
+        assert 0 < self.scale <= 1, "percentage must be in range (0,1]"
     
     @staticmethod
-    def get_output_shape(old_height: int, old_width: int, scale) -> tuple[int, int]:
+    def get_output_shape(old_height: int, old_width: int, scale: float, max_size: int=sys.maxsize) -> tuple[int, int]:
         height, width = scale * old_height, scale * old_width
+        
+        if max(height, width) > max_size:
+            scale = max_size * 1.0 / max(height, width)
+            height = height * scale
+            width = width * scale
 
         height = int(height + 0.5)
         width = int(width + 0.5)
         return (height, width)
     
     def get_transform(self, image: np.ndarray) -> T.Transform:
-        if self.percentage == 1:
+        if self.scale == 1:
             return T.NoOpTransform()
         old_height, old_width, channels = image.shape
         
         height, width = self.get_output_shape(
-            old_height, old_width, self.percentage)
+            old_height, old_width, self.scale, self.max_size)
         if (old_height, old_width) == (height, width):
             return T.NoOpTransform()
 
@@ -691,7 +697,11 @@ def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.
         elif cfg.INPUT.RESIZE_MODE == "longest_edge":
             augmentation.append(ResizeLongestEdge(min_size, max_size, sample_style))
     elif cfg.INPUT.RESIZE_MODE == "scaling":
-        augmentation.append(ResizeScaling(cfg.INPUT.SCALING))
+        if is_train:
+            max_size = cfg.INPUT.MAX_SIZE_TRAIN
+        else:
+            max_size = cfg.INPUT.MAX_SIZE_TEST
+        augmentation.append(ResizeScaling(cfg.INPUT.SCALING, cfg.INPUT.MAX_SIZE_TRAIN))
     else:
         raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 

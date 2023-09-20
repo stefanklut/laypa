@@ -1,0 +1,26 @@
+_BASE_: ../segmentation_base.yaml
+
+OUTPUT_DIR: ./output/baseline
+
+MODEL:
+  MODE: baseline
+
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 2
+  
+  WEIGHTS: 
+
+TRAIN:
+  WEIGHTS:
+
+PREPROCESS:
+  RESIZE:
+    USE: False
+    RESIZE_MODE: 'scaling' 
+    SCALING: 0.25
+    
+INPUT:
+  RESIZE_MODE: 'none'
+
+TEST:
+  WEIGHTS: pretrained_models/baseline_model_best_mIoU.pth

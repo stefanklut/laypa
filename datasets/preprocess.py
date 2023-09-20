@@ -303,7 +303,7 @@ class Preprocess:
             else:
                 return ResizeLongestEdge.get_output_shape(old_height, old_width, edge_length, self.max_size)
         elif self.resize_mode == "scaling":
-            return ResizeScaling.get_output_shape(old_height, old_width, self.scaling)
+            return ResizeScaling.get_output_shape(old_height, old_width, self.scaling, self.max_size)
         else:
             raise NotImplementedError(f"{self.resize_mode} is not a known resize mode")
         
@@ -478,7 +478,6 @@ class Preprocess:
         
         original_image_shape = tuple(int(value) for value in imagesize.get(image_path)[::-1])
         if self.resize_mode != "none":
-            short_edge_length = self.sample_edge_length()
             image_shape = self.get_output_shape(old_height=original_image_shape[0],
                                                 old_width=original_image_shape[1])
         else:
