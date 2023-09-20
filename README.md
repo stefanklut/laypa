@@ -41,8 +41,8 @@ Laypa is a segmentation network, with the goal of finding regions (paragraph, pa
 Developed using the following software and hardware:
 <!-- TODO Change to recent information, maybe write small script te generate this information -->
 Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
--|-|-|-|-|-|-|-
- Ubuntu 22.04 | 3.10 | 1.13.1 | 11.7 | RTX 3080 Ti Laptop | 12.0 | Intel i9-12900H | :white_check_mark:
+---------------- | ------ | ------- | ----------- | --- | ---- | --- | -------
+Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 11.7 | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
 
 <details>
 <summary> Click here to show all tested environments </summary>
@@ -51,8 +51,8 @@ Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
 More coming soon
 
 Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
--|-|-|-|-|-|-|-
- Ubuntu 22.04 | 3.10 | 1.13.1 | 11.7 | RTX 3080 Ti Laptop | 12.0 | Intel i9-12900H | :white_check_mark:
+---------------- | ------ | ------- | ----------- | --- | ---- | --- | -------
+Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 11.7 | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
 
 </details>
 
