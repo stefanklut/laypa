@@ -40,9 +40,9 @@ Laypa is a segmentation network, with the goal of finding regions (paragraph, pa
 ## Tested Environments
 Developed using the following software and hardware:
 <!-- TODO Change to recent information, maybe write small script te generate this information -->
-Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
----------------- | ------ | ------- | ----------- | --- | ---- | --- | -------
-Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 11.7 | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
+Operating System | Python | PyTorch | Cudatoolkit | GPU | CPU | Success
+---------------- | ------ | ------- | ----------- | --- | --- | -------
+Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
 
 <details>
 <summary> Click here to show all tested environments </summary>
@@ -50,9 +50,9 @@ Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0
 <!-- TODO Add more with testing -->
 More coming soon
 
-Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
----------------- | ------ | ------- | ----------- | --- | ---- | --- | -------
-Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 11.7 | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
+Operating System | Python | PyTorch | Cudatoolkit | GPU | CPU | Success
+---------------- | ------ | ------- | ----------- | --- | --- | -------
+Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
 
 </details>
 

@@ -48,9 +48,9 @@ gpu_info = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A"
 cpu_info = get_cpu()
 success_status = ":white_check_mark:"
 
-titles = ["Operating System", "Python", "PyTorch", "Cudatoolkit", "GPU", "CUDA", "CPU", "Success"]
+titles = ["Operating System", "Python", "PyTorch", "Cudatoolkit", "GPU", "CPU", "Success"]
 dashes = ['-' * len(title) for title in titles]
-values = [os_info, python_version, pytorch_version, cuda_version, gpu_info, cuda_version, cpu_info, success_status]
+values = [os_info, python_version, pytorch_version, cuda_version, gpu_info, cpu_info, success_status]
 
 table = [
     titles,
