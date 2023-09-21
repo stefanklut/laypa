@@ -50,6 +50,8 @@ Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0
 <!-- TODO Add more with testing -->
 More coming soon
 
+Run [`utils/collect_env_info.py`][collect_env_info_link] to retrieve your environment information, and add them via [pull request][pull_request_link].
+
 Operating System | Python | PyTorch | Cudatoolkit | GPU | CPU | Success
 ---------------- | ------ | ------- | ----------- | --- | --- | -------
 Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
@@ -486,6 +488,7 @@ If you discover a bug or missing feature that you would like to help with please
 [issues_link]: https://github.com/stefanklut/laypa/issues
 [environment_link]: environment.yml
 [license_link]: LICENSE
+[collect_env_info_link]: utils/collect_env_info.py
 [configs_link]: configs/segmentation/
 [scripts_link]: scripts/
 [tutorial_link]: tutorial/
