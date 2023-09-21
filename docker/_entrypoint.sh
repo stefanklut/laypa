@@ -26,8 +26,8 @@ unset __conda_setup
 # fi
 # unset __conda_setup
 
-#conda activate "${ENV_NAME}" 2>/dev/null
-source activate laypa 1>/dev/null
+source activate "$ENV_NAME" 1>/dev/null
+# source activate laypa 1>/dev/null
 set -euo pipefail
 
 exec "$@"
