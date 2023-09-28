@@ -232,8 +232,6 @@ class PageData:
             id_map //= 256
         return np.asarray(color)
     
-    ## REGIONS
-    
     def build_region_instances(self, out_size, elements, class_dict) -> list[Instance]:
         size = self.get_size()
         instances = []
@@ -296,8 +294,6 @@ class PageData:
             self.logger.warning(f"File {self.filepath} does not contains regions")
         return mask
     
-    ## TEXT LINE
-    
     def build_text_line_instances(self, out_size) -> list[Instance]:
         text_line_class = 0
         size = self.get_size()
@@ -359,8 +355,6 @@ class PageData:
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains regions")
         return mask
-    
-    ## BASELINE
     
     def build_baseline_instances(self, out_size, line_width):
         baseline_class = 0
@@ -435,9 +429,6 @@ class PageData:
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
-    
-    ## START
-    
     def build_start_mask(self, out_size, line_width):
         """
         Builds a "image" mask of Starts on XML-PAGE
@@ -453,8 +444,6 @@ class PageData:
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
-    ## START
-    
     def build_end_mask(self, out_size, line_width):
         """
         Builds a "image" mask of Ends on XML-PAGE
@@ -469,8 +458,6 @@ class PageData:
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
-    
-    ## SEPARATOR
     
     def build_separator_mask(self, out_size, line_width):
         """
@@ -489,8 +476,6 @@ class PageData:
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
-    
-    ## BASELINE + SEPARATOR
     
     def build_baseline_separator_mask(self, out_size, line_width):
         """
@@ -513,8 +498,6 @@ class PageData:
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
-    
-    ## TEXT
 
     def get_text(self, element):
         """
