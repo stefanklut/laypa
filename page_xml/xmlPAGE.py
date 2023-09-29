@@ -13,6 +13,8 @@ import datetime
 from pathlib import Path
 from detectron2 import structures
 
+from utils.vector_utils import point_top_bottom_assignment
+
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
 from utils.tempdir import AtomicFileName
@@ -425,6 +427,29 @@ class PageData:
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
             cv2.polylines(mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+        if not mask.any():
+            self.logger.warning(f"File {self.filepath} does not contains baselines")
+        return mask
+    
+    def build_baseline_top_bottom_mask(self, out_size, line_width):
+        """
+        Builds a "image" mask of Baselines Top Bottom on XML-PAGE
+        """
+        baseline_color = 1
+        top_color = 1
+        bottom_color = 2
+        size = self.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        empty_mask = np.zeros(out_size, dtype=np.uint8)
+        for baseline_coords in self._iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            cv2.polylines(empty_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            line_pixel_coords = np.column_stack(np.where(empty_mask == 1))[:, ::-1]
+            empty_mask.fill(0)
+            top_bottom = point_top_bottom_assignment(rounded_coords, line_pixel_coords[:, ::-1])
+            colored_top_bottom = np.where(top_bottom, top_color, bottom_color)
+            mask[line_pixel_coords[:, 0], line_pixel_coords[:, 1]] = colored_top_bottom
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask

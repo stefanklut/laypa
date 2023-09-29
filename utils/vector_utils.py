@@ -189,10 +189,10 @@ def draw_lines(lines, thickness):
     for line in lines:
         rounded_coords = np.round(line).astype(np.int32)
         cv2.polylines(empty_mask, [rounded_coords.reshape(-1, 1, 2)], False, 1, thickness)
-        line_pixel_coords = np.column_stack(np.where(empty_mask == 1))
+        line_pixel_coords = np.column_stack(np.where(empty_mask == 1))[:, ::-1]
         print(line_pixel_coords.shape)
         empty_mask.fill(0)
-        mask[line_pixel_coords[:, 0], line_pixel_coords[:, 1]] = (point_top_bottom_assignment(line, line_pixel_coords[:, ::-1])+1) * 100
+        mask[line_pixel_coords[:, 0], line_pixel_coords[:, 1]] = (point_top_bottom_assignment(line, line_pixel_coords)+1) * 100
 
     return mask
 
@@ -232,5 +232,5 @@ if __name__ == "__main__":
 
     import matplotlib.pyplot as plt
     im = draw_lines(np.array([[(10,10), (210,10), (400,60)]]), 10)
-    plt.imshow(im)
+    plt.imshow(im, cmap='gray')
     plt.show()
