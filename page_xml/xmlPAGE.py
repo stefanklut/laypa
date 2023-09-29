@@ -447,9 +447,9 @@ class PageData:
             cv2.polylines(empty_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
             line_pixel_coords = np.column_stack(np.where(empty_mask == 1))[:, ::-1]
             empty_mask.fill(0)
-            top_bottom = point_top_bottom_assignment(rounded_coords, line_pixel_coords[:, ::-1])
+            top_bottom = point_top_bottom_assignment(rounded_coords, line_pixel_coords)
             colored_top_bottom = np.where(top_bottom, top_color, bottom_color)
-            mask[line_pixel_coords[:, 0], line_pixel_coords[:, 1]] = colored_top_bottom
+            mask[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = colored_top_bottom
         if not mask.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask

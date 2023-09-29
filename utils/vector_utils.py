@@ -168,17 +168,17 @@ def point_top_bottom_assignment(line_segments, points):
             if cross_product_i == 0:
                 label[i] = np.random.choice([0, 1])
             elif cross_product_i > 0:
-                label[i] = 0
-            else:
                 label[i] = 1
+            else:
+                label[i] = 0
         else:
             cross_product_i = cross_product[i, np.argwhere(is_min_value[i])]
             if cross_product_i == 0:
                 label[i] = np.random.choice([0, 1])
             elif cross_product_i > 0:
-                label[i] = 0
-            else:
                 label[i] = 1
+            else:
+                label[i] = 0
             
     return label
 

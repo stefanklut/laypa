@@ -22,12 +22,7 @@ class XMLRegions:
             region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
         self.mode = mode
-        if self.mode in ["baseline", "start", "end", "separator", "baseline_separator"]:
-            assert line_width is not None
-
-            self.line_width = line_width
-
-        elif self.mode == "region":
+        if self.mode == "region":
             assert regions is not None
             # assert merge_regions is not None
             # assert region_type is not None
@@ -43,6 +38,11 @@ class XMLRegions:
             self.region_types = self._build_region_types()
             self.merged_regions = self._build_merged_regions()
             self.merge_classes()
+        else:
+            assert line_width is not None
+
+            self.line_width = line_width
+
     
     #REVIEW is this the best place for this
     @classmethod
@@ -67,7 +67,7 @@ class XMLRegions:
         region_args.add_argument(
             "-m", "--mode",
             default="region",
-            choices=["baseline", "region", "start", "end", "separator", "baseline_separator"], 
+            choices=["baseline", "top_bottom", "region", "start", "end", "separator", "baseline_separator"], 
             type=str,
             help="Output mode"
         )
