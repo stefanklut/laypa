@@ -15,7 +15,6 @@ TRAIN:
 
 PREPROCESS:
   RESIZE:
-    USE: False
     RESIZE_MODE: 'scaling' 
     SCALING: 0.25
     
