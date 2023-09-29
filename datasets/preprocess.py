@@ -140,6 +140,12 @@ class Preprocess:
             type=str, 
             help="How to select the size when resizing"
         )
+        pre_process_args.add_argument(
+            "--scaling", 
+            default=0.5,
+            type=float, 
+            help="Scaling factor while resizing with mode scaling"
+        )
         
         pre_process_args.add_argument(
             "--min_size", 
