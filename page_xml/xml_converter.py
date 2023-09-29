@@ -83,12 +83,18 @@ class XMLConverter(XMLRegions):
                 line_width=self.line_width
             )
             return mask
-        elif self.mode == "start":
-            start_mask = gt_data.build_start_mask(
+        elif self.mode == "top_bottom":
+            mask = gt_data.build_top_bottom_mask(
                 image_shape,
                 line_width=self.line_width
             )
-            return start_mask
+            return mask
+        elif self.mode == "start":
+            mask = gt_data.build_start_mask(
+                image_shape,
+                line_width=self.line_width
+            )
+            return mask
         elif self.mode == "end":
             mask = gt_data.build_end_mask(
                 image_shape,

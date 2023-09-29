@@ -431,7 +431,7 @@ class PageData:
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return mask
     
-    def build_baseline_top_bottom_mask(self, out_size, line_width):
+    def build_top_bottom_mask(self, out_size, line_width):
         """
         Builds a "image" mask of Baselines Top Bottom on XML-PAGE
         """
