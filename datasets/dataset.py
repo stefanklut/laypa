@@ -35,42 +35,64 @@ def create_data(input_data: dict) -> dict:
     Returns:
         dict: data used for detectron training
     """
-    image_path = Path(input_data["image_paths"])
-    mask_path = Path(input_data["sem_seg_paths"])
-    instances_path = Path(input_data["instances_paths"])
-    pano_path = Path(input_data["pano_paths"])
-    segments_info_path = Path(input_data["segments_info_paths"])
-    output_size = input_data["output_sizes"]
+    image_path = input_data.get("image_paths")
+    original_image_path = input_data.get("original_image_paths")
+    mask_path = input_data.get("sem_seg_paths")
+    instances_path = input_data.get("instances_paths")
+    pano_path = input_data.get("pano_paths")
+    segments_info_path = input_data.get("segments_info_paths")
+    output_size = input_data.get("output_sizes")
+    
+    if image_path is None:
+        raise ValueError(f"Image has not been given in info.json")
+    if original_image_path is None:
+        raise ValueError(f"Original image has not been given in info.json")
+    if output_size is None:
+        raise ValueError(f"Output size has not been given in info.json")
+    
+    data = {}
+    
+    data["file_name"]          = str(image_path)
+    data["original_file_name"] = str(original_image_path)
+    data["height" ]            = output_size[0]
+    data["width"]              = output_size[1]
+    data["image_id"]           = image_path.stem
 
     # Data existence check
-    if not image_path.is_file(): 
-        raise FileNotFoundError(f"Image path missing ({image_path})")
-    if not mask_path.is_file():
-        raise FileNotFoundError(f"Mask path missing ({mask_path})")
-    if not instances_path.is_file():
-        raise FileNotFoundError(f"Instance path missing ({instances_path})")
-    if not pano_path.is_file():
-        raise FileNotFoundError(f"Pano path missing ({pano_path})")
-    if not segments_info_path.is_file():
-        raise FileNotFoundError(f"Segments info path missing ({segments_info_path})")
-
-    with open(instances_path, 'r') as f:
-        annotations = json.load(f)["annotations"]
+    if image_path is not None:
+        if not image_path.is_file(): 
+            raise FileNotFoundError(f"Image path missing ({image_path})")
     
-    with open(segments_info_path, 'r') as f:
-        segments_info = json.load(f)["segments_info"]
+    if original_image_path is not None:
+        if not original_image_path.is_file(): 
+            raise FileNotFoundError(f"Original image path missing ({original_image_path})")
+        
+    if mask_path is not None: 
+        if not mask_path.is_file():
+            raise FileNotFoundError(f"Mask path missing ({mask_path})")
+        data["sem_seg_file_name"] = str(mask_path)
+        
+    if instances_path is not None:
+        if not instances_path.is_file():
+            raise FileNotFoundError(f"Instance path missing ({instances_path})")
+        
+        with open(instances_path, 'r') as f:
+            annotations = json.load(f)["annotations"]
+        data["annotations"] = annotations
+        
+    if pano_path is not None: 
+        if not pano_path.is_file():
+            raise FileNotFoundError(f"Pano path missing ({pano_path})")
+        data["pan_seg_file_name"] = str(pano_path)
+        
+    if segments_info_path is not None:
+        if not segments_info_path.is_file():
+            raise FileNotFoundError(f"Segments info path missing ({segments_info_path})")
 
-    data = {
-        "file_name"         : str(image_path),
-        "original_file_name": str(input_data["original_image_paths"]),
-        "height"            : output_size[0],
-        "width"             : output_size[1],
-        "image_id"          : image_path.stem,
-        "annotations"       : annotations,
-        "sem_seg_file_name" : str(mask_path),
-        "pan_seg_file_name" : str(pano_path),
-        "segments_info"     : segments_info
-    }
+        with open(segments_info_path, 'r') as f:
+            segments_info = json.load(f)["segments_info"]
+        data["segments_info"] = segments_info
+    
     return data
 
 
@@ -147,9 +169,8 @@ def classes_to_colors(classes: list[str]) -> list[tuple[int,int,int]]:
     if len(classes) == 2:
         return [background_color, line_color]
     
-    colors = [background_color]
     distinct_colors = distinctipy.get_colors(len(classes)-1, rng=0) #no rng should give the same colors
-    colors = [background_color] + [tuple(map(lambda channel: int(channel*255),color)) for color in distinct_colors]
+    colors = [background_color] + [tuple(int(channel * 255) for channel in color) for color in distinct_colors]
     return colors
 
 def metadata_from_classes(classes: list[str],
