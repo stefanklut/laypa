@@ -192,7 +192,7 @@ def draw_lines(lines, thickness):
         line_pixel_coords = np.column_stack(np.where(empty_mask == 1))[:, ::-1]
         print(line_pixel_coords.shape)
         empty_mask.fill(0)
-        mask[line_pixel_coords[:, 0], line_pixel_coords[:, 1]] = (point_top_bottom_assignment(line, line_pixel_coords)+1) * 100
+        mask[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = (point_top_bottom_assignment(line, line_pixel_coords)+1) * 100
 
     return mask
 
