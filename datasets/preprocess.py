@@ -352,30 +352,22 @@ class Preprocess:
             out_image_path = image_dir.joinpath(image_path.name)
         else:
             out_image_path = image_dir.joinpath(image_stem + ".png")
-        
-        def _save_image_helper():
-            """
-            Quick helper function for opening->resizing->saving
-            """
-            
-            if self.resize_mode == "none":
-                copy_mode(image_path, out_image_path, mode="symlink")
-            else:
-                image = load_image_from_path(image_path)
-            
-                if image is None:
-                    raise TypeError(f"Image {image_path} is None, loading failed")
-                image = self.resize_image(image, image_shape=image_shape)
-                save_image_to_path(out_image_path, image)
-        
-        #TODO Maybe replace with guard clauses
+
         # Check if image already exist and if it doesn't need resizing
-        if self.overwrite or not out_image_path.exists():
-            _save_image_helper()
-        else:
+        if not self.overwrite and out_image_path.exists():
             out_image_shape = imagesize.get(out_image_path)[::-1]
-            if out_image_shape != image_shape:
-                _save_image_helper()
+            if out_image_shape == image_shape:
+                return str(out_image_path.relative_to(self.output_dir))
+        
+        if self.resize_mode == "none":
+            copy_mode(image_path, out_image_path, mode="symlink")
+        else:
+            image = load_image_from_path(image_path)
+        
+            if image is None:
+                raise TypeError(f"Image {image_path} is None, loading failed")
+            image = self.resize_image(image, image_shape=image_shape)
+            save_image_to_path(out_image_path, image)
         
         return str(out_image_path.relative_to(self.output_dir))
     
@@ -386,21 +378,14 @@ class Preprocess:
         sem_seg_dir.mkdir(parents=True, exist_ok=True)
         out_sem_seg_path = sem_seg_dir.joinpath(image_stem + ".png")
         
-        def _save_sem_seg_helper():
-            """
-            Quick helper function for opening->converting to image->saving
-            """
-            sem_seg = self.xml_converter.to_sem_seg(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-            
-            save_image_to_path(out_sem_seg_path, sem_seg)
-        
         # Check if image already exist and if it doesn't need resizing
-        if self.overwrite or not out_sem_seg_path.exists():
-            _save_sem_seg_helper()
-        else:
+        if not self.overwrite and out_sem_seg_path.exists():
             out_sem_seg_shape = imagesize.get(out_sem_seg_path)[::-1]
-            if out_sem_seg_shape != image_shape:
-                _save_sem_seg_helper()
+            if out_sem_seg_shape == image_shape:
+                str(out_sem_seg_path.relative_to(self.output_dir))
+        
+        sem_seg = self.xml_converter.to_sem_seg(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        save_image_to_path(out_sem_seg_path, sem_seg)
         
         return str(out_sem_seg_path.relative_to(self.output_dir))
     
@@ -412,26 +397,20 @@ class Preprocess:
         out_instances_path = instances_dir.joinpath(image_stem + ".json")
         out_instances_size_path = instances_dir.joinpath(image_stem + ".txt")
         
-        def _save_instances_helper():
-            """
-            Quick helper function for opening->rescaling->saving
-            """
-            instances = self.xml_converter.to_instances(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-            json_instances = {"image_size": image_shape,
-                              "annotations": instances}
-            with out_instances_path.open(mode='w') as f:
-                json.dump(json_instances, f)
-            with out_instances_size_path.open(mode='w') as f:
-                f.write(f"{image_shape[0]},{image_shape[1]}")
-                
         # Check if image already exist and if it doesn't need resizing
-        if self.overwrite or not out_instances_path.exists() or not out_instances_size_path.exists():
-            _save_instances_helper()
-        else:
+        if not self.overwrite and out_instances_path.exists() and out_instances_size_path.exists():
             with out_instances_size_path.open(mode='r') as f:
                 out_intstances_shape = tuple(int(x) for x in f.read().strip().split(','))
-            if out_intstances_shape != image_shape:
-                _save_instances_helper()
+            if out_intstances_shape == image_shape:
+                return str(out_instances_path.relative_to(self.output_dir))
+                
+        instances = self.xml_converter.to_instances(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        json_instances = {"image_size": image_shape,
+                            "annotations": instances}
+        with out_instances_path.open(mode='w') as f:
+            json.dump(json_instances, f)
+        with out_instances_size_path.open(mode='w') as f:
+            f.write(f"{image_shape[0]},{image_shape[1]}")
             
         return str(out_instances_path.relative_to(self.output_dir))
     
@@ -442,27 +421,21 @@ class Preprocess:
         panos_dir.mkdir(parents=True, exist_ok=True) 
         out_pano_path = panos_dir.joinpath(image_stem + ".png")
         out_segments_info_path = panos_dir.joinpath(image_stem + ".json")
-        
-        def _save_panos_helper():
-            """
-            Quick helper function for opening->rescaling->saving
-            """
-            pano, segments_info = self.xml_converter.to_pano(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-            
-            save_image_to_path(out_pano_path, pano)
-            
-            json_pano = {"image_size": image_shape,
-                         "segments_info": segments_info}
-            with out_segments_info_path.open(mode='w') as f:
-                json.dump(json_pano, f)
                 
         # Check if image already exist and if it doesn't need resizing
-        if self.overwrite or not out_pano_path.exists():
-            _save_panos_helper()
-        else:
+        if not self.overwrite and out_pano_path.exists():
             out_pano_shape = imagesize.get(out_pano_path)[::-1]
-            if out_pano_shape != image_shape:
-                _save_panos_helper()
+            if out_pano_shape == image_shape:
+               return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
+                
+        pano, segments_info = self.xml_converter.to_pano(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        
+        save_image_to_path(out_pano_path, pano)
+        
+        json_pano = {"image_size": image_shape,
+                        "segments_info": segments_info}
+        with out_segments_info_path.open(mode='w') as f:
+            json.dump(json_pano, f)
         
         return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
 
