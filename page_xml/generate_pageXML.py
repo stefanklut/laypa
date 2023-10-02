@@ -24,10 +24,10 @@ from page_xml.xml_regions import XMLRegions
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()],
-        description="Generate pageXML from label mask and images")
+        description="Generate pageXML from label sem_seg and images")
     
     io_args = parser.add_argument_group("IO")
-    io_args.add_argument("-a", "--mask", help="Input mask folder/files", nargs="+", default=[],
+    io_args.add_argument("-s", "--sem_seg", help="Input sem_seg folder/files", nargs="+", default=[],
                         required=True, type=str)
     io_args.add_argument("-i", "--input", help="Input image folder/files", nargs="+", default=[],
                         required=True, type=str)
@@ -103,12 +103,12 @@ class GenPageXML(XMLRegions):
         
         copy_mode(image_path, image_output_path, mode="symlink")
     
-    def generate_single_page(self, mask: torch.Tensor, image_path: Path, old_height: Optional[int] = None, old_width: Optional[int] = None):
+    def generate_single_page(self, sem_seg: torch.Tensor, image_path: Path, old_height: Optional[int] = None, old_width: Optional[int] = None):
         """
         Convert a single prediction into a page
 
         Args:
-            mask (torch.Tensor): mask as tensor
+            sem_seg (torch.Tensor): sem_seg as tensor
             image_path (Path): Image path, used for path name
             old_height (Optional[int], optional): height of the original image. Defaults to None.
             old_width (Optional[int], optional): width of the original image. Defaults to None.
@@ -126,9 +126,9 @@ class GenPageXML(XMLRegions):
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
         
         if old_height is None or old_width is None:
-            old_height, old_width = mask.shape[-2:]
+            old_height, old_width = sem_seg.shape[-2:]
         
-        height, width = mask.shape[-2:]
+        height, width = sem_seg.shape[-2:]
         
         scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
         # scaling = np.asarray((1,1))
@@ -137,15 +137,15 @@ class GenPageXML(XMLRegions):
         page.new_page(image_path.name, str(old_height), str(old_width))
         
         if self.mode == 'region':
-            mask = torch.argmax(mask, dim=-3).cpu().numpy()
+            sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
             
             region_id = 0
             
             for i, region in enumerate(self.regions):
                 if region == "background":
                     continue
-                binary_region_mask = np.zeros_like(mask).astype(np.uint8)
-                binary_region_mask[mask == i] = 1
+                binary_region_mask = np.zeros_like(sem_seg).astype(np.uint8)
+                binary_region_mask[sem_seg == i] = 1
                 
                 region_type = self.region_types[region]
                 
@@ -180,21 +180,21 @@ class GenPageXML(XMLRegions):
                     )
         elif self.mode in ['baseline', 'start', 'end', "separator"]:
             # Push the calculation to outside of the python code <- mask is used by minion
-            mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            mask = torch.nn.functional.interpolate(
-                mask[None], size=(old_height,old_width), mode="bilinear", align_corners=False
+            sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
+            sem_seg = torch.nn.functional.interpolate(
+                sem_seg[None], size=(old_height,old_width), mode="bilinear", align_corners=False
             )[0]
-            mask = torch.argmax(mask, dim=-3).cpu().numpy()
-            with AtomicFileName(file_path=mask_output_path) as path:
-                save_image_to_path(str(path), (mask * 255).astype(np.uint8))
+            sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+            with AtomicFileName(file_path=sem_seg_output_path) as path:
+                save_image_to_path(str(path), (sem_seg * 255).astype(np.uint8))
         elif self.mode in ["baseline_separator"]:
-            mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            mask = torch.nn.functional.interpolate(
-                mask[None], size=(old_height,old_width), mode="bilinear", align_corners=False
+            sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
+            sem_seg = torch.nn.functional.interpolate(
+                sem_seg[None], size=(old_height,old_width), mode="bilinear", align_corners=False
             )[0]
-            mask = torch.argmax(mask, dim=-3).cpu().numpy()
-            with AtomicFileName(file_path=mask_output_path) as path:
-                save_image_to_path(str(path), (mask * 128).clip(0,255).astype(np.uint8))
+            sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+            with AtomicFileName(file_path=sem_seg_output_path) as path:
+                save_image_to_path(str(path), (sem_seg * 128).clip(0,255).astype(np.uint8))
         else:
             raise NotImplementedError
                 
@@ -217,35 +217,35 @@ class GenPageXML(XMLRegions):
         self.generate_single_page(mask, image_path)
         
     def run(self, 
-            mask_list: list[torch.Tensor] | list[Path], 
+            sem_seg_list: list[torch.Tensor] | list[Path], 
             image_path_list: list[Path]) -> None:
         """
-        Generate pageXML for all mask-image pairs in the lists
+        Generate pageXML for all sem_seg-image pairs in the lists
 
         Args:
-            mask_list (list[torch.Tensor] | list[Path]): all mask as arrays or path to the mask
+            sem_seg_list (list[np.ndarray] | list[Path]): all sem_seg as arrays or path to the sem_seg
             image_path_list (list[Path]): path to the original image
 
         Raises:
-            ValueError: length of mask list and image list do not match
+            ValueError: length of sem_seg list and image list do not match
         """
         
-        if len(mask_list) != len(image_path_list):
-            raise ValueError(f"masks must match image paths in length: {len(mask_list)} v. {len(image_path_list)}")
+        if len(sem_seg_list) != len(image_path_list):
+            raise ValueError(f"Sem_seg must match image paths in length: {len(sem_seg_list)} v. {len(image_path_list)}")
         
         # Do not run multiprocessing for single images
-        if len(mask_list) == 1:
-            self.generate_single_page_wrapper((mask_list[0], image_path_list[0]))
+        if len(sem_seg_list) == 1:
+            self.generate_single_page_wrapper((sem_seg_list[0], image_path_list[0]))
             return
         
         # #Single thread
-        # for mask_i, image_path_i in tqdm(zip(mask_list, image_path_list), total=len(mask_list)):
-        #     self.generate_single_page((mask_i, image_path_i))
+        # for sem_seg_i, image_path_i in tqdm(zip(sem_seg_list, image_path_list), total=len(sem_seg_list)):
+        #     self.generate_single_page((sem_seg_i, image_path_i))
         
         # Multi thread
         with Pool(os.cpu_count()) as pool:
-            _ = list(tqdm(iterable=pool.imap_unordered(self.generate_single_page_wrapper, list(zip(mask_list, image_path_list))), 
-                          total=len(mask_list),
+            _ = list(tqdm(iterable=pool.imap_unordered(self.generate_single_page_wrapper, list(zip(sem_seg_list, image_path_list))), 
+                          total=len(sem_seg_list),
                           desc="Generating PageXML"))
 
 def main(args):
@@ -261,7 +261,7 @@ def main(args):
                      ".tiff", ".tif",
                      ".exr",
                      ".hdr", ".pic"]
-    mask_paths = get_file_paths(args.mask, formats=[".png"])
+    sem_seg_paths = get_file_paths(args.sem_seg, formats=[".png"])
     image_paths = get_file_paths(args.input, formats=image_formats)
     
     gen_page = GenPageXML(mode=args.mode,
@@ -271,7 +271,7 @@ def main(args):
                           merge_regions=args.merge_regions,
                           region_type=args.region_type)
     
-    gen_page.run(mask_paths, image_paths)
+    gen_page.run(sem_seg_paths, image_paths)
     
     
     

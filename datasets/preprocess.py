@@ -12,10 +12,10 @@ import imagesize
 
 import numpy as np
 from multiprocessing.pool import Pool
-from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
 # from multiprocessing.pool import ThreadPool as Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
 from utils.image_utils import save_image_to_path, load_image_from_path
 from utils.copy_utils import copy_mode
 from utils.logging_utils import get_logger_name
@@ -132,6 +132,13 @@ class Preprocess:
             "--resize", 
             action="store_true",
             help="Resize input images"
+        )
+        pre_process_args.add_argument(
+            "--resize_mode",
+            default="none",
+            choices=["none", "shortest_edge", "longest_edge", "scaling"],
+            type=str, 
+            help="How to select the size when resizing"
         )
         pre_process_args.add_argument(
             "--resize_sampling", 
@@ -372,30 +379,30 @@ class Preprocess:
         
         return str(out_image_path.relative_to(self.output_dir))
     
-    def save_mask(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int,int]):
+    def save_sem_seg(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int,int]):
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
-        mask_dir = self.output_dir.joinpath("sem_seg")
-        mask_dir.mkdir(parents=True, exist_ok=True)
-        out_mask_path = mask_dir.joinpath(image_stem + ".png")
+        sem_seg_dir = self.output_dir.joinpath("sem_seg")
+        sem_seg_dir.mkdir(parents=True, exist_ok=True)
+        out_sem_seg_path = sem_seg_dir.joinpath(image_stem + ".png")
         
-        def _save_mask_helper():
+        def _save_sem_seg_helper():
             """
             Quick helper function for opening->converting to image->saving
             """
-            mask = self.xml_converter.to_image(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            sem_seg = self.xml_converter.to_sem_seg(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
             
-            save_image_to_path(out_mask_path, mask)
+            save_image_to_path(out_sem_seg_path, sem_seg)
         
         # Check if image already exist and if it doesn't need resizing
-        if self.overwrite or not out_mask_path.exists():
-            _save_mask_helper()
+        if self.overwrite or not out_sem_seg_path.exists():
+            _save_sem_seg_helper()
         else:
-            out_mask_shape = imagesize.get(out_mask_path)[::-1]
-            if out_mask_shape != image_shape:
-                _save_mask_helper()
+            out_sem_seg_shape = imagesize.get(out_sem_seg_path)[::-1]
+            if out_sem_seg_shape != image_shape:
+                _save_sem_seg_helper()
         
-        return str(out_mask_path.relative_to(self.output_dir))
+        return str(out_sem_seg_path.relative_to(self.output_dir))
     
     def save_instances(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
         if self.output_dir is None:
@@ -409,19 +416,19 @@ class Preprocess:
             """
             Quick helper function for opening->rescaling->saving
             """
-            instances = self.xml_converter.to_json(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+            instances = self.xml_converter.to_instances(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
             json_instances = {"image_size": image_shape,
                               "annotations": instances}
-            with open(out_instances_path, 'w') as f:
+            with out_instances_path.open(mode='w') as f:
                 json.dump(json_instances, f)
-            with open(out_instances_size_path, 'w') as f:
+            with out_instances_size_path.open(mode='w') as f:
                 f.write(f"{image_shape[0]},{image_shape[1]}")
                 
         # Check if image already exist and if it doesn't need resizing
         if self.overwrite or not out_instances_path.exists() or not out_instances_size_path.exists():
             _save_instances_helper()
         else:
-            with open(out_instances_size_path, 'r') as f:
+            with out_instances_size_path.open(mode='r') as f:
                 out_intstances_shape = tuple(int(x) for x in f.read().strip().split(','))
             if out_intstances_shape != image_shape:
                 _save_instances_helper()
@@ -446,15 +453,15 @@ class Preprocess:
             
             json_pano = {"image_size": image_shape,
                          "segments_info": segments_info}
-            with open(out_segments_info_path, 'w') as f:
+            with out_segments_info_path.open(mode='w') as f:
                 json.dump(json_pano, f)
                 
         # Check if image already exist and if it doesn't need resizing
         if self.overwrite or not out_pano_path.exists():
             _save_panos_helper()
         else:
-            out_mask_shape = imagesize.get(out_pano_path)[::-1]
-            if out_mask_shape != image_shape:
+            out_pano_shape = imagesize.get(out_pano_path)[::-1]
+            if out_pano_shape != image_shape:
                 _save_panos_helper()
         
         return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
@@ -493,8 +500,8 @@ class Preprocess:
         out_image_path = self.save_image(image_path, image_stem, image_shape)
         results["image_paths"] = out_image_path
         
-        out_mask_path = self.save_mask(xml_path, image_stem, original_image_shape, image_shape)
-        results["sem_seg_paths"] = out_mask_path
+        out_sem_seg_path = self.save_sem_seg(xml_path, image_stem, original_image_shape, image_shape)
+        results["sem_seg_paths"] = out_sem_seg_path
             
         out_instances_path = self.save_instances(xml_path, image_stem, original_image_shape, image_shape)
         results["instances_paths"] = out_instances_path
@@ -533,6 +540,17 @@ class Preprocess:
         if not self.disable_check:
             self.check_paths_exists(image_paths)
             self.check_paths_exists(xml_paths)
+        
+        mode_path = self.output_dir.joinpath("mode.txt")
+            
+        if mode_path.exists():
+            with mode_path.open(mode='r') as f:
+                mode = f.read()
+            if mode != self.xml_converter.mode:
+                self.overwrite = True
+            
+        with mode_path.open(mode="w") as f:
+            f.write(self.xml_converter.mode)
 
         # Single thread
         # results = []
@@ -547,10 +565,11 @@ class Preprocess:
 
         # Assuming all key are the same make one dict
         results = {"data": list_of_dict_to_dict_of_list(results),
-                   "classes": self.xml_converter.get_regions()}
+                   "classes": self.xml_converter.get_regions(),
+                   "mode": self.xml_converter.mode}
         
         output_path = self.output_dir.joinpath("info.json")
-        with open(output_path, 'w') as f:
+        with output_path.open(mode='w') as f:
             json.dump(results, f)
             
 def list_of_dict_to_dict_of_list(input_list: list[dict[str, Any]]) -> dict[str, list[Any]]:

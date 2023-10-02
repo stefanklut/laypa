@@ -47,7 +47,7 @@ class XMLConverter(XMLRegions):
     def to_image(self, 
                  xml_path: Path, 
                  original_image_shape: Optional[tuple[int, int]]=None, 
-                 image_shape: Optional[tuple[int, int]]=None) -> np.ndarray:
+                 image_shape: Optional[tuple[int, int]]=None) -> Optional[np.ndarray]:
         """
         Turn a single pageXML into a mask of labels
 
@@ -60,7 +60,7 @@ class XMLConverter(XMLRegions):
             NotImplementedError: mode is not known
 
         Returns:
-            np.ndarray: mask of labels
+            Optional[np.ndarray]: mask of labels
         """
         gt_data = PageData(xml_path)
         gt_data.parse()
@@ -71,60 +71,60 @@ class XMLConverter(XMLRegions):
         if image_shape is None:
             image_shape = gt_data.get_size()
         if self.mode == "region":
-            mask = gt_data.build_region_mask(
+            sem_seg = gt_data.build_region_sem_seg(
                 image_shape,
                 set(self.region_types.values()),
                 self.region_classes
             )
-            return mask
+            return sem_seg
         elif self.mode == "baseline":
-            mask = gt_data.build_baseline_mask(
+            sem_seg = gt_data.build_baseline_sem_seg(
                 image_shape,
                 line_width=self.line_width
             )
-            return mask
+            return sem_seg
         elif self.mode == "top_bottom":
-            mask = gt_data.build_top_bottom_mask(
+            sem_seg = gt_data.build_top_bottom_sem_seg(
                 image_shape,
                 line_width=self.line_width
             )
-            return mask
+            return sem_seg
         elif self.mode == "start":
-            mask = gt_data.build_start_mask(
+            sem_seg = gt_data.build_start_sem_seg(
                 image_shape,
                 line_width=self.line_width
             )
-            return mask
+            return sem_seg
         elif self.mode == "end":
-            mask = gt_data.build_end_mask(
+            sem_seg = gt_data.build_end_sem_seg(
                 image_shape,
                 line_width=self.line_width
             )
-            return mask
+            return sem_seg
         elif self.mode == "separator":
-            mask = gt_data.build_separator_mask(
+            sem_seg = gt_data.build_separator_sem_seg(
                 image_shape,
                 line_width=self.line_width
             )
-            return mask
+            return sem_seg
         elif self.mode == "baseline_separator":
-            mask = gt_data.build_baseline_separator_mask(
+            sem_seg = gt_data.build_baseline_separator_sem_seg(
                 image_shape,
                 line_width=self.line_width
             )
-            return mask
+            return sem_seg
         elif self.mode == "text_line":
-            mask = gt_data.build_text_line_mask(
+            sem_seg = gt_data.build_text_line_sem_seg(
                 image_shape
             )
-            return mask
+            return sem_seg
         else:
-            raise NotImplementedError
+            return None
 
     def to_json(self, 
                 xml_path: Path, 
                 original_image_shape: Optional[tuple[int, int]]=None, 
-                image_shape: Optional[tuple[int, int]]=None) -> list:
+                image_shape: Optional[tuple[int, int]]=None) -> Optional[list]:
         """
         Turn a single pageXML into a dict with scaled coordinates
 
@@ -137,7 +137,7 @@ class XMLConverter(XMLRegions):
             NotImplementedError: mode is not known
 
         Returns:
-            dict: scaled coordinates about the location of the objects in the image
+            Optional[dict]: scaled coordinates about the location of the objects in the image
         """
         gt_data = PageData(xml_path)
         gt_data.parse()
@@ -167,12 +167,12 @@ class XMLConverter(XMLRegions):
             )
             return instances
         else:
-            raise NotImplementedError
+            return None
         
     def to_pano(self, 
                 xml_path: Path, 
                 original_image_shape: Optional[tuple[int, int]]=None, 
-                image_shape: Optional[tuple[int, int]]=None) -> tuple[np.ndarray, list]:
+                image_shape: Optional[tuple[int, int]]=None) -> Optional[tuple[np.ndarray, list]]:
         """
         Turn a single pageXML into a pano image with corresponding pixel info
 
@@ -185,7 +185,7 @@ class XMLConverter(XMLRegions):
             NotImplementedError: mode is not known
 
         Returns:
-            tuple[np.ndarray, list]: pano mask and the segments information
+            Optional[tuple[np.ndarray, list]]: pano mask and the segments information
         """
         gt_data = PageData(xml_path)
         gt_data.parse()
@@ -197,25 +197,25 @@ class XMLConverter(XMLRegions):
             image_shape = gt_data.get_size()
             
         if self.mode == "region":
-            pano_mask, segments_info = gt_data.build_region_pano(
+            pano, segments_info = gt_data.build_region_pano(
                 image_shape,
                 set(self.region_types.values()),
                 self.region_classes
             )
-            return pano_mask, segments_info
+            return pano, segments_info
         elif self.mode == "baseline":
-            pano_mask, segments_info = gt_data.build_baseline_pano(
+            pano, segments_info = gt_data.build_baseline_pano(
                 image_shape,
                 self.line_width
             )
-            return pano_mask, segments_info
+            return pano, segments_info
         elif self.mode == "text_line":
-            pano_mask, segments_info = gt_data.build_text_line_pano(
+            pano, segments_info = gt_data.build_text_line_pano(
                 image_shape
             )
-            return pano_mask, segments_info
+            return pano, segments_info
         else:
-            raise NotImplementedError
+            return None
 
 if __name__ == "__main__":
     args = get_arguments()

@@ -89,7 +89,7 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
-        gray_image = self.xml_converter.to_image(xml_path_i)
+        gray_image = self.xml_converter.to_sem_seg(xml_path_i)
         save_image_to_path(str(output_image_path), gray_image)
         
     def save_color_image(self, xml_path_i: Path):
@@ -100,7 +100,7 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
-        gray_image = self.xml_converter.to_image(xml_path_i)
+        gray_image = self.xml_converter.to_sem_seg(xml_path_i)
         
         color_image = np.empty((*gray_image.shape, 3), dtype=np.uint8)
         
@@ -121,7 +121,7 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".jpg")
-        gray_image = self.xml_converter.to_image(xml_path_i)
+        gray_image = self.xml_converter.to_sem_seg(xml_path_i)
         
         image_path_i = xml_path_to_image_path(xml_path_i)
         

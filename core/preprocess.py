@@ -73,8 +73,8 @@ def preprocess_datasets(cfg: CfgNode,
             # Saving the images used to a txt file
             os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
             train_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("training_images.txt")
-            
-            with open(train_image_output_path, mode="w") as f:
+        
+            with train_image_output_path.open(mode="w") as f:
                 for path in train_image_paths:
                     f.write(f"{path}\n")
     
@@ -94,8 +94,8 @@ def preprocess_datasets(cfg: CfgNode,
             # Saving the images used to a txt file
             os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
             val_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("validation_images.txt")
-            
-            with open(val_image_output_path, mode="w") as f:
+                
+            with val_image_output_path.open(mode="w") as f:
                 for path in val_image_paths:
                     f.write(f"{path}\n")
     

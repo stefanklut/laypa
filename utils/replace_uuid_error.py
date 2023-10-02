@@ -21,12 +21,12 @@ def replace_error(file_path):
     def gen_uuid(match_obj):
         return str(uuid.uuid4())
     
-    with open(file_path, 'r') as file:
+    with file_path.open(mode='r') as file:
             data = str(file.read())
             
     data = re.sub(r"&lt;module 'uuid' from '/data/stefank/miniconda3/envs/laypa/lib/python3.10/uuid.py'>", gen_uuid, data)
     
-    with open(file_path, 'w') as file:
+    with file_path.open(mode='w') as file:
         file.write(data)
 
 def main(args):

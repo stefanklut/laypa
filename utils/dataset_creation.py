@@ -247,19 +247,19 @@ def main(args):
     test_paths= [path.relative_to(output_dir) if path.is_relative_to(output_dir) else path.resolve() for path in test_paths]
     
     if train_paths:
-        with open(output_dir.joinpath("train_filelist.txt"), mode='w') as f:
+        with output_dir.joinpath("train_filelist.txt").open(mode='w') as f:
             for train_path in train_paths:
                 f.write(f"{train_path}\n")
     if val_paths:
-        with open(output_dir.joinpath("val_filelist.txt"), mode='w') as f:
+        with output_dir.joinpath("val_filelist.txt").open(mode='w') as f:
             for val_path in val_paths:
                 f.write(f"{val_path}\n")
     if test_paths:
-        with open(output_dir.joinpath("test_filelist.txt"), mode='w') as f:
+        with output_dir.joinpath("test_filelist.txt").open(mode='w') as f:
             for test_path in test_paths:
                 f.write(f"{test_path}\n")
             
-    with open(output_dir.joinpath("info.txt"), mode='w') as f:
+    with output_dir.joinpath("info.txt").open(mode='w') as f:
         f.write(f"Created: {datetime.now()}\n")
         f.write(f"Number of train images: {len(train_paths)}\n")
         f.write(f"Number of validation images: {len(val_paths)}\n")

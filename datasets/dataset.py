@@ -37,7 +37,7 @@ def create_data(input_data: dict) -> dict:
     """
     image_path = input_data.get("image_paths")
     original_image_path = input_data.get("original_image_paths")
-    mask_path = input_data.get("sem_seg_paths")
+    sem_seg_path = input_data.get("sem_seg_paths")
     instances_path = input_data.get("instances_paths")
     pano_path = input_data.get("pano_paths")
     segments_info_path = input_data.get("segments_info_paths")
@@ -67,16 +67,16 @@ def create_data(input_data: dict) -> dict:
         if not original_image_path.is_file(): 
             raise FileNotFoundError(f"Original image path missing ({original_image_path})")
         
-    if mask_path is not None: 
-        if not mask_path.is_file():
-            raise FileNotFoundError(f"Mask path missing ({mask_path})")
-        data["sem_seg_file_name"] = str(mask_path)
+    if sem_seg_path is not None: 
+        if not sem_seg_path.is_file():
+            raise FileNotFoundError(f"Sem_seg path missing ({sem_seg_path})")
+        data["sem_seg_file_name"] = str(sem_seg_path)
         
     if instances_path is not None:
         if not instances_path.is_file():
             raise FileNotFoundError(f"Instance path missing ({instances_path})")
         
-        with open(instances_path, 'r') as f:
+        with instances_path.open(mode='r') as f:
             annotations = json.load(f)["annotations"]
         data["annotations"] = annotations
         
@@ -89,7 +89,7 @@ def create_data(input_data: dict) -> dict:
         if not segments_info_path.is_file():
             raise FileNotFoundError(f"Segments info path missing ({segments_info_path})")
 
-        with open(segments_info_path, 'r') as f:
+        with segments_info_path.open(mode='r') as f:
             segments_info = json.load(f)["segments_info"]
         data["segments_info"] = segments_info
     
@@ -216,7 +216,7 @@ def register_dataset(path:str | Path,
     
     info_path = path.joinpath("info.json")
     
-    with open(info_path, 'r') as f:
+    with info_path.open(mode='r') as f:
         info = json.load(f)
     
     data = convert_to_paths(path, info["data"])

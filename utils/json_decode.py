@@ -28,7 +28,7 @@ def main(args):
     assert json_path.suffix == ".json", json_path.suffix
     check_path_accessible(json_path)
     
-    with open(json_path, 'r') as f:
+    with json_path.open(mode='r') as f:
         predictions = json.load(f)
     
     for prediction in predictions:

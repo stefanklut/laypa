@@ -287,8 +287,8 @@ class EvalWrapper:
         if xml_i_1.stem != xml_i_2.stem:
             raise ValueError(f"XMLs {xml_i_1} & {xml_i_2} do not match")
     
-        image_i_1 = self.xml_to_image.to_image(xml_i_1)
-        image_i_2 = self.xml_to_image.to_image(xml_i_2)
+        image_i_1 = self.xml_to_image.to_sem_seg(xml_i_1)
+        image_i_2 = self.xml_to_image.to_sem_seg(xml_i_2)
         
         self.evaluator.process([image_i_1], [image_i_2])
     
@@ -314,8 +314,8 @@ class EvalWrapper:
         if xml_i_1.stem != xml_i_2.stem:
             raise ValueError(f"XMLs {xml_i_1} & {xml_i_2} do not match")
     
-        image_i_1 = self.xml_to_image.to_image(xml_i_1)
-        image_i_2 = self.xml_to_image.to_image(xml_i_2)
+        image_i_1 = self.xml_to_image.to_sem_seg(xml_i_1)
+        image_i_2 = self.xml_to_image.to_sem_seg(xml_i_2)
         
         confusion_matrix  = self.evaluator.process_output([image_i_1], [image_i_2])
         
