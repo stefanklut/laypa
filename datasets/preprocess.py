@@ -102,8 +102,6 @@ class Preprocess:
                               ".exr",
                               ".hdr", ".pic"]
         
-        self.logger = logging.getLogger(get_logger_name())
-        
         self.resize = resize
         self.resize_mode = resize_mode
         self.scaling = scaling
