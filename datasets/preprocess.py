@@ -102,7 +102,6 @@ class Preprocess:
                               ".exr",
                               ".hdr", ".pic"]
         
-        self.resize = resize
         self.resize_mode = resize_mode
         self.scaling = scaling
         self.resize_sampling = resize_sampling
