@@ -106,20 +106,26 @@ if [[ ! -d $LAYPA ]]; then
     exit 1
 fi
 
-docker rmi loghi/docker.laypa
+# docker rmi loghi/docker.laypa
 
 echo "Change to directory of script..."
 DIR_OF_SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $DIR_OF_SCRIPT
 
 echo "Copy files for building docker..."
+
 cp -r -T $LAYPA/ laypa
+# HACK Fix git linking in submodules
+if [[ -f $LAYPA/.git ]]; then
+	GIT_DIR=$( cd $LAYPA && git rev-parse --git-dir )
+	rm laypa/.git && cp -r $GIT_DIR laypa/.git
+	sed 's/.*worktree.*/\tworktree = ../' laypa/.git/config > laypa/.git/config
+fi
 
 # Checkout to make sure you are not on dev branch
 cd laypa
-git checkout main
-# git checkout dev
-#git pull
+# git checkout main
+git rev-parse HEAD > version_info
 cd ..
 
 echo "Building docker image..."

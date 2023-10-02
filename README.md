@@ -4,6 +4,14 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/stefanklut/laypa)
 
 # Laypa
+Laypa: A Novel Framework for Applying Segmentation Networks to Historical Documents
+
+HIP'23 paper: https://doi.org/10.1145/3604951.3605520
+<!-- TODO Add ArXiv paper -->
+ArXiv paper: Coming soon!
+
+Part of the [Loghi pipeline][loghi_link]
+
 Laypa is a segmentation network, with the goal of finding regions (paragraph, page number, etc.) and baselines in documents. The current approach is using a ResNet backbone and a feature pyramid head, which made pixel wise classifications. The models are built using the [detectron2][detectron_link] framework. The baselines and region classifications are then made available for further processing. This post-processing turn the classification into instances. So that they can be used by other programs (OCR/HTR), either as masks or directly as pageXML.
 
 ## Table of Contents
@@ -31,10 +39,10 @@ Laypa is a segmentation network, with the goal of finding regions (paragraph, pa
 
 ## Tested Environments
 Developed using the following software and hardware:
-
-Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
--|-|-|-|-|-|-|-
- Ubuntu 22.04 | 3.10 | 1.13.1 | 11.7 | RTX 3080 Ti Laptop | 12.0 | Intel i9-12900H | :white_check_mark:
+<!-- TODO Change to recent information, maybe write small script te generate this information -->
+Operating System | Python | PyTorch | Cudatoolkit | GPU | CPU | Success
+---------------- | ------ | ------- | ----------- | --- | --- | -------
+Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
 
 <details>
 <summary> Click here to show all tested environments </summary>
@@ -42,9 +50,11 @@ Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
 <!-- TODO Add more with testing -->
 More coming soon
 
-Operating System | Python | PyTorch | Cudatoolkit | GPU | CUDA | CPU | Success
--|-|-|-|-|-|-|-
- Ubuntu 22.04 | 3.10 | 1.13.1 | 11.7 | RTX 3080 Ti Laptop | 12.0 | Intel i9-12900H | :white_check_mark:
+Run [`utils/collect_env_info.py`][collect_env_info_link] to retrieve your environment information, and add them via [pull request][pull_request_link].
+
+Operating System | Python | PyTorch | Cudatoolkit | GPU | CPU | Success
+---------------- | ------ | ------- | ----------- | --- | --- | -------
+Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
 
 </details>
 
@@ -338,6 +348,7 @@ The positional arguments input and output refer to the input and output director
 ```
 
 ### Flask Server
+<!-- TODO Add the Gunicorn server info -->
 The Flask Server is set up to run the inference code in a Kubernetes environment. To run the Flask API run the [`start_flask.sh`][start_flask_link] application with the environment variables set. This can generally be set when running a docker, which can set the environment variables beforehand depending on the docker internal file structure.  To quickly test locally you can run the [`start_flask_local.sh`][start_flask_local_link] application, which sets the environment variables at runtime.
 
 The flask server will run on port 5000 and can be called from outside using a `curl` command. When testing on a localhost the command will look as follows:
@@ -379,7 +390,6 @@ python eval.py \
     [--eval_path EVAL_PATH] \
     [--sorted] \
     [--save SAVE]
-
 ```
 
 The optional arguments are shown using square brackets. The `--tmp_dir` parameter specifies a folder in which to store temporary files. While the `--keep_tmp_dir` parameter prevents the temporary files from being deleted after a run (mostly for debugging). The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8.
@@ -478,6 +488,7 @@ If you discover a bug or missing feature that you would like to help with please
 [issues_link]: https://github.com/stefanklut/laypa/issues
 [environment_link]: environment.yml
 [license_link]: LICENSE
+[collect_env_info_link]: utils/collect_env_info.py
 [configs_link]: configs/segmentation/
 [scripts_link]: scripts/
 [tutorial_link]: tutorial/
@@ -489,4 +500,5 @@ If you discover a bug or missing feature that you would like to help with please
 [start_flask_link]: /api/start_flask.sh
 [start_flask_local_link]: /api/start_flask_local.sh
 
+[loghi_link]: https://github.com/knaw-huc/loghi
 [huc_di_link]: https://di.huc.knaw.nl/

@@ -136,7 +136,7 @@
 **/.idea/
 
 # GIT
-**/.git/
+#**/.git/
 
 # Output
 **/output/

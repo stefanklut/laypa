@@ -9,8 +9,8 @@ RUN apt-get update -y && \
         apt-utils git \
         ninja-build gcc g++ \
         ffmpeg libsm6 libxext6 && \
-        apt-get autoremove && \
-    apt-get clean -y
+    apt-get clean -y && \
+    apt-get autoremove -y
 
 WORKDIR /src/
 COPY laypa.multistage/ laypa/
@@ -23,11 +23,10 @@ WORKDIR /src/laypa
 # RUN conda update -y --all
 # RUN conda init bash
 RUN mamba env create -p /env -f environment.yml && \
-    mamba clean -y --all
+    mamba clean -y --all --force-pkgs-dirs
 
 # Removing the nsight-compute folder, hope it does nothing for runtime
-# RUN rm -r /env/nsight-compute
-# RUN rm -r /env/nsightee_plugins
+RUN rm -r /env/pkgs/cuda-toolkit/nsight*
 
 ENV PATH /env/bin:$PATH
 ENV CONDA_DEFAULT_ENV /env
@@ -41,7 +40,11 @@ FROM condaforge/mambaforge as runner
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update -y && apt-get install -y ffmpeg libsm6 libxext6
+RUN apt-get update -y && \
+    apt-get install -y ffmpeg libsm6 libxext6 && \
+    apt-get clean -y && \
+    apt-get autoremove -y
+
 
 COPY --from=builder /env /env
 COPY --from=builder /src/laypa /src/laypa
@@ -52,7 +55,10 @@ ENV PATH /env/bin/:$PATH
 ENV CONDA_DEFAULT_ENV /env
 ENV ENV_NAME=/env
 
+# Fix cuda permissions with the docker
 RUN chmod go+rx /env/pkgs/cuda-toolkit/
+# Fix git permissions with the docker
+RUN git config --system --add safe.directory /src/laypa
 
 WORKDIR /src/laypa
 COPY _entrypoint.sh /_entrypoint.sh

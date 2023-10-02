@@ -115,11 +115,17 @@ cd $DIR_OF_SCRIPT
 
 echo "Copy files for building docker..."
 cp -r -T $LAYPA/ laypa.micromamba
+# HACK Fix git linking in submodules
+if [[ -f $LAYPA/.git ]]; then
+	GIT_DIR=$( cd $LAYPA && git rev-parse --git-dir )
+	rm laypa.micromamba/.git && cp -r $GIT_DIR laypa.micromamba/.git
+	sed 's/.*worktree.*/\tworktree = ../' laypa.micromamba/.git/config > laypa.micromamba/.git/config
+fi
 
 # Checkout to make sure you are not on dev branch
 cd laypa.micromamba
-git checkout main
-# git checkout dev
+# git checkout main
+git rev-parse HEAD > version_info
 cd ..
 
 echo "Building docker image..."

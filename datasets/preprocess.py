@@ -70,6 +70,8 @@ class Preprocess:
             ValueError: If resize mode is range must provide the min size with 2 values
             NotImplementedError: resize mode given is not 
         """
+        
+        self.logger = logging.getLogger(get_logger_name())
 
         self.input_paths: Optional[Sequence[Path]] = None
         if input_paths is not None:
@@ -102,6 +104,7 @@ class Preprocess:
         
         self.logger = logging.getLogger(get_logger_name())
         
+        self.resize = resize
         self.resize_mode = resize_mode
         self.scaling = scaling
         self.resize_sampling = resize_sampling

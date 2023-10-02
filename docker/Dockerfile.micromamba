@@ -10,8 +10,8 @@ RUN apt-get update -y && \
         apt-utils git wget \
         ninja-build gcc g++ \
         ffmpeg libsm6 libxext6 && \
-        apt-get autoremove && \
-    apt-get clean -y
+    apt-get clean -y && \
+    apt-get autoremove -y
 
 WORKDIR /src/
 COPY laypa.micromamba/ laypa/
@@ -23,12 +23,15 @@ WORKDIR /src/laypa
 # RUN micromamba update -y --all
 # RUN micromamba init bash
 RUN micromamba create -y -n laypa -f environment.yml && \
-    micromamba clean -y --all
+    micromamba clean -y --all --force-pkgs-dirs
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 ENV ENV_NAME=laypa
 
+# Fix cuda permissions with the docker
 RUN chmod go+rx /opt/conda/envs/laypa/pkgs/cuda-toolkit/
+# Fix git permissions with the docker
+RUN git config --system --add safe.directory /src/laypa
 
 # RUN conda install -y mamba -n base -c conda-forge
 # RUN mamba update -y --all
