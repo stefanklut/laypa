@@ -113,6 +113,21 @@ def point_top_bottom_assignment(line_segments, points):
 
     line_vector = line_ends - line_starts
     line_norm = np.linalg.norm(line_vector, axis=1)
+    
+    non_zero = line_norm != 0
+    
+    #HACK If baseline has lenght 0, assume top bottom from the pages perspective
+    if not np.any(non_zero):
+        line_starts = line_segments[0:1]
+        line_ends = line_starts[0:1] + np.asarray([1,0])
+        line_vector = line_ends - line_starts
+        line_norm = np.linalg.norm(line_vector, axis=1)
+    else:
+        line_vector = line_vector[non_zero]
+        line_ends = line_ends[non_zero]
+        line_starts = line_starts[non_zero]
+        line_norm = line_norm[non_zero]
+    
     start_to_points_vector = points[:, np.newaxis, :] - line_starts
     start_to_points_norm = np.linalg.norm(start_to_points_vector, axis=2)
     end_to_points_vector = points[:, np.newaxis, :] - line_ends
@@ -128,7 +143,7 @@ def point_top_bottom_assignment(line_segments, points):
     mask_more_1 = dot_product_projection >= 1
     mask_between_0_1 = np.logical_not(np.logical_or(mask_less_0, mask_more_1))
     
-    distances = np.zeros((len(points), len(line_segments) - 1))
+    distances = np.zeros((len(points), len(line_vector)))
     
     distances[mask_less_0] = start_to_points_norm[mask_less_0]
     distances[mask_more_1] = end_to_points_norm[mask_more_1]
@@ -231,6 +246,6 @@ if __name__ == "__main__":
     # plt.show()
 
     import matplotlib.pyplot as plt
-    im = draw_lines(np.array([[(10,10), (210,10), (400,60)]]), 10)
+    im = draw_lines(np.array([[(10,10), (10,10)]]), 10)
     plt.imshow(im, cmap='gray')
     plt.show()

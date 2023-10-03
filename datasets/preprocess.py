@@ -375,16 +375,20 @@ class Preprocess:
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         sem_seg_dir = self.output_dir.joinpath("sem_seg")
-        sem_seg_dir.mkdir(parents=True, exist_ok=True)
         out_sem_seg_path = sem_seg_dir.joinpath(image_stem + ".png")
         
         # Check if image already exist and if it doesn't need resizing
         if not self.overwrite and out_sem_seg_path.exists():
             out_sem_seg_shape = imagesize.get(out_sem_seg_path)[::-1]
             if out_sem_seg_shape == image_shape:
-                str(out_sem_seg_path.relative_to(self.output_dir))
+                return str(out_sem_seg_path.relative_to(self.output_dir))
         
         sem_seg = self.xml_converter.to_sem_seg(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        if sem_seg is None:
+            return None
+        
+        sem_seg_dir.mkdir(parents=True, exist_ok=True)
+        
         save_image_to_path(out_sem_seg_path, sem_seg)
         
         return str(out_sem_seg_path.relative_to(self.output_dir))
@@ -393,7 +397,6 @@ class Preprocess:
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         instances_dir = self.output_dir.joinpath("instances")
-        instances_dir.mkdir(parents=True, exist_ok=True) 
         out_instances_path = instances_dir.joinpath(image_stem + ".json")
         out_instances_size_path = instances_dir.joinpath(image_stem + ".txt")
         
@@ -405,8 +408,13 @@ class Preprocess:
                 return str(out_instances_path.relative_to(self.output_dir))
                 
         instances = self.xml_converter.to_instances(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        if instances is None:
+            return None
+        
+        instances_dir.mkdir(parents=True, exist_ok=True) 
+        
         json_instances = {"image_size": image_shape,
-                            "annotations": instances}
+                          "annotations": instances}
         with out_instances_path.open(mode='w') as f:
             json.dump(json_instances, f)
         with out_instances_size_path.open(mode='w') as f:
@@ -418,7 +426,7 @@ class Preprocess:
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         panos_dir = self.output_dir.joinpath("panos")
-        panos_dir.mkdir(parents=True, exist_ok=True) 
+        
         out_pano_path = panos_dir.joinpath(image_stem + ".png")
         out_segments_info_path = panos_dir.joinpath(image_stem + ".json")
                 
@@ -428,14 +436,19 @@ class Preprocess:
             if out_pano_shape == image_shape:
                return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
                 
-        pano, segments_info = self.xml_converter.to_pano(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        pano_output = self.xml_converter.to_pano(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        if pano_output is None:
+            return None
+        pano, segments_info = pano_output
         
         save_image_to_path(out_pano_path, pano)
         
         json_pano = {"image_size": image_shape,
-                        "segments_info": segments_info}
+                     "segments_info": segments_info}
         with out_segments_info_path.open(mode='w') as f:
             json.dump(json_pano, f)
+            
+        panos_dir.mkdir(parents=True, exist_ok=True) 
         
         return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
 
@@ -471,17 +484,22 @@ class Preprocess:
         results["original_image_paths"] = str(image_path)
         
         out_image_path = self.save_image(image_path, image_stem, image_shape)
-        results["image_paths"] = out_image_path
+        if out_image_path is not None:
+            results["image_paths"] = out_image_path
         
         out_sem_seg_path = self.save_sem_seg(xml_path, image_stem, original_image_shape, image_shape)
-        results["sem_seg_paths"] = out_sem_seg_path
+        if out_sem_seg_path is not None:
+            results["sem_seg_paths"] = out_sem_seg_path
             
         out_instances_path = self.save_instances(xml_path, image_stem, original_image_shape, image_shape)
-        results["instances_paths"] = out_instances_path
+        if out_instances_path is not None:
+            results["instances_paths"] = out_instances_path
         
-        out_pano_path, out_segments_info_path = self.save_panos(xml_path, image_stem, original_image_shape, image_shape)
-        results["pano_paths"] = out_pano_path
-        results["segments_info_paths"] = out_segments_info_path
+        pano_output = self.save_panos(xml_path, image_stem, original_image_shape, image_shape)
+        if pano_output is not None:
+            out_pano_path, out_segments_info_path = pano_output
+            results["pano_paths"] = out_pano_path
+            results["segments_info_paths"] = out_segments_info_path
 
         return results
 

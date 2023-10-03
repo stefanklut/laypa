@@ -229,9 +229,11 @@ class XMLRegions:
         elif self.mode == "separator":
             remaining_regions.extend(["separator"])
         elif self.mode == "baseline_separator":
-            remaining_regions.extend(["baseline","separator"])
+            remaining_regions.extend(["baseline", "separator"])
         elif self.mode == "text_line":
-            remaining_regions.extend('["text_line]')
+            remaining_regions.extend(["text_line"])
+        elif self.mode == "top_bottom":
+            remaining_regions.extend(["top", "bottom"])
         else:
             raise NotImplementedError
         
