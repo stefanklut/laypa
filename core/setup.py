@@ -20,7 +20,17 @@ from configs.extra_defaults import _C as _C_extra
 from utils.logging_utils import get_logger_name, setup_logger
 from utils.path_utils import unique_path
 
-def setup_logging(cfg=None, save_log=True):
+def setup_logging(cfg: Optional[CfgNode] = None, save_log: bool = True) -> logging.Logger:
+    """
+    Set up logging for the application.
+
+    Args:
+        cfg (Optional[CfgNode]): Application configuration. Defaults to None.
+        save_log (bool): Whether to save log files. Defaults to True.
+
+    Returns:
+        logging.Logger: Logger object.
+    """
     rank = comm.get_rank()
     if save_log and cfg is not None:
         output_dir = cfg.OUTPUT_DIR
@@ -42,23 +52,23 @@ def setup_logging(cfg=None, save_log=True):
 def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     """
     Create the config used for training and evaluation. 
-    Loads from default configs and merges with specific config file specified in the command line arguments
+    Loads from default configs and merges with a specific config file specified in the command line arguments.
 
     Args:
-        args (argparse.Namespace): arguments used to load a config file, also used for overwriting values directly (--opts)
-        cfg (Optional[CfgNode], optional): possible overwrite of default config. Defaults to None.
+        args (argparse.Namespace): Command line arguments used to load a config file and overwrite values directly (--opts).
+        cfg (Optional[CfgNode]): Possible overwrite of the default config. Defaults to None.
 
     Returns:
-        CfgNode: config
+        CfgNode: Configuration for training and evaluation.
     """
     
     logger = logging.getLogger(get_logger_name())
     if cfg is None:
         cfg = _C_default
-        
+    
     cfg.defrost()
 
-    # Merge with extra defaults, config file and command line args
+    # Merge with extra defaults, config file, and command line args
     cfg.set_new_allowed(True)
     cfg.merge_from_other_cfg(_C_extra)
     
@@ -94,7 +104,7 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
         cfg.TRAINING_PATHS = [str(Path(path).resolve()) for path in args.train]
     else:
         cfg.TRAINING_PATHS = [str(Path(args.train).resolve())]
-      
+    
     if not hasattr(args, 'val'):
         pass
     elif args.val is None:
@@ -116,25 +126,31 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     
     
     if cfg.MODEL.DEVICE:
-        # If cuda device can not be found, default to cpu
+        # If CUDA device cannot be found, default to CPU
         if torch.cuda.device_count() == 0:
             cfg.MODEL.DEVICE = 'cpu'
     else:
-        # If not specified use cuda if possible
+        # If not specified, use CUDA if possible, otherwise, use CPU
         if torch.cuda.device_count() > 0:
             cfg.MODEL.DEVICE = 'cuda'
         else:
             cfg.MODEL.DEVICE = 'cpu'
-            
-    # Deprication warnings
+
+    # Deprecation warnings
     if cfg.PREPROCESS.RESIZE.USE:
-        logger.warning("DeprecationWarning PREPROCESS.RESIZE.USE is losing support please switch to PREPROCESS.RESIZE.RESIZE_MODE")
+        logger.warning("DeprecationWarning PREPROCESS.RESIZE.USE is losing support; please switch to PREPROCESS.RESIZE.RESIZE_MODE")
         cfg.PREPROCESS.RESIZE.RESIZE_MODE = "shortest_edge"
 
     cfg.freeze()
     return cfg
     
 def setup_saving(cfg: CfgNode):
+    """
+    Set up saving configurations.
+
+    Args:
+        cfg (CfgNode): Configuration node.
+    """
     output_dir = Path(cfg.OUTPUT_DIR)
     output_dir.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger(get_logger_name())
@@ -151,8 +167,14 @@ def setup_saving(cfg: CfgNode):
         logger.info("Full config saved to {}".format(cfg_output_path))
         
 def setup_seed(cfg: CfgNode):
-        seed = cfg.SEED if cfg.SEED else -1
-        rank = comm.get_rank()
-        seed_all_rng(None if seed < 0 else seed + rank)
-        # REVIEW What to do with this, NLL is not deterministic. Only an issue during training
-        # torch.use_deterministic_algorithms(True)
+    """
+    Set up the random seed for reproducibility.
+
+    Args:
+        cfg (CfgNode): Configuration node.
+    """
+    seed = cfg.SEED if cfg.SEED else -1
+    rank = comm.get_rank()
+    seed_all_rng(None if seed < 0 else seed + rank)
+    # REVIEW What to do with this, NLL is not deterministic. Only an issue during training
+    # torch.use_deterministic_algorithms(True)

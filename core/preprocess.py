@@ -1,10 +1,7 @@
 import os
 from typing import Optional, Sequence
-
 from pathlib import Path
-
 from detectron2.config import CfgNode
-
 from datasets import dataset
 from datasets.preprocess import Preprocess
 from utils.input_utils import clean_input_paths, get_file_paths
@@ -19,16 +16,16 @@ def preprocess_datasets(cfg: CfgNode,
     Preprocess the dataset(s). Converts ground truth pageXML to label masks for training
 
     Args:
-        cfg (CfgNode): config
-        train (str | Path | Sequence[str | Path]): path to dir/txt(s) containing the training images
-        val (str | Path | Sequence[str | Path]): path to dir/txt(s) containing the validation images
-        output_dir (str | Path): path to output dir, where the processed data will be saved
-        save_image_locations (bool): flag to save processed image locations (for retraining)
-        
+        cfg (CfgNode): Configuration node.
+        train (str | Path | Sequence[str | Path]): Path to dir/txt(s) containing the training images.
+        val (str | Path | Sequence[str | Path]): Path to dir/txt(s) containing the validation images.
+        output_dir (str | Path): Path to output directory where the processed data will be saved.
+        save_image_locations (bool): Flag to save processed image locations (for retraining).
+
     Raises:
-        FileNotFoundError: a training dir/txt does not exist
-        FileNotFoundError: a validation dir/txt does not exist
-        FileNotFoundError: the output dir does not exist
+        FileNotFoundError: If a training dir/txt does not exist.
+        FileNotFoundError: If a validation dir/txt does not exist.
+        FileNotFoundError: If the output dir does not exist.
     """
     
     if isinstance(output_dir, str):
@@ -60,7 +57,6 @@ def preprocess_datasets(cfg: CfgNode,
         overwrite=cfg.PREPROCESS.OVERWRITE
     )
     
-    
     train_output_dir = None
     if train is not None:
         train = clean_input_paths(train)
@@ -74,14 +70,13 @@ def preprocess_datasets(cfg: CfgNode,
         process.run()
         
         if save_image_locations:
-            #Saving the images used to a txt file
+            # Saving the images used to a txt file
             os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
             train_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("training_images.txt")
-        
+            
             with open(train_image_output_path, mode="w") as f:
                 for path in train_image_paths:
                     f.write(f"{path}\n")
-    
     
     val_output_dir = None
     if val is not None:
@@ -96,10 +91,10 @@ def preprocess_datasets(cfg: CfgNode,
         process.run()
         
         if save_image_locations:
-            #Saving the images used to a txt file
+            # Saving the images used to a txt file
             os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
             val_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("validation_images.txt")
-                
+            
             with open(val_image_output_path, mode="w") as f:
                 for path in val_image_paths:
                     f.write(f"{path}\n")
