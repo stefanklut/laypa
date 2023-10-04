@@ -161,8 +161,8 @@ def point_top_bottom_assignment(line_segments, points):
         if check:
             overlap_bool = consecutive_booleans(is_min_value[i])
             if not np.any(overlap_bool):
-                min_lines = np.argwhere(is_min_value[i])
-                cross_product_i = cross_product[i, np.random.choice(min_lines)]
+                min_lines = np.nonzero(is_min_value[i])
+                cross_product_i = cross_product[i, np.random.choice(min_lines[0])]
             else:
                 cross_product_i = 0
                 overlap_location = np.argwhere(overlap_bool)[0]
