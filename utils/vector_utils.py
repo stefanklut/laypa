@@ -1,16 +1,16 @@
 import numpy as np
 import cv2
 
-def point_line_segment_distance(line_segments, points):
+def point_line_segment_distance(line_segments: np.ndarray, points: np.ndarray) -> np.ndarray:
     """
     Calculate the distance between points and line segments.
 
     Args:
-        line_segments (numpy.ndarray): Array of line segment coordinates.
-        points (numpy.ndarray): Array of point coordinates.
+        line_segments (np.ndarray): Array of line segment coordinates.
+        points (np.ndarray): Array of point coordinates.
 
     Returns:
-        numpy.ndarray: Array of distances between points and line segments.
+        np.ndarray: Array of distances between points and line segments.
     """
     line_ends = line_segments[1:]
     line_starts = line_segments[:-1]
@@ -40,29 +40,29 @@ def point_line_segment_distance(line_segments, points):
     
     return distances
 
-def consecutive_booleans(array):
+def consecutive_booleans(array: np.ndarray) -> np.ndarray:
     """
     Find consecutive True values in a boolean array.
 
     Args:
-        array (numpy.ndarray): Boolean array.
+        array (np.ndarray): Boolean array.
 
     Returns:
-        numpy.ndarray: Boolean array indicating consecutive True values.
+        np.ndarray: Boolean array indicating consecutive True values.
     """
     overlap = np.logical_and(array[1:], array[:-1])
     return overlap
 
-def point_line_segment_assignment(line_segments, points):
+def point_line_segment_assignment(line_segments: np.ndarray, points: np.ndarray) -> np.ndarray:
     """
     Assign points to line segments based on minimum distance.
 
     Args:
-        line_segments (numpy.ndarray): Array of line segment coordinates.
-        points (numpy.ndarray): Array of point coordinates.
+        line_segments (np.ndarray): Array of line segment coordinates.
+        points (np.ndarray): Array of point coordinates.
 
     Returns:
-        numpy.ndarray: Array of labels indicating the assigned line segment for each point.
+        np.ndarray: Array of labels indicating the assigned line segment for each point.
     """
     line_ends = line_segments[1:]
     line_starts = line_segments[:-1]
@@ -121,13 +121,13 @@ def point_line_segment_assignment(line_segments, points):
             
     return label
 
-def point_line_segment_side(line_segments, points):
+def point_line_segment_side(line_segments: np.ndarray, points: np.ndarray) -> tuple:
     """
     Determine which side of the line segments points are located.
 
     Args:
-        line_segments (numpy.ndarray): Array of line segment coordinates.
-        points (numpy.ndarray): Array of point coordinates.
+        line_segments (np.ndarray): Array of line segment coordinates.
+        points (np.ndarray): Array of point coordinates.
 
     Returns:
         tuple: Tuple of boolean arrays indicating if points are left, right, or on the line segments.
@@ -146,16 +146,16 @@ def point_line_segment_side(line_segments, points):
     on_line_vector = cross_product == 0
     return (left_of_line_vector, right_of_line_vector, on_line_vector)
 
-def point_top_bottom_assignment(line_segments, points):
+def point_top_bottom_assignment(line_segments: np.ndarray, points: np.ndarray) -> np.ndarray:
     """
     Assign points to top or bottom sides of line segments based on minimum distance.
 
     Args:
-        line_segments (numpy.ndarray): Array of line segment coordinates.
-        points (numpy.ndarray): Array of point coordinates.
+        line_segments (np.ndarray): Array of line segment coordinates.
+        points (np.ndarray): Array of point coordinates.
 
     Returns:
-        numpy.ndarray: Array of labels indicating the assigned side (top or bottom) for each point.
+        np.ndarray: Array of labels indicating the assigned side (top or bottom) for each point.
     """
     line_ends = line_segments[1:]
     line_starts = line_segments[:-1]
@@ -259,16 +259,16 @@ def point_top_bottom_assignment(line_segments, points):
             
     return label
 
-def draw_lines(lines, thickness):
+def draw_lines(lines: np.ndarray, thickness: int) -> np.ndarray:
     """
     Draw lines with specified thickness and assign point labels.
 
     Args:
-        lines (numpy.ndarray): Array of line segment coordinates.
+        lines (np.ndarray): Array of line segment coordinates.
         thickness (int): Thickness of lines.
 
     Returns:
-        numpy.ndarray: Image with line segments and assigned point labels.
+        np.ndarray: Image with line segments and assigned point labels.
     """
     height, width = 1000, 1000
     empty_mask = np.zeros((height, width), dtype=np.uint8)
