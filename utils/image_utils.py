@@ -11,12 +11,13 @@ import torchvision
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
 
-def load_image_from_path(image_path: Path | str, mode="color") -> Optional[np.ndarray]:
+def load_image_from_path(image_path: Path | str, mode: str="color") -> Optional[np.ndarray]:
     """
     Load image from a given path, return None if loading failed due to corruption
 
     Args:
         image_path (Path | str): path to an image on current filesystem
+        mode (str): color mode, either "color" or "grayscale"
 
     Returns:
         Optional[np.ndarray]: the loaded image or None
@@ -42,7 +43,7 @@ def load_image_from_path(image_path: Path | str, mode="color") -> Optional[np.nd
         return None
     
 
-def load_image_from_bytes(img_bytes: bytes, image_path: Optional[Path]=None) -> Optional[np.ndarray]:
+def load_image_from_bytes(img_bytes: bytes, image_path: Optional[Path]=None, mode: str="color") -> Optional[np.ndarray]:
     """
     Load image based on given bytes, return None if loading failed due to corruption
 
@@ -53,11 +54,19 @@ def load_image_from_bytes(img_bytes: bytes, image_path: Optional[Path]=None) -> 
     Returns:
         Optional[np.ndarray]: the loaded image or None
     """
+    
+    if mode == "color":
+        conversion = cv2.COLOR_RGB2BGR
+    elif mode == "grayscale":
+        conversion = cv2.COLOR_RGB2GRAY
+    else:
+        raise NotImplementedError
+    
     try:
         # bytes_array = np.frombuffer(img_bytes, np.uint8)
-        # image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR)
+        # image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
         image = Image.open(BytesIO(img_bytes))
-        image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
+        image = cv2.cvtColor(np.asarray(image), conversion)
         return image
     except OSError:
         image_path_info = image_path if image_path is not None else "Filename not given"

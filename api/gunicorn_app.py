@@ -3,6 +3,9 @@ from gunicorn.app.base import BaseApplication
 from flask_app import app
 
 class GunicornApp(BaseApplication):
+    """
+    Gunicorn wrapper around the existing flask app
+    """
     def __init__(self, app, options=None):
         self.options = options or {}
         self.application = app
@@ -16,6 +19,7 @@ class GunicornApp(BaseApplication):
         return self.application
         
 if __name__ == "__main__":
+    # Run gunicorn based on environment variables
     try:
         bind = os.environ["GUNICORN_RUN_HOST"]
         workers = os.environ["GUNICORN_WORKERS"]

@@ -6,11 +6,11 @@ def check_path_accessible(path: Path):
     """
     Check if the provide path is accessible, raise error for different checks
     Args:
-        path (Path): path to check
+        path (Path): Path to check
     Raises:
-        TypeError: path is not a Path object
-        FileNotFoundError: folder/file does not exist at location
-        PermissionError: no read access for folder/file
+        TypeError: Path is not a Path object
+        FileNotFoundError: Dir/file does not exist at location
+        PermissionError: No read access for folder/file
     """
     if not isinstance(path, Path):
         raise TypeError(f"provided object {path} is not Path, but {type(path)}")
@@ -27,10 +27,11 @@ def image_path_to_xml_path(image_path: Path, check: bool=True) -> Path:
     Return the corresponding xml path for a image
 
     Args:
-        image_path (Path): image path
+        image_path (Path): Image path
+        check (bool): Flag to turn off checking existence
 
     Returns:
-        Path: xml path
+        Path: XML path
     """
     xml_path = image_path.absolute().parent.joinpath("page", image_path.stem + '.xml')
     
@@ -44,13 +45,14 @@ def xml_path_to_image_path(xml_path: Path, check: bool=True) -> Path:
     Return the corresponding image path for an xml
 
     Args:
-        xml_path (Path): xml path
+        xml_path (Path): XML path
+        check (bool): Flag to turn off checking existence
 
     Raises:
-        FileNotFoundError: no image for xml path
+        FileNotFoundError: No image for xml path
 
     Returns:
-        Path: image_path
+        Path: Image_path
     """
     
     

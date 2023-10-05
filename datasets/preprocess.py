@@ -5,7 +5,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Any, Optional, Sequence
 import cv2
 
 import imagesize
@@ -464,16 +464,13 @@ class Preprocess:
         Process a single image and pageXML to be used during training
 
         Args:
-            image_path (Path): path to input image
+            image_path (Path): Path to input image
 
         Raises:
-            TypeError: cannot return if output dir is not set
+            TypeError: Cannot return if output dir is not set
 
         Returns:
-            (tuple containing)
-            Path: image after moving (and  possibly resizing), new path location
-            Path: pageXML to label image, path location
-            np.ndarray: shape of the image
+            dict: Preprocessing results
         """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
@@ -513,8 +510,8 @@ class Preprocess:
         Run preprocessing on all images currently on input paths, save to output dir
 
         Raises:
-            TypeError: input paths must be set
-            TypeError: output dir must be set
+            TypeError: Input paths must be set
+            TypeError: Output dir must be set
             ValueError: Must find at least one image in all input paths
             ValueError: Must find at least one pageXML in all input paths
         """
@@ -556,7 +553,16 @@ class Preprocess:
         with open(output_path, 'w') as f:
             json.dump(results, f)
             
-def list_of_dict_to_dict_of_list(input_list: list[dict]):
+def list_of_dict_to_dict_of_list(input_list: list[dict[str, Any]]) -> dict[str, list[Any]]:
+    """
+    Convert a list of dicts into dict of lists. All dicts much have the same keys. The output number of dicts matches the length of the list
+
+    Args:
+        input_list (list[dict[str, Any]]): list of dicts
+
+    Returns:
+        dict[str, list[Any]]: dict of lists
+    """    
     output_dict = {key: [item[key] for item in input_list] for key in input_list[0].keys()}
     return output_dict
 

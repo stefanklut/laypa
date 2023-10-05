@@ -2,7 +2,7 @@ import json
 from multiprocessing.pool import Pool
 # from multiprocessing.pool import ThreadPool as Pool
 import os
-from typing import Optional
+from typing import Optional, Any
 
 import distinctipy
 import argparse
@@ -27,12 +27,10 @@ def create_data(input_data: dict) -> dict:
     Return a single dict used for training
 
     Args:
-        input_data (dict): input consisting of the image path, 
-            the labels mask path, the instances path, and the shape of the image (use for grouping for example)
+        input_data (dict): input dict to be parsed
 
     Raises:
-        FileNotFoundError: image path is missing
-        FileNotFoundError: mask path is missing
+        FileNotFoundError: one of the given paths is missing
 
     Returns:
         dict: data used for detectron training
@@ -81,15 +79,11 @@ def dataset_dict_loader(input_data: list[dict]) -> list[dict]:
     Create the dicts used for loading during training
 
     Args:
-        dataset_dir (str | Path): dir containing the dataset
-
-    Raises:
-
-        ValueError: length of the info does not match
+        input_data (list[dict]): list of dicts, each dict is one image and associated ground truth
 
     Returns:
         list[dict]: list of dicts used to feed the dataloader
-    """
+    """    
     # Single Thread
     # input_dicts = []
     # for input_data_i in input_data:
@@ -102,19 +96,50 @@ def dataset_dict_loader(input_data: list[dict]) -> list[dict]:
 
     return input_dicts
 
-def dict_of_list_to_list_of_dicts(input_dict: dict[str, list]):
+def dict_of_list_to_list_of_dicts(input_dict: dict[str, list[Any]]) -> list[dict[str, Any]]:
+    """
+    Convert a dict of lists into a list of dicts. All list much have the same length. The output number of dicts matches the length of the list
+
+    Args:
+        input_dict (dict[str, list[Any]]): dict of lists
+
+    Returns:
+        list[dict[str, Any]]: list of dicts
+    """    
     output_list = [{key: value for key, value in zip(input_dict.keys(), t)} 
                         for t in zip(*input_dict.values())]
     return output_list
 
-def convert_to_paths(dataset_dir, input_data):
-    input_data = dict_of_list_to_list_of_dicts(input_data)
-    input_data = [{key: dataset_dir.joinpath(value) if "paths" in key else value 
-                    for key, value in item.items()} 
-                    for item in input_data]
-    return input_data
+def convert_to_paths(dataset_dir: Path, input_data: dict[str, list]) -> list[dict[str, Path | Any]]:
+    """
+    Turn expected paths into actual Path objects instead of just str, the rest stays the same
 
-def classes_to_colors(classes) -> list[tuple[int,int,int]]:
+    Args:
+        dataset_dir (Path): base dataset dir
+        input_data (dict[str, list]): data dict with some of the lists representing paths
+
+    Returns:
+        list[dict[str, Path | Any]]: list of dicts containing paths where applicable
+    """
+    converted_data = dict_of_list_to_list_of_dicts(input_data)
+    converted_data = [{key: dataset_dir.joinpath(value) if "paths" in key else value 
+                    for key, value in item.items()} 
+                    for item in converted_data]
+    return converted_data
+
+def classes_to_colors(classes: list[str]) -> list[tuple[int,int,int]]:
+    """
+    Assign a unique distinct color to each class
+
+    Args:
+        classes (list[str]): names of classes
+
+    Raises:
+        ValueError: must have at least two classes
+
+    Returns:
+        list[tuple[int,int,int]]: colors in RGB form for each class
+    """
     if len(classes) < 2:
         raise ValueError(f"Expecting at least 2 classes got {len(classes)}")
     background_color = (0,0,0)
@@ -128,7 +153,18 @@ def classes_to_colors(classes) -> list[tuple[int,int,int]]:
     return colors
 
 def metadata_from_classes(classes: list[str],
-                          ignore_label: int=255):
+                          ignore_label: int=255) -> Metadata:
+    """
+    Create unique metadata based on the give class names
+
+    Args:
+        classes (list[str]): names of classes
+        ignore_label (int, optional): ignored class label. Defaults to 255.
+
+    Returns:
+        Metadata: metadata object
+    """
+    
     colors = classes_to_colors(classes)
     metadata = Metadata(
         thing_classes  = classes[1:],
@@ -141,8 +177,19 @@ def metadata_from_classes(classes: list[str],
     return metadata
 
 def register_dataset(path:str | Path, 
-                   name: str, 
-                   ignore_label: int=255):
+                     name: str, 
+                     ignore_label: int=255) -> Metadata:
+    """
+    Register a dataset that was created by the preprocessing
+
+    Args:
+        path (str | Path): path to data on disk
+        name (str): name of registered dataset
+        ignore_label (int, optional): ignored class label. Defaults to 255.
+
+    Returns:
+        Metadata: metadata object
+    """    
     if isinstance(path, str):
         path = Path(path)
     
@@ -167,6 +214,19 @@ def register_datasets(train: Optional[str|Path]=None,
                      train_name: Optional[str]=None, 
                      val_name: Optional[str]=None,
                      ignore_label: int=255):
+    """
+    Register train and/or validation dataset
+
+    Args:
+        train (Optional[str | Path], optional): path to train data on disk. Defaults to None.
+        val (Optional[str | Path], optional): path to val data on disk. Defaults to None.
+        train_name (Optional[str], optional): name of train dataset. Defaults to None.
+        val_name (Optional[str], optional): name of val dataset. Defaults to None.
+        ignore_label (int, optional): ignored class label. Defaults to 255.
+
+    Returns:
+        Metadata: metadata object
+    """    
     
     assert train is not None or val is not None, "Must set at least something when registering"
     assert train is None or train_name is not None, "If train is not None, then train_name has to be set"

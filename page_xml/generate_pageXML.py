@@ -53,10 +53,9 @@ class GenPageXML(XMLRegions):
         Class for the generation of the pageXML from class predictions on images
 
         Args:
-            output_dir (str | Path): path to output dir
             mode (str): mode of the region type
+            output_dir (str | Path): path to output dir
             line_width (Optional[int], optional): width of line. Defaults to None.
-            line_color (Optional[int], optional): value of line (when only one line type exists). Defaults to None.
             regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
             merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
             region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
@@ -89,6 +88,15 @@ class GenPageXML(XMLRegions):
         self.page_dir = page_dir
         
     def link_image(self, image_path: Path):
+        """
+        Symlink image to get the correct output structure
+
+        Args:
+            image_path (Path): path to original image
+
+        Raises:
+            TypeError: Output dir has not been set
+        """        
         if self.output_dir is None:
             raise TypeError("Output dir is None")
         image_output_path = self.output_dir.joinpath(image_path.name)
@@ -100,18 +108,20 @@ class GenPageXML(XMLRegions):
         Convert a single prediction into a page
 
         Args:
-            info (tuple[np.ndarray | Path, Path]):
-                (tuple containing)
-                np.ndarray | Path: mask as array or path of mask
-                Path: original image 
+            mask (torch.Tensor): mask as tensor
+            image_path (Path): Image path, used for path name
+            old_height (Optional[int], optional): height of the original image. Defaults to None.
+            old_width (Optional[int], optional): width of the original image. Defaults to None.
 
         Raises:
+            TypeError: Output dir has not been set
+            TypeError: Page dir has not been set
             NotImplementedError: mode is not known
         """
         if self.output_dir is None:
             raise TypeError("Output dir is None")
         if self.page_dir is None:
-            raise TypeError("Output dir is None")
+            raise TypeError("Page dir is None")
         
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
         
@@ -195,27 +205,25 @@ class GenPageXML(XMLRegions):
         Convert a single prediction into a page
 
         Args:
-            info (tuple[np.ndarray | Path, Path]):
+            info (tuple[torch.Tensor | Path, Path]):
                 (tuple containing)
-                np.ndarray | Path: mask as array or path of mask
-                Path: original image 
-
-        Raises:
-            NotImplementedError: mode is not known
+                torch.Tensor | Path: mask as array or path to mask
+                Path: original image path
         """
         mask, image_path = info
         if isinstance(mask, Path):
             mask = cv2.imread(str(mask), cv2.IMREAD_GRAYSCALE)
+            mask = torch.as_tensor(mask)
         self.generate_single_page(mask, image_path)
         
     def run(self, 
-            mask_list: list[np.ndarray] | list[Path], 
+            mask_list: list[torch.Tensor] | list[Path], 
             image_path_list: list[Path]) -> None:
         """
         Generate pageXML for all mask-image pairs in the lists
 
         Args:
-            mask_list (list[np.ndarray] | list[Path]): all mask as arrays or path to the mask
+            mask_list (list[torch.Tensor] | list[Path]): all mask as arrays or path to the mask
             image_path_list (list[Path]): path to the original image
 
         Raises:

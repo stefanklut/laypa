@@ -37,7 +37,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def copy_xml_paths(xml_paths: list[Path], output_dir: Path, mode="copy") -> list[Path]:
+def copy_xml_paths(xml_paths: list[Path], output_dir: Path, mode: str="copy") -> list[Path]:
     """
     copy a list of pageXML paths to an output dir. The respective images are also copied
 
@@ -71,7 +71,7 @@ def copy_xml_paths(xml_paths: list[Path], output_dir: Path, mode="copy") -> list
         
     return output_paths
 
-def copy_image_paths(image_paths: list[Path], output_dir: Path, mode="copy") -> list[Path]:
+def copy_image_paths(image_paths: list[Path], output_dir: Path, mode: str="copy") -> list[Path]:
     """
     copy a list of image paths to an output dir. The respective pageXMLs are also copied
 

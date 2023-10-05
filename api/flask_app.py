@@ -4,16 +4,16 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 import time
-from typing import Optional, TypedDict
+from typing import Any, Optional, TypedDict
 
 import cv2
 import numpy as np
 import torch
-from flask import Flask, abort, jsonify, request
+from flask import Flask, Response, abort, jsonify, request
 
 from prometheus_client import generate_latest, Counter, Gauge
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.image_utils import load_image_from_bytes
@@ -49,18 +49,32 @@ gen_page = None
 
 @dataclass
 class DummyArgs():
+    """
+    Args to be used instead of the argparse.Namespace
+    """    
     config: str = "config.yaml"
     output: str = str(output_base_path)
     opts: list[str] = field(default_factory=list)
 
 
 class PredictorGenPageWrapper():
+    """
+    Wrapper around the page generation code
+    """    
     def __init__(self) -> None:
         self.model_name: Optional[str] = None
         self.predictor: Optional[Predictor] = None
         self.gen_page: Optional[GenPageXML] = None
 
-    def setup_model(self, model_name, args):
+    def setup_model(self, model_name: str, args: DummyArgs):
+        """
+        Create the model and post-processing code 
+
+        Args:
+            model_name (str): Model name, used to determine what model to load from models present in base path
+            args (DummyArgs): Dummy version of command line arguments, to set up config
+        """    
+        # If model name matches current model name return without init
         if model_name == self.model_name:
             return
         
@@ -89,20 +103,37 @@ predict_gen_page_wrapper = PredictorGenPageWrapper()
 max_workers = 1
 max_queue_size = max_workers + max_queue_size
 
+# Run a separate thread on which the GPU runs and processes requests put in the queue
 executor = ThreadPoolExecutor(max_workers=max_workers)
 
+# Prometheus metrics to be returned
 queue_size_gauge = Gauge('queue_size', "Size of worker queue").set_function(lambda: executor._work_queue.qsize())
 images_processed_counter = Counter('images_processed', "Total number of images processed")
 exception_predict_counter = Counter('exception_predict', 'Exception thrown in predict() function')
 
-def predict_image(image: np.ndarray, image_path: Path, identifier: str):
+def predict_image(image: np.ndarray, image_path: Path, identifier: str) -> dict[str, Any]:
+    """
+    Run the prediction for the given image
+
+    Args:
+        image (np.ndarray): Image array send to model prediction
+        image_path (Path): Image name used to save image to location
+        identifier (str): Unique identifier
+
+    Raises:
+        TypeError: The current GenPageXML in not initialized
+        TypeError: The current Predictor is not initialized
+
+    Returns:
+        dict[str, Any]: Information about what image was processed
+    """    
     input_args = locals()
     try:
         output_path = output_base_path.joinpath(identifier, image_path)
         if predict_gen_page_wrapper.gen_page is None:
-            raise TypeError("")
+            raise TypeError("The current GenPageXML in not initialized")
         if predict_gen_page_wrapper.predictor is None:
-            raise TypeError("")
+            raise TypeError("The current Predictor is not initialized")
         
         predict_gen_page_wrapper.gen_page.set_output_dir(output_path.parent)
         if not output_path.parent.exists():
@@ -122,6 +153,9 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str):
 
 
 class ResponseInfo(TypedDict, total=False):
+    """
+    Template for what fields are allowed in the response
+    """    
     submission_success: bool
     identifier: str
     filename: str
@@ -132,7 +166,15 @@ class ResponseInfo(TypedDict, total=False):
     error_message: str
 
 
-def abort_with_info(status_code, error_message, info: Optional[ResponseInfo]=None):
+def abort_with_info(status_code: int, error_message: str, info: Optional[ResponseInfo]=None):
+    """
+    Abort while still providing info about what went wrong
+
+    Args:
+        status_code (int): Error type code
+        error_message (str): Message
+        info (Optional[ResponseInfo], optional): Response info. Defaults to None.
+    """    
     if info is None:
         info = ResponseInfo(submission_success=False) # type: ignore
     info["error_message"] = error_message
@@ -140,7 +182,13 @@ def abort_with_info(status_code, error_message, info: Optional[ResponseInfo]=Non
     response.status_code = status_code
     abort(response)
     
-def check_exception_callback(future):
+def check_exception_callback(future: Future):
+    """
+    Log on exception
+
+    Args:
+        future (Future): Results from other thread
+    """    
     logger = logging.getLogger(get_logger_name())
     results = future.result()
     if "exception" in results:
@@ -149,7 +197,13 @@ def check_exception_callback(future):
 
 @app.route('/predict', methods=['POST'])
 @exception_predict_counter.count_exceptions()
-def predict():
+def predict() -> Response:
+    """
+    Run the prediction on a submitted image
+
+    Returns:
+        Response: Submission response
+    """    
     if request.method != 'POST':
         abort(400)
         
@@ -204,7 +258,13 @@ def predict():
 
 
 @app.route('/prometheus', methods=['GET'])
-def metrics():
+def metrics() -> bytes:
+    """
+    Return the Prometheus metrics for the running flask application
+
+    Returns:
+        bytes: Encoded string with the information
+    """    
     return generate_latest()
 
 

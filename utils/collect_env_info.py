@@ -5,7 +5,16 @@ import re
 import subprocess
 import torch
 
-def get_os():
+def get_os() -> str:
+    """
+    Return the current operating system
+
+    Raises:
+        NotImplementedError: platform.system().lower() returned currenly unknown value
+
+    Returns:
+        str: Current OS
+    """    
     system = platform.system().lower()
     if system == "linux":
         os_info = subprocess.check_output(["lsb_release", "-d"]).decode().replace("Description:", "").strip()
@@ -19,7 +28,16 @@ def get_os():
     else:
         raise NotImplementedError()
 
-def get_cpu():
+def get_cpu() -> str:
+    """
+    Return the current operating system
+
+    Raises:
+        NotImplementedError: platform.system().lower() returned currenly unknown value
+
+    Returns:
+        str: Current OS
+    """  
     system = platform.system().lower()
     if system == "linux":
         command = "cat /proc/cpuinfo"
@@ -27,6 +45,8 @@ def get_cpu():
         for line in all_info.split("\n"):
             if "model name" in line:
                 return re.sub( ".*model name.*: ", "", line,1)
+        else:
+            raise NotImplementedError
     elif system == "windows":
         # FIXME Untested
         family = platform.processor()
@@ -38,8 +58,9 @@ def get_cpu():
         command ="sysctl -n machdep.cpu.brand_string"
         return subprocess.check_output(command).decode().strip()
     else:
-        raise NotImplementedError("")
+        raise NotImplementedError
 
+# Retrieve relevant information and print the found environment
 os_info = get_os()
 python_version = platform.python_version()
 pytorch_version = torch.__version__

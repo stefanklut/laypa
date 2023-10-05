@@ -18,6 +18,9 @@ from utils.logging_utils import get_logger_name
 from utils.tempdir import AtomicFileName
 
 class Instance(TypedDict):
+    """
+    Required fields for an instance dict
+    """
     bbox: list[float]
     bbox_mode: int
     category_id: int
@@ -26,6 +29,9 @@ class Instance(TypedDict):
     iscrowd: bool
     
 class SegmentsInfo(TypedDict):
+    """
+    Required fields for an segments info dict
+    """
     id: int
     category_id: int
     iscrowd: bool
@@ -92,7 +98,7 @@ class PageData:
             return None
 
 
-    def get_id(self, element):
+    def get_id(self, element) -> str:
         """
         get Id of current element
         """
@@ -131,7 +137,7 @@ class PageData:
         
         return self.size
 
-    def get_coords(self, element):
+    def get_coords(self, element) -> np.ndarray:
         str_coords = (
             element.findall("".join(["./", self.base, "Coords"]))[0]
             .attrib.get("points")
@@ -197,13 +203,13 @@ class PageData:
             yield coords
 
     @staticmethod            
-    def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]):
+    def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]) -> np.ndarray:
         scale_factor = np.asarray(out_size) / np.asarray(size)
         scaled_coords = (coords * scale_factor[::-1]).astype(np.float32)
         return scaled_coords
     
     @staticmethod
-    def _bounding_box(array: np.ndarray):
+    def _bounding_box(array: np.ndarray) -> list[float]:
         min_x, min_y = np.min(array, axis=0)
         max_x, max_y = np.max(array, axis=0)
         bbox =  np.asarray([min_x, min_y, max_x, max_y]).astype(np.float32).tolist()
@@ -211,7 +217,7 @@ class PageData:
     
     # Taken from https://github.com/cocodataset/panopticapi/blob/master/panopticapi/utils.py
     @staticmethod
-    def id2rgb(id_map):
+    def id2rgb(id_map) -> np.ndarray:
         if isinstance(id_map, np.ndarray):
             id_map_copy = id_map.copy()
             rgb_shape = tuple(list(id_map.shape) + [3])
@@ -224,7 +230,7 @@ class PageData:
         for _ in range(3):
             color.append(id_map % 256)
             id_map //= 256
-        return color
+        return np.asarray(color)
     
     ## REGIONS
     

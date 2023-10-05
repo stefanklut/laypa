@@ -94,7 +94,7 @@ class Predictor(DefaultPredictor):
                     height, width, self.cfg.INPUT.MIN_SIZE_TEST, self.cfg.INPUT.MAX_SIZE_TEST)
             elif self.cfg.INPUT.RESIZE_MODE == "scaling":
                 new_height, new_width = self.aug.get_output_shape(
-                    height, width, self.cfg.INPUT.SCALING)
+                    height, width, self.cfg.INPUT.SCALING, self.cfg.INPUT.MAX_SIZE_TEST)
             else:
                 raise NotImplementedError(f"{self.cfg.INPUT.RESIZE_MODE} is not a known resize mode")
             

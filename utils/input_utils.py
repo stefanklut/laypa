@@ -2,7 +2,7 @@ from typing import Sequence
 from pathlib import Path
 import os
 
-def clean_input_paths(input_paths: str | Path | Sequence[str|Path]):
+def clean_input_paths(input_paths: str | Path | Sequence[str|Path]) -> list[Path]:
     """
     Make all types of input path conform to list of paths
     
@@ -37,7 +37,9 @@ def clean_input_paths(input_paths: str | Path | Sequence[str|Path]):
     
     return output
 
-def get_file_paths(input_paths: str | Path | Sequence[str|Path], formats: Sequence[str], disable_check=False):
+def get_file_paths(input_paths: str | Path | Sequence[str|Path], 
+                   formats: Sequence[str], 
+                   disable_check: bool=False) -> list[Path]:
     """
     Takes input paths, that may point to txt files containing more input paths and extracts them
 

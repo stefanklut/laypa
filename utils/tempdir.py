@@ -110,6 +110,12 @@ class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
             
 @contextmanager        
 def AtomicFileName(file_path: Path|str):
+    """
+    Make file creation atomic by storing the file in a temp dir first and moving after the context manager closes
+
+    Args:
+        file_path (Path | str): final location of file after contextmanager closes
+    """    
     if isinstance(file_path, str):
         file_path = Path(file_path)
     tmp_dir = tempfile.TemporaryDirectory(dir=file_path.parent, prefix=".tmp", suffix=file_path.stem)
@@ -125,6 +131,12 @@ def AtomicFileName(file_path: Path|str):
         
 @contextmanager
 def AtomicDir(dir_path: Path|str):
+    """
+    Make dir creation atomic by creating a temp dir first and moving after the context manager closes
+
+    Args:
+        dir_path (Path | str): final location of dir after contextmanager closes
+    """    
     if isinstance(dir_path, str):
         dir_path = Path(dir_path)
     tmp_dir = tempfile.TemporaryDirectory(dir=dir_path.parent, prefix=".tmp", suffix=dir_path.stem)

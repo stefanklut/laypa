@@ -26,6 +26,15 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 def count_regions_single_page(xml_path: Path) -> Counter:
+    """
+    Count the unique regions in a pageXML
+
+    Args:
+        xml_path (Path): Path to pageXML
+
+    Returns:
+        Counter: Count of all unique regions
+    """    
     page_data = PageData(xml_path)
     page_data.parse()
     
@@ -39,6 +48,12 @@ def count_regions_single_page(xml_path: Path) -> Counter:
     return counter
 
 def main(args):
+    """
+    Run the full count over all pageXMLs found in the input dir
+
+    Args:
+        args (argparse.Namespace): command line arguments
+    """    
     # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
     image_formats = [".bmp", ".dib",
                      ".jpeg", ".jpg", ".jpe",
@@ -66,6 +81,7 @@ def main(args):
                                      total=len(xml_paths),
                                      desc="Extracting Regions"))
     
+    # Combine the counters of multiple regions
     total_regions = sum(regions_per_page, Counter())
     
     pretty_print(dict(total_regions), n_decimals=0)

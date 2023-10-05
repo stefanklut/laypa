@@ -25,7 +25,7 @@ def get_arguments() -> argparse.Namespace:
 # IDEA have fixed ordering of the classes, maybe look at what order is best
 class XMLConverter(XMLRegions):
     """
-    Class for turning a pageXML into an image with classes (for segmentation)
+    Class for turning a pageXML into ground truth with classes (for segmentation)
     """
     def __init__(self, mode: str, 
                  line_width: Optional[int] = None,
@@ -38,21 +38,23 @@ class XMLConverter(XMLRegions):
         Args:
             mode (str): mode of the region type
             line_width (Optional[int], optional): width of line. Defaults to None.
-            line_color (Optional[int], optional): value of line (when only one line type exists). Defaults to None.
             regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
             merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
             region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
         super().__init__(mode, line_width, regions, merge_regions, region_type)
 
-    def to_image(self, xml_path: Path, original_image_shape=None, image_shape=None) -> np.ndarray:
+    def to_image(self, 
+                 xml_path: Path, 
+                 original_image_shape: Optional[tuple[int, int]]=None, 
+                 image_shape: Optional[tuple[int, int]]=None) -> np.ndarray:
         """
         Turn a single pageXML into a mask of labels
 
         Args:
             xml_path (Path): path to pageXML
-            original_image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
-            image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
+            original_image_shape (tuple, optional): shape of the original image. Defaults to None.
+            image_shape (tuple, optional): shape of the output image. Defaults to None.
 
         Raises:
             NotImplementedError: mode is not known
@@ -113,14 +115,17 @@ class XMLConverter(XMLRegions):
         else:
             raise NotImplementedError
 
-    def to_json(self, xml_path: Path, original_image_shape=None, image_shape=None) -> list:
+    def to_json(self, 
+                xml_path: Path, 
+                original_image_shape: Optional[tuple[int, int]]=None, 
+                image_shape: Optional[tuple[int, int]]=None) -> list:
         """
         Turn a single pageXML into a dict with scaled coordinates
 
         Args:
             xml_path (Path): path to pageXML
-            original_image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
-            image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
+            original_image_shape (Optional[tuple[int, int]], optional): shape of the original image. Defaults to None.
+            image_shape (Optional[tuple[int, int]], optional): shape of the output image. Defaults to None.
 
         Raises:
             NotImplementedError: mode is not known
@@ -158,20 +163,23 @@ class XMLConverter(XMLRegions):
         else:
             raise NotImplementedError
         
-    def to_pano(self, xml_path: Path, original_image_shape=None, image_shape=None) -> tuple[np.ndarray, list]:
+    def to_pano(self, 
+                xml_path: Path, 
+                original_image_shape: Optional[tuple[int, int]]=None, 
+                image_shape: Optional[tuple[int, int]]=None) -> tuple[np.ndarray, list]:
         """
         Turn a single pageXML into a pano image with corresponding pixel info
 
         Args:
             xml_path (Path): path to pageXML
-            original_image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
-            image_shape (tuple, optional): shape of the corresponding image. Defaults to None.
+            original_image_shape (Optional[tuple[int, int]], optional): shape of the original image. Defaults to None.
+            image_shape (Optional[tuple[int, int]], optional): shape of the output image. Defaults to None.
 
         Raises:
             NotImplementedError: mode is not known
 
         Returns:
-            dict: scaled coordinates about the location of the objects in the image
+            tuple[np.ndarray, list]: pano mask and the segments information
         """
         gt_data = PageData(xml_path)
         gt_data.parse()

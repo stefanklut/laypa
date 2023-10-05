@@ -7,8 +7,12 @@ import contextlib
 from typing import Callable, Optional
 
 class ContextTimer(contextlib.ContextDecorator):
+    """
+    Timer class that can be used as context manager. Or a decorator. Or just a normal timer
+    """
     _stats = defaultdict(list)
     
+    # Hack to make it also work as Callable
     def __new__(cls, arg=None, **kwargs):
 
         self = super().__new__(cls)
@@ -37,7 +41,13 @@ class ContextTimer(contextlib.ContextDecorator):
     
     @classmethod
     @property
-    def stats(cls):
+    def stats(cls) -> dict[str, float]:
+        """
+        The final timing results
+
+        Returns:
+            dict[str, float]: results
+        """
         return dict(cls._stats)
         
     def __call__(self, func: Callable):

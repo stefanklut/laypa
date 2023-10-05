@@ -71,13 +71,32 @@ class RandomApply(T.RandomApply):
     
 class ResizeScaling(T.Augmentation):
     def __init__(self, scale: float, max_size: int=sys.maxsize) -> None:
+        """
+        Resize image based on scaling
+
+        Args:
+            scale (float): scaling percentage
+            max_size (int, optional): max length of largest edge. Defaults to sys.maxsize.
+        """        
         super().__init__()
         self.scale = scale
         self.max_size = max_size
-        assert 0 < self.scale <= 1, "percentage must be in range (0,1]"
+        assert 0 < self.scale <= 1, "Scale percentage must be in range (0,1]"
     
     @staticmethod
     def get_output_shape(old_height: int, old_width: int, scale: float, max_size: int=sys.maxsize) -> tuple[int, int]:
+        """
+        Compute the output size given input size and target scale
+
+        Args:
+            old_height (int): original height of image
+            old_width (int): original width of image
+            scale (float): desired scale
+            max_size (int): max length of largest edge
+
+        Returns:
+            tuple[int, int]: new height and width
+        """
         height, width = scale * old_height, scale * old_width
         
         # If max size is 0 or smaller assume no maxsize
