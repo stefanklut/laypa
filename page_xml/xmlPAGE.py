@@ -407,7 +407,6 @@ class PageData:
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
             rgb_color = self.id2rgb(_id)
-            print(type(rgb_color))
             cv2.polylines(pano_mask, [rounded_coords.reshape(-1, 1, 2)], False, rgb_color, line_width)
             segment: SegmentsInfo = {
                 "id"         : _id,
