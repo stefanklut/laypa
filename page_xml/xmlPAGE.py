@@ -219,20 +219,19 @@ class PageData:
     
     # Taken from https://github.com/cocodataset/panopticapi/blob/master/panopticapi/utils.py
     @staticmethod
-    def id2rgb(id_map) -> np.ndarray:
+    def id2rgb(id_map: int|np.ndarray) -> tuple|np.ndarray:
         if isinstance(id_map, np.ndarray):
-            id_map_copy = id_map.copy()
             rgb_shape = tuple(list(id_map.shape) + [3])
             rgb_map = np.zeros(rgb_shape, dtype=np.uint8)
             for i in range(3):
-                rgb_map[..., i] = id_map_copy % 256
-                id_map_copy //= 256
+                rgb_map[..., i] = id_map % 256
+                id_map //= 256
             return rgb_map
         color = []
         for _ in range(3):
             color.append(id_map % 256)
             id_map //= 256
-        return np.asarray(color)
+        return tuple(color)
     
     def build_region_instances(self, out_size, elements, class_dict) -> list[Instance]:
         size = self.get_size()
