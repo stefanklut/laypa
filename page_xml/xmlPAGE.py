@@ -423,10 +423,17 @@ class PageData:
         baseline_color = 1
         size = self.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
+        binary_mask = np.zeros(out_size, dtype=np.uint8)
         for baseline_coords in self._iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.polylines(sem_seg, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            binary_mask.fill(0)
+            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            
+            # Add single line to full sem_seg
+            if np.any(np.logical_and(sem_seg, binary_mask)):
+                self.logger.warning(f"File {self.filepath} contains overlapping baselines")
+            sem_seg = np.logical_or(sem_seg, binary_mask)
         if not sem_seg.any():
             self.logger.warning(f"File {self.filepath} does not contains baselines")
         return sem_seg
@@ -444,9 +451,11 @@ class PageData:
         for baseline_coords in self._iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
-            line_pixel_coords = np.column_stack(np.where(binary_mask == 1))[:, ::-1]
             binary_mask.fill(0)
+            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            
+            # Add single line to full sem_seg
+            line_pixel_coords = np.column_stack(np.where(binary_mask == 1))[:, ::-1]
             top_bottom = point_top_bottom_assignment(rounded_coords, line_pixel_coords)
             colored_top_bottom = np.where(top_bottom, top_color, bottom_color)
             sem_seg[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = colored_top_bottom
