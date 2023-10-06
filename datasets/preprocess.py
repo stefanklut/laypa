@@ -347,7 +347,6 @@ class Preprocess:
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         image_dir = self.output_dir.joinpath("original")
-        image_dir.mkdir(parents=True, exist_ok=True) 
         if self.resize_mode == "none":
             out_image_path = image_dir.joinpath(image_path.name)
         else:
@@ -358,6 +357,8 @@ class Preprocess:
             out_image_shape = imagesize.get(out_image_path)[::-1]
             if out_image_shape == image_shape:
                 return str(out_image_path.relative_to(self.output_dir))
+        
+        image_dir.mkdir(parents=True, exist_ok=True)
         
         if self.resize_mode == "none":
             copy_mode(image_path, out_image_path, mode="symlink")
@@ -441,6 +442,8 @@ class Preprocess:
             return None
         pano, segments_info = pano_output
         
+        panos_dir.mkdir(parents=True, exist_ok=True) 
+        
         save_image_to_path(out_pano_path, pano)
         
         json_pano = {"image_size": image_shape,
@@ -448,7 +451,6 @@ class Preprocess:
         with out_segments_info_path.open(mode='w') as f:
             json.dump(json_pano, f)
             
-        panos_dir.mkdir(parents=True, exist_ok=True) 
         
         return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
 
