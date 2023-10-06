@@ -10,7 +10,7 @@ def get_os() -> str:
     Return the current operating system
 
     Raises:
-        NotImplementedError: platform.system().lower() returned currenly unknown value
+        NotImplementedError: platform.system().lower() returned currently unknown value
 
     Returns:
         str: Current OS
@@ -26,14 +26,16 @@ def get_os() -> str:
         #FIXME Someone with windows please improve
         return platform.platform()
     else:
-        raise NotImplementedError()
+        raise NotImplementedError("Unknown OS")
 
 def get_cpu() -> str:
+    
     """
     Return the current operating system
 
     Raises:
-        NotImplementedError: platform.system().lower() returned currenly unknown value
+        ValueError: Model name not found in output /proc/cpuinfo
+        NotImplementedError: platform.system().lower() returned currently unknown value
 
     Returns:
         str: Current OS
@@ -46,7 +48,7 @@ def get_cpu() -> str:
             if "model name" in line:
                 return re.sub( ".*model name.*: ", "", line,1)
         else:
-            raise NotImplementedError
+            raise ValueError("Model name not found")
     elif system == "windows":
         # FIXME Untested
         family = platform.processor()
@@ -58,7 +60,7 @@ def get_cpu() -> str:
         command ="sysctl -n machdep.cpu.brand_string"
         return subprocess.check_output(command).decode().strip()
     else:
-        raise NotImplementedError
+        raise NotImplementedError("Unknown OS")
 
 # Retrieve relevant information and print the found environment
 os_info = get_os()
