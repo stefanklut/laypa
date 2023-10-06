@@ -44,10 +44,10 @@ class XMLConverter(XMLRegions):
         """
         super().__init__(mode, line_width, regions, merge_regions, region_type)
 
-    def to_image(self, 
-                 xml_path: Path, 
-                 original_image_shape: Optional[tuple[int, int]]=None, 
-                 image_shape: Optional[tuple[int, int]]=None) -> Optional[np.ndarray]:
+    def to_sem_seg(self, 
+                   xml_path: Path, 
+                   original_image_shape: Optional[tuple[int, int]]=None, 
+                   image_shape: Optional[tuple[int, int]]=None) -> Optional[np.ndarray]:
         """
         Turn a single pageXML into a mask of labels
 
@@ -121,10 +121,10 @@ class XMLConverter(XMLRegions):
         else:
             return None
 
-    def to_json(self, 
-                xml_path: Path, 
-                original_image_shape: Optional[tuple[int, int]]=None, 
-                image_shape: Optional[tuple[int, int]]=None) -> Optional[list]:
+    def to_instances(self, 
+                     xml_path: Path, 
+                     original_image_shape: Optional[tuple[int, int]]=None, 
+                     image_shape: Optional[tuple[int, int]]=None) -> Optional[list]:
         """
         Turn a single pageXML into a dict with scaled coordinates
 
