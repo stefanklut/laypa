@@ -251,6 +251,8 @@ class PageData:
                     "iscrowd"     : False
                 }
                 instances.append(instance)
+        if not instances:
+            self.logger.warning(f"File {self.filepath} does not contains region instances")
         return instances
     
     def build_region_pano(self, out_size, elements, class_dict):
@@ -277,7 +279,7 @@ class PageData:
                 
                 _id += 1
         if not pano.any():
-            self.logger.warning(f"File {self.filepath} does not contains regions")
+            self.logger.warning(f"File {self.filepath} does not contains region pano")
         return pano, segments_info
         
     def build_region_sem_seg(self, out_size, elements, class_dict):
@@ -292,7 +294,7 @@ class PageData:
                 rounded_coords = np.round(coords).astype(np.int32)
                 cv2.fillPoly(sem_seg, [rounded_coords], element_class)
         if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains regions")
+            self.logger.warning(f"File {self.filepath} does not contains region sem_seg")
         return sem_seg
     
     def build_text_line_instances(self, out_size) -> list[Instance]:
@@ -313,6 +315,8 @@ class PageData:
                 "iscrowd"     : False
             }
             instances.append(instance)
+        if not instances:
+            self.logger.warning(f"File {self.filepath} does not contains text line instances")
         return instances
     
     def build_text_line_pano(self, out_size):
@@ -339,7 +343,7 @@ class PageData:
             
             _id += 1
         if not pano.any():
-            self.logger.warning(f"File {self.filepath} does not contains regions")
+            self.logger.warning(f"File {self.filepath} does not contains text line pano")
         return pano, segments_info
         
     def build_text_line_sem_seg(self, out_size):
@@ -354,7 +358,7 @@ class PageData:
             rounded_coords = np.round(coords).astype(np.int32)
             cv2.fillPoly(sem_seg, [rounded_coords], text_line_class)
         if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains regions")
+            self.logger.warning(f"File {self.filepath} does not contains text line sem_seg")
         return sem_seg
     
     def build_baseline_instances(self, out_size, line_width):
@@ -390,7 +394,8 @@ class PageData:
                 "iscrowd"     : False
             }
             instances.append(instance)
-            
+        if not instances:
+            self.logger.warning(f"File {self.filepath} does not contains baseline instances")
         return instances
         
     def build_baseline_pano(self, out_size, line_width):
@@ -412,7 +417,7 @@ class PageData:
             segments_info.append(segment)
             _id += 1
         if not pano.any():
-            self.logger.warning(f"File {self.filepath} does not contains baselines")
+            self.logger.warning(f"File {self.filepath} does not contains baseline pano")
         return pano, segments_info
     
     def build_baseline_sem_seg(self, out_size, line_width):
@@ -435,9 +440,9 @@ class PageData:
             sem_seg = np.logical_or(sem_seg, binary_mask)
         
         if overlap:
-            self.logger.warning(f"File {self.filepath} contains overlapping baselines")
+            self.logger.warning(f"File {self.filepath} contains overlapping baseline sem_seg")
         if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains baselines")
+            self.logger.warning(f"File {self.filepath} does not contains baseline sem_seg")
         return sem_seg
     
     def build_top_bottom_sem_seg(self, out_size, line_width):
@@ -462,7 +467,7 @@ class PageData:
             colored_top_bottom = np.where(top_bottom, top_color, bottom_color)
             sem_seg[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = colored_top_bottom
         if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains baselines")
+            self.logger.warning(f"File {self.filepath} does not contains top bottom sem_seg")
         return sem_seg
     
     def build_start_sem_seg(self, out_size, line_width):
@@ -477,7 +482,7 @@ class PageData:
             rounded_coords = np.round(coords).astype(np.int32)
             cv2.circle(sem_seg, rounded_coords, line_width, start_color, -1)
         if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains baselines")
+            self.logger.warning(f"File {self.filepath} does not contains start sem_seg")
         return sem_seg
     
     def build_end_sem_seg(self, out_size, line_width):
@@ -492,7 +497,7 @@ class PageData:
             rounded_coords = np.round(coords).astype(np.int32)
             cv2.circle(sem_seg, rounded_coords, line_width, end_color, -1)
         if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains baselines")
+            self.logger.warning(f"File {self.filepath} does not contains ends sem_seg")
         return sem_seg
     
     def build_separator_sem_seg(self, out_size, line_width):
@@ -510,7 +515,7 @@ class PageData:
             coords_end = rounded_coords[-1]
             cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
         if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains baselines")
+            self.logger.warning(f"File {self.filepath} does not contains separator sem_seg")
         return sem_seg
     
     def build_baseline_separator_sem_seg(self, out_size, line_width):
@@ -532,7 +537,7 @@ class PageData:
             coords_end = rounded_coords[-1]
             cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
         if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains baselines")
+            self.logger.warning(f"File {self.filepath} does not contains baseline separator sem_seg")
         return sem_seg
 
     def get_text(self, element):
