@@ -1,0 +1,102 @@
+# python main.py --config configs/segmentation/baseline_ovdr.yaml --tmp_dir /encrypted/tmp
+_BASE_: ../segmentation_base.yaml
+
+OUTPUT_DIR: /encrypted/baseline
+
+NAME: ovdr
+
+PREPROCESS:
+  OVERWRITE: False
+  DISABLE_CHECK: False
+  
+  RESIZE:
+    RESIZE_MODE: "scaling"
+    SCALING: 0.5
+    MAX_SIZE: -1
+
+INPUT:
+  RESIZE_MODE: "scaling"
+  SCALING: 0.5
+  MAX_SIZE_TRAIN: 4096
+
+  MAX_SIZE_TEST: 4096
+
+  FORMAT: RGB
+
+  GRAYSCALE:
+    PROBABILITY: 0.1
+
+  BRIGHTNESS:
+    PROBABILITY: 0.2
+    MIN_INTENSITY: 0.5
+    MAX_INTENSITY: 1.5
+
+  CONTRAST:
+    PROBABILITY: 0.2
+    MIN_INTENSITY: 0.5
+    MAX_INTENSITY: 1.5
+  
+  SATURATION:
+    PROBABILITY: 0.1
+    MIN_INTENSITY: 0.5
+    MAX_INTENSITY: 1.5
+
+  GAUSSIAN_FILTER:
+    PROBABILITY: 0.2
+    MIN_SIGMA: 0.5
+    MAX_SIGMA: 1.5
+
+  HORIZONTAL_FLIP:
+    PROBABILITY: 0.
+  
+  VERTICAL_FLIP:
+    PROBABILITY: 0.
+
+  ELASTIC_DEFORMATION:
+    PROBABILITY: 0.2
+    ALPHA: 0.1
+    SIGMA: 0.01
+
+  AFFINE:
+    PROBABILITY: 1.
+
+    TRANSLATION:
+      PROBABILITY: 0.9
+      STANDARD_DEVIATION: 0.02
+    
+    ROTATION:
+      PROBABILITY: 0.9
+      KAPPA: 30.
+
+    SHEAR:
+      PROBABILITY: 0.9
+      KAPPA: 20.
+
+    SCALE:
+      PROBABILITY: 0.9
+      STANDARD_DEVIATION: 0.12
+
+SOLVER:
+  IMS_PER_BATCH: 2
+  CHECKPOINT_PERIOD: 25000
+  BASE_LR: 0.0002
+  GAMMA: 0.1
+  STEPS: () #(80000, 120000, 160000)
+  MAX_ITER: 250000
+
+TEST:
+  EVAL_PERIOD: 10000
+
+MODEL:
+  MODE: baseline
+
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 2
+  
+  WEIGHTS:
+
+TRAIN:
+  WEIGHTS:
+
+TEST:
+  WEIGHTS:
