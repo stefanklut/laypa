@@ -101,7 +101,7 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path],
             if not disable_check:
                 for path in sub_output_paths:
                     if not path.is_file():
-                        raise FileNotFoundError(f"Missing file from the txt file: {input_path}")
+                        raise FileNotFoundError(f"Missing file ({path}) from the txt file: {input_path}")
                         
         else:
             raise ValueError(f"Invalid file type: {input_path.suffix}")
