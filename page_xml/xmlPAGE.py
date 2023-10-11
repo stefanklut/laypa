@@ -443,7 +443,7 @@ class PageData:
             self.logger.warning(f"File {self.filepath} contains overlapping baseline sem_seg")
         if not sem_seg.any():
             self.logger.warning(f"File {self.filepath} does not contains baseline sem_seg")
-        return sem_seg
+        return sem_seg.astype(np.uint8)
     
     def build_top_bottom_sem_seg(self, out_size, line_width):
         """
