@@ -56,7 +56,7 @@ ENV CONDA_DEFAULT_ENV /env
 ENV ENV_NAME=/env
 
 # Fix cuda permissions with the docker
-RUN chmod go+rx /env/pkgs/cuda-toolkit/
+# RUN chmod go+rx /env/pkgs/cuda-toolkit/
 # Fix git permissions with the docker
 RUN git config --system --add safe.directory /src/laypa
 
