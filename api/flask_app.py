@@ -41,6 +41,8 @@ if not model_base_path.is_dir():
 if not output_base_path.is_dir():
     raise FileNotFoundError(f"LAYPA_OUTPUT_BASE_PATH: {output_base_path} is not found in the current filesystem")
 
+# Capture logging
+setup_logging()
     
 app = Flask(__name__)
 
@@ -75,7 +77,7 @@ class PredictorGenPageWrapper():
             args (DummyArgs): Dummy version of command line arguments, to set up config
         """    
         # If model name matches current model name return without init
-        if model_name == self.model_name:
+        if model_name is not None and self.predictor is not None and self.gen_page is not None and model_name == self.model_name:
             return
         
         self.model_name = model_name
@@ -86,7 +88,6 @@ class PredictorGenPageWrapper():
         args.opts = ["TEST.WEIGHTS", str(weights_path)]
         
         cfg = setup_cfg(args)
-        setup_logging(cfg, save_log=False)
 
         self.gen_page = GenPageXML(mode=cfg.MODEL.MODE,
                                    output_dir=None,
@@ -111,7 +112,7 @@ queue_size_gauge = Gauge('queue_size', "Size of worker queue").set_function(lamb
 images_processed_counter = Counter('images_processed', "Total number of images processed")
 exception_predict_counter = Counter('exception_predict', 'Exception thrown in predict() function')
 
-def predict_image(image: np.ndarray, image_path: Path, identifier: str) -> dict[str, Any]:
+def predict_image(image: np.ndarray, image_path: Path, identifier: str, model_name: str) -> dict[str, Any]:
     """
     Run the prediction for the given image
 
@@ -129,6 +130,8 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str) -> dict[
     """    
     input_args = locals()
     try:
+        predict_gen_page_wrapper.setup_model(args=args, model_name=model_name)
+        
         output_path = output_base_path.joinpath(identifier, image_path)
         if predict_gen_page_wrapper.gen_page is None:
             raise TypeError("The current GenPageXML in not initialized")
@@ -242,15 +245,13 @@ def predict() -> Response:
     if queue_size > max_queue_size:
         abort_with_info(429, "Exceeding queue size", response_info)
     
-    predict_gen_page_wrapper.setup_model(args=args, model_name=model_name)
-    
     img_bytes = post_file.read()
     image = load_image_from_bytes(img_bytes, image_path=image_name)
     
     if image is None:
         abort_with_info(400, "Corrupted image", response_info)
     
-    future = executor.submit(predict_image, image, image_name, identifier)
+    future = executor.submit(predict_image, image, image_name, identifier, model_name)
     future.add_done_callback(check_exception_callback)
     
     response_info["submission_success"] = True
