@@ -96,7 +96,7 @@ class Predictor(DefaultPredictor):
                 raise NotImplementedError(f"{self.cfg.INPUT.RESIZE_MODE} is not a known resize mode")
             
             if self.cfg.INPUT.RESIZE_MODE != "none":
-                image = torch.nn.functional.interpolate(image[None], mode="nearest", size=(new_height,new_width))[0]
+                image = torch.nn.functional.interpolate(image[None], mode="bilinear", size=(new_height,new_width))[0]
 
             inputs = {"image": image, "height": new_height, "width": new_width}
             predictions = self.model([inputs])[0]
@@ -121,7 +121,7 @@ class Predictor(DefaultPredictor):
         """
         Not really useful, but shows what call needs to be made
         """
-        return self.cpu_call(original_image)
+        return self.gpu_call(original_image)
     
 class LoadingDataset(Dataset):
     def __init__(self, data):
