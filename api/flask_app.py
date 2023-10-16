@@ -43,6 +43,7 @@ if not output_base_path.is_dir():
 
 # Capture logging
 setup_logging()
+logger = logging.getLogger(get_logger_name())
     
 app = Flask(__name__)
 
@@ -82,10 +83,15 @@ class PredictorGenPageWrapper():
         
         self.model_name = model_name
         config_path = model_base_path.joinpath(self.model_name, "config.yaml")
-        weights_path = next(model_base_path.joinpath(self.model_name).glob("*.pth"))
-        
+        if not config_path.is_file():
+            raise FileNotFoundError(f"config.yaml not found in {config_path.parent}")
+        weights_paths = list(model_base_path.joinpath(self.model_name).glob("*.pth"))
+        if len(weights_paths) < 1 or not weights_paths[0].is_file():
+            raise FileNotFoundError(f"No valid .pth files found in {config_path.parent}")
+        if len(weights_paths) > 1:
+            logger.warning(f"Found multiple .pth files. Using first {weights_paths[0]}")
         args.config = str(config_path)
-        args.opts = ["TEST.WEIGHTS", str(weights_path)]
+        args.opts = ["TEST.WEIGHTS", str(weights_paths[0])]
         
         cfg = setup_cfg(args)
 
@@ -139,7 +145,7 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str, model_na
             raise TypeError("The current Predictor is not initialized")
         
         predict_gen_page_wrapper.gen_page.set_output_dir(output_path.parent)
-        if not output_path.parent.exists():
+        if not output_path.parent.is_dir():
             output_path.parent.mkdir()
         
         outputs = predict_gen_page_wrapper.predictor(image)
@@ -191,8 +197,7 @@ def check_exception_callback(future: Future):
 
     Args:
         future (Future): Results from other thread
-    """    
-    logger = logging.getLogger(get_logger_name())
+    """
     results = future.result()
     if "exception" in results:
         logger.exception(results, exc_info=results["exception"])
