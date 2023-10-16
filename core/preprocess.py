@@ -30,7 +30,7 @@ def preprocess_datasets(cfg: CfgNode,
     
     if isinstance(output_dir, str):
         output_dir = Path(output_dir)
-    if not output_dir.exists():
+    if not output_dir.is_dir():
         raise FileNotFoundError(f"Output Folder not found: {output_dir} does not exist")
     
     xml_converter = XMLConverter(

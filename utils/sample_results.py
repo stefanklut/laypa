@@ -81,7 +81,7 @@ def main(args):
     
     input_dir = Path(args.input)
     
-    if not input_dir.exists():
+    if not input_dir.is_dir():
         raise FileNotFoundError(f"{input_dir} does not exist")
     
     image_formats = [".bmp", ".dib",
