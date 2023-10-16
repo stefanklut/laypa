@@ -66,15 +66,12 @@ class Predictor(DefaultPredictor):
         if cfg.INPUT.RESIZE_MODE == "none":
             self.aug = ResizeScaling(scale=1) #HACK percentage of 1 is no scaling
         elif cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
-            min_size = cfg.INPUT.MIN_SIZE_TEST
-            max_size = cfg.INPUT.MAX_SIZE_TEST
-            sample_style = "choice"
             if cfg.INPUT.RESIZE_MODE == "shortest_edge":
-                self.aug = ResizeShortestEdge(min_size, max_size, sample_style)
+                self.aug = ResizeShortestEdge(cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, "choice")
             elif cfg.INPUT.RESIZE_MODE == "longest_edge":
-                self.aug = ResizeLongestEdge(min_size, max_size, sample_style)
+                self.aug = ResizeLongestEdge(cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, "choice")
         elif cfg.INPUT.RESIZE_MODE == "scaling":
-            self.aug = ResizeScaling(cfg.INPUT.SCALING)
+            self.aug = ResizeScaling(cfg.INPUT.SCALING, cfg.INPUT.MAX_SIZE_TEST)
         else:
             raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
     
