@@ -18,7 +18,7 @@ from tqdm import tqdm
 import numpy as np
 
 from page_xml.generate_pageXML import GenPageXML
-from utils.image_utils import load_image_from_path
+from utils.image_utils import load_image_array_from_path
 from utils.input_utils import clean_input_paths, get_file_paths
 from utils.logging_utils import get_logger_name
 
@@ -75,11 +75,12 @@ class Predictor(DefaultPredictor):
         else:
             raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
     
-    def gpu_call(self, original_image):
+    def gpu_call(self, original_image: torch.Tensor):
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
-            height, width = original_image.shape[:2]
-            image = torch.as_tensor(original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
+            channels, height, width = original_image.shape
+            assert channels == 3, f"Must be a BGR image, found {channels} channels"
+            image = torch.as_tensor(original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE)
             if self.input_format == "RGB":
                 # whether the model expects BGR inputs or RGB
                 image = image[[2, 1, 0], :, :]
@@ -102,15 +103,16 @@ class Predictor(DefaultPredictor):
             predictions = self.model([inputs])[0]
             return predictions, height, width
     
-    def cpu_call(self, original_image):      
+    def cpu_call(self, original_image: np.ndarray):  
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
+            height, width, channels = original_image.shape
+            assert channels == 3, f"Must be a BGR image, found {channels} channels"
+            image = self.aug.get_transform(original_image).apply_image(original_image)
+            image = torch.as_tensor(image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
             if self.input_format == "RGB":
                 # whether the model expects BGR inputs or RGB
-                original_image = original_image[:, :, ::-1]
-            height, width = original_image.shape[:2]
-            image = self.aug.get_transform(original_image).apply_image(original_image)
-            image = torch.as_tensor(image.astype("float32").transpose(2, 0, 1))
+                image = image[[2, 1, 0], :, :]
 
             inputs = {"image": image, "height": height, "width": width}
             predictions = self.model([inputs])[0]
@@ -130,7 +132,7 @@ class LoadingDataset(Dataset):
     def __len__(self):
         return len(self.data)
     def __getitem__(self, index):
-        return load_image_from_path(self.data[index]), index
+        return load_image_array_from_path(self.data[index]), index
 
 def collate_numpy(batch):
     collate_map = default_collate_fn_map

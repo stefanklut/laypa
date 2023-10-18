@@ -16,7 +16,7 @@ import cv2
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.tempdir import AtomicFileName
 from utils.logging_utils import get_logger_name
-from utils.image_utils import save_image_to_path
+from utils.image_utils import save_image_array_to_path
 from utils.copy_utils import copy_mode
 from utils.input_utils import get_file_paths
 from page_xml.xmlPAGE import PageData
@@ -186,7 +186,7 @@ class GenPageXML(XMLRegions):
             )[0]
             mask = torch.argmax(mask, dim=-3).cpu().numpy()
             with AtomicFileName(file_path=mask_output_path) as path:
-                save_image_to_path(str(path), (mask * 255).astype(np.uint8))
+                save_image_array_to_path(str(path), (mask * 255).astype(np.uint8))
         elif self.mode in ["baseline_separator"]:
             mask_output_path = self.page_dir.joinpath(image_path.stem + ".png")
             mask = torch.nn.functional.interpolate(
@@ -194,7 +194,7 @@ class GenPageXML(XMLRegions):
             )[0]
             mask = torch.argmax(mask, dim=-3).cpu().numpy()
             with AtomicFileName(file_path=mask_output_path) as path:
-                save_image_to_path(str(path), (mask * 128).clip(0,255).astype(np.uint8))
+                save_image_array_to_path(str(path), (mask * 128).clip(0,255).astype(np.uint8))
         else:
             raise NotImplementedError
                 

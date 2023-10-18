@@ -14,7 +14,7 @@ from core.setup import setup_cfg
 from datasets.dataset import metadata_from_classes
 
 from page_xml.xml_converter import XMLConverter
-from utils.image_utils import load_image_from_path, save_image_to_path
+from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import get_file_paths
 from utils.logging_utils import get_logger_name
 from utils.path_utils import xml_path_to_image_path
@@ -90,7 +90,7 @@ class Viewer:
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
         gray_image = self.xml_converter.to_image(xml_path_i)
-        save_image_to_path(str(output_image_path), gray_image)
+        save_image_array_to_path(str(output_image_path), gray_image)
         
     def save_color_image(self, xml_path_i: Path):
         """
@@ -111,7 +111,7 @@ class Viewer:
         for i, color in enumerate(colors):
             color_image[gray_image == i] = np.asarray(color).reshape((1,1,3))
             
-        save_image_to_path(str(output_image_path), color_image[..., ::-1])
+        save_image_array_to_path(str(output_image_path), color_image[..., ::-1])
                 
     def save_overlay_image(self, xml_path_i: Path):
         """
@@ -125,7 +125,7 @@ class Viewer:
         
         image_path_i = xml_path_to_image_path(xml_path_i)
         
-        image = load_image_from_path(str(image_path_i))
+        image = load_image_array_from_path(str(image_path_i))
         if image is None:
             return
         
@@ -135,7 +135,7 @@ class Viewer:
                             )
         vis_im = vis_im.draw_sem_seg(gray_image, alpha=0.4)
         overlay_image = vis_im.get_image()
-        save_image_to_path(str(output_image_path), overlay_image[..., ::-1])
+        save_image_array_to_path(str(output_image_path), overlay_image[..., ::-1])
         
     @staticmethod
     def check_image_exists(xml_paths: list[Path]):
