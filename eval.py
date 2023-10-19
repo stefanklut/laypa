@@ -17,7 +17,7 @@ import torch
 from natsort import os_sorted
 from utils.logging_utils import get_logger_name
 from utils.tempdir import OptionalTemporaryDirectory
-from utils.image_utils import load_image_from_path, save_image_to_path
+from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from run import Predictor
 
 
@@ -102,14 +102,14 @@ def main(args) -> None:
         
         @lru_cache(maxsize=10)
         def load_image(filename):
-            image = load_image_from_path(filename, mode="color")
+            image = load_image_array_from_path(filename, mode="color")
             if image is None:
                 raise TypeError(f"Image {filename} is None, loading failed")
             return image
 
         @lru_cache(maxsize=10)
         def load_sem_seg(filename):
-            sem_seg_gt = load_image_from_path(filename, mode="grayscale")
+            sem_seg_gt = load_image_array_from_path(filename, mode="grayscale")
             if sem_seg_gt is None:
                 raise TypeError(f"Image {filename} is None, loading failed")
             return sem_seg_gt
@@ -208,10 +208,10 @@ def main(args) -> None:
                     fig.savefig(str(save_path), dpi=240)
                 if args.save in ["all", "pred"]:
                     save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + "_pred.jpg")
-                    save_image_to_path(save_path, vis_pred[..., ::-1])
+                    save_image_array_to_path(save_path, vis_pred[..., ::-1])
                 if args.save in ["all", "gt"]:
                     save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + "_gt.jpg")
-                    save_image_to_path(save_path, vis_gt[..., ::-1])
+                    save_image_array_to_path(save_path, vis_gt[..., ::-1])
                 
                 i += 1
                 continue

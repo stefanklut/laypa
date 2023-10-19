@@ -6,9 +6,11 @@ if [[ $( builtin cd "$( dirname ${BASH_SOURCE[0]} )/.."; pwd ) != $( pwd ) ]]; t
     cd $DIR_OF_SCRIPT
 fi
 
-export LAYPA_MAX_QUEUE_SIZE=16 \
+export LAYPA_MAX_QUEUE_SIZE=128 \
 export LAYPA_MODEL_BASE_PATH="/home/stefan/Documents/models/" \
-export LAYPA_OUTPUT_BASE_PATH="/tmp/" \
+export LAYPA_OUTPUT_BASE_PATH="/tmp/gunicorn" \
+
+mkdir -p $LAYPA_OUTPUT_BASE_PATH
 
 export GUNICORN_RUN_HOST='0.0.0.0:5000'
 export GUNICORN_WORKERS=1

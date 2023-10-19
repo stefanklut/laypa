@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from utils.input_utils import clean_input_paths, get_file_paths
-from utils.image_utils import save_image_to_path, load_image_from_path
+from utils.image_utils import save_image_array_to_path, load_image_array_from_path
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Combine the data from 3 images into 1")
@@ -37,9 +37,9 @@ class CombineStartEnd():
         self.disable_check = False #No argument flag for now
         
     def combine(self, baseline_image_path, start_image_path, end_image_path):
-        baseline_image = load_image_from_path(baseline_image_path, mode="grayscale")
-        start_image = load_image_from_path(start_image_path, mode="grayscale")
-        end_image = load_image_from_path(end_image_path, mode="grayscale")
+        baseline_image = load_image_array_from_path(baseline_image_path, mode="grayscale")
+        start_image = load_image_array_from_path(start_image_path, mode="grayscale")
+        end_image = load_image_array_from_path(end_image_path, mode="grayscale")
         
         if baseline_image is None:
             raise TypeError
@@ -54,7 +54,7 @@ class CombineStartEnd():
         output_image_path = self.output_path.joinpath(baseline_image_path.name)
         # print(output_image_path)
         
-        save_image_to_path(output_image_path, image)
+        save_image_array_to_path(output_image_path, image)
     
     def combine_wrapper(self, info):
         baseline_image_path, start_image_path, end_image_path = info

@@ -16,7 +16,7 @@ from multiprocessing.pool import Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
-from utils.image_utils import save_image_to_path, load_image_from_path
+from utils.image_utils import save_image_array_to_path, load_image_array_from_path
 from utils.copy_utils import copy_mode
 from utils.logging_utils import get_logger_name
 from page_xml.xml_converter import XMLConverter
@@ -351,7 +351,6 @@ class Preprocess:
             out_image_path = image_dir.joinpath(image_path.name)
         else:
             out_image_path = image_dir.joinpath(image_stem + ".png")
-
         # Check if image already exist and if it doesn't need resizing
         if not self.overwrite and out_image_path.exists():
             out_image_shape = imagesize.get(out_image_path)[::-1]
@@ -363,12 +362,12 @@ class Preprocess:
         if self.resize_mode == "none":
             copy_mode(image_path, out_image_path, mode="symlink")
         else:
-            image = load_image_from_path(image_path)
+            image = load_image_array_from_path(image_path)
         
             if image is None:
                 raise TypeError(f"Image {image_path} is None, loading failed")
             image = self.resize_image(image, image_shape=image_shape)
-            save_image_to_path(out_image_path, image)
+            save_image_array_to_path(out_image_path, image)
         
         return str(out_image_path.relative_to(self.output_dir))
     
@@ -390,7 +389,7 @@ class Preprocess:
         
         sem_seg_dir.mkdir(parents=True, exist_ok=True)
         
-        save_image_to_path(out_sem_seg_path, sem_seg)
+        save_image_array_to_path(out_sem_seg_path, sem_seg)
         
         return str(out_sem_seg_path.relative_to(self.output_dir))
     
@@ -444,7 +443,7 @@ class Preprocess:
         
         panos_dir.mkdir(parents=True, exist_ok=True) 
         
-        save_image_to_path(out_pano_path, pano)
+        save_image_array_to_path(out_pano_path, pano)
         
         json_pano = {"image_size": image_shape,
                      "segments_info": segments_info}

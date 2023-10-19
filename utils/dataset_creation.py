@@ -10,7 +10,7 @@ import sys
 
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from utils.image_utils import load_image_from_path
+from utils.image_utils import load_image_array_from_path
 from utils.regions_from_dataset import count_regions_single_page
 from utils.logging_utils import get_logger_name
 from utils.copy_utils import copy_mode
@@ -176,7 +176,7 @@ def main(args):
             raise ValueError(f"{args.save} is not a valid check mode")
         temp_image_paths = []
         for image_path in all_image_paths:
-            image = load_image_from_path(image_path)
+            image = load_image_array_from_path(image_path)
             if args.check in ["all", "image"]:
                 if image is None:
                     continue

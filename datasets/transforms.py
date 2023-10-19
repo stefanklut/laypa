@@ -412,10 +412,9 @@ class GrayscaleTransform(T.Transform):
         """
         img = img.astype(np.float32)
         if self.image_format == "BGR":
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        # grayscale = np.tile(img.dot(self.rgb_weights),
-        #                     (3, 1, 1)).transpose((1, 2, 0))
-        grayscale = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), cv2.COLOR_GRAY2RGB)
+            grayscale = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2RGB)
+        else:
+            grayscale = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), cv2.COLOR_GRAY2RGB)
         return grayscale
 
     def apply_coords(self, coords: np.ndarray):
