@@ -18,7 +18,7 @@ from tqdm import tqdm
 import numpy as np
 
 from page_xml.generate_pageXML import GenPageXML
-from utils.image_utils import load_image_array_from_path
+from utils.image_utils import load_image_array_from_path, load_image_tensor_from_path
 from utils.input_utils import clean_input_paths, get_file_paths
 from utils.logging_utils import get_logger_name
 
@@ -132,7 +132,7 @@ class LoadingDataset(Dataset):
     def __len__(self):
         return len(self.data)
     def __getitem__(self, index):
-        return load_image_array_from_path(self.data[index]), index
+        return load_image_tensor_from_path(self.data[index]), index
 
 def collate_numpy(batch):
     collate_map = default_collate_fn_map
