@@ -81,7 +81,7 @@ class Predictor(DefaultPredictor):
             channels, height, width = original_image.shape
             assert channels == 3, f"Must be a BGR image, found {channels} channels"
             image = torch.as_tensor(original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE)
-            if self.input_format == "RGB":
+            if self.input_format == "BGR":
                 # whether the model expects BGR inputs or RGB
                 image = image[[2, 1, 0], :, :]
                 
