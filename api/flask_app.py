@@ -16,7 +16,7 @@ from prometheus_client import generate_latest, Counter, Gauge
 from concurrent.futures import Future, ThreadPoolExecutor
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from utils.image_utils import load_image_from_bytes
+from utils.image_utils import load_image_array_from_bytes, load_image_tensor_from_bytes
 from utils.logging_utils import get_logger_name
 from main import setup_cfg, setup_logging
 from page_xml.generate_pageXML import GenPageXML
@@ -41,6 +41,9 @@ if not model_base_path.is_dir():
 if not output_base_path.is_dir():
     raise FileNotFoundError(f"LAYPA_OUTPUT_BASE_PATH: {output_base_path} is not found in the current filesystem")
 
+# Capture logging
+setup_logging()
+logger = logging.getLogger(get_logger_name())
     
 app = Flask(__name__)
 
@@ -75,18 +78,23 @@ class PredictorGenPageWrapper():
             args (DummyArgs): Dummy version of command line arguments, to set up config
         """    
         # If model name matches current model name return without init
-        if model_name == self.model_name:
+        if model_name is not None and self.predictor is not None and self.gen_page is not None and model_name == self.model_name:
             return
         
         self.model_name = model_name
-        config_path = model_base_path.joinpath(self.model_name, "config.yaml")
-        weights_path = next(model_base_path.joinpath(self.model_name).glob("*.pth"))
-        
+        model_path = model_base_path.joinpath(self.model_name)
+        config_path = model_path.joinpath("config.yaml")
+        if not config_path.is_file():
+            raise FileNotFoundError(f"config.yaml not found in {model_path}")
+        weights_paths = list(model_path.glob("*.pth"))
+        if len(weights_paths) < 1 or not weights_paths[0].is_file():
+            raise FileNotFoundError(f"No valid .pth files found in {model_path}")
+        if len(weights_paths) > 1:
+            logger.warning(f"Found multiple .pth files. Using first {weights_paths[0]}")
         args.config = str(config_path)
-        args.opts = ["TEST.WEIGHTS", str(weights_path)]
+        args.opts = ["TEST.WEIGHTS", str(weights_paths[0])]
         
         cfg = setup_cfg(args)
-        setup_logging(cfg, save_log=False)
 
         self.gen_page = GenPageXML(mode=cfg.MODEL.MODE,
                                    output_dir=None,
@@ -111,7 +119,7 @@ queue_size_gauge = Gauge('queue_size', "Size of worker queue").set_function(lamb
 images_processed_counter = Counter('images_processed', "Total number of images processed")
 exception_predict_counter = Counter('exception_predict', 'Exception thrown in predict() function')
 
-def predict_image(image: np.ndarray, image_path: Path, identifier: str) -> dict[str, Any]:
+def predict_image(image: np.ndarray | torch.Tensor, image_path: Path, identifier: str, model_name: str) -> dict[str, Any]:
     """
     Run the prediction for the given image
 
@@ -129,6 +137,8 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str) -> dict[
     """    
     input_args = locals()
     try:
+        predict_gen_page_wrapper.setup_model(args=args, model_name=model_name)
+        
         output_path = output_base_path.joinpath(identifier, image_path)
         if predict_gen_page_wrapper.gen_page is None:
             raise TypeError("The current GenPageXML in not initialized")
@@ -136,10 +146,15 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str) -> dict[
             raise TypeError("The current Predictor is not initialized")
         
         predict_gen_page_wrapper.gen_page.set_output_dir(output_path.parent)
-        if not output_path.parent.exists():
+        if not output_path.parent.is_dir():
             output_path.parent.mkdir()
-        
-        outputs = predict_gen_page_wrapper.predictor(image)
+            
+        if isinstance(image, np.ndarray):
+            outputs = predict_gen_page_wrapper.predictor.cpu_call(image)
+        elif isinstance(image, torch.Tensor):
+            outputs = predict_gen_page_wrapper.predictor.gpu_call(image)
+        else:
+            raise TypeError(f"Unknown image type: {type(image)}")
         
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
@@ -188,8 +203,7 @@ def check_exception_callback(future: Future):
 
     Args:
         future (Future): Results from other thread
-    """    
-    logger = logging.getLogger(get_logger_name())
+    """
     results = future.result()
     if "exception" in results:
         logger.exception(results, exc_info=results["exception"])
@@ -242,15 +256,13 @@ def predict() -> Response:
     if queue_size > max_queue_size:
         abort_with_info(429, "Exceeding queue size", response_info)
     
-    predict_gen_page_wrapper.setup_model(args=args, model_name=model_name)
-    
     img_bytes = post_file.read()
-    image = load_image_from_bytes(img_bytes, image_path=image_name)
+    image = load_image_tensor_from_bytes(img_bytes, image_path=image_name)
     
     if image is None:
         abort_with_info(400, "Corrupted image", response_info)
     
-    future = executor.submit(predict_image, image, image_name, identifier)
+    future = executor.submit(predict_image, image, image_name, identifier, model_name)
     future.add_done_callback(check_exception_callback)
     
     response_info["submission_success"] = True
