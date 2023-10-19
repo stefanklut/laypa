@@ -119,7 +119,7 @@ queue_size_gauge = Gauge('queue_size', "Size of worker queue").set_function(lamb
 images_processed_counter = Counter('images_processed', "Total number of images processed")
 exception_predict_counter = Counter('exception_predict', 'Exception thrown in predict() function')
 
-def predict_image(image: np.ndarray, image_path: Path, identifier: str, model_name: str) -> dict[str, Any]:
+def predict_image(image: np.ndarray | torch.Tensor, image_path: Path, identifier: str, model_name: str) -> dict[str, Any]:
     """
     Run the prediction for the given image
 
@@ -148,8 +148,13 @@ def predict_image(image: np.ndarray, image_path: Path, identifier: str, model_na
         predict_gen_page_wrapper.gen_page.set_output_dir(output_path.parent)
         if not output_path.parent.is_dir():
             output_path.parent.mkdir()
-        
-        outputs = predict_gen_page_wrapper.predictor.cpu_call(image)
+            
+        if isinstance(image, np.ndarray):
+            outputs = predict_gen_page_wrapper.predictor.cpu_call(image)
+        elif isinstance(image, torch.Tensor):
+            outputs = predict_gen_page_wrapper.predictor.gpu_call(image)
+        else:
+            raise TypeError(f"Unknown image type: {type(image)}")
         
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
@@ -252,7 +257,7 @@ def predict() -> Response:
         abort_with_info(429, "Exceeding queue size", response_info)
     
     img_bytes = post_file.read()
-    image = load_image_array_from_bytes(img_bytes, image_path=image_name)
+    image = load_image_tensor_from_bytes(img_bytes, image_path=image_name)
     
     if image is None:
         abort_with_info(400, "Corrupted image", response_info)

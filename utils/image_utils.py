@@ -75,10 +75,10 @@ def load_image_array_from_bytes(image_bytes: bytes, image_path: Optional[Path]=N
     assert mode in ["color", "grayscale"], f"Mode \"{mode}\" not supported"
     
     try:
-        bytes_array = np.frombuffer(image_bytes, np.uint8)
-        image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
-        # image = Image.open(BytesIO(image_bytes))
-        # image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR if mode == "color" else cv2.COLOR_RGB2GRAY)
+        # bytes_array = np.frombuffer(image_bytes, np.uint8)
+        # image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
+        image = Image.open(BytesIO(image_bytes))
+        image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR if mode == "color" else cv2.COLOR_RGB2GRAY)
         return image
     except OSError:
         image_path_info = image_path if image_path is not None else "Filename not given"
