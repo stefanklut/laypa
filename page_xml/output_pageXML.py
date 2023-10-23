@@ -37,7 +37,7 @@ def get_arguments() -> argparse.Namespace:
     args = parser.parse_args()
     return args
 
-class GenPageXML(XMLRegions):
+class OutputPageXML(XMLRegions):
     """
     Class for the generation of the pageXML from class predictions on images
     """
@@ -264,7 +264,7 @@ def main(args):
     mask_paths = get_file_paths(args.mask, formats=[".png"])
     image_paths = get_file_paths(args.input, formats=image_formats)
     
-    gen_page = GenPageXML(mode=args.mode,
+    gen_page = OutputPageXML(mode=args.mode,
                           output_dir=args.output,
                           line_width=args.line_width,
                           regions=args.regions,

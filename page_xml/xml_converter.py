@@ -1,13 +1,16 @@
 import argparse
-import json
+import logging
 from pathlib import Path
 import sys
 import numpy as np
+import cv2
+from detectron2 import structures
+from typing import Optional, TypedDict
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xmlPAGE import PageData
 from page_xml.xml_regions import XMLRegions
-from typing import Optional
+from utils.logging_utils import get_logger_name
 
 
 def get_arguments() -> argparse.Namespace:
@@ -21,6 +24,25 @@ def get_arguments() -> argparse.Namespace:
 
     args = parser.parse_args()
     return args
+
+class Instance(TypedDict):
+    """
+    Required fields for an instance dict
+    """
+    bbox: list[float]
+    bbox_mode: int
+    category_id: int
+    segmentation: list[list[float]]
+    keypoints: list[float]
+    iscrowd: bool
+    
+class SegmentsInfo(TypedDict):
+    """
+    Required fields for an segments info dict
+    """
+    id: int
+    category_id: int
+    iscrowd: bool
 
 # IDEA have fixed ordering of the classes, maybe look at what order is best
 class XMLConverter(XMLRegions):
@@ -43,6 +65,318 @@ class XMLConverter(XMLRegions):
             region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
         super().__init__(mode, line_width, regions, merge_regions, region_type)
+        self.logger = logging.getLogger(get_logger_name())
+        
+    @staticmethod            
+    def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]) -> np.ndarray:
+        scale_factor = np.asarray(out_size) / np.asarray(size)
+        scaled_coords = (coords * scale_factor[::-1]).astype(np.float32)
+        return scaled_coords
+    
+    @staticmethod
+    def _bounding_box(array: np.ndarray) -> list[float]:
+        min_x, min_y = np.min(array, axis=0)
+        max_x, max_y = np.max(array, axis=0)
+        bbox =  np.asarray([min_x, min_y, max_x, max_y]).astype(np.float32).tolist()
+        return bbox
+    
+    # Taken from https://github.com/cocodataset/panopticapi/blob/master/panopticapi/utils.py
+    @staticmethod
+    def id2rgb(id_map: int|np.ndarray) -> tuple|np.ndarray:
+        if isinstance(id_map, np.ndarray):
+            rgb_shape = tuple(list(id_map.shape) + [3])
+            rgb_map = np.zeros(rgb_shape, dtype=np.uint8)
+            for i in range(3):
+                rgb_map[..., i] = id_map % 256
+                id_map //= 256
+            return rgb_map
+        color = []
+        for _ in range(3):
+            color.append(id_map % 256)
+            id_map //= 256
+        return tuple(color)
+        
+    ## REGIONS
+    
+    def build_region_instances(self, page: PageData, out_size: tuple[int, int], elements, class_dict) -> list[Instance]:
+        size = page.get_size()
+        instances = []
+        for element in elements:
+            for element_class, element_coords in page.iter_class_coords(element, class_dict):
+                coords = self._scale_coords(element_coords, out_size, size)
+                bbox = self._bounding_box(coords)
+                bbox_mode = structures.BoxMode.XYXY_ABS
+                flattened_coords = coords.flatten().tolist()
+                instance: Instance = {
+                    "bbox"        : bbox,
+                    "bbox_mode"   : bbox_mode,
+                    "category_id" : element_class - 1, # -1 for not having background as class
+                    "segmentation": [flattened_coords],
+                    "keypoints"   : [],
+                    "iscrowd"     : False
+                }
+                instances.append(instance)
+        return instances
+    
+    def build_region_pano(self, page: PageData, out_size: tuple[int,int], elements, class_dict):
+        """
+        Create the pano version of the regions
+        """
+        size = page.get_size()
+        pano_mask = np.zeros((*out_size, 3), np.uint8)
+        segments_info = []
+        _id = 1
+        for element in elements:
+            for element_class, element_coords in page.iter_class_coords(element, class_dict):
+                coords = self._scale_coords(element_coords, out_size, size)
+                rounded_coords = np.round(coords).astype(np.int32)
+                rgb_color = self.id2rgb(_id)
+                cv2.fillPoly(pano_mask, [rounded_coords], rgb_color)
+                
+                segment: SegmentsInfo = {
+                    "id"         : _id,
+                    "category_id": element_class - 1, # -1 for not having background as class
+                    "iscrowd"    : False
+                }
+                segments_info.append(segment)
+                
+                _id += 1
+        if not pano_mask.any():
+            self.logger.warning(f"File {page.filepath} does not contains regions")
+        return pano_mask, segments_info
+        
+    def build_region_mask(self, page: PageData, out_size: tuple[int, int], elements, class_dict):
+        """
+        Builds a "image" mask of desired elements
+        """
+        size = page.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        for element in elements:
+            for element_class, element_coords in page.iter_class_coords(element, class_dict):
+                coords = self._scale_coords(element_coords, out_size, size)
+                rounded_coords = np.round(coords).astype(np.int32)
+                cv2.fillPoly(mask, [rounded_coords], element_class)
+        if not mask.any():
+            self.logger.warning(f"File {page.filepath} does not contains regions")
+        return mask
+    
+    ## TEXT LINE
+    
+    def build_text_line_instances(self, page: PageData, out_size: tuple[int, int]) -> list[Instance]:
+        text_line_class = 0
+        size = page.get_size()
+        instances = []
+        for element_coords in page.iter_text_line_coords():
+            coords = self._scale_coords(element_coords, out_size, size)
+            bbox = self._bounding_box(coords)
+            bbox_mode = structures.BoxMode.XYXY_ABS
+            flattened_coords = coords.flatten().tolist()
+            instance: Instance = {
+                "bbox"        : bbox,
+                "bbox_mode"   : bbox_mode,
+                "category_id" : text_line_class,
+                "segmentation": [flattened_coords],
+                "keypoints"   : [],
+                "iscrowd"     : False
+            }
+            instances.append(instance)
+        return instances
+    
+    def build_text_line_pano(self, page: PageData, out_size: tuple[int, int]):
+        """
+        Create the pano version of the textline
+        """
+        text_line_class = 0
+        size = page.get_size()
+        pano_mask = np.zeros((*out_size, 3), np.uint8)
+        segments_info = []
+        _id = 1
+        for element_coords in page.iter_text_line_coords():
+            coords = self._scale_coords(element_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            rgb_color = self.id2rgb(_id)
+            cv2.fillPoly(pano_mask, [rounded_coords], rgb_color)
+            
+            segment: SegmentsInfo = {
+                "id"         : _id,
+                "category_id": text_line_class,
+                "iscrowd"    : False
+            }
+            segments_info.append(segment)
+            
+            _id += 1
+        if not pano_mask.any():
+            self.logger.warning(f"File {page.filepath} does not contains regions")
+        return pano_mask, segments_info
+        
+    def build_text_line_mask(self, page: PageData, out_size: tuple[int, int]):
+        """
+        Builds a "image" mask of desired elements
+        """
+        text_line_class = 1
+        size = page.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        for element_coords in page.iter_text_line_coords():
+            coords = self._scale_coords(element_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            cv2.fillPoly(mask, [rounded_coords], text_line_class)
+        if not mask.any():
+            self.logger.warning(f"File {page.filepath} does not contains regions")
+        return mask
+    
+    ## BASELINE
+    
+    def build_baseline_instances(self, page: PageData, out_size: tuple[int, int], line_width: int):
+        baseline_class = 0
+        size = page.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        instances = []
+        for baseline_coords in page.iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            mask.fill(0)
+            # HACK Currenty the most simple quickest solution used can probably be optimized
+            cv2.polylines(mask, [rounded_coords.reshape(-1, 1, 2)], False, 255, line_width)
+            contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            if len(contours) == 0:
+                raise ValueError(f"{page.filepath} has no contours")
+
+            # Multiple contours should really not happen, but when it does it can still be supported
+            all_coords = []
+            for contour in contours:
+                contour_coords = np.asarray(contour).reshape(-1,2)
+                all_coords.append(contour_coords)
+            flattened_coords_list = [coords.flatten().tolist() for coords in all_coords]
+            
+            bbox = self._bounding_box(np.concatenate(all_coords, axis=0))
+            bbox_mode = structures.BoxMode.XYXY_ABS
+            instance: Instance = {
+                "bbox"        : bbox,
+                "bbox_mode"   : bbox_mode,
+                "category_id" : baseline_class,
+                "segmentation": flattened_coords_list,
+                "keypoints"   : [],
+                "iscrowd"     : False
+            }
+            instances.append(instance)
+            
+        return instances
+        
+    def build_baseline_pano(self, page: PageData, out_size: tuple[int, int], line_width: int):
+        baseline_class = 0
+        size = page.get_size()
+        pano_mask = np.zeros((*out_size, 3), np.uint8)
+        segments_info = []
+        _id = 1
+        for baseline_coords in page.iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            rgb_color = self.id2rgb(_id)
+            cv2.polylines(pano_mask, [rounded_coords.reshape(-1, 1, 2)], False, rgb_color, line_width)
+            segment: SegmentsInfo = {
+                "id"         : _id,
+                "category_id": baseline_class,
+                "iscrowd"    : False
+            }
+            segments_info.append(segment)
+            _id += 1
+        if not pano_mask.any():
+            self.logger.warning(f"File {page.filepath} does not contains baselines")
+        return pano_mask, segments_info
+    
+    def build_baseline_mask(self, page: PageData, out_size: tuple[int, int], line_width: int):
+        """
+        Builds a "image" mask of Baselines on XML-PAGE
+        """
+        baseline_color = 1
+        size = page.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        for baseline_coords in page.iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            cv2.polylines(mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+        if not mask.any():
+            self.logger.warning(f"File {page.filepath} does not contains baselines")
+        return mask
+    
+    
+    ## START
+    
+    def build_start_mask(self, page: PageData, out_size: tuple[int, int], line_width: int):
+        """
+        Builds a "image" mask of Starts on XML-PAGE
+        """
+        start_color = 1
+        size = page.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        for baseline_coords in page.iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)[0]
+            rounded_coords = np.round(coords).astype(np.int32)
+            cv2.circle(mask, rounded_coords, line_width, start_color, -1)
+        if not mask.any():
+            self.logger.warning(f"File {page.filepath} does not contains baselines")
+        return mask
+    
+    ## START
+    
+    def build_end_mask(self, page: PageData, out_size: tuple[int, int], line_width: int):
+        """
+        Builds a "image" mask of Ends on XML-PAGE
+        """
+        end_color = 1
+        size = page.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        for baseline_coords in page.iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)[-1]
+            rounded_coords = np.round(coords).astype(np.int32)
+            cv2.circle(mask, rounded_coords, line_width, end_color, -1)
+        if not mask.any():
+            self.logger.warning(f"File {page.filepath} does not contains baselines")
+        return mask
+    
+    ## SEPARATOR
+    
+    def build_separator_mask(self, page: PageData, out_size: tuple[int, int], line_width: int):
+        """
+        Builds a "image" mask of Separators on XML-PAGE
+        """
+        separator_color = 1
+        size = page.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        for baseline_coords in page.iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            coords_start = rounded_coords[0]
+            cv2.circle(mask, coords_start, line_width, separator_color, -1)
+            coords_end = rounded_coords[-1]
+            cv2.circle(mask, coords_end, line_width, separator_color, -1)
+        if not mask.any():
+            self.logger.warning(f"File {page.filepath} does not contains baselines")
+        return mask
+    
+    ## BASELINE + SEPARATOR
+    
+    def build_baseline_separator_mask(self, page: PageData, out_size: tuple[int, int], line_width: int):
+        """
+        Builds a "image" mask of Separators and Baselines on XML-PAGE
+        """
+        baseline_color = 1
+        separator_color = 2
+        
+        size = page.get_size()
+        mask = np.zeros(out_size, np.uint8)
+        for baseline_coords in page.iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            
+            coords_start = rounded_coords[0]
+            cv2.circle(mask, coords_start, line_width, separator_color, -1)
+            coords_end = rounded_coords[-1]
+            cv2.circle(mask, coords_end, line_width, separator_color, -1)
+        if not mask.any():
+            self.logger.warning(f"File {page.filepath} does not contains baselines")
+        return mask
 
     def to_image(self, 
                  xml_path: Path, 
@@ -70,45 +404,53 @@ class XMLConverter(XMLRegions):
 
         if image_shape is None:
             image_shape = gt_data.get_size()
+            
         if self.mode == "region":
-            mask = gt_data.build_region_mask(
+            mask = self.build_region_mask(
+                gt_data,
                 image_shape,
                 set(self.region_types.values()),
                 self.region_classes
             )
             return mask
         elif self.mode == "baseline":
-            mask = gt_data.build_baseline_mask(
+            mask = self.build_baseline_mask(
+                gt_data,
                 image_shape,
                 line_width=self.line_width
             )
             return mask
         elif self.mode == "start":
-            start_mask = gt_data.build_start_mask(
+            start_mask = self.build_start_mask(
+                gt_data,
                 image_shape,
                 line_width=self.line_width
             )
             return start_mask
         elif self.mode == "end":
-            mask = gt_data.build_end_mask(
+            mask = self.build_end_mask(
+                gt_data,
                 image_shape,
                 line_width=self.line_width
             )
             return mask
         elif self.mode == "separator":
-            mask = gt_data.build_separator_mask(
+            mask = self.build_separator_mask(
+                gt_data,
                 image_shape,
                 line_width=self.line_width
             )
             return mask
         elif self.mode == "baseline_separator":
-            mask = gt_data.build_baseline_separator_mask(
+            mask = self.build_baseline_separator_mask(
+                gt_data,
                 image_shape,
                 line_width=self.line_width
             )
             return mask
         elif self.mode == "text_line":
-            mask = gt_data.build_text_line_mask(
+            mask = self.build_text_line_mask(
+                gt_data,
                 image_shape
             )
             return mask
@@ -143,20 +485,23 @@ class XMLConverter(XMLRegions):
             image_shape = gt_data.get_size()
             
         if self.mode == "region":
-            instances = gt_data.build_region_instances(
+            instances = self.build_region_instances(
+                gt_data,
                 image_shape,
                 set(self.region_types.values()),
                 self.region_classes
             )
             return instances
         elif self.mode == "baseline":
-            instances = gt_data.build_baseline_instances(
+            instances = self.build_baseline_instances(
+                gt_data,
                 image_shape,
                 self.line_width
             )
             return instances
         elif self.mode == "text_line":
-            instances = gt_data.build_text_line_instances(
+            instances = self.build_text_line_instances(
+                gt_data,
                 image_shape
             )
             return instances
@@ -191,20 +536,23 @@ class XMLConverter(XMLRegions):
             image_shape = gt_data.get_size()
             
         if self.mode == "region":
-            pano_mask, segments_info = gt_data.build_region_pano(
+            pano_mask, segments_info = self.build_region_pano(
+                gt_data,
                 image_shape,
                 set(self.region_types.values()),
                 self.region_classes
             )
             return pano_mask, segments_info
         elif self.mode == "baseline":
-            pano_mask, segments_info = gt_data.build_baseline_pano(
+            pano_mask, segments_info = self.build_baseline_pano(
+                gt_data,
                 image_shape,
                 self.line_width
             )
             return pano_mask, segments_info
         elif self.mode == "text_line":
-            pano_mask, segments_info = gt_data.build_text_line_pano(
+            pano_mask, segments_info = self.build_text_line_pano(
+                gt_data,
                 image_shape
             )
             return pano_mask, segments_info

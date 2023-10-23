@@ -19,7 +19,7 @@ sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.image_utils import load_image_array_from_bytes, load_image_tensor_from_bytes
 from utils.logging_utils import get_logger_name
 from main import setup_cfg, setup_logging
-from page_xml.generate_pageXML import GenPageXML
+from page_xml.output_pageXML import OutputPageXML
 from run import Predictor
 
 # Reading environment files
@@ -67,7 +67,7 @@ class PredictorGenPageWrapper():
     def __init__(self) -> None:
         self.model_name: Optional[str] = None
         self.predictor: Optional[Predictor] = None
-        self.gen_page: Optional[GenPageXML] = None
+        self.gen_page: Optional[OutputPageXML] = None
 
     def setup_model(self, model_name: str, args: DummyArgs):
         """
@@ -96,7 +96,7 @@ class PredictorGenPageWrapper():
         
         cfg = setup_cfg(args)
 
-        self.gen_page = GenPageXML(mode=cfg.MODEL.MODE,
+        self.gen_page = OutputPageXML(mode=cfg.MODEL.MODE,
                                    output_dir=None,
                                    line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
                                    regions=cfg.PREPROCESS.REGION.REGIONS,

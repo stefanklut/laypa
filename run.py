@@ -17,7 +17,7 @@ from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from tqdm import tqdm
 import numpy as np
 
-from page_xml.generate_pageXML import GenPageXML
+from page_xml.output_pageXML import OutputPageXML
 from utils.image_utils import load_image_array_from_path, load_image_tensor_from_path
 from utils.input_utils import clean_input_paths, get_file_paths
 from utils.logging_utils import get_logger_name
@@ -150,7 +150,7 @@ class SavePredictor(Predictor):
                  cfg, 
                  input_paths: str | Path, 
                  output_dir: str | Path, 
-                 gen_page: GenPageXML):
+                 gen_page: OutputPageXML):
         """
         Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
 
@@ -170,7 +170,7 @@ class SavePredictor(Predictor):
         if output_dir is not None:
             self.set_output_dir(output_dir)
             
-        if not isinstance(gen_page, GenPageXML):
+        if not isinstance(gen_page, OutputPageXML):
             raise TypeError(f"Must provide conversion from mask to pageXML. Current type is {type(gen_page)}, not GenPageXML")
             
         self.gen_page = gen_page
@@ -293,12 +293,14 @@ def main(args) -> None:
     cfg = setup_cfg(args)
     setup_logging(cfg, save_log=False)
     
-    gen_page = GenPageXML(mode=cfg.MODEL.MODE,
-                          output_dir=args.output,
-                          line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
-                          regions=cfg.PREPROCESS.REGION.REGIONS,
-                          merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
-                          region_type=cfg.PREPROCESS.REGION.REGION_TYPE)
+    gen_page = OutputPageXML(
+        mode=cfg.MODEL.MODE,
+        output_dir=args.output,
+        line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
+        regions=cfg.PREPROCESS.REGION.REGIONS,
+        merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
+        region_type=cfg.PREPROCESS.REGION.REGION_TYPE
+    )
     
     predictor = SavePredictor(cfg=cfg, input_paths=args.input, output_dir=args.output, gen_page=gen_page)
     # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], with_stack=True, record_shapes=True) as prof:
