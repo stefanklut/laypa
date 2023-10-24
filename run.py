@@ -132,7 +132,7 @@ class LoadingDataset(Dataset):
     def __len__(self):
         return len(self.data)
     def __getitem__(self, index):
-        return load_image_tensor_from_path(self.data[index]), index
+        return load_image_array_from_path(self.data[index]), index
 
 def collate_numpy(batch):
     collate_map = default_collate_fn_map
@@ -187,6 +187,10 @@ class SavePredictor(Predictor):
                               ".tiff", ".tif",
                               ".exr",
                               ".hdr", ".pic"]
+        # Formats https://pytorch.org/vision/main/generated/torchvision.io.read_image.html
+        # self.image_formats = [".jpeg", ".jpg", ".jpe",
+        #                       ".png"]
+        
         self.logger = logging.getLogger(get_logger_name())
         
     def set_input_paths(self, input_paths: str | Path | Sequence[str|Path]) -> None:

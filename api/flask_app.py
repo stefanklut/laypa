@@ -257,7 +257,7 @@ def predict() -> Response:
         abort_with_info(429, "Exceeding queue size", response_info)
     
     img_bytes = post_file.read()
-    image = load_image_tensor_from_bytes(img_bytes, image_path=image_name)
+    image = load_image_array_from_bytes(img_bytes, image_path=image_name)
     
     if image is None:
         abort_with_info(400, "Corrupted image", response_info)
