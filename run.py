@@ -132,7 +132,8 @@ class LoadingDataset(Dataset):
     def __len__(self):
         return len(self.data)
     def __getitem__(self, index):
-        return load_image_array_from_path(self.data[index]), index
+        # TODO Move resize and load to this part of the dataloader
+        return load_image_tensor_from_path(self.data[index]), index
 
 def collate_numpy(batch):
     collate_map = default_collate_fn_map
@@ -254,7 +255,12 @@ class SavePredictor(Predictor):
             self.logger.warning(f"Image at {input_path} has not loaded correctly, ignoring for now")
             return
         
-        outputs = self.gpu_call(image)
+        if isinstance(image, np.ndarray):
+            outputs = self.cpu_call(image)
+        elif isinstance(image, torch.Tensor):
+            outputs = self.gpu_call(image)
+        else:
+            raise TypeError(f"Unknown image type: {type(image)}")
         
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(output_image, dim=-3).cpu().numpy()
