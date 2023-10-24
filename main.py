@@ -122,8 +122,8 @@ def setup_training(args):
             trainer.resume_or_load(resume=cfg.MODEL.RESUME)
         else:
             trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
-            if trainer.checkpointer.has_checkpoint():
-                trainer.start_iter = trainer.iter + 1
+            # if trainer.checkpointer.has_checkpoint():
+            trainer.start_iter = trainer.iter + 1
         
         results = trainer.train()
 
