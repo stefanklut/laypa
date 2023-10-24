@@ -132,8 +132,10 @@ class LoadingDataset(Dataset):
     def __len__(self):
         return len(self.data)
     def __getitem__(self, index):
+        path = self.data[index]
+        
         # TODO Move resize and load to this part of the dataloader
-        return load_image_tensor_from_path(self.data[index]), index
+        return load_image_tensor_from_path(path), path
 
 def collate_numpy(batch):
     collate_map = default_collate_fn_map
@@ -290,7 +292,7 @@ class SavePredictor(Predictor):
         dataloader = DataLoader(dataset, shuffle=False, batch_size=None, num_workers=16, pin_memory=False, collate_fn=None)
         for inputs in tqdm(dataloader, desc="Predicting PageXML"):
             # self.logger.warning(inputs)
-            self.save_prediction(inputs[0], input_paths[inputs[1]])
+            self.save_prediction(inputs[0], inputs[1])
         
         
         # Multithread <- does not work with cuda
