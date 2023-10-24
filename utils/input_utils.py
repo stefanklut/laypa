@@ -84,7 +84,7 @@ def get_file_paths(input_paths: str | Path | Sequence[str|Path],
         
         # IDEA This could be replaces with input_path.rglob(f"**/page/*.xml"), con: this remove the supported format check
         if input_path.is_dir():
-            sub_output_paths = [image_path.absolute() for image_path in input_path.glob("*") if image_path.suffix in formats]
+            sub_output_paths = [image_path.absolute() for image_path in input_path.glob("*") if image_path.suffix.lower() in formats]
             
             if not disable_check:
                 if len(sub_output_paths) == 0:

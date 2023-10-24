@@ -101,7 +101,8 @@ def load_image_tensor_from_bytes(image_bytes: bytes, image_path: Optional[Path]=
     assert mode in ["color", "grayscale"], f"Mode \"{mode}\" not supported"
     
     try:
-        image = torchvision.io.decode_image(torch.frombuffer(image_bytes, dtype=torch.uint8), torchvision.io.ImageReadMode.RGB if mode=="color" else torchvision.io.ImageReadMode.GRAY)
+        tensor = torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)
+        image = torchvision.io.decode_image(tensor, torchvision.io.ImageReadMode.RGB if mode=="color" else torchvision.io.ImageReadMode.GRAY)
         return image
     except OSError:
         image_path_info = image_path if image_path is not None else "Filename not given"

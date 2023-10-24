@@ -19,7 +19,7 @@ sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.image_utils import load_image_array_from_bytes, load_image_tensor_from_bytes
 from utils.logging_utils import get_logger_name
 from main import setup_cfg, setup_logging
-from page_xml.generate_pageXML import GenPageXML
+from page_xml.output_pageXML import OutputPageXML
 from run import Predictor
 
 # Reading environment files
@@ -67,7 +67,7 @@ class PredictorGenPageWrapper():
     def __init__(self) -> None:
         self.model_name: Optional[str] = None
         self.predictor: Optional[Predictor] = None
-        self.gen_page: Optional[GenPageXML] = None
+        self.gen_page: Optional[OutputPageXML] = None
 
     def setup_model(self, model_name: str, args: DummyArgs):
         """
@@ -96,7 +96,7 @@ class PredictorGenPageWrapper():
         
         cfg = setup_cfg(args)
 
-        self.gen_page = GenPageXML(mode=cfg.MODEL.MODE,
+        self.gen_page = OutputPageXML(mode=cfg.MODEL.MODE,
                                    output_dir=None,
                                    line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
                                    regions=cfg.PREPROCESS.REGION.REGIONS,
@@ -171,7 +171,7 @@ class ResponseInfo(TypedDict, total=False):
     """
     Template for what fields are allowed in the response
     """    
-    submission_success: bool
+    status_code: int
     identifier: str
     filename: str
     added_queue_position: int
@@ -191,7 +191,7 @@ def abort_with_info(status_code: int, error_message: str, info: Optional[Respons
         info (Optional[ResponseInfo], optional): Response info. Defaults to None.
     """    
     if info is None:
-        info = ResponseInfo(submission_success=False) # type: ignore
+        info = ResponseInfo(status_code=status_code) # type: ignore
     info["error_message"] = error_message
     response = jsonify(info)
     response.status_code = status_code
@@ -211,7 +211,7 @@ def check_exception_callback(future: Future):
 
 @app.route('/predict', methods=['POST'])
 @exception_predict_counter.count_exceptions()
-def predict() -> Response:
+def predict() -> tuple[Response, int]:
     """
     Run the prediction on a submitted image
 
@@ -219,9 +219,9 @@ def predict() -> Response:
         Response: Submission response
     """    
     if request.method != 'POST':
-        abort(400)
+        abort(405)
         
-    response_info = ResponseInfo(submission_success=False)
+    response_info = ResponseInfo(status_code=500)
         
     current_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
     response_info["added_time"] = current_time
@@ -257,16 +257,17 @@ def predict() -> Response:
         abort_with_info(429, "Exceeding queue size", response_info)
     
     img_bytes = post_file.read()
-    image = load_image_tensor_from_bytes(img_bytes, image_path=image_name)
+    image = load_image_array_from_bytes(img_bytes, image_path=image_name)
     
     if image is None:
-        abort_with_info(400, "Corrupted image", response_info)
+        abort_with_info(500, "Corrupted image", response_info)
     
     future = executor.submit(predict_image, image, image_name, identifier, model_name)
     future.add_done_callback(check_exception_callback)
     
-    response_info["submission_success"] = True
-    return jsonify(response_info)
+    response_info["status_code"] = 202
+    # Return response and status code
+    return jsonify(response_info), 202
 
 
 @app.route('/prometheus', methods=['GET'])
@@ -276,7 +277,9 @@ def metrics() -> bytes:
 
     Returns:
         bytes: Encoded string with the information
-    """    
+    """
+    if request.method != 'GET':
+        abort(405)
     return generate_latest()
 
 

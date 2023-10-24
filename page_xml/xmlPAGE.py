@@ -7,36 +7,16 @@ from typing import TypedDict
 
 import numpy as np
 import xml.etree.ElementTree as ET
-import cv2
 import re
 import datetime
 from pathlib import Path
-from detectron2 import structures
+
 
 from utils.vector_utils import point_top_bottom_assignment
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
 from utils.tempdir import AtomicFileName
-
-class Instance(TypedDict):
-    """
-    Required fields for an instance dict
-    """
-    bbox: list[float]
-    bbox_mode: int
-    category_id: int
-    segmentation: list[list[float]]
-    keypoints: list[float]
-    iscrowd: bool
-    
-class SegmentsInfo(TypedDict):
-    """
-    Required fields for an segments info dict
-    """
-    id: int
-    category_id: int
-    iscrowd: bool
 
 
 class PageData:
@@ -168,7 +148,7 @@ class PageData:
     def _iter_element(self, element):
         return self.root.iterfind("".join([".//", self.base, element]))
     
-    def _iter_class_coords(self, element, class_dict):
+    def iter_class_coords(self, element, class_dict):
         for node in self._iter_element(element):
             element_type = self.get_region_type(node)
             if element_type is None or element_type not in class_dict:
@@ -185,7 +165,7 @@ class PageData:
             
             yield element_class, element_coords
             
-    def _iter_baseline_coords(self):
+    def iter_baseline_coords(self):
         for node in self._iter_element("Baseline"):
             str_coords = node.attrib.get("points")
             if str_coords is None:
@@ -199,346 +179,10 @@ class PageData:
             coords = np.array([i.split(",") for i in split_str_coords]).astype(np.int32)
             yield coords
             
-    def _iter_text_line_coords(self):
+    def iter_text_line_coords(self):
         for node in self._iter_element("TextLine"):
             coords = self.get_coords(node)
             yield coords
-
-    @staticmethod            
-    def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]) -> np.ndarray:
-        scale_factor = np.asarray(out_size) / np.asarray(size)
-        scaled_coords = (coords * scale_factor[::-1]).astype(np.float32)
-        return scaled_coords
-    
-    @staticmethod
-    def _bounding_box(array: np.ndarray) -> list[float]:
-        min_x, min_y = np.min(array, axis=0)
-        max_x, max_y = np.max(array, axis=0)
-        bbox =  np.asarray([min_x, min_y, max_x, max_y]).astype(np.float32).tolist()
-        return bbox
-    
-    # Taken from https://github.com/cocodataset/panopticapi/blob/master/panopticapi/utils.py
-    @staticmethod
-    def id2rgb(id_map: int|np.ndarray) -> tuple|np.ndarray:
-        if isinstance(id_map, np.ndarray):
-            rgb_shape = tuple(list(id_map.shape) + [3])
-            rgb_map = np.zeros(rgb_shape, dtype=np.uint8)
-            for i in range(3):
-                rgb_map[..., i] = id_map % 256
-                id_map //= 256
-            return rgb_map
-        color = []
-        for _ in range(3):
-            color.append(id_map % 256)
-            id_map //= 256
-        return tuple(color)
-    
-    def build_region_instances(self, out_size, elements, class_dict) -> list[Instance]:
-        size = self.get_size()
-        instances = []
-        for element in elements:
-            for element_class, element_coords in self._iter_class_coords(element, class_dict):
-                coords = self._scale_coords(element_coords, out_size, size)
-                bbox = self._bounding_box(coords)
-                bbox_mode = structures.BoxMode.XYXY_ABS
-                flattened_coords = coords.flatten().tolist()
-                instance: Instance = {
-                    "bbox"        : bbox,
-                    "bbox_mode"   : bbox_mode,
-                    "category_id" : element_class - 1, # -1 for not having background as class
-                    "segmentation": [flattened_coords],
-                    "keypoints"   : [],
-                    "iscrowd"     : False
-                }
-                instances.append(instance)
-        if not instances:
-            self.logger.warning(f"File {self.filepath} does not contains region instances")
-        return instances
-    
-    def build_region_pano(self, out_size, elements, class_dict):
-        """
-        Create the pano version of the regions
-        """
-        size = self.get_size()
-        pano = np.zeros((*out_size, 3), np.uint8)
-        segments_info = []
-        _id = 1
-        for element in elements:
-            for element_class, element_coords in self._iter_class_coords(element, class_dict):
-                coords = self._scale_coords(element_coords, out_size, size)
-                rounded_coords = np.round(coords).astype(np.int32)
-                rgb_color = self.id2rgb(_id)
-                cv2.fillPoly(pano, [rounded_coords], rgb_color)
-                
-                segment: SegmentsInfo = {
-                    "id"         : _id,
-                    "category_id": element_class - 1, # -1 for not having background as class
-                    "iscrowd"    : False
-                }
-                segments_info.append(segment)
-                
-                _id += 1
-        if not pano.any():
-            self.logger.warning(f"File {self.filepath} does not contains region pano")
-        return pano, segments_info
-        
-    def build_region_sem_seg(self, out_size, elements, class_dict):
-        """
-        Builds a "image" mask of desired elements
-        """
-        size = self.get_size()
-        sem_seg = np.zeros(out_size, np.uint8)
-        for element in elements:
-            for element_class, element_coords in self._iter_class_coords(element, class_dict):
-                coords = self._scale_coords(element_coords, out_size, size)
-                rounded_coords = np.round(coords).astype(np.int32)
-                cv2.fillPoly(sem_seg, [rounded_coords], element_class)
-        if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains region sem_seg")
-        return sem_seg
-    
-    def build_text_line_instances(self, out_size) -> list[Instance]:
-        text_line_class = 0
-        size = self.get_size()
-        instances = []
-        for element_coords in self._iter_text_line_coords():
-            coords = self._scale_coords(element_coords, out_size, size)
-            bbox = self._bounding_box(coords)
-            bbox_mode = structures.BoxMode.XYXY_ABS
-            flattened_coords = coords.flatten().tolist()
-            instance: Instance = {
-                "bbox"        : bbox,
-                "bbox_mode"   : bbox_mode,
-                "category_id" : text_line_class,
-                "segmentation": [flattened_coords],
-                "keypoints"   : [],
-                "iscrowd"     : False
-            }
-            instances.append(instance)
-        if not instances:
-            self.logger.warning(f"File {self.filepath} does not contains text line instances")
-        return instances
-    
-    def build_text_line_pano(self, out_size):
-        """
-        Create the pano version of the textline
-        """
-        text_line_class = 0
-        size = self.get_size()
-        pano = np.zeros((*out_size, 3), np.uint8)
-        segments_info = []
-        _id = 1
-        for element_coords in self._iter_text_line_coords():
-            coords = self._scale_coords(element_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
-            rgb_color = self.id2rgb(_id)
-            cv2.fillPoly(pano, [rounded_coords], rgb_color)
-            
-            segment: SegmentsInfo = {
-                "id"         : _id,
-                "category_id": text_line_class,
-                "iscrowd"    : False
-            }
-            segments_info.append(segment)
-            
-            _id += 1
-        if not pano.any():
-            self.logger.warning(f"File {self.filepath} does not contains text line pano")
-        return pano, segments_info
-        
-    def build_text_line_sem_seg(self, out_size):
-        """
-        Builds a "image" mask of desired elements
-        """
-        text_line_class = 1
-        size = self.get_size()
-        sem_seg = np.zeros(out_size, np.uint8)
-        for element_coords in self._iter_text_line_coords():
-            coords = self._scale_coords(element_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
-            cv2.fillPoly(sem_seg, [rounded_coords], text_line_class)
-        if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains text line sem_seg")
-        return sem_seg
-    
-    def build_baseline_instances(self, out_size, line_width):
-        baseline_class = 0
-        size = self.get_size()
-        sem_seg = np.zeros(out_size, np.uint8)
-        instances = []
-        for baseline_coords in self._iter_baseline_coords():
-            coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
-            sem_seg.fill(0)
-            # HACK Currenty the most simple quickest solution used can probably be optimized
-            cv2.polylines(sem_seg, [rounded_coords.reshape(-1, 1, 2)], False, 255, line_width)
-            contours, hierarchy = cv2.findContours(sem_seg, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            if len(contours) == 0:
-                raise ValueError(f"{self.filepath} has no contours")
-
-            # Multiple contours should really not happen, but when it does it can still be supported
-            all_coords = []
-            for contour in contours:
-                contour_coords = np.asarray(contour).reshape(-1,2)
-                all_coords.append(contour_coords)
-            flattened_coords_list = [coords.flatten().tolist() for coords in all_coords]
-            
-            bbox = self._bounding_box(np.concatenate(all_coords, axis=0))
-            bbox_mode = structures.BoxMode.XYXY_ABS
-            instance: Instance = {
-                "bbox"        : bbox,
-                "bbox_mode"   : bbox_mode,
-                "category_id" : baseline_class,
-                "segmentation": flattened_coords_list,
-                "keypoints"   : [],
-                "iscrowd"     : False
-            }
-            instances.append(instance)
-        if not instances:
-            self.logger.warning(f"File {self.filepath} does not contains baseline instances")
-        return instances
-        
-    def build_baseline_pano(self, out_size, line_width):
-        baseline_class = 0
-        size = self.get_size()
-        pano = np.zeros((*out_size, 3), np.uint8)
-        segments_info = []
-        _id = 1
-        for baseline_coords in self._iter_baseline_coords():
-            coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
-            rgb_color = self.id2rgb(_id)
-            cv2.polylines(pano, [rounded_coords.reshape(-1, 1, 2)], False, rgb_color, line_width)
-            segment: SegmentsInfo = {
-                "id"         : _id,
-                "category_id": baseline_class,
-                "iscrowd"    : False
-            }
-            segments_info.append(segment)
-            _id += 1
-        if not pano.any():
-            self.logger.warning(f"File {self.filepath} does not contains baseline pano")
-        return pano, segments_info
-    
-    def build_baseline_sem_seg(self, out_size, line_width):
-        """
-        Builds a "image" mask of Baselines on XML-PAGE
-        """
-        baseline_color = 1
-        size = self.get_size()
-        sem_seg = np.zeros(out_size, np.uint8)
-        binary_mask = np.zeros(out_size, dtype=np.uint8)
-        overlap = False
-        for baseline_coords in self._iter_baseline_coords():
-            coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
-            binary_mask.fill(0)
-            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
-            
-            overlap = np.logical_or(overlap, np.any(np.logical_and(sem_seg, binary_mask)))
-            # Add single line to full sem_seg
-            sem_seg = np.logical_or(sem_seg, binary_mask)
-        
-        if overlap:
-            self.logger.warning(f"File {self.filepath} contains overlapping baseline sem_seg")
-        if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains baseline sem_seg")
-        return sem_seg.astype(np.uint8)
-    
-    def build_top_bottom_sem_seg(self, out_size, line_width):
-        """
-        Builds a "image" mask of Baselines Top Bottom on XML-PAGE
-        """
-        baseline_color = 1
-        top_color = 1
-        bottom_color = 2
-        size = self.get_size()
-        sem_seg = np.zeros(out_size, np.uint8)
-        binary_mask = np.zeros(out_size, dtype=np.uint8)
-        for baseline_coords in self._iter_baseline_coords():
-            coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
-            binary_mask.fill(0)
-            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
-            
-            # Add single line to full sem_seg
-            line_pixel_coords = np.column_stack(np.where(binary_mask == 1))[:, ::-1]
-            top_bottom = point_top_bottom_assignment(rounded_coords, line_pixel_coords)
-            colored_top_bottom = np.where(top_bottom, top_color, bottom_color)
-            sem_seg[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = colored_top_bottom
-        if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains top bottom sem_seg")
-        return sem_seg
-    
-    def build_start_sem_seg(self, out_size, line_width):
-        """
-        Builds a "image" mask of Starts on XML-PAGE
-        """
-        start_color = 1
-        size = self.get_size()
-        sem_seg = np.zeros(out_size, np.uint8)
-        for baseline_coords in self._iter_baseline_coords():
-            coords = self._scale_coords(baseline_coords, out_size, size)[0]
-            rounded_coords = np.round(coords).astype(np.int32)
-            cv2.circle(sem_seg, rounded_coords, line_width, start_color, -1)
-        if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains start sem_seg")
-        return sem_seg
-    
-    def build_end_sem_seg(self, out_size, line_width):
-        """
-        Builds a "image" mask of Ends on XML-PAGE
-        """
-        end_color = 1
-        size = self.get_size()
-        sem_seg = np.zeros(out_size, np.uint8)
-        for baseline_coords in self._iter_baseline_coords():
-            coords = self._scale_coords(baseline_coords, out_size, size)[-1]
-            rounded_coords = np.round(coords).astype(np.int32)
-            cv2.circle(sem_seg, rounded_coords, line_width, end_color, -1)
-        if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains ends sem_seg")
-        return sem_seg
-    
-    def build_separator_sem_seg(self, out_size, line_width):
-        """
-        Builds a "image" mask of Separators on XML-PAGE
-        """
-        separator_color = 1
-        size = self.get_size()
-        sem_seg = np.zeros(out_size, np.uint8)
-        for baseline_coords in self._iter_baseline_coords():
-            coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
-            coords_start = rounded_coords[0]
-            cv2.circle(sem_seg, coords_start, line_width, separator_color, -1)
-            coords_end = rounded_coords[-1]
-            cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
-        if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains separator sem_seg")
-        return sem_seg
-    
-    def build_baseline_separator_sem_seg(self, out_size, line_width):
-        """
-        Builds a "image" mask of Separators and Baselines on XML-PAGE
-        """
-        baseline_color = 1
-        separator_color = 2
-        
-        size = self.get_size()
-        sem_seg = np.zeros(out_size, np.uint8)
-        for baseline_coords in self._iter_baseline_coords():
-            coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
-            cv2.polylines(sem_seg, [coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
-            
-            coords_start = rounded_coords[0]
-            cv2.circle(sem_seg, coords_start, line_width, separator_color, -1)
-            coords_end = rounded_coords[-1]
-            cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
-        if not sem_seg.any():
-            self.logger.warning(f"File {self.filepath} does not contains baseline separator sem_seg")
-        return sem_seg
 
     def get_text(self, element):
         """
