@@ -132,7 +132,7 @@ class LoadingDataset(Dataset):
     def __len__(self):
         return len(self.data)
     def __getitem__(self, index):
-        return load_image_tensor_from_path(self.data[index]), index
+        return load_image_array_from_path(self.data[index]), index
 
 def collate_numpy(batch):
     collate_map = default_collate_fn_map
@@ -176,20 +176,20 @@ class SavePredictor(Predictor):
         self.gen_page = gen_page
             
         # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
-        # self.image_formats = [".bmp", ".dib",
-        #                       ".jpeg", ".jpg", ".jpe",
-        #                       ".jp2",
-        #                       ".png",
-        #                       ".webp",
-        #                       ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
-        #                       ".pfm",
-        #                       ".sr", ".ras",
-        #                       ".tiff", ".tif",
-        #                       ".exr",
-        #                       ".hdr", ".pic"]
+        self.image_formats = [".bmp", ".dib",
+                              ".jpeg", ".jpg", ".jpe",
+                              ".jp2",
+                              ".png",
+                              ".webp",
+                              ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
+                              ".pfm",
+                              ".sr", ".ras",
+                              ".tiff", ".tif",
+                              ".exr",
+                              ".hdr", ".pic"]
         # Formats https://pytorch.org/vision/main/generated/torchvision.io.read_image.html
-        self.image_formats = [".jpeg", ".jpg", ".jpe",
-                              ".png"]
+        # self.image_formats = [".jpeg", ".jpg", ".jpe",
+        #                       ".png"]
         
         self.logger = logging.getLogger(get_logger_name())
         
