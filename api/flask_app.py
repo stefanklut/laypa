@@ -260,7 +260,7 @@ def predict() -> tuple[Response, int]:
     image = load_image_tensor_from_bytes(img_bytes, image_path=image_name)
     
     if image is None:
-        abort_with_info(400, "Corrupted image", response_info)
+        abort_with_info(500, "Corrupted image", response_info)
     
     future = executor.submit(predict_image, image, image_name, identifier, model_name)
     future.add_done_callback(check_exception_callback)
