@@ -1,6 +1,7 @@
-from typing import Sequence
-from pathlib import Path
 import os
+from pathlib import Path
+from typing import Sequence
+
 
 def clean_input_paths(input_paths: str | Path | Sequence[str|Path]) -> list[Path]:
     """

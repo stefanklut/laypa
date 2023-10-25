@@ -1,9 +1,11 @@
-from pathlib import Path
-import platform
 import os
+import platform
 import re
 import subprocess
+from pathlib import Path
+
 import torch
+
 
 def get_os() -> str:
     """

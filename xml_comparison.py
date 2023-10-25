@@ -1,18 +1,21 @@
 # Based on detectron2.evaluation.SemSegEvaluator
 
 import argparse
-from collections import OrderedDict
-from multiprocessing.pool import Pool
 # from multiprocessing.pool import ThreadPool as Pool
 import os
+from collections import OrderedDict
+from multiprocessing.pool import Pool
 from pathlib import Path
-import numpy as np
-import cv2
-from detectron2.data import Metadata
 from typing import Optional
-from page_xml.xml_converter import XMLConverter
+
+import cv2
+import numpy as np
+from detectron2.data import Metadata
 from tqdm import tqdm
+
+from page_xml.xml_converter import XMLConverter
 from utils.input_utils import get_file_paths
+
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLConverter.get_parser()],

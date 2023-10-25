@@ -1,29 +1,25 @@
 import argparse
+import logging
 import os
 import sys
-import torch
-import logging
-from core.preprocess import preprocess_datasets
-from core.setup import (
-    setup_cfg, 
-    setup_logging, 
-    setup_saving, 
-    setup_seed
-)
-
 from pathlib import Path
+
+import torch
+
+from core.preprocess import preprocess_datasets
+from core.setup import setup_cfg, setup_logging, setup_saving, setup_seed
+
 root_logger = logging.getLogger()
 
 from detectron2.engine import launch
+from detectron2.engine.defaults import _highlight
 from detectron2.utils import comm
 from detectron2.utils.collect_env import collect_env_info
-from detectron2.engine.defaults import _highlight
-
-from core.trainer import Trainer
-from utils.tempdir import OptionalTemporaryDirectory
-from utils.logging_utils import get_logger_name
 
 import models
+from core.trainer import Trainer
+from utils.logging_utils import get_logger_name
+from utils.tempdir import OptionalTemporaryDirectory
 
 # torch.autograd.set_detect_anomaly(True)
 

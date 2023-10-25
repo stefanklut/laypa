@@ -1,11 +1,14 @@
 import os
-from typing import Optional, Sequence
 from pathlib import Path
+from typing import Optional, Sequence
+
 from detectron2.config import CfgNode
+
 from datasets import dataset
 from datasets.preprocess import Preprocess
-from utils.input_utils import clean_input_paths, get_file_paths
 from page_xml.xml_converter import XMLConverter
+from utils.input_utils import clean_input_paths, get_file_paths
+
 
 def preprocess_datasets(cfg: CfgNode, 
                         train: Optional[str | Path | Sequence[str|Path]], 

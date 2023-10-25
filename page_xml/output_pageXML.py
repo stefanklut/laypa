@@ -1,26 +1,27 @@
 import argparse
 import logging
-from multiprocessing.pool import Pool
 # from multiprocessing.pool import ThreadPool as Pool
 import os
 import sys
-from typing import Optional
-import numpy as np
-from pathlib import Path
 import uuid
-import torch
+from multiprocessing.pool import Pool
+from pathlib import Path
+from typing import Optional
 
-from tqdm import tqdm
 import cv2
+import numpy as np
+import torch
+from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from utils.tempdir import AtomicFileName
-from utils.logging_utils import get_logger_name
-from utils.image_utils import save_image_array_to_path
-from utils.copy_utils import copy_mode
-from utils.input_utils import get_file_paths
-from page_xml.xmlPAGE import PageData
 from page_xml.xml_regions import XMLRegions
+from page_xml.xmlPAGE import PageData
+from utils.copy_utils import copy_mode
+from utils.image_utils import save_image_array_to_path
+from utils.input_utils import get_file_paths
+from utils.logging_utils import get_logger_name
+from utils.tempdir import AtomicFileName
+
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()],

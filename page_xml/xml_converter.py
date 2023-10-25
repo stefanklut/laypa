@@ -1,15 +1,16 @@
 import argparse
 import logging
-from pathlib import Path
 import sys
-import numpy as np
-import cv2
-from detectron2 import structures
+from pathlib import Path
 from typing import Optional, TypedDict
 
+import cv2
+import numpy as np
+from detectron2 import structures
+
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.xmlPAGE import PageData
 from page_xml.xml_regions import XMLRegions
+from page_xml.xmlPAGE import PageData
 from utils.logging_utils import get_logger_name
 
 

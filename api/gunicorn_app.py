@@ -1,6 +1,8 @@
 import os
-from gunicorn.app.base import BaseApplication
+
 from flask_app import app
+from gunicorn.app.base import BaseApplication
+
 
 class GunicornApp(BaseApplication):
     """

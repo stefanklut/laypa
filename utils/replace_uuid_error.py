@@ -1,11 +1,13 @@
-import re
 import argparse
-import uuid
-from pathlib import Path
-from tqdm import tqdm
-from multiprocessing.pool import Pool
 # from multiprocessing.pool import ThreadPool as Pool
 import os
+import re
+import uuid
+from multiprocessing.pool import Pool
+from pathlib import Path
+
+from tqdm import tqdm
+
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(

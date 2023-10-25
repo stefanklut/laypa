@@ -1,30 +1,24 @@
 import copy
 import itertools
 import os
-from typing import Any, Callable, Dict, List, Optional, Set
 import weakref
-from detectron2.utils import comm
-from detectron2.config import CfgNode
-from detectron2.data import (
-    MetadataCatalog,
-    build_detection_test_loader,
-    build_detection_train_loader,
-    DatasetMapper
-)
-from detectron2.engine import (
-    DefaultTrainer, 
-    TrainerBase,
-    SimpleTrainer,
-    AMPTrainer,
-    create_ddp_model,
-    hooks
-)
-from detectron2.checkpoint import DetectionCheckpointer
-from detectron2.evaluation import SemSegEvaluator
-from detectron2.solver.build import reduce_param_groups, maybe_add_gradient_clipping
+from typing import Any, Callable, Dict, List, Optional, Set
+
 import torch
+from detectron2.checkpoint import DetectionCheckpointer
+from detectron2.config import CfgNode
+from detectron2.data import (DatasetMapper, MetadataCatalog,
+                             build_detection_test_loader,
+                             build_detection_train_loader)
+from detectron2.engine import (AMPTrainer, DefaultTrainer, SimpleTrainer,
+                               TrainerBase, create_ddp_model, hooks)
+from detectron2.evaluation import SemSegEvaluator
+from detectron2.solver.build import (maybe_add_gradient_clipping,
+                                     reduce_param_groups)
+from detectron2.utils import comm
 
 from datasets.augmentations import build_augmentation
+
 
 def get_default_optimizer_params(
     model: torch.nn.Module,

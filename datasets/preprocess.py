@@ -1,27 +1,31 @@
+import argparse
 import json
 import logging
-from tqdm import tqdm
-import argparse
 import os
 import sys
+from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import Any, Optional, Sequence
+
 import cv2
-
 import imagesize
-
 import numpy as np
-from multiprocessing.pool import Pool
-from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
+from tqdm import tqdm
+
+from datasets.augmentations import (ResizeLongestEdge, ResizeScaling,
+                                    ResizeShortestEdge)
+
 # from multiprocessing.pool import ThreadPool as Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from utils.image_utils import save_image_array_to_path, load_image_array_from_path
-from utils.copy_utils import copy_mode
-from utils.logging_utils import get_logger_name
 from page_xml.xml_converter import XMLConverter
+from utils.copy_utils import copy_mode
+from utils.image_utils import (load_image_array_from_path,
+                               save_image_array_to_path)
 from utils.input_utils import clean_input_paths, get_file_paths
-from utils.path_utils import image_path_to_xml_path, check_path_accessible
+from utils.logging_utils import get_logger_name
+from utils.path_utils import check_path_accessible, image_path_to_xml_path
+
 
 def get_arguments() -> argparse.Namespace:    
     parser = argparse.ArgumentParser(parents=[Preprocess.get_parser(), XMLConverter.get_parser()],

@@ -1,7 +1,8 @@
-import os
 import errno
+import os
 import shutil
 from pathlib import Path
+
 
 def symlink_force(path: str|Path, destination: str|Path) -> None:
     """

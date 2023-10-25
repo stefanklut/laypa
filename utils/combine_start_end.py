@@ -1,14 +1,17 @@
-from multiprocessing.pool import Pool
+import argparse
 # from multiprocessing.pool import ThreadPool as Pool
 import os
-from tqdm import tqdm
-import cv2
-import argparse
+from multiprocessing.pool import Pool
 from pathlib import Path
-import numpy as np
 
+import cv2
+import numpy as np
+from tqdm import tqdm
+
+from utils.image_utils import (load_image_array_from_path,
+                               save_image_array_to_path)
 from utils.input_utils import clean_input_paths, get_file_paths
-from utils.image_utils import save_image_array_to_path, load_image_array_from_path
+
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Combine the data from 3 images into 1")

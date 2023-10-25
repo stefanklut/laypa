@@ -1,13 +1,11 @@
 # Modified from P2PaLA
 
 import argparse
-import numpy as np
+
 import cv2
 import detectron2.data.transforms as T
-
-from scipy.ndimage import map_coordinates
-from scipy.ndimage import affine_transform
-from scipy.ndimage import gaussian_filter
+import numpy as np
+from scipy.ndimage import affine_transform, gaussian_filter, map_coordinates
 
 # REVIEW Check if there is a benefit for using scipy instead of the standard torchvision
 
@@ -583,8 +581,9 @@ def get_arguments() -> argparse.Namespace:
 
 
 def test(args) -> None:
-    import cv2
     from pathlib import Path
+
+    import cv2
     from PIL import Image
 
     input_path = Path(args.input)

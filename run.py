@@ -1,28 +1,31 @@
 import argparse
 import logging
-from multiprocessing.pool import Pool
 import os
+from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import Callable, Dict, Optional, Sequence, Tuple, Type, Union
-from detectron2.engine import DefaultPredictor
-from detectron2.checkpoint import DetectionCheckpointer
-from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
+
 import cv2
-from core.setup import setup_cfg, setup_logging
-from detectron2.modeling import build_model
-from detectron2.data import MetadataCatalog
+import numpy as np
 import torch
-from torch.utils.data import Dataset, DataLoader
+from detectron2.checkpoint import DetectionCheckpointer
+from detectron2.data import MetadataCatalog
+from detectron2.engine import DefaultPredictor
+from detectron2.modeling import build_model
+from torch.profiler import ProfilerActivity, profile, record_function
+from torch.utils.data import DataLoader, Dataset
 from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from tqdm import tqdm
-import numpy as np
 
+from core.setup import setup_cfg, setup_logging
+from datasets.augmentations import (ResizeLongestEdge, ResizeScaling,
+                                    ResizeShortestEdge)
 from page_xml.output_pageXML import OutputPageXML
-from utils.image_utils import load_image_array_from_path, load_image_tensor_from_path
+from utils.image_utils import (load_image_array_from_path,
+                               load_image_tensor_from_path)
 from utils.input_utils import clean_input_paths, get_file_paths
 from utils.logging_utils import get_logger_name
 
-from torch.profiler import profile, record_function, ProfilerActivity
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run file to inference using the model found in the config file")

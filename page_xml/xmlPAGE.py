@@ -1,16 +1,15 @@
 # Modified from P2PaLA
 
-import os
-import sys
+import datetime
 import logging
+import os
+import re
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import TypedDict
 
 import numpy as np
-import xml.etree.ElementTree as ET
-import re
-import datetime
-from pathlib import Path
-
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name

@@ -1,16 +1,18 @@
-from io import BytesIO
 import logging
-from typing import Optional
-from PIL import Image
+import sys
+from io import BytesIO
 from pathlib import Path
+from typing import Optional
+
 import cv2
 import numpy as np
-import sys
 import torch
 import torchvision
+from PIL import Image
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
+
 
 def load_image_array_from_path(image_path: Path | str, mode: str="color") -> Optional[np.ndarray]:
     """

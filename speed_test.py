@@ -1,11 +1,16 @@
 # import argparse
-from multiprocessing import Pool
 import random
+from multiprocessing import Pool
+
+from detectron2.utils.file_io import PathManager
+from tqdm import tqdm
+
+from utils.timing_utils import ContextTimer
+
 # from multiprocessing.pool import ThreadPool as Pool
 # import cv2
 # from pathlib import Path
 
-from tqdm import tqdm
 
 # import os
 # from typing import Optional, Sequence
@@ -17,7 +22,6 @@ from tqdm import tqdm
 # import logging
 # from fvcore.common.config import CfgNode as _CfgNode
 
-from detectron2.utils.file_io import PathManager
 # from iopath.common.file_io import HTTPURLHandler, OneDrivePathHandler, PathHandler
 # from iopath.common.file_io import PathManager as PathManagerBase
 
@@ -34,7 +38,6 @@ from detectron2.utils.file_io import PathManager
 # from utils.tempdir import OptionalTemporaryDirectory
 # from detectron2.data import DatasetMapper, build_detection_train_loader
 
-from utils.timing_utils import ContextTimer
 
 # def get_arguments() -> argparse.Namespace:
 #     parser = argparse.ArgumentParser(
@@ -105,10 +108,10 @@ def main(args):
 if __name__ == "__main__":
     # args = get_arguments()
     # import torch
-    import os
     # os.sched_setaffinity(os.getpid(), list(range(20)))
     # os.system("taskset -p 0xFFFFFFFFFF %d" % os.getpid())
     import multiprocessing
+    import os
     print(multiprocessing.cpu_count())
     
     print(os.sched_getaffinity(0))

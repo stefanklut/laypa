@@ -1,10 +1,12 @@
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
+
 import torch
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.path_utils import check_path_accessible
+
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="load an decode the json_predictions to arrays")

@@ -1,25 +1,26 @@
 import argparse
-from functools import lru_cache
 import logging
 import random
 import sys
+from functools import lru_cache
 from pathlib import Path
 
-from detectron2.utils.visualizer import Visualizer
-from detectron2.data import DatasetCatalog, MetadataCatalog
-import matplotlib.pyplot as plt
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
+import torch
+from detectron2.data import DatasetCatalog, MetadataCatalog
+from detectron2.utils.visualizer import Visualizer
+from natsort import os_sorted
 from tqdm import tqdm
+
 from core.preprocess import preprocess_datasets
 from core.setup import setup_cfg
-import torch
-from natsort import os_sorted
+from run import Predictor
+from utils.image_utils import (load_image_array_from_path,
+                               save_image_array_to_path)
 from utils.logging_utils import get_logger_name
 from utils.tempdir import OptionalTemporaryDirectory
-from utils.image_utils import load_image_array_from_path, save_image_array_to_path
-from run import Predictor
-
 
 logger = logging.getLogger(get_logger_name())
 

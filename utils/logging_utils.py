@@ -2,13 +2,15 @@
 
 import functools
 import logging
-from pathlib import Path
+import os
 import re
 import sys
-import os
+from pathlib import Path
 from typing import Any, Mapping
-from termcolor import colored
+
 from detectron2.utils.logger import _cached_log_stream
+from termcolor import colored
+
 
 def get_logger_name():
     frame = sys._getframe(1)

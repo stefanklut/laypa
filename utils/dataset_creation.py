@@ -1,20 +1,20 @@
 import argparse
-from collections import Counter
 import logging
-from pathlib import Path
-import numpy as np
-from sklearn.model_selection import train_test_split
-from natsort import os_sorted
-from datetime import datetime
 import sys
+from collections import Counter
+from datetime import datetime
+from pathlib import Path
 
+import numpy as np
+from natsort import os_sorted
+from sklearn.model_selection import train_test_split
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from utils.image_utils import load_image_array_from_path
-from utils.regions_from_dataset import count_regions_single_page
-from utils.logging_utils import get_logger_name
 from utils.copy_utils import copy_mode
+from utils.image_utils import load_image_array_from_path
+from utils.logging_utils import get_logger_name
 from utils.path_utils import image_path_to_xml_path, xml_path_to_image_path
+from utils.regions_from_dataset import count_regions_single_page
 
 logger = logging.getLogger(get_logger_name())
 

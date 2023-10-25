@@ -1,10 +1,11 @@
-from collections import defaultdict
-from functools import wraps
+import contextlib
 import os
 import sys
 import time
-import contextlib
+from collections import defaultdict
+from functools import wraps
 from typing import Callable, Optional
+
 
 class ContextTimer(contextlib.ContextDecorator):
     """

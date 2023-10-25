@@ -2,26 +2,22 @@
 
 import argparse
 import inspect
-from pathlib import Path
 import pprint
 import sys
+from pathlib import Path
 from typing import Optional, Sequence
-import numpy as np
 
 import detectron2.data.transforms as T
+import numpy as np
 from detectron2.config import CfgNode
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from datasets.transforms import (ResizeTransform,
-                                 VFlipTransform,
-                                 HFlipTransform,
-                                 WarpFieldTransform,
-                                 AffineTransform,
-                                 GrayscaleTransform,
-                                 GaussianFilterTransform,
-                                 BlendTransform)
-
 from scipy.ndimage import gaussian_filter
+
+from datasets.transforms import (AffineTransform, BlendTransform,
+                                 GaussianFilterTransform, GrayscaleTransform,
+                                 HFlipTransform, ResizeTransform,
+                                 VFlipTransform, WarpFieldTransform)
 
 # REVIEW Use the self._init() function
 
@@ -807,8 +803,9 @@ def get_arguments() -> argparse.Namespace:
 
 
 def test(args) -> None:
-    import cv2
     from pathlib import Path
+
+    import cv2
     from PIL import Image
 
     input_path = Path(args.input)

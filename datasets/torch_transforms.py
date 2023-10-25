@@ -1,7 +1,7 @@
-import numpy as np
 import detectron2.data.transforms as T
-
+import numpy as np
 import torchvision.transforms.functional as F
+
 
 # TODO Add all
 class TorchTransform(T.Transform):

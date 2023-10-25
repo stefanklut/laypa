@@ -1,23 +1,25 @@
-import logging
-from multiprocessing.pool import Pool
-# from multiprocessing.pool import ThreadPool as Pool
-from tqdm import tqdm
-import cv2
-import numpy as np
 import argparse
+import logging
 import os
+from multiprocessing.pool import Pool
 from pathlib import Path
 
+import cv2
+import numpy as np
 from detectron2.data import Metadata
 from detectron2.utils.visualizer import Visualizer
+# from multiprocessing.pool import ThreadPool as Pool
+from tqdm import tqdm
+
 from core.setup import setup_cfg
 from datasets.dataset import metadata_from_classes
-
 from page_xml.xml_converter import XMLConverter
-from utils.image_utils import load_image_array_from_path, save_image_array_to_path
+from utils.image_utils import (load_image_array_from_path,
+                               save_image_array_to_path)
 from utils.input_utils import get_file_paths
 from utils.logging_utils import get_logger_name
 from utils.path_utils import xml_path_to_image_path
+
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Visualize XML files for visualization/debugging")

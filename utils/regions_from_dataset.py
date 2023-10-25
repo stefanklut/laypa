@@ -1,20 +1,20 @@
 import argparse
-from multiprocessing.pool import Pool
 # from multiprocessing.pool import ThreadPool as Pool
 import os
 import sys
-
-from tqdm import tqdm
-from input_utils import get_file_paths
 from collections import Counter
+from multiprocessing.pool import Pool
 from pathlib import Path
 
+from input_utils import get_file_paths
+from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from xml_comparison import pretty_print
 from page_xml.xmlPAGE import PageData
 from utils.path_utils import image_path_to_xml_path
-    
+from xml_comparison import pretty_print
+
+
 def get_arguments() -> argparse.Namespace:    
     parser = argparse.ArgumentParser(
         description="Count regions from a dataset")

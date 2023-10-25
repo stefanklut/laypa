@@ -1,11 +1,12 @@
 import argparse
-from pathlib import Path
-import sys
 import random
+import sys
+from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.copy_utils import copy_mode
 from utils.path_utils import image_path_to_xml_path
+
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(

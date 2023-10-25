@@ -1,24 +1,23 @@
 import logging
 import os
 import subprocess
-from typing import Optional, Sequence
-from datetime import datetime
-from pathlib import Path
 import uuid
 import warnings
+from datetime import datetime
+from pathlib import Path
+from typing import Optional, Sequence
 
 import torch
-
-from detectron2.utils import comm
 from detectron2.config import CfgNode, LazyConfig
-from detectron2.utils.env import seed_all_rng
 from detectron2.engine.defaults import _highlight
+from detectron2.utils import comm
+from detectron2.utils.env import seed_all_rng
 
 from configs.defaults import _C as _C_default
 from configs.extra_defaults import _C as _C_extra
-
 from utils.logging_utils import get_logger_name, setup_logger
 from utils.path_utils import unique_path
+
 
 def setup_logging(cfg: Optional[CfgNode] = None, save_log: bool = True) -> logging.Logger:
     """

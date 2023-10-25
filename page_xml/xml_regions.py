@@ -1,6 +1,7 @@
 import argparse
 from typing import Optional
 
+
 class XMLRegions:
     """
     Base for Methods that need to load XML regions

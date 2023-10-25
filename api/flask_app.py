@@ -1,26 +1,25 @@
 import logging
 import os
 import sys
+import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-import time
 from typing import Any, Optional, TypedDict
 
 import cv2
 import numpy as np
 import torch
 from flask import Flask, Response, abort, jsonify, request
-
-from prometheus_client import generate_latest, Counter, Gauge
-
-from concurrent.futures import Future, ThreadPoolExecutor
+from prometheus_client import Counter, Gauge, generate_latest
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from utils.image_utils import load_image_array_from_bytes, load_image_tensor_from_bytes
-from utils.logging_utils import get_logger_name
 from main import setup_cfg, setup_logging
 from page_xml.output_pageXML import OutputPageXML
 from run import Predictor
+from utils.image_utils import (load_image_array_from_bytes,
+                               load_image_tensor_from_bytes)
+from utils.logging_utils import get_logger_name
 
 # Reading environment files
 try:

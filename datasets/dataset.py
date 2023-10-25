@@ -1,15 +1,14 @@
+import argparse
 import json
-from multiprocessing.pool import Pool
 # from multiprocessing.pool import ThreadPool as Pool
 import os
-from typing import Optional, Any
+from multiprocessing.pool import Pool
+from pathlib import Path
+from typing import Any, Optional
 
 import distinctipy
-import argparse
+from detectron2.data import DatasetCatalog, Metadata, MetadataCatalog
 
-from pathlib import Path
-
-from detectron2.data import DatasetCatalog, MetadataCatalog, Metadata
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
