@@ -7,14 +7,22 @@ from typing import Any, Callable, Dict, List, Optional, Set
 import torch
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import CfgNode
-from detectron2.data import (DatasetMapper, MetadataCatalog,
-                             build_detection_test_loader,
-                             build_detection_train_loader)
-from detectron2.engine import (AMPTrainer, DefaultTrainer, SimpleTrainer,
-                               TrainerBase, create_ddp_model, hooks)
+from detectron2.data import (
+    DatasetMapper,
+    MetadataCatalog,
+    build_detection_test_loader,
+    build_detection_train_loader,
+)
+from detectron2.engine import (
+    AMPTrainer,
+    DefaultTrainer,
+    SimpleTrainer,
+    TrainerBase,
+    create_ddp_model,
+    hooks,
+)
 from detectron2.evaluation import SemSegEvaluator
-from detectron2.solver.build import (maybe_add_gradient_clipping,
-                                     reduce_param_groups)
+from detectron2.solver.build import maybe_add_gradient_clipping, reduce_param_groups
 from detectron2.utils import comm
 
 from datasets.augmentations import build_augmentation
@@ -108,29 +116,27 @@ def get_default_optimizer_params(
             memo.add(value)
 
             hyperparams = copy.copy(defaults)
-            
+
             if "backbone" in module_name:
                 hyperparams["lr"] = hyperparams["lr"] * backbone_multiplier
-                
-            if (
-                "relative_position_bias_table" in module_param_name
-                or "absolute_pos_embed" in module_param_name
-            ):
+
+            if "relative_position_bias_table" in module_param_name or "absolute_pos_embed" in module_param_name:
                 print(module_param_name)
                 hyperparams["weight_decay"] = 0.0
-                
+
             if isinstance(module, torch.nn.Embedding):
                 hyperparams["weight_decay"] = weight_decay_embed
-    
+
             if isinstance(module, norm_module_types) and weight_decay_norm is not None:
                 hyperparams["weight_decay"] = weight_decay_norm
-                
+
             if lr_factor_func is not None:
                 hyperparams["lr"] *= lr_factor_func(f"{module_name}.{module_param_name}")
 
             hyperparams.update(overrides.get(module_param_name, {}))
             params.append({"params": [value], **hyperparams})
     return reduce_param_groups(params)
+
 
 def build_optimizer(cfg: CfgNode, model: torch.nn.Module) -> torch.optim.Optimizer:
     """
@@ -145,14 +151,12 @@ def build_optimizer(cfg: CfgNode, model: torch.nn.Module) -> torch.optim.Optimiz
         bias_lr_factor=cfg.SOLVER.BIAS_LR_FACTOR,
         weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
     )
-        
+
     def maybe_add_full_model_gradient_clipping(optim):
         # detectron2 doesn't have full model gradient clipping now
         clip_norm_val = cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE
         enable = (
-            cfg.SOLVER.CLIP_GRADIENTS.ENABLED
-            and cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model"
-            and clip_norm_val > 0.0
+            cfg.SOLVER.CLIP_GRADIENTS.ENABLED and cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model" and clip_norm_val > 0.0
         )
 
         class FullModelGradientClippingOptimizer(optim):
@@ -166,31 +170,31 @@ def build_optimizer(cfg: CfgNode, model: torch.nn.Module) -> torch.optim.Optimiz
     optimizer_type = cfg.SOLVER.OPTIMIZER
     if optimizer_type == "SGD":
         optimizer = maybe_add_full_model_gradient_clipping(torch.optim.SGD)(
-            params, 
-            lr=cfg.SOLVER.BASE_LR, 
-            momentum=cfg.SOLVER.MOMENTUM, 
+            params,
+            lr=cfg.SOLVER.BASE_LR,
+            momentum=cfg.SOLVER.MOMENTUM,
             weight_decay=cfg.SOLVER.WEIGHT_DECAY,
-            nesterov=cfg.SOLVER.NESTEROV, 
+            nesterov=cfg.SOLVER.NESTEROV,
         )
     elif optimizer_type == "ADAM":
         optimizer = maybe_add_full_model_gradient_clipping(torch.optim.Adam)(
-            params, 
+            params,
             lr=cfg.SOLVER.BASE_LR,
             weight_decay=cfg.SOLVER.WEIGHT_DECAY,
-            amsgrad=cfg.SOLVER.AMSGRAD
+            amsgrad=cfg.SOLVER.AMSGRAD,
         )
     elif optimizer_type == "ADAMW":
         optimizer = maybe_add_full_model_gradient_clipping(torch.optim.AdamW)(
-            params, 
+            params,
             lr=cfg.SOLVER.BASE_LR,
             weight_decay=cfg.SOLVER.WEIGHT_DECAY,
-            amsgrad=cfg.SOLVER.AMSGRAD
+            amsgrad=cfg.SOLVER.AMSGRAD,
         )
     elif optimizer_type == "ADAGRAD":
         optimizer = maybe_add_full_model_gradient_clipping(torch.optim.Adagrad)(
-            params, 
+            params,
             lr=cfg.SOLVER.BASE_LR,
-            weight_decay=cfg.SOLVER.WEIGHT_DECAY
+            weight_decay=cfg.SOLVER.WEIGHT_DECAY,
         )
     else:
         raise NotImplementedError(f"no optimizer type {optimizer_type}")
@@ -198,13 +202,15 @@ def build_optimizer(cfg: CfgNode, model: torch.nn.Module) -> torch.optim.Optimiz
         optimizer = maybe_add_gradient_clipping(cfg, optimizer)
     return optimizer
 
+
 class Trainer(DefaultTrainer):
     """
     Trainer class
     """
+
     def __init__(self, cfg: CfgNode):
         TrainerBase.__init__(self)
-        
+
         # logger = logging.getLogger("detectron2")
         # if not logger.isEnabledFor(logging.INFO):  # setup_logger is not called for d2
         #     setup_logger()
@@ -216,15 +222,13 @@ class Trainer(DefaultTrainer):
         data_loader = self.build_train_loader(cfg)
 
         model = create_ddp_model(model, broadcast_buffers=False)
-        self._trainer = (AMPTrainer if cfg.SOLVER.AMP.ENABLED else SimpleTrainer)(
-            model, data_loader, optimizer
-        )
+        self._trainer = (AMPTrainer if cfg.SOLVER.AMP.ENABLED else SimpleTrainer)(model, data_loader, optimizer)
 
         self.scheduler = self.build_lr_scheduler(cfg, optimizer)
-        
+
         checkpoint_save_dir = os.path.join(cfg.OUTPUT_DIR, "checkpoints")
         os.makedirs(checkpoint_save_dir, exist_ok=True)
-        
+
         self.checkpointer = DetectionCheckpointer(
             model,
             checkpoint_save_dir,
@@ -233,37 +237,40 @@ class Trainer(DefaultTrainer):
         self.start_iter = 0
         self.max_iter = cfg.SOLVER.MAX_ITER
         self.cfg = cfg
-        
-        
-        miou_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
-                                                   checkpointer=self.checkpointer,
-                                                   val_metric="sem_seg/mIoU",
-                                                   mode='max',
-                                                   file_prefix='model_best_mIoU')
-        
-        fwiou_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
-                                                   checkpointer=self.checkpointer,
-                                                   val_metric="sem_seg/fwIoU",
-                                                   mode='max',
-                                                   file_prefix='model_best_fwIoU')
-        
-        macc_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
-                                                   checkpointer=self.checkpointer,
-                                                   val_metric="sem_seg/mACC",
-                                                   mode='max',
-                                                   file_prefix='model_best_mACC')
-        
-        pacc_checkpointer = hooks.BestCheckpointer(eval_period=cfg.TEST.EVAL_PERIOD, 
-                                                   checkpointer=self.checkpointer,
-                                                   val_metric="sem_seg/pACC",
-                                                   mode='max',
-                                                   file_prefix='model_best_pACC')
-        
-        self.register_hooks(self.build_hooks() +
-                            [miou_checkpointer, 
-                             fwiou_checkpointer, 
-                             macc_checkpointer, 
-                             pacc_checkpointer])
+
+        miou_checkpointer = hooks.BestCheckpointer(
+            eval_period=cfg.TEST.EVAL_PERIOD,
+            checkpointer=self.checkpointer,
+            val_metric="sem_seg/mIoU",
+            mode="max",
+            file_prefix="model_best_mIoU",
+        )
+
+        fwiou_checkpointer = hooks.BestCheckpointer(
+            eval_period=cfg.TEST.EVAL_PERIOD,
+            checkpointer=self.checkpointer,
+            val_metric="sem_seg/fwIoU",
+            mode="max",
+            file_prefix="model_best_fwIoU",
+        )
+
+        macc_checkpointer = hooks.BestCheckpointer(
+            eval_period=cfg.TEST.EVAL_PERIOD,
+            checkpointer=self.checkpointer,
+            val_metric="sem_seg/mACC",
+            mode="max",
+            file_prefix="model_best_mACC",
+        )
+
+        pacc_checkpointer = hooks.BestCheckpointer(
+            eval_period=cfg.TEST.EVAL_PERIOD,
+            checkpointer=self.checkpointer,
+            val_metric="sem_seg/pACC",
+            mode="max",
+            file_prefix="model_best_pACC",
+        )
+
+        self.register_hooks(self.build_hooks() + [miou_checkpointer, fwiou_checkpointer, macc_checkpointer, pacc_checkpointer])
 
     @classmethod
     def build_evaluator(cls, cfg, dataset_name):
@@ -271,51 +278,46 @@ class Trainer(DefaultTrainer):
         evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
         # TODO Other Evaluator types
         if evaluator_type == "sem_seg":
-            evaluator = SemSegEvaluator(
-                dataset_name=dataset_name,
-                distributed=True,
-                output_dir=sem_seg_output_dir
-            )
+            evaluator = SemSegEvaluator(dataset_name=dataset_name, distributed=True, output_dir=sem_seg_output_dir)
         else:
-            raise NotImplementedError(
-                f"Current evaluator type {evaluator_type} not supported")
+            raise NotImplementedError(f"Current evaluator type {evaluator_type} not supported")
 
         return evaluator
 
     @classmethod
     def build_train_loader(cls, cfg):
         if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
-            mapper = DatasetMapper(is_train=True,
-                                   recompute_boxes=cfg.MODEL.MASK_ON,
-                                   augmentations=build_augmentation(
-                                       cfg, is_train=True),
-                                   image_format=cfg.INPUT.FORMAT,
-                                   use_instance_mask=cfg.MODEL.MASK_ON,
-                                   instance_mask_format=cfg.INPUT.MASK_FORMAT,
-                                   use_keypoint=cfg.MODEL.KEYPOINT_ON)
+            mapper = DatasetMapper(
+                is_train=True,
+                recompute_boxes=cfg.MODEL.MASK_ON,
+                augmentations=build_augmentation(cfg, is_train=True),
+                image_format=cfg.INPUT.FORMAT,
+                use_instance_mask=cfg.MODEL.MASK_ON,
+                instance_mask_format=cfg.INPUT.MASK_FORMAT,
+                use_keypoint=cfg.MODEL.KEYPOINT_ON,
+            )
         else:
-            raise NotImplementedError(
-                f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
+            raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
 
         return build_detection_train_loader(cfg=cfg, mapper=mapper)
 
     @classmethod
     def build_test_loader(cls, cfg, dataset_name):
         if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
-            mapper = DatasetMapper(is_train=False,
-                                   recompute_boxes=cfg.MODEL.MASK_ON,
-                                   augmentations=build_augmentation(
-                                       cfg, is_train=False),
-                                   image_format=cfg.INPUT.FORMAT,
-                                   use_instance_mask=cfg.MODEL.MASK_ON,
-                                   instance_mask_format=cfg.INPUT.MASK_FORMAT,
-                                   use_keypoint=cfg.MODEL.KEYPOINT_ON)
+            mapper = DatasetMapper(
+                is_train=False,
+                recompute_boxes=cfg.MODEL.MASK_ON,
+                augmentations=build_augmentation(cfg, is_train=False),
+                image_format=cfg.INPUT.FORMAT,
+                use_instance_mask=cfg.MODEL.MASK_ON,
+                instance_mask_format=cfg.INPUT.MASK_FORMAT,
+                use_keypoint=cfg.MODEL.KEYPOINT_ON,
+            )
         else:
-            raise NotImplementedError(
-                f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
+            raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
 
         return build_detection_test_loader(cfg=cfg, mapper=mapper, dataset_name=dataset_name)
-    
+
     @classmethod
     def build_optimizer(cls, cfg, model):
         return build_optimizer(cfg, model)

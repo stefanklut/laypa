@@ -25,7 +25,8 @@ def get_logger_name():
             # return mod_name, (code.co_filename, frame.f_lineno, code.co_name)
             return mod_name
         frame = frame.f_back
-        
+
+
 class _ColorfulFormatter(logging.Formatter):
     def __init__(self, *args, **kwargs):
         self._root_name = kwargs.pop("root_name") + "."
@@ -48,26 +49,26 @@ class _ColorfulFormatter(logging.Formatter):
         else:
             return log
         return prefix + " " + log
-    
+
+
 class _PlainFormatter(logging.Formatter):
     def __init__(self, *args, **kwargs) -> None:
         super(_PlainFormatter, self).__init__(*args, **kwargs)
-        
+
     @staticmethod
     def remove_ansi(message: str) -> str:
-        pattern = re.compile(r'\x1B\[\d+(;\d+){0,2}m')
-        stripped = pattern.sub('', message)
+        pattern = re.compile(r"\x1B\[\d+(;\d+){0,2}m")
+        stripped = pattern.sub("", message)
         return stripped
-    
+
     def formatMessage(self, record: logging.LogRecord) -> str:
         message = super().formatMessage(record)
         message = self.remove_ansi(message)
         return message
-        
+
+
 @functools.lru_cache()  # so that calling setup_logger multiple times won't add many handlers
-def setup_logger(
-    output=None, distributed_rank=0, *, color=True, name="detectron2", abbrev_name=None
-):
+def setup_logger(output=None, distributed_rank=0, *, color=True, name="detectron2", abbrev_name=None):
     """
     Initialize the detectron2 logger and set its verbosity level to "DEBUG".
 
@@ -85,13 +86,11 @@ def setup_logger(
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     logger.propagate = False
-    
+
     if abbrev_name is None:
         abbrev_name = name
 
-    plain_formatter = _PlainFormatter(
-        "[%(asctime)s] %(name)s %(levelname)s: %(message)s", datefmt="%m/%d %H:%M:%S"
-    )
+    plain_formatter = _PlainFormatter("[%(asctime)s] %(name)s %(levelname)s: %(message)s", datefmt="%m/%d %H:%M:%S")
     # stdout logging: master only
     if distributed_rank == 0:
         ch = logging.StreamHandler(stream=sys.stdout)

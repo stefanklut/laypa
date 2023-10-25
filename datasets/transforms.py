@@ -22,7 +22,7 @@ class ResizeTransform(T.Transform):
         Args:
             height (int): initial height
             width (int): initial width
-            new_height (int): height after resizing 
+            new_height (int): height after resizing
             new_width (int): width after resizing
         """
         super().__init__()
@@ -43,8 +43,7 @@ class ResizeTransform(T.Transform):
         """
         img = img.astype(np.float32)
         old_height, old_width, channels = img.shape
-        assert (old_height, old_width) == (self.height,
-                                           self.width), "Input dims do not match specified dims"
+        assert (old_height, old_width) == (self.height, self.width), "Input dims do not match specified dims"
 
         res_image = cv2.resize(img, (self.new_width, self.new_height), interpolation=cv2.INTER_LINEAR)
 
@@ -76,8 +75,7 @@ class ResizeTransform(T.Transform):
             np.ndarray: resized segmentation
         """
         old_height, old_width = segmentation.shape
-        assert (old_height, old_width) == (self.height,
-                                           self.width), "Input dims do not match specified dims"
+        assert (old_height, old_width) == (self.height, self.width), "Input dims do not match specified dims"
 
         res_segmentation = cv2.resize(segmentation, (self.new_width, self.new_height), interpolation=cv2.INTER_NEAREST)
 
@@ -216,7 +214,7 @@ class WarpFieldTransform(T.Transform):
     def __init__(self, warpfield: np.ndarray) -> None:
         """
         Apply a warp field (optical flow) to an image
-        
+
         Args:
             warpfield (np.ndarray): flow of pixels in the image
         """
@@ -232,27 +230,26 @@ class WarpFieldTransform(T.Transform):
             img (np.ndarray): of shape HxW or HxWxC
             warpfield (np.ndarray): HxW warpfield with movement per pixel
 
-        Raises             : 
+        Raises             :
         NotImplementedError: Only support for HxW and HxWxC right now
 
         Returns:
             np.ndarray: new pixel coordinates
         """
         if img.ndim == 2:
-            x, y = np.meshgrid(np.arange(img.shape[0]), np.arange(
-                img.shape[1]), indexing="ij")
-            indices = np.reshape(
-                x + warpfield[..., 0], (-1, 1)), np.reshape(y + warpfield[..., 1], (-1, 1))
+            x, y = np.meshgrid(np.arange(img.shape[0]), np.arange(img.shape[1]), indexing="ij")
+            indices = np.reshape(x + warpfield[..., 0], (-1, 1)), np.reshape(y + warpfield[..., 1], (-1, 1))
             return np.asarray(indices)
         elif img.ndim == 3:
-            x, y, z = np.meshgrid(np.arange(img.shape[0]), np.arange(
-                img.shape[1]), np.arange(img.shape[2]), indexing="ij")
-            indices = np.reshape(x + warpfield[..., 0, None], (-1, 1)), np.reshape(
-                y + warpfield[..., 1, None], (-1, 1)), np.reshape(z, (-1, 1))
+            x, y, z = np.meshgrid(np.arange(img.shape[0]), np.arange(img.shape[1]), np.arange(img.shape[2]), indexing="ij")
+            indices = (
+                np.reshape(x + warpfield[..., 0, None], (-1, 1)),
+                np.reshape(y + warpfield[..., 1, None], (-1, 1)),
+                np.reshape(z, (-1, 1)),
+            )
             return np.asarray(indices)
         else:
-            raise NotImplementedError(
-                "No support for multi dimensions (NxHxWxC) right now")
+            raise NotImplementedError("No support for multi dimensions (NxHxWxC) right now")
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
         """
@@ -266,8 +263,7 @@ class WarpFieldTransform(T.Transform):
         """
         img = img.astype(np.float32)
         indices = self.generate_grid(img, self.warpfield)
-        sampled_img = map_coordinates(
-            img, indices, order=1, mode="constant", cval=0).reshape(img.shape)
+        sampled_img = map_coordinates(img, indices, order=1, mode="constant", cval=0).reshape(img.shape)
 
         return sampled_img
 
@@ -277,7 +273,7 @@ class WarpFieldTransform(T.Transform):
         """
         # TODO This may be possible, and seems necessary for the instance predictions
         # raise NotImplementedError
-        # IDEA self.recompute_boxes in dataset_mapper, with moving polygon values 
+        # IDEA self.recompute_boxes in dataset_mapper, with moving polygon values
         # HACK Currently just returning original coordinates
         return coords
 
@@ -292,9 +288,10 @@ class WarpFieldTransform(T.Transform):
             np.ndarray: warped segmentation
         """
         indices = self.generate_grid(segmentation, self.warpfield)
-        #cval=0 means background cval=255 means ignored
-        sampled_segmentation = map_coordinates(
-            segmentation, indices, order=0, mode="constant", cval=0).reshape(segmentation.shape)
+        # cval=0 means background cval=255 means ignored
+        sampled_segmentation = map_coordinates(segmentation, indices, order=0, mode="constant", cval=0).reshape(
+            segmentation.shape
+        )
 
         return sampled_segmentation
 
@@ -313,7 +310,7 @@ class AffineTransform(T.Transform):
     def __init__(self, matrix: np.ndarray) -> None:
         """
         Apply an affine transformation to an image
-        
+
         Args:
             matrix (np.ndarray): affine matrix applied to the pixels in image
         """
@@ -335,16 +332,14 @@ class AffineTransform(T.Transform):
         """
         img = img.astype(np.float32)
         if img.ndim == 2:
-            return affine_transform(img, self.matrix, order=1, mode='constant', cval=0)
+            return affine_transform(img, self.matrix, order=1, mode="constant", cval=0)
         elif img.ndim == 3:
             transformed_img = np.empty_like(img)
             for i in range(img.shape[-1]):  # HxWxC
-                transformed_img[..., i] = affine_transform(
-                    img[..., i], self.matrix, order=1, mode='constant', cval=0)
+                transformed_img[..., i] = affine_transform(img[..., i], self.matrix, order=1, mode="constant", cval=0)
             return transformed_img
         else:
-            raise NotImplementedError(
-                "No support for multi dimensions (NxHxWxC) right now")
+            raise NotImplementedError("No support for multi dimensions (NxHxWxC) right now")
 
     def apply_coords(self, coords: np.ndarray):
         """
@@ -358,7 +353,7 @@ class AffineTransform(T.Transform):
             np.ndarray: transformed coordinates
         """
         coords = coords.astype(np.float32)
-        return cv2.transform(coords[:,None,:], self.matrix)[:,0,:2]
+        return cv2.transform(coords[:, None, :], self.matrix)[:, 0, :2]
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
         """
@@ -370,8 +365,8 @@ class AffineTransform(T.Transform):
         Returns:
             np.ndarray: transformed segmentation
         """
-        #cval=0 means background cval=255 means ignored
-        return affine_transform(segmentation, self.matrix, order=0, mode='constant', cval=0)
+        # cval=0 means background cval=255 means ignored
+        return affine_transform(segmentation, self.matrix, order=0, mode="constant", cval=0)
 
     def inverse(self) -> T.Transform:
         """
@@ -451,10 +446,11 @@ class GaussianFilterTransform(T.Transform):
     """
     Apply one or more gaussian filters
     """
+
     def __init__(self, sigma: float = 4, order: int = 0, iterations: int = 1) -> None:
         """
         Apply one or more gaussian filters
-        
+
         Args:
             sigma (float, optional): Gaussian deviation. Defaults to 4.
             order (int, optional): order of gaussian derivative. Defaults to 0.
@@ -480,7 +476,7 @@ class GaussianFilterTransform(T.Transform):
             for i in range(img.shape[-1]):  # HxWxC
                 transformed_img[..., i] = gaussian_filter(transformed_img[..., i], sigma=self.sigma, order=self.order)
         return transformed_img
-    
+
     def apply_coords(self, coords: np.ndarray):
         """
         Blurring should not affect the coordinates
@@ -493,7 +489,7 @@ class GaussianFilterTransform(T.Transform):
             np.ndarray: original coords
         """
         return coords
-    
+
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
         """
         Blurring should not affect the segmentation
@@ -505,12 +501,13 @@ class GaussianFilterTransform(T.Transform):
             np.ndarray: original segmentation
         """
         return segmentation
-    
+
     def inverse(self) -> T.Transform:
         """
         No inverse of blurring is possible since information is lost
         """
         raise NotImplementedError
+
 
 class BlendTransform(T.Transform):
     """
@@ -570,11 +567,9 @@ class BlendTransform(T.Transform):
 
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Testing the image augmentation and transformations")
+    parser = argparse.ArgumentParser(description="Testing the image augmentation and transformations")
     io_args = parser.add_argument_group("IO")
-    io_args.add_argument("-i", "--input", help="Input file",
-                        required=True, type=str)
+    io_args.add_argument("-i", "--input", help="Input file", required=True, type=str)
 
     args = parser.parse_args()
     return args

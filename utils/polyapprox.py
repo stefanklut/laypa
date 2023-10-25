@@ -24,19 +24,10 @@ def one_axis_delta(secPoints, i, j, xK, yK, xxK, yyK, xyK):
         i,j:        [int,int]           index of first and last points of the line to measure error.
     """
     # --- epsilon is added for numerical stability
-    b = (secPoints[j, 1] - secPoints[i, 1]) / (
-        secPoints[j, 0] - secPoints[i, 0] + np.finfo(float).eps
-    )
+    b = (secPoints[j, 1] - secPoints[i, 1]) / (secPoints[j, 0] - secPoints[i, 0] + np.finfo(float).eps)
     a = secPoints[i, 1] - (b * secPoints[i, 0])
     delta = 0
-    delta = (
-        (a ** 2) * (j - i - 1)
-        + 2 * a * b * xK
-        - 2 * a * yK
-        + (b ** 2) * xxK
-        + yyK
-        - 2 * b * xyK
-    )
+    delta = (a**2) * (j - i - 1) + 2 * a * b * xK - 2 * a * yK + (b**2) * xxK + yyK - 2 * b * xyK
     xK = xK + secPoints[i + 1, 0]
     yK = yK + secPoints[i + 1, 1]
     xxK = xxK + secPoints[i + 1, 0] ** 2
@@ -85,9 +76,7 @@ def poly_approx(secPoints, vertM, delta):
             xK = yK = xxK = yyK = xyK = 0
             # for i in range(m-1,n):
             for i in range(n - 1, m - 2, -1):
-                (xK, yK, xxK, yyK, xyK, minArray[i]) = delta(
-                    secPoints, i, n, xK, yK, xxK, yyK, xyK
-                )
+                (xK, yK, xxK, yyK, xyK, minArray[i]) = delta(secPoints, i, n, xK, yK, xxK, yyK, xyK)
                 minArray[i] = minArray[i] + matD[i, m - 1]
             # --- Select only the best option
             pathMatrix[n, m] = np.argmin(minArray)
@@ -119,16 +108,12 @@ def norm_trace(sec_points, vert_m):
     output[0] = sec_points[0]
     n = 1
     for m in range(1, vert_m - 1):
-        while not (
-            (trace_long[n - 1] <= m * seg_long) and (m * seg_long <= trace_long[n])
-        ):
+        while not ((trace_long[n - 1] <= m * seg_long) and (m * seg_long <= trace_long[n])):
             n += 1
         if trace_long[n - 1] == trace_long[n]:
             alpha = 1
         else:
-            alpha = ((m * seg_long) - trace_long[n - 1]) / (
-                trace_long[n] - trace_long[n - 1]
-            )
+            alpha = ((m * seg_long) - trace_long[n - 1]) / (trace_long[n] - trace_long[n - 1])
 
         output[m] = sec_points[n - 1] + ((sec_points[n] - sec_points[n - 1]) * alpha)
     output[-1] = sec_points[-1]

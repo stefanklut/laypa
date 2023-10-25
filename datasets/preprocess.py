@@ -12,48 +12,50 @@ import imagesize
 import numpy as np
 from tqdm import tqdm
 
-from datasets.augmentations import (ResizeLongestEdge, ResizeScaling,
-                                    ResizeShortestEdge)
+from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
 
 # from multiprocessing.pool import ThreadPool as Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xml_converter import XMLConverter
 from utils.copy_utils import copy_mode
-from utils.image_utils import (load_image_array_from_path,
-                               save_image_array_to_path)
+from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import clean_input_paths, get_file_paths
 from utils.logging_utils import get_logger_name
 from utils.path_utils import check_path_accessible, image_path_to_xml_path
 
 
-def get_arguments() -> argparse.Namespace:    
-    parser = argparse.ArgumentParser(parents=[Preprocess.get_parser(), XMLConverter.get_parser()],
-        description="Preprocessing an annotated dataset of documents with pageXML")
-    
+def get_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        parents=[Preprocess.get_parser(), XMLConverter.get_parser()],
+        description="Preprocessing an annotated dataset of documents with pageXML",
+    )
+
     io_args = parser.add_argument_group("IO")
-    io_args.add_argument("-i", "--input", help="Input folder/file",
-                            nargs="+", action="extend", type=str)
-    io_args.add_argument("-o", "--output", help="Output folder",
-                        required=True, type=str)
+    io_args.add_argument("-i", "--input", help="Input folder/file", nargs="+", action="extend", type=str)
+    io_args.add_argument("-o", "--output", help="Output folder", required=True, type=str)
     args = parser.parse_args()
     return args
+
 
 class Preprocess:
     """
     Used for almost all preprocessing steps to prepare datasets to be used by the training loop
     """
-    def __init__(self, input_paths=None,
-                 output_dir=None,
-                 resize_mode="none",
-                 resize_sampling="choice",
-                 scaling=0.5,
-                 min_size=[1024],
-                 max_size=2048,
-                 xml_converter=None,
-                 disable_check=False,
-                 overwrite=False
-                 ) -> None:
+
+    def __init__(
+        self,
+        input_paths=None,
+        output_dir=None,
+        resize_mode="none",
+        resize_sampling="choice",
+        scaling=0.5,
+        min_size=[1024],
+        max_size=2048,
+        xml_converter=None,
+        disable_check=False,
+        overwrite=False,
+    ) -> None:
         """
         Used for almost all preprocessing steps to prepare datasets to be used by the training loop
 
@@ -72,9 +74,9 @@ class Preprocess:
             TypeError: Did not provide a XMLImage object to convert from XML to image
             ValueError: If resize mode is choice must provide the min size with 2 or more values
             ValueError: If resize mode is range must provide the min size with 2 values
-            NotImplementedError: resize mode given is not 
+            NotImplementedError: resize mode given is not
         """
-        
+
         self.logger = logging.getLogger(get_logger_name())
 
         self.input_paths: Optional[Sequence[Path]] = None
@@ -84,28 +86,40 @@ class Preprocess:
         self.output_dir: Optional[Path] = None
         if output_dir is not None:
             self.set_output_dir(output_dir)
-            
+
         if not isinstance(xml_converter, XMLConverter):
             raise TypeError(f"Must provide conversion from xml to image. Current type is {type(xml_converter)}, not XMLImage")
 
         self.xml_converter = xml_converter
-        
+
         self.disable_check = disable_check
         self.overwrite = overwrite
 
         # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
-        self.image_formats = [".bmp", ".dib",
-                              ".jpeg", ".jpg", ".jpe",
-                              ".jp2",
-                              ".png",
-                              ".webp",
-                              ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
-                              ".pfm",
-                              ".sr", ".ras",
-                              ".tiff", ".tif",
-                              ".exr",
-                              ".hdr", ".pic"]
-        
+        self.image_formats = [
+            ".bmp",
+            ".dib",
+            ".jpeg",
+            ".jpg",
+            ".jpe",
+            ".jp2",
+            ".png",
+            ".webp",
+            ".pbm",
+            ".pgm",
+            ".ppm",
+            ".pxm",
+            ".pnm",
+            ".pfm",
+            ".sr",
+            ".ras",
+            ".tiff",
+            ".tif",
+            ".exr",
+            ".hdr",
+            ".pic",
+        ]
+
         self.resize_mode = resize_mode
         self.scaling = scaling
         self.resize_sampling = resize_sampling
@@ -119,8 +133,8 @@ class Preprocess:
             if len(self.min_size) != 2:
                 raise ValueError("Must have two int to set the range")
         else:
-            raise NotImplementedError("Only \"choice\" and \"range\" are accepted values")
-    
+            raise NotImplementedError('Only "choice" and "range" are accepted values')
+
     @classmethod
     def get_parser(cls) -> argparse.ArgumentParser:
         """
@@ -131,55 +145,29 @@ class Preprocess:
         """
         parser = argparse.ArgumentParser(add_help=False)
         pre_process_args = parser.add_argument_group("preprocessing")
-        
+
+        pre_process_args.add_argument("--resize", action="store_true", help="Resize input images")
         pre_process_args.add_argument(
-            "--resize", 
-            action="store_true",
-            help="Resize input images"
-        )
-        pre_process_args.add_argument(
-            "--resize_sampling", 
+            "--resize_sampling",
             default="choice",
             choices=["range", "choice"],
-            type=str, 
-            help="How to select the size when resizing"
+            type=str,
+            help="How to select the size when resizing",
         )
         pre_process_args.add_argument(
-            "--scaling", 
-            default=0.5,
-            type=float, 
-            help="Scaling factor while resizing with mode scaling"
+            "--scaling", default=0.5, type=float, help="Scaling factor while resizing with mode scaling"
         )
-        
-        pre_process_args.add_argument(
-            "--min_size", 
-            default=[1024],
-            nargs="*",
-            type=int, 
-            help="Min resize shape"
-        )
-        pre_process_args.add_argument(
-            "--max_size", 
-            default=2048,
-            type=int,
-            help="Max resize shape"
-        )
-        
-        pre_process_args.add_argument(
-            "--disable_check", 
-            action="store_true", 
-            help="Don't check if all images exist"
-        )
-        
-        pre_process_args.add_argument(
-            "--overwrite", 
-            action="store_true",
-            help="Overwrite the images and label masks"
-        )
-        
+
+        pre_process_args.add_argument("--min_size", default=[1024], nargs="*", type=int, help="Min resize shape")
+        pre_process_args.add_argument("--max_size", default=2048, type=int, help="Max resize shape")
+
+        pre_process_args.add_argument("--disable_check", action="store_true", help="Don't check if all images exist")
+
+        pre_process_args.add_argument("--overwrite", action="store_true", help="Overwrite the images and label masks")
+
         return parser
-    
-    def set_input_paths(self, input_paths: str | Path | Sequence[str|Path]) -> None:
+
+    def set_input_paths(self, input_paths: str | Path | Sequence[str | Path]) -> None:
         """
         Setter for image paths, also cleans them to be a list of Paths
 
@@ -191,7 +179,7 @@ class Preprocess:
             PermissionError: input path not accessible
         """
         input_paths = clean_input_paths(input_paths)
-        
+
         all_input_paths = []
 
         for input_path in input_paths:
@@ -199,9 +187,8 @@ class Preprocess:
                 raise FileNotFoundError(f"Input ({input_path}) is not found")
 
             if not os.access(path=input_path, mode=os.R_OK):
-                raise PermissionError(
-                    f"No access to {input_path} for read operations")
-            
+                raise PermissionError(f"No access to {input_path} for read operations")
+
             input_path = input_path.resolve()
             all_input_paths.append(input_path)
 
@@ -240,7 +227,7 @@ class Preprocess:
             Optional[Path]: output path of the processed images
         """
         return self.output_dir
-    
+
     @staticmethod
     def check_paths_exists(paths: list[Path]) -> None:
         """
@@ -265,7 +252,7 @@ class Preprocess:
         counter = 1
         height = np.ceil(old_height / (256 * counter)) * 256
         width = np.ceil(old_width / (256 * counter)) * 256
-        while height*width > self.min_size[-1] * self.max_size:
+        while height * width > self.min_size[-1] * self.max_size:
             height = np.ceil(old_height / (256 * counter)) * 256
             width = np.ceil(old_width / (256 * counter)) * 256
             counter += 1
@@ -285,16 +272,14 @@ class Preprocess:
             int: shortest edge length
         """
         if self.resize_sampling == "range":
-            short_edge_length = np.random.randint(
-                self.min_size[0], self.min_size[1] + 1)
+            short_edge_length = np.random.randint(self.min_size[0], self.min_size[1] + 1)
         elif self.resize_sampling == "choice":
             short_edge_length = np.random.choice(self.min_size)
         else:
-            raise NotImplementedError(
-                "Only \"choice\" and \"range\" are accepted values")
-        
+            raise NotImplementedError('Only "choice" and "range" are accepted values')
+
         return short_edge_length
-    
+
     def get_output_shape(self, old_height, old_width) -> tuple[int, int]:
         """
         Compute the output size given input size and target short edge length.
@@ -316,8 +301,7 @@ class Preprocess:
             return ResizeScaling.get_output_shape(old_height, old_width, self.scaling, self.max_size)
         else:
             raise NotImplementedError(f"{self.resize_mode} is not a known resize mode")
-        
-    
+
     def resize_image(self, image: np.ndarray, image_shape: Optional[tuple[int, int]] = None) -> np.ndarray:
         """
         Resize image. If image size is given resize to given value. Otherwise sample the shortest edge and resize to the calculated output shape
@@ -339,33 +323,38 @@ class Preprocess:
         resized_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)
 
         return resized_image
-    
-    def save_image(self, image_path: Path, image_stem: str, image_shape: tuple[int,int]):
+
+    def save_image(
+        self,
+        image_path: Path,
+        image_stem: str,
+        image_shape: tuple[int, int],
+    ):
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         image_dir = self.output_dir.joinpath("original")
-        image_dir.mkdir(parents=True, exist_ok=True) 
+        image_dir.mkdir(parents=True, exist_ok=True)
         if self.resize_mode == "none":
             out_image_path = image_dir.joinpath(image_path.name)
         else:
             out_image_path = image_dir.joinpath(image_stem + ".png")
-        
+
         def _save_image_helper():
             """
             Quick helper function for opening->resizing->saving
             """
-            
+
             if self.resize_mode == "none":
                 copy_mode(image_path, out_image_path, mode="symlink")
             else:
                 image = load_image_array_from_path(image_path)
-            
+
                 if image is None:
                     raise TypeError(f"Image {image_path} is None, loading failed")
                 image = self.resize_image(image, image_shape=image_shape)
                 save_image_array_to_path(out_image_path, image)
-        
-        #TODO Maybe replace with guard clauses
+
+        # TODO Maybe replace with guard clauses
         # Check if image already exist and if it doesn't need resizing
         if self.overwrite or not out_image_path.exists():
             _save_image_helper()
@@ -373,24 +362,30 @@ class Preprocess:
             out_image_shape = imagesize.get(out_image_path)[::-1]
             if out_image_shape != image_shape:
                 _save_image_helper()
-        
+
         return str(out_image_path.relative_to(self.output_dir))
-    
-    def save_mask(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int,int]):
+
+    def save_mask(
+        self,
+        xml_path: Path,
+        image_stem: str,
+        original_image_shape: tuple[int, int],
+        image_shape: tuple[int, int],
+    ):
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         mask_dir = self.output_dir.joinpath("sem_seg")
         mask_dir.mkdir(parents=True, exist_ok=True)
         out_mask_path = mask_dir.joinpath(image_stem + ".png")
-        
+
         def _save_mask_helper():
             """
             Quick helper function for opening->converting to image->saving
             """
             mask = self.xml_converter.to_image(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-            
+
             save_image_array_to_path(out_mask_path, mask)
-        
+
         # Check if image already exist and if it doesn't need resizing
         if self.overwrite or not out_mask_path.exists():
             _save_mask_helper()
@@ -398,61 +393,73 @@ class Preprocess:
             out_mask_shape = imagesize.get(out_mask_path)[::-1]
             if out_mask_shape != image_shape:
                 _save_mask_helper()
-        
+
         return str(out_mask_path.relative_to(self.output_dir))
-    
-    def save_instances(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+
+    def save_instances(
+        self,
+        xml_path: Path,
+        image_stem: str,
+        original_image_shape: tuple[int, int],
+        image_shape: tuple[int, int],
+    ):
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         instances_dir = self.output_dir.joinpath("instances")
-        instances_dir.mkdir(parents=True, exist_ok=True) 
+        instances_dir.mkdir(parents=True, exist_ok=True)
         out_instances_path = instances_dir.joinpath(image_stem + ".json")
         out_instances_size_path = instances_dir.joinpath(image_stem + ".txt")
-        
+
         def _save_instances_helper():
             """
             Quick helper function for opening->rescaling->saving
             """
             instances = self.xml_converter.to_json(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-            json_instances = {"image_size": image_shape,
-                              "annotations": instances}
-            with open(out_instances_path, 'w') as f:
+            json_instances = {"image_size": image_shape, "annotations": instances}
+            with open(out_instances_path, "w") as f:
                 json.dump(json_instances, f)
-            with open(out_instances_size_path, 'w') as f:
+            with open(out_instances_size_path, "w") as f:
                 f.write(f"{image_shape[0]},{image_shape[1]}")
-                
+
         # Check if image already exist and if it doesn't need resizing
         if self.overwrite or not out_instances_path.exists() or not out_instances_size_path.exists():
             _save_instances_helper()
         else:
-            with open(out_instances_size_path, 'r') as f:
-                out_intstances_shape = tuple(int(x) for x in f.read().strip().split(','))
+            with open(out_instances_size_path, "r") as f:
+                out_intstances_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_intstances_shape != image_shape:
                 _save_instances_helper()
-            
+
         return str(out_instances_path.relative_to(self.output_dir))
-    
-    def save_panos(self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+
+    def save_panos(
+        self,
+        xml_path: Path,
+        image_stem: str,
+        original_image_shape: tuple[int, int],
+        image_shape: tuple[int, int],
+    ):
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         panos_dir = self.output_dir.joinpath("panos")
-        panos_dir.mkdir(parents=True, exist_ok=True) 
+        panos_dir.mkdir(parents=True, exist_ok=True)
         out_pano_path = panos_dir.joinpath(image_stem + ".png")
         out_segments_info_path = panos_dir.joinpath(image_stem + ".json")
-        
+
         def _save_panos_helper():
             """
             Quick helper function for opening->rescaling->saving
             """
-            pano, segments_info = self.xml_converter.to_pano(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-            
+            pano, segments_info = self.xml_converter.to_pano(
+                xml_path, original_image_shape=original_image_shape, image_shape=image_shape
+            )
+
             save_image_array_to_path(out_pano_path, pano)
-            
-            json_pano = {"image_size": image_shape,
-                         "segments_info": segments_info}
-            with open(out_segments_info_path, 'w') as f:
+
+            json_pano = {"image_size": image_shape, "segments_info": segments_info}
+            with open(out_segments_info_path, "w") as f:
                 json.dump(json_pano, f)
-                
+
         # Check if image already exist and if it doesn't need resizing
         if self.overwrite or not out_pano_path.exists():
             _save_panos_helper()
@@ -460,7 +467,7 @@ class Preprocess:
             out_mask_shape = imagesize.get(out_pano_path)[::-1]
             if out_mask_shape != image_shape:
                 _save_panos_helper()
-        
+
         return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
 
     def process_single_file(self, image_path: Path) -> dict:
@@ -478,31 +485,30 @@ class Preprocess:
         """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
-        
+
         image_stem = image_path.stem
         xml_path = image_path_to_xml_path(image_path, self.disable_check)
         # xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
-        
+
         original_image_shape = tuple(int(value) for value in imagesize.get(image_path)[::-1])
         if self.resize_mode != "none":
-            image_shape = self.get_output_shape(old_height=original_image_shape[0],
-                                                old_width=original_image_shape[1])
+            image_shape = self.get_output_shape(old_height=original_image_shape[0], old_width=original_image_shape[1])
         else:
             image_shape = original_image_shape
-        
+
         results = {}
         results["output_sizes"] = image_shape
         results["original_image_paths"] = str(image_path)
-        
+
         out_image_path = self.save_image(image_path, image_stem, image_shape)
         results["image_paths"] = out_image_path
-        
+
         out_mask_path = self.save_mask(xml_path, image_stem, original_image_shape, image_shape)
         results["sem_seg_paths"] = out_mask_path
-            
+
         out_instances_path = self.save_instances(xml_path, image_stem, original_image_shape, image_shape)
         results["instances_paths"] = out_instances_path
-        
+
         out_pano_path, out_segments_info_path = self.save_panos(xml_path, image_stem, original_image_shape, image_shape)
         results["pano_paths"] = out_pano_path
         results["segments_info_paths"] = out_segments_info_path
@@ -524,13 +530,12 @@ class Preprocess:
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
 
-        
         image_paths = get_file_paths(self.input_paths, self.image_formats, self.disable_check)
         xml_paths = [image_path_to_xml_path(image_path, self.disable_check) for image_path in image_paths]
 
         if len(image_paths) == 0:
             raise ValueError(f"No images found when checking input ({self.input_paths})")
-            
+
         if len(xml_paths) == 0:
             raise ValueError(f"No pagexml found when checking input  ({self.input_paths})")
 
@@ -545,18 +550,22 @@ class Preprocess:
 
         # Multithread
         with Pool(os.cpu_count()) as pool:
-            results = list(tqdm(iterable=pool.imap_unordered(self.process_single_file, image_paths), 
-                                total=len(image_paths), 
-                                desc="Preprocessing"))
+            results = list(
+                tqdm(
+                    iterable=pool.imap_unordered(self.process_single_file, image_paths),
+                    total=len(image_paths),
+                    desc="Preprocessing",
+                )
+            )
 
         # Assuming all key are the same make one dict
-        results = {"data": list_of_dict_to_dict_of_list(results),
-                   "classes": self.xml_converter.get_regions()}
-        
+        results = {"data": list_of_dict_to_dict_of_list(results), "classes": self.xml_converter.get_regions()}
+
         output_path = self.output_dir.joinpath("info.json")
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(results, f)
-            
+
+
 def list_of_dict_to_dict_of_list(input_list: list[dict[str, Any]]) -> dict[str, list[Any]]:
     """
     Convert a list of dicts into dict of lists. All dicts much have the same keys. The output number of dicts matches the length of the list
@@ -566,9 +575,10 @@ def list_of_dict_to_dict_of_list(input_list: list[dict[str, Any]]) -> dict[str, 
 
     Returns:
         dict[str, list[Any]]: dict of lists
-    """    
+    """
     output_dict = {key: [item[key] for item in input_list] for key in input_list[0].keys()}
     return output_dict
+
 
 def main(args) -> None:
     xml_converter = XMLConverter(
@@ -576,7 +586,7 @@ def main(args) -> None:
         line_width=args.line_width,
         regions=args.regions,
         merge_regions=args.merge_regions,
-        region_type=args.region_type
+        region_type=args.region_type,
     )
     process = Preprocess(
         input_paths=args.input,
@@ -587,7 +597,7 @@ def main(args) -> None:
         max_size=args.max_size,
         xml_converter=xml_converter,
         disable_check=args.disable_check,
-        overwrite=args.overwrite
+        overwrite=args.overwrite,
     )
     process.run()
 

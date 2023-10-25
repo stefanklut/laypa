@@ -21,9 +21,9 @@ _C.MODEL.RESUME = False
 _C.MODEL.MODE = ""
 
 _C.MODEL.SEM_SEG_HEAD = CN()
-_C.MODEL.SEM_SEG_HEAD.WEIGHT = [1.]
+_C.MODEL.SEM_SEG_HEAD.WEIGHT = [1.0]
 
-# Weights 
+# Weights
 _C.TRAIN = CN()
 _C.TRAIN.WEIGHTS = ""
 
@@ -220,4 +220,3 @@ _C.MODEL.MASK_FORMER.OVERSAMPLE_RATIO = 3.0
 # Importance sampling parameter for PointRend point sampling during training. Parametr `beta` in
 # the original paper.
 _C.MODEL.MASK_FORMER.IMPORTANCE_SAMPLE_RATIO = 0.75
-
