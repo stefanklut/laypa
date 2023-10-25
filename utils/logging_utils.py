@@ -76,8 +76,6 @@ def setup_logger(
         name (str): the root module name of this logger
         abbrev_name (str): an abbreviation of the module, to avoid long names in logs.
             Set to "" to not log the root module in logs.
-            By default, will abbreviate "detectron2" to "d2" and leave other
-            modules unchanged.
 
     Returns:
         logging.Logger: a logger
