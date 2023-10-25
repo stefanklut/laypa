@@ -327,7 +327,7 @@ class SavePredictor(Predictor):
         #         self.save_prediction, image_paths), total=len(image_paths)))
 
 
-def main(args) -> None:
+def main(args: argparse.Namespace) -> None:
     cfg = setup_cfg(args)
     setup_logging(cfg, save_log=False)
 

@@ -68,7 +68,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def setup_training(args):
+def setup_training(args: argparse.Namespace):
     """
     Setup and start training
 
@@ -119,7 +119,7 @@ def setup_training(args):
     return results
 
 
-def main(args) -> None:
+def main(args: argparse.Namespace) -> None:
     assert (
         args.num_gpus <= torch.cuda.device_count()
     ), f"Less GPUs found ({torch.cuda.device_count()}) than specified ({args.num_gpus})"
