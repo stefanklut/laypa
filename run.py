@@ -308,9 +308,9 @@ class SavePredictor(Predictor):
             TypeError: no output dir is specified
         """
         if self.input_paths is None:
-            raise TypeError("Cannot run when the input dir is None")
+            raise TypeError("Cannot run when the input_paths is None")
         if self.output_dir is None:
-            raise TypeError("Cannot run when the output dir is None")
+            raise TypeError("Cannot run when the output_dir is None")
 
         input_paths = get_file_paths(self.input_paths, self.image_formats)
 
