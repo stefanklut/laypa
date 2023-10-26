@@ -187,7 +187,9 @@ class SavePredictor(Predictor):
             self.set_output_dir(output_dir)
 
         if not isinstance(gen_page, OutputPageXML):
-            raise TypeError(f"Must provide conversion from mask to pageXML. Current type is {type(gen_page)}, not GenPageXML")
+            raise TypeError(
+                f"Must provide conversion from mask to pageXML. Current type is {type(gen_page)}, not OutputPageXML"
+            )
 
         self.gen_page = gen_page
 
