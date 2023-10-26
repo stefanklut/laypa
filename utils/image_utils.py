@@ -33,9 +33,9 @@ def load_image_array_from_path(
     assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
 
     try:
-        image = cv2.imread(str(image_path), cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
-        # image = Image.open(image_path)
-        # image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR if mode == "color" else cv2.COLOR_RGB2GRAY)
+        # image = cv2.imread(str(image_path), cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
+        image = Image.open(image_path)
+        image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR if mode == "color" else cv2.COLOR_RGB2GRAY)
         return image
     except OSError:
         logger = logging.getLogger(get_logger_name())
