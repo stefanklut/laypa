@@ -165,7 +165,7 @@ class SavePredictor(Predictor):
         cfg,
         input_paths: str | Path,
         output_dir: str | Path,
-        gen_page: OutputPageXML,
+        output_page: OutputPageXML,
     ):
         """
         Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
@@ -186,12 +186,12 @@ class SavePredictor(Predictor):
         if output_dir is not None:
             self.set_output_dir(output_dir)
 
-        if not isinstance(gen_page, OutputPageXML):
+        if not isinstance(output_page, OutputPageXML):
             raise TypeError(
-                f"Must provide conversion from mask to pageXML. Current type is {type(gen_page)}, not OutputPageXML"
+                f"Must provide conversion from mask to pageXML. Current type is {type(output_page)}, not OutputPageXML"
             )
 
-        self.gen_page = gen_page
+        self.output_page = output_page
 
         # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
         self.image_formats = [
@@ -296,8 +296,8 @@ class SavePredictor(Predictor):
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(output_image, dim=-3).cpu().numpy()
 
-        self.gen_page.link_image(input_path)
-        self.gen_page.generate_single_page(output_image, input_path, old_height=outputs[1], old_width=outputs[2])
+        self.output_page.link_image(input_path)
+        self.output_page.generate_single_page(output_image, input_path, old_height=outputs[1], old_width=outputs[2])
 
     def process(self):
         """
@@ -333,7 +333,7 @@ def main(args: argparse.Namespace) -> None:
     cfg = setup_cfg(args)
     setup_logging(cfg, save_log=False)
 
-    gen_page = OutputPageXML(
+    output_page = OutputPageXML(
         mode=cfg.MODEL.MODE,
         output_dir=args.output,
         line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
@@ -346,7 +346,7 @@ def main(args: argparse.Namespace) -> None:
         cfg=cfg,
         input_paths=args.input,
         output_dir=args.output,
-        gen_page=gen_page,
+        output_page=output_page,
     )
     # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], with_stack=True, record_shapes=True) as prof:
     predictor.process()
