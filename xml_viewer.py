@@ -66,6 +66,8 @@ class Viewer:
             NotImplementedError: Different mode specified than allowed
         """
 
+        self.logger = logging.getLogger(get_logger_name())
+
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
 
@@ -76,8 +78,6 @@ class Viewer:
         self.metadata = metadata_from_classes(region_names)
 
         self.output_type = output_type
-
-        self.logger = logging.getLogger(get_logger_name())
 
         if self.output_type == "gray":
             self.save_function = self.save_gray_image

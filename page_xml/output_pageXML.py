@@ -65,10 +65,10 @@ class OutputPageXML(XMLRegions):
         """
         super().__init__(mode, line_width, regions, merge_regions, region_type)
 
+        self.logger = logging.getLogger(get_logger_name())
+
         self.output_dir = None
         self.page_dir = None
-
-        self.logger = logging.getLogger(get_logger_name())
 
         if output_dir is not None:
             self.set_output_dir(output_dir)

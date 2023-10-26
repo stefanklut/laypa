@@ -57,8 +57,9 @@ class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
             FileNotFoundError: missing parent path for name
         """
 
-        self._do_cleanup = cleanup
         self.logger = logging.getLogger(get_logger_name())
+
+        self._do_cleanup = cleanup
 
         if name is None:
             self.name = tempfile.mkdtemp(suffix, prefix, dir)
