@@ -1,9 +1,10 @@
-import os
 import errno
+import os
 import shutil
 from pathlib import Path
 
-def symlink_force(path: str|Path, destination: str|Path) -> None:
+
+def symlink_force(path: str | Path, destination: str | Path) -> None:
     """
     Force a symlink, remove the file if it already exists
 
@@ -15,7 +16,7 @@ def symlink_force(path: str|Path, destination: str|Path) -> None:
         e: Any uncaught error from os.symlink
     """
     path = os.path.realpath(path)
-    
+
     # --- from https://stackoverflow.com/questions/8299386/modifying-a-symlink-in-python
     if os.path.exists(destination) and os.path.samefile(path, destination):
         return
@@ -27,8 +28,9 @@ def symlink_force(path: str|Path, destination: str|Path) -> None:
             os.symlink(path, destination)
         else:
             raise e
-        
-def link_force(path: str|Path, destination: str|Path) -> None:
+
+
+def link_force(path: str | Path, destination: str | Path) -> None:
     """
     Force a link, remove the file if it already exists
 
@@ -41,7 +43,7 @@ def link_force(path: str|Path, destination: str|Path) -> None:
     """
     # --- from https://stackoverflow.com/questions/8299386/modifying-a-symlink-in-python
     path = os.path.realpath(path)
-    
+
     if os.path.exists(destination) and os.path.samefile(path, destination):
         return
     try:
@@ -52,8 +54,9 @@ def link_force(path: str|Path, destination: str|Path) -> None:
             os.link(path, destination)
         else:
             raise e
-        
-def copy(path: str|Path, destination: str|Path) -> None:
+
+
+def copy(path: str | Path, destination: str | Path) -> None:
     """
     Copy a file, ignore if they point to the same file
 
@@ -62,14 +65,15 @@ def copy(path: str|Path, destination: str|Path) -> None:
         destination (str | Path): output path
     """
     path = os.path.realpath(path)
-    
+
     try:
         shutil.copy(path, destination)
     except shutil.SameFileError:
         # code when Exception occur
         pass
 
-def copy_mode(path: str|Path, destination: str|Path, mode: str="copy") -> None:
+
+def copy_mode(path: str | Path, destination: str | Path, mode: str = "copy") -> None:
     """
     Copy the a file from one place to another, use linking if mode is specified as "symlink" or "link"
 

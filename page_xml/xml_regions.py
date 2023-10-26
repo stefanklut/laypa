@@ -1,16 +1,20 @@
 import argparse
 from typing import Optional
 
+
 class XMLRegions:
     """
     Base for Methods that need to load XML regions
     """
-    def __init__(self,
-                 mode: str,
-                 line_width: Optional[int]=None,
-                 regions: Optional[list[str]]=None,
-                 merge_regions: Optional[list[str]]=None,
-                 region_type: Optional[list[str]]=None) -> None:
+
+    def __init__(
+        self,
+        mode: str,
+        line_width: Optional[int] = None,
+        regions: Optional[list[str]] = None,
+        merge_regions: Optional[list[str]] = None,
+        region_type: Optional[list[str]] = None,
+    ) -> None:
         """
         Base for Methods that need to load XML regions. If type is region specify the region variables otherwise line variables
 
@@ -26,7 +30,7 @@ class XMLRegions:
             assert regions is not None
             # assert merge_regions is not None
             # assert region_type is not None
-            
+
             # regions: list of type names (required for lookup)
             # merge_regions: regions to be merged. r1:r2,r3  -> r2 and r3 become region r1
             # region_type: type per_region. t1:r1,r2  -> r1 and r2 become type t1
@@ -43,49 +47,53 @@ class XMLRegions:
 
             self.line_width = line_width
 
-    
-    #REVIEW is this the best place for this
+    # REVIEW is this the best place for this
     @classmethod
     def get_parser(cls) -> argparse.ArgumentParser:
         """
         Return argparser that has the arguments required for the pageXML regions.
-        
+
         use like this: parser = argparse.ArgumentParser(parents=[XMLConverter.get_parser()])
 
         Returns:
             argparse.ArgumentParser: the argparser for regions
         """
         # HACK hardcoded regions if none are given
-        republic_regions = ["marginalia", "page-number", "resolution", "date",
-                            "index", "attendance", "Resumption", "resumption", 
-                            "Insertion", "insertion"]
+        republic_regions = [
+            "marginalia",
+            "page-number",
+            "resolution",
+            "date",
+            "index",
+            "attendance",
+            "Resumption",
+            "resumption",
+            "Insertion",
+            "insertion",
+        ]
         republic_merge_regions = ["resolution:Resumption,resumption,Insertion,insertion"]
         parser = argparse.ArgumentParser(add_help=False)
-        
+
         region_args = parser.add_argument_group("regions")
-        
-        region_args.add_argument(
-            "-m", "--mode",
-            default="region",
-            choices=["baseline", "top_bottom", "region", "start", "end", "separator", "baseline_separator"], 
-            type=str,
-            help="Output mode"
-        )
 
         region_args.add_argument(
-            "-w", "--line_width",
-            default=5,
-            type=int,
-            help="Used line width"
+            "-m",
+            "--mode",
+            default="region",
+            choices=["baseline", "region", "start", "end", "separator", "baseline_separator"],
+            type=str,
+            help="Output mode",
         )
-        
+
+        region_args.add_argument("-w", "--line_width", default=5, type=int, help="Used line width")
+
         region_args.add_argument(
             "--regions",
             default=republic_regions,
             nargs="+",
             type=str,
             help="""List of regions to be extracted. 
-                                Format: --regions r1 r2 r3 ..."""
+                    Format: --regions r1 r2 r3 ...""",
         )
         region_args.add_argument(
             "--merge_regions",
@@ -94,8 +102,8 @@ class XMLRegions:
             const=[],
             type=str,
             help="""Merge regions on PAGE file into a single one.
-                                Format --merge_regions r1:r2,r3 r4:r5, then r2 and r3
-                                will be merged into r1 and r5 into r4"""
+                    Format --merge_regions r1:r2,r3 r4:r5, then r2 and r3
+                    will be merged into r1 and r5 into r4""",
         )
         region_args.add_argument(
             "--region_type",
@@ -103,12 +111,12 @@ class XMLRegions:
             nargs="+",
             type=str,
             help="""Type of region on PAGE file.
-                                Format --region_type t1:r1,r3 t2:r5, then type t1
-                                will assigned to regions r1 and r3 and type t2 to
-                                r5 and so on..."""
+                    Format --region_type t1:r1,r3 t2:r5, then type t1
+                    will assigned to regions r1 and r3 and type t2 to
+                    r5 and so on...""",
         )
         return parser
-        
+
     def merge_classes(self) -> None:
         """
         Merge the classes defined by the merge regions
@@ -117,10 +125,10 @@ class XMLRegions:
             return
         if len(self.merged_regions) == 0:
             return
-        
+
         for i, region in enumerate(self.get_regions()):
             self.region_classes[region] = i
-        
+
         for parent, childs in self.merged_regions.items():
             for child in childs:
                 self.region_classes[child] = self.region_classes[parent]
@@ -128,7 +136,7 @@ class XMLRegions:
     def _build_class_regions(self) -> dict[str, int]:
         """
         Given a list of regions assign a equally separated class to each one
-        
+
         Returns:
             dict[str, str]: keys are the class name, values are the class number
         """
@@ -159,10 +167,8 @@ class XMLRegions:
             if parent in self._regions:
                 to_merge[parent] = childs.split(",")
             else:
-                raise argparse.ArgumentTypeError(
-                        f"Malformed argument {c}\nRegion \"{parent}\" to merge is not defined as region"
-                    )
-                
+                raise argparse.ArgumentTypeError(f'Malformed argument {c}\nRegion "{parent}" to merge is not defined as region')
+
         seen_childs = set()
         for childs in to_merge.values():
             for child in childs:
@@ -174,8 +180,8 @@ class XMLRegions:
 
         return to_merge
 
-    def _build_region_types(self) -> dict[str ,str]:
-        """ 
+    def _build_region_types(self) -> dict[str, str]:
+        """
         Build a dictionary of regions and their respective type. If none are given, all regions are of type TextRegion.
 
         Raises:
@@ -198,10 +204,10 @@ class XMLRegions:
                     reg_type[reg] = parent
                 else:
                     raise argparse.ArgumentTypeError(
-                        f"Malformed argument {c}\nCannot assign region \"{reg}\" to any type. {reg} not defined as region"
+                        f'Malformed argument {c}\nCannot assign region "{reg}" to any type. {reg} not defined as region'
                     )
         return reg_type
-    
+
     def get_regions(self) -> list[str]:
         """
         Return what are currently the regions used. Getting all regions and merging the merged regions.
@@ -214,7 +220,7 @@ class XMLRegions:
             list[str]: the names of all the classes currently used
         """
         remaining_regions = ["background"]
-        if self.mode == 'region':
+        if self.mode == "region":
             removed_regions = set()
             if self.merged_regions is not None:
                 for values in self.merged_regions.values():
@@ -236,5 +242,5 @@ class XMLRegions:
             remaining_regions.extend(["top", "bottom"])
         else:
             raise NotImplementedError
-        
+
         return remaining_regions

@@ -4,25 +4,23 @@ from copy import deepcopy
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import fvcore.nn.weight_init as weight_init
-from torch import nn
-from torch.nn import functional as F
-
 from detectron2.config import configurable
 from detectron2.layers import Conv2d, ShapeSpec, get_norm
 from detectron2.modeling import SEM_SEG_HEADS_REGISTRY
+from torch import nn
+from torch.nn import functional as F
 
-from ..transformer_decoder.maskformer_transformer_decoder import build_transformer_decoder
 from ..pixel_decoder.fpn import build_pixel_decoder
+from ..transformer_decoder.maskformer_transformer_decoder import (
+    build_transformer_decoder,
+)
 
 
 @SEM_SEG_HEADS_REGISTRY.register()
 class MaskFormerHead(nn.Module):
-
     _version = 2
 
-    def _load_from_state_dict(
-        self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs
-    ):
+    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
         version = local_metadata.get("version", None)
         if version is None or version < 2:
             # Do not warn if train from scratch
@@ -97,9 +95,7 @@ class MaskFormerHead(nn.Module):
             transformer_predictor_in_channels = input_shape[cfg.MODEL.MASK_FORMER.TRANSFORMER_IN_FEATURE].channels
 
         return {
-            "input_shape": {
-                k: v for k, v in input_shape.items() if k in cfg.MODEL.SEM_SEG_HEAD.IN_FEATURES
-            },
+            "input_shape": {k: v for k, v in input_shape.items() if k in cfg.MODEL.SEM_SEG_HEAD.IN_FEATURES},
             "ignore_value": cfg.MODEL.SEM_SEG_HEAD.IGNORE_VALUE,
             "num_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
             "pixel_decoder": build_pixel_decoder(cfg, input_shape),
@@ -121,9 +117,7 @@ class MaskFormerHead(nn.Module):
             predictions = self.predictor(multi_scale_features, mask_features, mask)
         else:
             if self.transformer_in_feature == "transformer_encoder":
-                assert (
-                    transformer_encoder_features is not None
-                ), "Please use the TransformerEncoderPixelDecoder."
+                assert transformer_encoder_features is not None, "Please use the TransformerEncoderPixelDecoder."
                 predictions = self.predictor(transformer_encoder_features, mask_features, mask)
             elif self.transformer_in_feature == "pixel_embedding":
                 predictions = self.predictor(mask_features, mask_features, mask)

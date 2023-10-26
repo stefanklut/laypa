@@ -1,7 +1,7 @@
-import numpy as np
 import detectron2.data.transforms as T
-
+import numpy as np
 import torchvision.transforms.functional as F
+
 
 # TODO Add all
 class TorchTransform(T.Transform):
@@ -12,9 +12,9 @@ class TorchTransform(T.Transform):
     def apply_image(self, img: np.ndarray) -> np.ndarray:
         pass
         return img
-    
+
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
         return super().apply_segmentation(segmentation)
-    
+
     def inverse(self) -> T.Transform:
         raise NotImplementedError

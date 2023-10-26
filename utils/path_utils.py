@@ -1,6 +1,7 @@
 import os
-from pathlib import Path
 import re
+from pathlib import Path
+
 
 def check_path_accessible(path: Path):
     """
@@ -18,11 +19,11 @@ def check_path_accessible(path: Path):
         raise FileNotFoundError(f"Missing path: {path}")
     if not os.access(path=path, mode=os.R_OK):
         raise PermissionError(f"No access to {path} for read operations")
-    
+
     return True
 
-def image_path_to_xml_path(image_path: Path, check: bool=True) -> Path:
-    
+
+def image_path_to_xml_path(image_path: Path, check: bool = True) -> Path:
     """
     Return the corresponding xml path for a image
 
@@ -33,14 +34,15 @@ def image_path_to_xml_path(image_path: Path, check: bool=True) -> Path:
     Returns:
         Path: XML path
     """
-    xml_path = image_path.absolute().parent.joinpath("page", image_path.stem + '.xml')
-    
+    xml_path = image_path.absolute().parent.joinpath("page", image_path.stem + ".xml")
+
     if check:
         check_path_accessible(xml_path)
 
     return xml_path
 
-def xml_path_to_image_path(xml_path: Path, check: bool=True) -> Path:
+
+def xml_path_to_image_path(xml_path: Path, check: bool = True) -> Path:
     """
     Return the corresponding image path for an xml
 
@@ -54,22 +56,33 @@ def xml_path_to_image_path(xml_path: Path, check: bool=True) -> Path:
     Returns:
         Path: Image_path
     """
-    
-    
-    image_formats = [".bmp", ".dib",
-                     ".jpeg", ".jpg", ".jpe",
-                     ".jp2",
-                     ".png",
-                     ".webp",
-                     ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
-                     ".pfm",
-                     ".sr", ".ras",
-                     ".tiff", ".tif",
-                     ".exr",
-                     ".hdr", ".pic"]
-    
+
+    image_formats = [
+        ".bmp",
+        ".dib",
+        ".jpeg",
+        ".jpg",
+        ".jpe",
+        ".jp2",
+        ".png",
+        ".webp",
+        ".pbm",
+        ".pgm",
+        ".ppm",
+        ".pxm",
+        ".pnm",
+        ".pfm",
+        ".sr",
+        ".ras",
+        ".tiff",
+        ".tif",
+        ".exr",
+        ".hdr",
+        ".pic",
+    ]
+
     # image_formats = [".jpg"]
-    
+
     # Check if image with name exist if so return, else raise Error
     for image_format in image_formats:
         image_path = xml_path.absolute().parents[1].joinpath(xml_path.stem + image_format)
@@ -77,13 +90,14 @@ def xml_path_to_image_path(xml_path: Path, check: bool=True) -> Path:
             break
     else:
         raise FileNotFoundError(f"No image equivalent found for {xml_path}")
-    
+
     if check:
         check_path_accessible(image_path)
-        
+
     return image_path
 
-def unique_path(path: str|Path, current_count: int=1) -> Path:
+
+def unique_path(path: str | Path, current_count: int = 1) -> Path:
     """
     Check if current path exists if it does recursively check if the next path with (n) added to the end already exists
 
@@ -94,19 +108,19 @@ def unique_path(path: str|Path, current_count: int=1) -> Path:
     Returns:
         Path: a unique path
     """
-    
+
     if isinstance(path, str):
         path = Path(path)
     if not path.exists():
         return path
-    
+
     if match := re.fullmatch(r"(.*)(\(\d+\))", path.stem):
         path_suggestion = Path(match.group(1) + f"({current_count})" + path.suffix)
     else:
         path_suggestion = Path(path.stem + f"({current_count})" + path.suffix)
-        
+
     path_suggestion = path.parent.joinpath(path_suggestion)
-    
+
     current_count = current_count + 1
-        
+
     return unique_path(path_suggestion, current_count=current_count)
