@@ -178,6 +178,8 @@ class SavePredictor(Predictor):
         """
         super().__init__(cfg)
 
+        self.logger = logging.getLogger(get_logger_name())
+
         self.input_paths: Optional[Sequence[Path]] = None
         if input_paths is not None:
             self.set_input_paths(input_paths)
@@ -220,8 +222,6 @@ class SavePredictor(Predictor):
         # Formats https://pytorch.org/vision/main/generated/torchvision.io.read_image.html
         # self.image_formats = [".jpeg", ".jpg", ".jpe",
         #                       ".png"]
-
-        self.logger = logging.getLogger(get_logger_name())
 
     def set_input_paths(
         self,
