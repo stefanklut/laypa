@@ -10,6 +10,7 @@ from typing import Any, Optional, Sequence
 import cv2
 import imagesize
 import numpy as np
+from tqdm import tqdm
 
 # from multiprocessing.pool import ThreadPool as Pool
 

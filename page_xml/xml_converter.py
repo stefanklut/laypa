@@ -125,6 +125,8 @@ class XMLConverter(XMLRegions):
                     "iscrowd": False,
                 }
                 instances.append(instance)
+        if not instances:
+            self.logger.warning(f"File {page.filepath} does not contains region instances")
         return instances
 
     def build_region_pano(self, page: PageData, out_size: tuple[int, int], elements, class_dict):
@@ -151,7 +153,7 @@ class XMLConverter(XMLRegions):
 
                 _id += 1
         if not pano_mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains regions")
+            self.logger.warning(f"File {page.filepath} does not contains region pano")
         return pano_mask, segments_info
 
     def build_region_sem_seg(self, page: PageData, out_size: tuple[int, int], elements, class_dict):
@@ -166,7 +168,7 @@ class XMLConverter(XMLRegions):
                 rounded_coords = np.round(coords).astype(np.int32)
                 cv2.fillPoly(sem_seg, [rounded_coords], element_class)
         if not sem_seg.any():
-            self.logger.warning(f"File {page.filepath} does not contains regions")
+            self.logger.warning(f"File {page.filepath} does not contains region sem_seg")
         return sem_seg
 
     ## TEXT LINE
@@ -189,6 +191,9 @@ class XMLConverter(XMLRegions):
                 "iscrowd": False,
             }
             instances.append(instance)
+
+        if not instances:
+            self.logger.warning(f"File {page.filepath} does not contains text line instances")
         return instances
 
     def build_text_line_pano(self, page: PageData, out_size: tuple[int, int]):
@@ -215,7 +220,7 @@ class XMLConverter(XMLRegions):
 
             _id += 1
         if not pano_mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains regions")
+            self.logger.warning(f"File {page.filepath} does not contains text line pano")
         return pano_mask, segments_info
 
     def build_text_line_sem_seg(self, page: PageData, out_size: tuple[int, int]):
@@ -230,7 +235,7 @@ class XMLConverter(XMLRegions):
             rounded_coords = np.round(coords).astype(np.int32)
             cv2.fillPoly(sem_seg, [rounded_coords], text_line_class)
         if not sem_seg.any():
-            self.logger.warning(f"File {page.filepath} does not contains regions")
+            self.logger.warning(f"File {page.filepath} does not contains text line sem_seg")
         return sem_seg
 
     ## BASELINE
@@ -268,7 +273,8 @@ class XMLConverter(XMLRegions):
                 "iscrowd": False,
             }
             instances.append(instance)
-
+        if not instances:
+            self.logger.warning(f"File {page.filepath} does not contains baseline instances")
         return instances
 
     def build_baseline_pano(self, page: PageData, out_size: tuple[int, int], line_width: int):
@@ -290,7 +296,7 @@ class XMLConverter(XMLRegions):
             segments_info.append(segment)
             _id += 1
         if not pano_mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
+            self.logger.warning(f"File {page.filepath} does not contains baseline pano")
         return pano_mask, segments_info
 
     def build_baseline_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
@@ -300,12 +306,22 @@ class XMLConverter(XMLRegions):
         baseline_color = 1
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
+        binary_mask = np.zeros(out_size, dtype=np.uint8)
+        overlap = False
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.polylines(sem_seg, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            binary_mask.fill(0)
+            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+
+            overlap = np.logical_or(overlap, np.any(np.logical_and(sem_seg, binary_mask)))
+            # Add single line to full sem_seg
+            sem_seg = np.logical_or(sem_seg, binary_mask)
+
+        if overlap:
+            self.logger.warning(f"File {page.filepath} contains overlapping baseline sem_seg")
         if not sem_seg.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
+            self.logger.warning(f"File {page.filepath} does not contains baseline sem_seg")
         return sem_seg
 
     # TOP BOTTOM
@@ -349,7 +365,7 @@ class XMLConverter(XMLRegions):
             rounded_coords = np.round(coords).astype(np.int32)
             cv2.circle(sem_seg, rounded_coords, line_width, start_color, -1)
         if not sem_seg.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
+            self.logger.warning(f"File {page.filepath} does not contains start sem_seg")
         return sem_seg
 
     ## END
@@ -366,7 +382,7 @@ class XMLConverter(XMLRegions):
             rounded_coords = np.round(coords).astype(np.int32)
             cv2.circle(sem_seg, rounded_coords, line_width, end_color, -1)
         if not sem_seg.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
+            self.logger.warning(f"File {page.filepath} does not contains end sem_seg")
         return sem_seg
 
     ## SEPARATOR
@@ -386,7 +402,7 @@ class XMLConverter(XMLRegions):
             coords_end = rounded_coords[-1]
             cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
         if not sem_seg.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
+            self.logger.warning(f"File {page.filepath} does not contains separator sem_seg")
         return sem_seg
 
     ## BASELINE + SEPARATOR
@@ -410,7 +426,7 @@ class XMLConverter(XMLRegions):
             coords_end = rounded_coords[-1]
             cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
         if not sem_seg.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
+            self.logger.warning(f"File {page.filepath} does not contains baseline separator sem_seg")
         return sem_seg
 
     def to_sem_seg(
