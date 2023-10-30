@@ -19,7 +19,7 @@ from page_xml.xml_regions import XMLRegions
 from page_xml.xmlPAGE import PageData
 from utils.copy_utils import copy_mode
 from utils.image_utils import save_image_array_to_path
-from utils.input_utils import get_file_paths
+from utils.input_utils import get_file_paths, supported_image_formats
 from utils.logging_utils import get_logger_name
 from utils.tempdir import AtomicFileName
 
@@ -203,6 +203,7 @@ class OutputPageXML(XMLRegions):
         else:
             raise NotImplementedError
 
+        # TODO Overwrite when multiple image have the same name but different extension
         page.save_xml()
 
     def generate_single_page_wrapper(self, info):
@@ -261,32 +262,8 @@ class OutputPageXML(XMLRegions):
 
 
 def main(args):
-    # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
-    image_formats = [
-        ".bmp",
-        ".dib",
-        ".jpeg",
-        ".jpg",
-        ".jpe",
-        ".jp2",
-        ".png",
-        ".webp",
-        ".pbm",
-        ".pgm",
-        ".ppm",
-        ".pxm",
-        ".pnm",
-        ".pfm",
-        ".sr",
-        ".ras",
-        ".tiff",
-        ".tif",
-        ".exr",
-        ".hdr",
-        ".pic",
-    ]
     sem_seg_paths = get_file_paths(args.sem_seg, formats=[".png"])
-    image_paths = get_file_paths(args.input, formats=image_formats)
+    image_paths = get_file_paths(args.input, formats=supported_image_formats)
 
     gen_page = OutputPageXML(
         mode=args.mode,

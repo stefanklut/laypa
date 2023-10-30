@@ -139,20 +139,6 @@ def main(args):
 
     input_paths = [Path(path) for path in args.input]
 
-    # image_formats = [".bmp", ".dib",
-    #                  ".jpeg", ".jpg", ".jpe",
-    #                  ".jp2",
-    #                  ".png",
-    #                  ".webp",
-    #                  ".pbm", ".pgm", ".ppm", ".pxm", ".pnm",
-    #                  ".pfm",
-    #                  ".sr", ".ras",
-    #                  ".tiff", ".tif",
-    #                  ".exr",
-    #                  ".hdr", ".pic"]
-
-    # image_formats = ['.jpg']
-
     dir_image_paths = []
     txt_image_paths = []
     for input_path in input_paths:

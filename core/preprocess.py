@@ -7,7 +7,7 @@ from detectron2.config import CfgNode
 from datasets import dataset
 from datasets.preprocess import Preprocess
 from page_xml.xml_converter import XMLConverter
-from utils.input_utils import clean_input_paths, get_file_paths
+from utils.input_utils import clean_input_paths, get_file_paths, supported_image_formats
 
 
 def preprocess_datasets(
@@ -72,7 +72,7 @@ def preprocess_datasets(
         train_output_dir = output_dir.joinpath("train")
         process.set_input_paths(train)
         process.set_output_dir(train_output_dir)
-        train_image_paths = get_file_paths(train, process.image_formats)
+        train_image_paths = get_file_paths(train, supported_image_formats)
         process.run()
 
         if save_image_locations:
@@ -93,7 +93,7 @@ def preprocess_datasets(
         val_output_dir = output_dir.joinpath("val")
         process.set_input_paths(val)
         process.set_output_dir(val_output_dir)
-        val_image_paths = get_file_paths(val, process.image_formats)
+        val_image_paths = get_file_paths(val, supported_image_formats)
         process.run()
 
         if save_image_locations:

@@ -2,6 +2,37 @@ import os
 from pathlib import Path
 from typing import Sequence
 
+# Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
+supported_image_formats = [
+    ".bmp",
+    ".dib",
+    ".jpeg",
+    ".jpg",
+    ".jpe",
+    ".jp2",
+    ".png",
+    ".webp",
+    ".pbm",
+    ".pgm",
+    ".ppm",
+    ".pxm",
+    ".pnm",
+    ".pfm",
+    ".sr",
+    ".ras",
+    ".tiff",
+    ".tif",
+    ".exr",
+    ".hdr",
+    ".pic",
+]
+
+
+def is_file_supported_format(path: Path, formats):
+    if not path.is_file():
+        raise FileNotFoundError(f"Path ({path}) is not found")
+    return path.suffix.lower() in formats
+
 
 def clean_input_paths(
     input_paths: str | Path | Sequence[str | Path],
@@ -91,7 +122,7 @@ def get_file_paths(
         # IDEA This could be replaces with input_path.rglob(f"**/page/*.xml"), con: this remove the supported format check
         if input_path.is_dir():
             sub_output_paths = [
-                image_path.absolute() for image_path in input_path.glob("*") if image_path.suffix.lower() in formats
+                image_path.absolute() for image_path in input_path.glob("*") if is_file_supported_format(image_path, formats)
             ]
 
             if not disable_check:
@@ -104,7 +135,7 @@ def get_file_paths(
             sub_output_paths = [
                 path if path.is_absolute() else input_path.parent.joinpath(path)
                 for path in paths_from_file
-                if path.suffix in formats
+                if is_file_supported_format(path, formats)
             ]
 
             if len(sub_output_paths) == 0:

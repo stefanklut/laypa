@@ -21,7 +21,7 @@ from core.setup import setup_cfg, setup_logging
 from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
 from page_xml.output_pageXML import OutputPageXML
 from utils.image_utils import load_image_array_from_path, load_image_tensor_from_path
-from utils.input_utils import clean_input_paths, get_file_paths
+from utils.input_utils import get_file_paths, supported_image_formats
 from utils.logging_utils import get_logger_name
 
 
@@ -142,7 +142,7 @@ class LoadingDataset(Dataset):
         path = self.data[index]
 
         # TODO Move resize and load to this part of the dataloader
-        return load_image_tensor_from_path(path), path
+        return load_image_array_from_path(path), path
 
 
 def collate_numpy(batch):
@@ -180,34 +180,6 @@ class SavePredictor(Predictor):
 
         self.logger = logging.getLogger(get_logger_name())
 
-        # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
-        self.image_formats = [
-            ".bmp",
-            ".dib",
-            ".jpeg",
-            ".jpg",
-            ".jpe",
-            ".jp2",
-            ".png",
-            ".webp",
-            ".pbm",
-            ".pgm",
-            ".ppm",
-            ".pxm",
-            ".pnm",
-            ".pfm",
-            ".sr",
-            ".ras",
-            ".tiff",
-            ".tif",
-            ".exr",
-            ".hdr",
-            ".pic",
-        ]
-        # Formats https://pytorch.org/vision/main/generated/torchvision.io.read_image.html
-        # self.image_formats = [".jpeg", ".jpg", ".jpe",
-        #                       ".png"]
-
         self.input_paths: Optional[Sequence[Path]] = None
         if input_paths is not None:
             self.set_input_paths(input_paths)
@@ -237,7 +209,7 @@ class SavePredictor(Predictor):
             FileNotFoundError: input path not found on the filesystem
             PermissionError: input path not accessible
         """
-        self.input_paths = get_file_paths(input_paths, self.image_formats)
+        self.input_paths = get_file_paths(input_paths, supported_image_formats)
 
     def set_output_dir(self, output_dir: str | Path) -> None:
         """
@@ -298,19 +270,10 @@ class SavePredictor(Predictor):
         if self.output_dir is None:
             raise TypeError("Cannot run when the output_dir is None")
 
-        # Single thread
-        # for inputs in tqdm(input_paths):
-        #     self.save_prediction(inputs)
         dataset = LoadingDataset(self.input_paths)
         dataloader = DataLoader(dataset, shuffle=False, batch_size=None, num_workers=16, pin_memory=False, collate_fn=None)
         for inputs in tqdm(dataloader, desc="Predicting PageXML"):
-            # self.logger.warning(inputs)
             self.save_prediction(inputs[0], inputs[1])
-
-        # Multithread <- does not work with cuda
-        # with Pool(os.cpu_count()) as pool:
-        #     results = list(tqdm(pool.imap_unordered(
-        #         self.save_prediction, image_paths), total=len(image_paths)))
 
 
 def main(args: argparse.Namespace) -> None:

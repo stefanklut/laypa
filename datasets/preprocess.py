@@ -19,7 +19,7 @@ from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShort
 from page_xml.xml_converter import XMLConverter
 from utils.copy_utils import copy_mode
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
-from utils.input_utils import clean_input_paths, get_file_paths
+from utils.input_utils import get_file_paths, supported_image_formats
 from utils.logging_utils import get_logger_name
 from utils.path_utils import check_path_accessible, image_path_to_xml_path
 
@@ -94,31 +94,6 @@ class Preprocess:
         self.disable_check = disable_check
         self.overwrite = overwrite
 
-        # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
-        self.image_formats = [
-            ".bmp",
-            ".dib",
-            ".jpeg",
-            ".jpg",
-            ".jpe",
-            ".jp2",
-            ".png",
-            ".webp",
-            ".pbm",
-            ".pgm",
-            ".ppm",
-            ".pxm",
-            ".pnm",
-            ".pfm",
-            ".sr",
-            ".ras",
-            ".tiff",
-            ".tif",
-            ".exr",
-            ".hdr",
-            ".pic",
-        ]
-
         self.resize_mode = resize_mode
         self.scaling = scaling
         self.resize_sampling = resize_sampling
@@ -185,21 +160,7 @@ class Preprocess:
             FileNotFoundError: input path not found on the filesystem
             PermissionError: input path not accessible
         """
-        input_paths = clean_input_paths(input_paths)
-
-        all_input_paths = []
-
-        for input_path in input_paths:
-            if not input_path.exists():
-                raise FileNotFoundError(f"Input ({input_path}) is not found")
-
-            if not os.access(path=input_path, mode=os.R_OK):
-                raise PermissionError(f"No access to {input_path} for read operations")
-
-            input_path = input_path.resolve()
-            all_input_paths.append(input_path)
-
-        self.input_paths = all_input_paths
+        self.image_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
 
     def get_input_paths(self) -> Optional[Sequence[Path]]:
         """
@@ -520,17 +481,16 @@ class Preprocess:
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
 
-        image_paths = get_file_paths(self.input_paths, self.image_formats, self.disable_check)
-        xml_paths = [image_path_to_xml_path(image_path, self.disable_check) for image_path in image_paths]
+        xml_paths = [image_path_to_xml_path(image_path, self.disable_check) for image_path in self.image_paths]
 
-        if len(image_paths) == 0:
+        if len(self.image_paths) == 0:
             raise ValueError(f"No images found when checking input ({self.input_paths})")
 
         if len(xml_paths) == 0:
             raise ValueError(f"No pagexml found when checking input  ({self.input_paths})")
 
         if not self.disable_check:
-            self.check_paths_exists(image_paths)
+            self.check_paths_exists(self.image_paths)
             self.check_paths_exists(xml_paths)
 
         mode_path = self.output_dir.joinpath("mode.txt")
@@ -553,8 +513,8 @@ class Preprocess:
         with Pool(os.cpu_count()) as pool:
             results = list(
                 tqdm(
-                    iterable=pool.imap_unordered(self.process_single_file, image_paths),
-                    total=len(image_paths),
+                    iterable=pool.imap_unordered(self.process_single_file, self.image_paths),
+                    total=len(self.image_paths),
                     desc="Preprocessing",
                 )
             )
