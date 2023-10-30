@@ -160,7 +160,7 @@ class Preprocess:
             FileNotFoundError: input path not found on the filesystem
             PermissionError: input path not accessible
         """
-        self.image_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
+        self.input_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
 
     def get_input_paths(self) -> Optional[Sequence[Path]]:
         """
@@ -197,7 +197,7 @@ class Preprocess:
         return self.output_dir
 
     @staticmethod
-    def check_paths_exists(paths: list[Path]) -> None:
+    def check_paths_exists(paths: Sequence[Path]) -> None:
         """
         Check if all paths given exist and are readable
 
@@ -481,16 +481,16 @@ class Preprocess:
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
 
-        xml_paths = [image_path_to_xml_path(image_path, self.disable_check) for image_path in self.image_paths]
+        xml_paths = [image_path_to_xml_path(image_path, self.disable_check) for image_path in self.input_paths]
 
-        if len(self.image_paths) == 0:
+        if len(self.input_paths) == 0:
             raise ValueError(f"No images found when checking input ({self.input_paths})")
 
         if len(xml_paths) == 0:
             raise ValueError(f"No pagexml found when checking input  ({self.input_paths})")
 
         if not self.disable_check:
-            self.check_paths_exists(self.image_paths)
+            self.check_paths_exists(self.input_paths)
             self.check_paths_exists(xml_paths)
 
         mode_path = self.output_dir.joinpath("mode.txt")
@@ -513,8 +513,8 @@ class Preprocess:
         with Pool(os.cpu_count()) as pool:
             results = list(
                 tqdm(
-                    iterable=pool.imap_unordered(self.process_single_file, self.image_paths),
-                    total=len(self.image_paths),
+                    iterable=pool.imap_unordered(self.process_single_file, self.input_paths),
+                    total=len(self.input_paths),
                     desc="Preprocessing",
                 )
             )

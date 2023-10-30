@@ -28,9 +28,7 @@ supported_image_formats = [
 ]
 
 
-def is_file_supported_format(path: Path, formats):
-    if not path.is_file():
-        raise FileNotFoundError(f"Path ({path}) is not found")
+def is_path_supported_format(path: Path, formats):
     return path.suffix.lower() in formats
 
 
@@ -122,21 +120,17 @@ def get_file_paths(
         # IDEA This could be replaces with input_path.rglob(f"**/page/*.xml"), con: this remove the supported format check
         if input_path.is_dir():
             sub_output_paths = [
-                image_path.absolute() for image_path in input_path.glob("*") if is_file_supported_format(image_path, formats)
+                image_path.absolute() for image_path in input_path.glob("*") if is_path_supported_format(image_path, formats)
             ]
 
-            if not disable_check:
-                if len(sub_output_paths) == 0:
-                    raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
+            if len(sub_output_paths) == 0:
+                raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
 
         elif input_path.is_file() and input_path.suffix == ".txt":
             with input_path.open(mode="r") as f:
                 paths_from_file = [Path(line) for line in f.read().splitlines()]
-            sub_output_paths = [
-                path if path.is_absolute() else input_path.parent.joinpath(path)
-                for path in paths_from_file
-                if is_file_supported_format(path, formats)
-            ]
+            sub_output_paths = [path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file]
+            sub_output_paths = [path for path in sub_output_paths if is_path_supported_format(path, formats)]
 
             if len(sub_output_paths) == 0:
                 raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")

@@ -2,7 +2,7 @@ import os
 import re
 from pathlib import Path
 
-from utils.input_utils import is_file_supported_format, supported_image_formats
+from utils.input_utils import is_path_supported_format, supported_image_formats
 
 
 def check_path_accessible(path: Path):
@@ -66,7 +66,7 @@ def xml_path_to_image_path(xml_path: Path, check: bool = True) -> Path:
 
     for image_path in image_paths:
         # TODO multiple images with the same name (extract from pageXML what to use)
-        if is_file_supported_format(image_path, supported_image_formats):
+        if is_path_supported_format(image_path, supported_image_formats):
             break
     else:
         raise FileNotFoundError(f"No image equivalent found for {xml_path}")
