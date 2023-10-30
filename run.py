@@ -237,21 +237,7 @@ class SavePredictor(Predictor):
             FileNotFoundError: input path not found on the filesystem
             PermissionError: input path not accessible
         """
-        input_paths = clean_input_paths(input_paths)
-
-        all_input_paths = []
-
-        for input_path in input_paths:
-            if not input_path.exists():
-                raise FileNotFoundError(f"Input ({input_path}) is not found")
-
-            if not os.access(path=input_path, mode=os.R_OK):
-                raise PermissionError(f"No access to {input_path} for read operations")
-
-            input_path = input_path.resolve()
-            all_input_paths.append(input_path)
-
-        self.input_paths = all_input_paths
+        self.input_paths = get_file_paths(input_paths, self.image_formats)
 
     def set_output_dir(self, output_dir: str | Path) -> None:
         """
@@ -312,12 +298,10 @@ class SavePredictor(Predictor):
         if self.output_dir is None:
             raise TypeError("Cannot run when the output_dir is None")
 
-        input_paths = get_file_paths(self.input_paths, self.image_formats)
-
         # Single thread
         # for inputs in tqdm(input_paths):
         #     self.save_prediction(inputs)
-        dataset = LoadingDataset(input_paths)
+        dataset = LoadingDataset(self.input_paths)
         dataloader = DataLoader(dataset, shuffle=False, batch_size=None, num_workers=16, pin_memory=False, collate_fn=None)
         for inputs in tqdm(dataloader, desc="Predicting PageXML"):
             # self.logger.warning(inputs)
