@@ -271,7 +271,9 @@ class SavePredictor(Predictor):
             raise TypeError("Cannot run when the output_dir is None")
 
         dataset = LoadingDataset(self.input_paths)
-        dataloader = DataLoader(dataset, shuffle=False, batch_size=None, num_workers=16, pin_memory=False, collate_fn=None)
+        dataloader = DataLoader(
+            dataset, shuffle=False, batch_size=None, num_workers=16, pin_memory=False, collate_fn=collate_numpy
+        )
         for inputs in tqdm(dataloader, desc="Predicting PageXML"):
             self.save_prediction(inputs[0], inputs[1])
 
