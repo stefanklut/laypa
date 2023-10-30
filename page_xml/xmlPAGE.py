@@ -11,8 +11,6 @@ from typing import TypedDict
 
 import numpy as np
 
-from utils.vector_utils import point_top_bottom_assignment
-
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
 from utils.tempdir import AtomicFileName
