@@ -2,33 +2,13 @@ import os
 from pathlib import Path
 from typing import Sequence
 
-# Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
-supported_image_formats = [
-    ".bmp",
-    ".dib",
-    ".jpeg",
-    ".jpg",
-    ".jpe",
-    ".jp2",
-    ".png",
-    ".webp",
-    ".pbm",
-    ".pgm",
-    ".ppm",
-    ".pxm",
-    ".pnm",
-    ".pfm",
-    ".sr",
-    ".ras",
-    ".tiff",
-    ".tif",
-    ".exr",
-    ".hdr",
-    ".pic",
-]
+from PIL import Image, features
+
+Image.init()
+supported_image_formats = set(Image.EXTENSION.keys())
 
 
-def is_path_supported_format(path: Path, formats):
+def is_path_supported_format(path: Path, formats) -> bool:
     return path.suffix.lower() in formats
 
 
