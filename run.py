@@ -180,21 +180,6 @@ class SavePredictor(Predictor):
 
         self.logger = logging.getLogger(get_logger_name())
 
-        self.input_paths: Optional[Sequence[Path]] = None
-        if input_paths is not None:
-            self.set_input_paths(input_paths)
-
-        self.output_dir: Optional[Path] = None
-        if output_dir is not None:
-            self.set_output_dir(output_dir)
-
-        if not isinstance(output_page, OutputPageXML):
-            raise TypeError(
-                f"Must provide conversion from mask to pageXML. Current type is {type(output_page)}, not OutputPageXML"
-            )
-
-        self.output_page = output_page
-
         # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
         self.image_formats = [
             ".bmp",
@@ -222,6 +207,21 @@ class SavePredictor(Predictor):
         # Formats https://pytorch.org/vision/main/generated/torchvision.io.read_image.html
         # self.image_formats = [".jpeg", ".jpg", ".jpe",
         #                       ".png"]
+
+        self.input_paths: Optional[Sequence[Path]] = None
+        if input_paths is not None:
+            self.set_input_paths(input_paths)
+
+        self.output_dir: Optional[Path] = None
+        if output_dir is not None:
+            self.set_output_dir(output_dir)
+
+        if not isinstance(output_page, OutputPageXML):
+            raise TypeError(
+                f"Must provide conversion from mask to pageXML. Current type is {type(output_page)}, not OutputPageXML"
+            )
+
+        self.output_page = output_page
 
     def set_input_paths(
         self,
