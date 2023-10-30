@@ -7,11 +7,11 @@ from collections import Counter
 from multiprocessing.pool import Pool
 from pathlib import Path
 
-from input_utils import get_file_paths
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xmlPAGE import PageData
+from utils.input_utils import get_file_paths, supported_image_formats
 from utils.path_utils import image_path_to_xml_path
 from xml_comparison import pretty_print
 
@@ -55,32 +55,8 @@ def main(args):
     Args:
         args (argparse.Namespace): command line arguments
     """
-    # Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
-    image_formats = [
-        ".bmp",
-        ".dib",
-        ".jpeg",
-        ".jpg",
-        ".jpe",
-        ".jp2",
-        ".png",
-        ".webp",
-        ".pbm",
-        ".pgm",
-        ".ppm",
-        ".pxm",
-        ".pnm",
-        ".pfm",
-        ".sr",
-        ".ras",
-        ".tiff",
-        ".tif",
-        ".exr",
-        ".hdr",
-        ".pic",
-    ]
 
-    image_paths = get_file_paths(args.input, image_formats)
+    image_paths = get_file_paths(args.input, supported_image_formats)
     xml_paths = [image_path_to_xml_path(image_path) for image_path in image_paths]
 
     # Single thread

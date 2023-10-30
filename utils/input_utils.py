@@ -2,6 +2,35 @@ import os
 from pathlib import Path
 from typing import Sequence
 
+# Formats found here: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#imread
+supported_image_formats = [
+    ".bmp",
+    ".dib",
+    ".jpeg",
+    ".jpg",
+    ".jpe",
+    ".jp2",
+    ".png",
+    ".webp",
+    ".pbm",
+    ".pgm",
+    ".ppm",
+    ".pxm",
+    ".pnm",
+    ".pfm",
+    ".sr",
+    ".ras",
+    ".tiff",
+    ".tif",
+    ".exr",
+    ".hdr",
+    ".pic",
+]
+
+
+def is_path_supported_format(path: Path, formats):
+    return path.suffix.lower() in formats
+
 
 def clean_input_paths(
     input_paths: str | Path | Sequence[str | Path],
@@ -81,6 +110,7 @@ def get_file_paths(
     output_paths = []
 
     for input_path in input_paths:
+        input_path = input_path.resolve()
         if not input_path.exists():
             raise FileNotFoundError(f"Input dir/file ({input_path}) is not found")
 
@@ -90,21 +120,17 @@ def get_file_paths(
         # IDEA This could be replaces with input_path.rglob(f"**/page/*.xml"), con: this remove the supported format check
         if input_path.is_dir():
             sub_output_paths = [
-                image_path.absolute() for image_path in input_path.glob("*") if image_path.suffix.lower() in formats
+                image_path.absolute() for image_path in input_path.glob("*") if is_path_supported_format(image_path, formats)
             ]
 
-            if not disable_check:
-                if len(sub_output_paths) == 0:
-                    raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
+            if len(sub_output_paths) == 0:
+                raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
 
         elif input_path.is_file() and input_path.suffix == ".txt":
             with input_path.open(mode="r") as f:
                 paths_from_file = [Path(line) for line in f.read().splitlines()]
-            sub_output_paths = [
-                path if path.is_absolute() else input_path.parent.joinpath(path)
-                for path in paths_from_file
-                if path.suffix in formats
-            ]
+            sub_output_paths = [path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file]
+            sub_output_paths = [path for path in sub_output_paths if is_path_supported_format(path, formats)]
 
             if len(sub_output_paths) == 0:
                 raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
@@ -112,7 +138,7 @@ def get_file_paths(
             if not disable_check:
                 for path in sub_output_paths:
                     if not path.is_file():
-                        raise FileNotFoundError(f"Missing file from the txt file: {input_path}")
+                        raise FileNotFoundError(f"Missing file ({path}) from the txt file: {input_path}")
 
         else:
             raise ValueError(f"Invalid file type: {input_path.suffix}")

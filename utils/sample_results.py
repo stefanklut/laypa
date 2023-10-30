@@ -5,6 +5,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.copy_utils import copy_mode
+from utils.input_utils import is_path_supported_format, supported_image_formats
 from utils.path_utils import image_path_to_xml_path
 
 
@@ -84,35 +85,8 @@ def main(args):
     if not input_dir.is_dir():
         raise FileNotFoundError(f"{input_dir} does not exist")
 
-    image_formats = [
-        ".bmp",
-        ".dib",
-        ".jpeg",
-        ".jpg",
-        ".jpe",
-        ".jp2",
-        ".png",
-        ".webp",
-        ".pbm",
-        ".pgm",
-        ".ppm",
-        ".pxm",
-        ".pnm",
-        ".pfm",
-        ".sr",
-        ".ras",
-        ".tiff",
-        ".tif",
-        ".exr",
-        ".hdr",
-        ".pic",
-    ]
-
-    # image_formats = ['.jpg']
-
-    all_image_paths = []
-    for image_format in image_formats:
-        all_image_paths.extend(input_dir.glob(f"*{image_format}"))
+    input_dir_paths = input_dir.glob(f"*")
+    all_image_paths = [path for path in input_dir_paths if is_path_supported_format(path, supported_image_formats)]
 
     if len(all_image_paths) == 0:
         raise FileNotFoundError(f"No images found within {input_dir}")

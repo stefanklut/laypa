@@ -2,6 +2,8 @@ import os
 import re
 from pathlib import Path
 
+from utils.input_utils import is_path_supported_format, supported_image_formats
+
 
 def check_path_accessible(path: Path):
     """
@@ -57,36 +59,14 @@ def xml_path_to_image_path(xml_path: Path, check: bool = True) -> Path:
         Path: Image_path
     """
 
-    image_formats = [
-        ".bmp",
-        ".dib",
-        ".jpeg",
-        ".jpg",
-        ".jpe",
-        ".jp2",
-        ".png",
-        ".webp",
-        ".pbm",
-        ".pgm",
-        ".ppm",
-        ".pxm",
-        ".pnm",
-        ".pfm",
-        ".sr",
-        ".ras",
-        ".tiff",
-        ".tif",
-        ".exr",
-        ".hdr",
-        ".pic",
-    ]
-
-    # image_formats = [".jpg"]
-
     # Check if image with name exist if so return, else raise Error
-    for image_format in image_formats:
-        image_path = xml_path.absolute().parents[1].joinpath(xml_path.stem + image_format)
-        if image_path.exists():
+    image_path_dir = xml_path.absolute().parents[1]
+
+    image_paths = image_path_dir.glob(f"{xml_path.stem}*")
+
+    for image_path in image_paths:
+        # TODO multiple images with the same name (extract from pageXML what to use)
+        if is_path_supported_format(image_path, supported_image_formats):
             break
     else:
         raise FileNotFoundError(f"No image equivalent found for {xml_path}")

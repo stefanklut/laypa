@@ -8,6 +8,8 @@ import cv2
 import numpy as np
 from detectron2 import structures
 
+from utils.vector_utils import point_top_bottom_assignment
+
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xml_regions import XMLRegions
 from page_xml.xmlPAGE import PageData
@@ -123,6 +125,8 @@ class XMLConverter(XMLRegions):
                     "iscrowd": False,
                 }
                 instances.append(instance)
+        if not instances:
+            self.logger.warning(f"File {page.filepath} does not contains region instances")
         return instances
 
     def build_region_pano(self, page: PageData, out_size: tuple[int, int], elements, class_dict):
@@ -149,23 +153,23 @@ class XMLConverter(XMLRegions):
 
                 _id += 1
         if not pano_mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains regions")
+            self.logger.warning(f"File {page.filepath} does not contains region pano")
         return pano_mask, segments_info
 
-    def build_region_mask(self, page: PageData, out_size: tuple[int, int], elements, class_dict):
+    def build_region_sem_seg(self, page: PageData, out_size: tuple[int, int], elements, class_dict):
         """
         Builds a "image" mask of desired elements
         """
         size = page.get_size()
-        mask = np.zeros(out_size, np.uint8)
+        sem_seg = np.zeros(out_size, np.uint8)
         for element in elements:
             for element_class, element_coords in page.iter_class_coords(element, class_dict):
                 coords = self._scale_coords(element_coords, out_size, size)
                 rounded_coords = np.round(coords).astype(np.int32)
-                cv2.fillPoly(mask, [rounded_coords], element_class)
-        if not mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains regions")
-        return mask
+                cv2.fillPoly(sem_seg, [rounded_coords], element_class)
+        if not sem_seg.any():
+            self.logger.warning(f"File {page.filepath} does not contains region sem_seg")
+        return sem_seg
 
     ## TEXT LINE
 
@@ -187,6 +191,9 @@ class XMLConverter(XMLRegions):
                 "iscrowd": False,
             }
             instances.append(instance)
+
+        if not instances:
+            self.logger.warning(f"File {page.filepath} does not contains text line instances")
         return instances
 
     def build_text_line_pano(self, page: PageData, out_size: tuple[int, int]):
@@ -213,23 +220,23 @@ class XMLConverter(XMLRegions):
 
             _id += 1
         if not pano_mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains regions")
+            self.logger.warning(f"File {page.filepath} does not contains text line pano")
         return pano_mask, segments_info
 
-    def build_text_line_mask(self, page: PageData, out_size: tuple[int, int]):
+    def build_text_line_sem_seg(self, page: PageData, out_size: tuple[int, int]):
         """
         Builds a "image" mask of desired elements
         """
         text_line_class = 1
         size = page.get_size()
-        mask = np.zeros(out_size, np.uint8)
+        sem_seg = np.zeros(out_size, np.uint8)
         for element_coords in page.iter_text_line_coords():
             coords = self._scale_coords(element_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.fillPoly(mask, [rounded_coords], text_line_class)
-        if not mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains regions")
-        return mask
+            cv2.fillPoly(sem_seg, [rounded_coords], text_line_class)
+        if not sem_seg.any():
+            self.logger.warning(f"File {page.filepath} does not contains text line sem_seg")
+        return sem_seg
 
     ## BASELINE
 
@@ -266,7 +273,8 @@ class XMLConverter(XMLRegions):
                 "iscrowd": False,
             }
             instances.append(instance)
-
+        if not instances:
+            self.logger.warning(f"File {page.filepath} does not contains baseline instances")
         return instances
 
     def build_baseline_pano(self, page: PageData, out_size: tuple[int, int], line_width: int):
@@ -288,81 +296,118 @@ class XMLConverter(XMLRegions):
             segments_info.append(segment)
             _id += 1
         if not pano_mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
+            self.logger.warning(f"File {page.filepath} does not contains baseline pano")
         return pano_mask, segments_info
 
-    def build_baseline_mask(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_baseline_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
         Builds a "image" mask of Baselines on XML-PAGE
         """
         baseline_color = 1
         size = page.get_size()
-        mask = np.zeros(out_size, np.uint8)
+        sem_seg = np.zeros(out_size, np.uint8)
+        binary_mask = np.zeros(out_size, dtype=np.uint8)
+        overlap = False
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.polylines(mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
-        if not mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
-        return mask
+            binary_mask.fill(0)
+            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+
+            overlap = np.logical_or(overlap, np.any(np.logical_and(sem_seg, binary_mask)))
+            # Add single line to full sem_seg
+            sem_seg = np.logical_or(sem_seg, binary_mask)
+
+        if overlap:
+            self.logger.warning(f"File {page.filepath} contains overlapping baseline sem_seg")
+        if not sem_seg.any():
+            self.logger.warning(f"File {page.filepath} does not contains baseline sem_seg")
+        return sem_seg
+
+    # TOP BOTTOM
+
+    def build_top_bottom_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+        """
+        Builds a "image" mask of Baselines Top Bottom on XML-PAGE
+        """
+        baseline_color = 1
+        top_color = 1
+        bottom_color = 2
+        size = page.get_size()
+        sem_seg = np.zeros(out_size, np.uint8)
+        binary_mask = np.zeros(out_size, dtype=np.uint8)
+        for baseline_coords in page.iter_baseline_coords():
+            coords = self._scale_coords(baseline_coords, out_size, size)
+            rounded_coords = np.round(coords).astype(np.int32)
+            binary_mask.fill(0)
+            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+
+            # Add single line to full sem_seg
+            line_pixel_coords = np.column_stack(np.where(binary_mask == 1))[:, ::-1]
+            top_bottom = point_top_bottom_assignment(rounded_coords, line_pixel_coords)
+            colored_top_bottom = np.where(top_bottom, top_color, bottom_color)
+            sem_seg[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = colored_top_bottom
+        if not sem_seg.any():
+            self.logger.warning(f"File {page.filepath} does not contains top bottom sem_seg")
+        return sem_seg
 
     ## START
 
-    def build_start_mask(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_start_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
         Builds a "image" mask of Starts on XML-PAGE
         """
         start_color = 1
         size = page.get_size()
-        mask = np.zeros(out_size, np.uint8)
+        sem_seg = np.zeros(out_size, np.uint8)
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)[0]
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.circle(mask, rounded_coords, line_width, start_color, -1)
-        if not mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
-        return mask
+            cv2.circle(sem_seg, rounded_coords, line_width, start_color, -1)
+        if not sem_seg.any():
+            self.logger.warning(f"File {page.filepath} does not contains start sem_seg")
+        return sem_seg
 
-    ## START
+    ## END
 
-    def build_end_mask(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_end_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
         Builds a "image" mask of Ends on XML-PAGE
         """
         end_color = 1
         size = page.get_size()
-        mask = np.zeros(out_size, np.uint8)
+        sem_seg = np.zeros(out_size, np.uint8)
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)[-1]
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.circle(mask, rounded_coords, line_width, end_color, -1)
-        if not mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
-        return mask
+            cv2.circle(sem_seg, rounded_coords, line_width, end_color, -1)
+        if not sem_seg.any():
+            self.logger.warning(f"File {page.filepath} does not contains end sem_seg")
+        return sem_seg
 
     ## SEPARATOR
 
-    def build_separator_mask(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_separator_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
         Builds a "image" mask of Separators on XML-PAGE
         """
         separator_color = 1
         size = page.get_size()
-        mask = np.zeros(out_size, np.uint8)
+        sem_seg = np.zeros(out_size, np.uint8)
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
             coords_start = rounded_coords[0]
-            cv2.circle(mask, coords_start, line_width, separator_color, -1)
+            cv2.circle(sem_seg, coords_start, line_width, separator_color, -1)
             coords_end = rounded_coords[-1]
-            cv2.circle(mask, coords_end, line_width, separator_color, -1)
-        if not mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
-        return mask
+            cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
+        if not sem_seg.any():
+            self.logger.warning(f"File {page.filepath} does not contains separator sem_seg")
+        return sem_seg
 
     ## BASELINE + SEPARATOR
 
-    def build_baseline_separator_mask(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_baseline_separator_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
         Builds a "image" mask of Separators and Baselines on XML-PAGE
         """
@@ -370,26 +415,26 @@ class XMLConverter(XMLRegions):
         separator_color = 2
 
         size = page.get_size()
-        mask = np.zeros(out_size, np.uint8)
+        sem_seg = np.zeros(out_size, np.uint8)
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.polylines(mask, [coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            cv2.polylines(sem_seg, [coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
 
             coords_start = rounded_coords[0]
-            cv2.circle(mask, coords_start, line_width, separator_color, -1)
+            cv2.circle(sem_seg, coords_start, line_width, separator_color, -1)
             coords_end = rounded_coords[-1]
-            cv2.circle(mask, coords_end, line_width, separator_color, -1)
-        if not mask.any():
-            self.logger.warning(f"File {page.filepath} does not contains baselines")
-        return mask
+            cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
+        if not sem_seg.any():
+            self.logger.warning(f"File {page.filepath} does not contains baseline separator sem_seg")
+        return sem_seg
 
-    def to_image(
+    def to_sem_seg(
         self,
         xml_path: Path,
         original_image_shape: Optional[tuple[int, int]] = None,
         image_shape: Optional[tuple[int, int]] = None,
-    ) -> np.ndarray:
+    ) -> Optional[np.ndarray]:
         """
         Turn a single pageXML into a mask of labels
 
@@ -402,7 +447,7 @@ class XMLConverter(XMLRegions):
             NotImplementedError: mode is not known
 
         Returns:
-            np.ndarray: mask of labels
+            Optional[np.ndarray]: mask of labels
         """
         gt_data = PageData(xml_path)
         gt_data.parse()
@@ -414,63 +459,66 @@ class XMLConverter(XMLRegions):
             image_shape = gt_data.get_size()
 
         if self.mode == "region":
-            mask = self.build_region_mask(
+            sem_seg = self.build_region_sem_seg(
                 gt_data,
                 image_shape,
                 set(self.region_types.values()),
                 self.region_classes,
             )
-            return mask
+            return sem_seg
         elif self.mode == "baseline":
-            mask = self.build_baseline_mask(
+            sem_seg = self.build_baseline_sem_seg(
                 gt_data,
                 image_shape,
                 line_width=self.line_width,
             )
-            return mask
+            return sem_seg
+        elif self.mode == "top_bottom":
+            sem_seg = self.build_top_bottom_sem_seg(gt_data, image_shape, line_width=self.line_width)
+            return sem_seg
         elif self.mode == "start":
-            start_mask = self.build_start_mask(
+            sem_seg = self.build_start_sem_seg(
                 gt_data,
                 image_shape,
                 line_width=self.line_width,
             )
-            return start_mask
+            return sem_seg
         elif self.mode == "end":
-            mask = self.build_end_mask(
+            sem_seg = self.build_end_sem_seg(
                 gt_data,
                 image_shape,
                 line_width=self.line_width,
             )
-            return mask
+            return sem_seg
         elif self.mode == "separator":
-            mask = self.build_separator_mask(
+            sem_seg = self.build_separator_sem_seg(
                 gt_data,
                 image_shape,
                 line_width=self.line_width,
             )
-            return mask
+            return sem_seg
         elif self.mode == "baseline_separator":
-            mask = self.build_baseline_separator_mask(
+            sem_seg = self.build_baseline_separator_sem_seg(
                 gt_data,
                 image_shape,
                 line_width=self.line_width,
             )
-            return mask
+            return sem_seg
         elif self.mode == "text_line":
-            mask = self.build_text_line_mask(
+            sem_seg = self.build_text_line_sem_seg(
                 gt_data,
                 image_shape,
             )
-            return mask
+            return sem_seg
         else:
-            raise NotImplementedError
+            return None
 
-    def to_json(
+    def to_instances(
         self,
         xml_path: Path,
         original_image_shape: Optional[tuple[int, int]] = None,
         image_shape: Optional[tuple[int, int]] = None,
-    ) -> list:
+    ) -> Optional[list]:
         """
         Turn a single pageXML into a dict with scaled coordinates
 
@@ -483,7 +531,7 @@ class XMLConverter(XMLRegions):
             NotImplementedError: mode is not known
 
         Returns:
-            dict: scaled coordinates about the location of the objects in the image
+            Optional[dict]: scaled coordinates about the location of the objects in the image
         """
         gt_data = PageData(xml_path)
         gt_data.parse()
@@ -516,14 +564,14 @@ class XMLConverter(XMLRegions):
             )
             return instances
         else:
-            raise NotImplementedError
+            return None
 
     def to_pano(
         self,
         xml_path: Path,
         original_image_shape: Optional[tuple[int, int]] = None,
         image_shape: Optional[tuple[int, int]] = None,
-    ) -> tuple[np.ndarray, list]:
+    ) -> Optional[tuple[np.ndarray, list]]:
         """
         Turn a single pageXML into a pano image with corresponding pixel info
 
@@ -536,7 +584,7 @@ class XMLConverter(XMLRegions):
             NotImplementedError: mode is not known
 
         Returns:
-            tuple[np.ndarray, list]: pano mask and the segments information
+            Optional[tuple[np.ndarray, list]]: pano mask and the segments information
         """
         gt_data = PageData(xml_path)
         gt_data.parse()
@@ -548,28 +596,28 @@ class XMLConverter(XMLRegions):
             image_shape = gt_data.get_size()
 
         if self.mode == "region":
-            pano_mask, segments_info = self.build_region_pano(
+            pano, segments_info = self.build_region_pano(
                 gt_data,
                 image_shape,
                 set(self.region_types.values()),
                 self.region_classes,
             )
-            return pano_mask, segments_info
+            return pano, segments_info
         elif self.mode == "baseline":
-            pano_mask, segments_info = self.build_baseline_pano(
+            pano, segments_info = self.build_baseline_pano(
                 gt_data,
                 image_shape,
                 self.line_width,
             )
-            return pano_mask, segments_info
+            return pano, segments_info
         elif self.mode == "text_line":
-            pano_mask, segments_info = self.build_text_line_pano(
+            pano, segments_info = self.build_text_line_pano(
                 gt_data,
                 image_shape,
             )
-            return pano_mask, segments_info
+            return pano, segments_info
         else:
-            raise NotImplementedError
+            return None
 
 
 if __name__ == "__main__":

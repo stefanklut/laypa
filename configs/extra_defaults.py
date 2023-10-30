@@ -7,13 +7,13 @@ _C.CONFIG_PATH = ""
 _C.TRAINING_PATHS = []
 _C.VALIDATION_PATHS = []
 
-
 _C.RUN_DIR = True
 _C.NAME = ""
+
+# Automatically filled do not expect values to remain
 _C.LAYPA_UUID = ""
 _C.LAYPA_GIT_HASH = ""
 _C.SETUP_TIME = ""
-
 
 # Model changes
 _C.MODEL = CN()
