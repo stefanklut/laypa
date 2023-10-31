@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Sequence
+from typing import Container, Sequence
 
 from PIL import Image, features
 
@@ -8,7 +8,17 @@ Image.init()
 supported_image_formats = set(Image.EXTENSION.keys())
 
 
-def is_path_supported_format(path: Path, formats) -> bool:
+def is_path_supported_format(path: Path, formats: Container[str]) -> bool:
+    """
+    Check if current supplied path has a suffix that is in the supported formats
+
+    Args:
+        path (Path): path to be checked
+        formats (Container[str]): All supported formats in lowercase
+
+    Returns:
+        bool: True if accepted format, False otherwise
+    """
     return path.suffix.lower() in formats
 
 
@@ -52,7 +62,7 @@ def clean_input_paths(
 
 def get_file_paths(
     input_paths: str | Path | Sequence[str | Path],
-    formats: Sequence[str],
+    formats: Container[str],
     disable_check: bool = False,
 ) -> list[Path]:
     """
@@ -60,7 +70,7 @@ def get_file_paths(
 
     Args:
         input_paths (str | Path | Sequence[str | Path]): input path that have not been formatted
-        formats (Sequence[str]): list of accepted file formats (extensions)
+        formats (Container[str]): list of accepted file formats (extensions)
         disable_check (bool, optional): Run a check to see if all extracted files exist. Defaults to False.
 
     Raises:
@@ -79,10 +89,7 @@ def get_file_paths(
     if input_paths is None:
         raise TypeError("Cannot run when the input path is None")
 
-    if formats is None:
-        raise TypeError("Cannot run when the formats is None")
-
-    if len(formats) == 0:
+    if not formats:
         raise ValueError("Must provide the accepted image types")
 
     input_paths = clean_input_paths(input_paths)
