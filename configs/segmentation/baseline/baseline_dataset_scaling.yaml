@@ -7,19 +7,19 @@ MODEL:
 
   SEM_SEG_HEAD:
     NUM_CLASSES: 2
-  
-  WEIGHTS: 
+
+  WEIGHTS:
 
 TRAIN:
   WEIGHTS:
 
 PREPROCESS:
   RESIZE:
-    RESIZE_MODE: 'scaling' 
+    RESIZE_MODE: "scaling"
     SCALING: 0.25
-    
+
 INPUT:
-  RESIZE_MODE: 'none'
+  RESIZE_MODE: "none"
 
 TEST:
   WEIGHTS: pretrained_models/baseline_model_best_mIoU.pth

@@ -6,8 +6,16 @@ NAME: globalise
 
 PREPROCESS:
   REGION:
-    REGIONS: ["paragraph", "signature-mark", "catch-word", "page-number",
-              "header", "heading", "marginalia"]
+    REGIONS:
+      [
+        "paragraph",
+        "signature-mark",
+        "catch-word",
+        "page-number",
+        "header",
+        "heading",
+        "marginalia",
+      ]
     MERGE_REGIONS: ["paragraph:heading"]
     REGION_TYPE: []
 
@@ -19,8 +27,8 @@ MODEL:
 
   ROI_HEADS:
     NUM_CLASSES: 6
-  
-  WEIGHTS: 
+
+  WEIGHTS:
 
 DATALOADER:
   FILTER_EMPTY_ANNOTATIONS: False
@@ -30,4 +38,3 @@ TRAIN:
 
 TEST:
   WEIGHTS: pretrained_models/region_model_best_mIoU.pth
-

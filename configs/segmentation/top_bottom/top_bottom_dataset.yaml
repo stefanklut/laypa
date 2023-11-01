@@ -7,8 +7,8 @@ MODEL:
 
   SEM_SEG_HEAD:
     NUM_CLASSES: 3
-  
-  WEIGHTS: 
+
+  WEIGHTS:
 
 TRAIN:
   WEIGHTS:

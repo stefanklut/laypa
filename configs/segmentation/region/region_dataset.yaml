@@ -7,12 +7,11 @@ MODEL:
 
   SEM_SEG_HEAD:
     NUM_CLASSES: 7
-  
-  WEIGHTS: 
+
+  WEIGHTS:
 
 TRAIN:
   WEIGHTS:
 
 TEST:
   WEIGHTS: pretrained_models/region_model_best_mIoU.pth
-
