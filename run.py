@@ -128,7 +128,13 @@ class Predictor(DefaultPredictor):
         """
         Not really useful, but shows what call needs to be made
         """
-        return self.gpu_call(original_image)
+
+        if isinstance(original_image, np.ndarray):
+            return self.cpu_call(original_image)
+        elif isinstance(original_image, torch.Tensor):
+            return self.gpu_call(original_image)
+        else:
+            raise TypeError(f"Unknown image type: {type(original_image)}")
 
 
 class LoadingDataset(Dataset):
@@ -244,12 +250,7 @@ class SavePredictor(Predictor):
             self.logger.warning(f"Image at {input_path} has not loaded correctly, ignoring for now")
             return
 
-        if isinstance(image, np.ndarray):
-            outputs = self.cpu_call(image)
-        elif isinstance(image, torch.Tensor):
-            outputs = self.gpu_call(image)
-        else:
-            raise TypeError(f"Unknown image type: {type(image)}")
+        outputs = self.__call__(image)
 
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(output_image, dim=-3).cpu().numpy()
