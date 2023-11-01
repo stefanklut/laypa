@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 import torch
 import torchvision
+from detectron2.data.detection_utils import convert_PIL_to_numpy
 from PIL import Image
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
@@ -33,10 +34,10 @@ def load_image_array_from_path(
     assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
 
     try:
-        image = cv2.imread(str(image_path), cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
-        # image = np.asarray(Image.open(image_path))
-        # if mode == "color":
-        #     image = image[:, :, ::-1].copy()
+        # image = cv2.imread(str(image_path), cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
+        image = convert_PIL_to_numpy(Image.open(image_path), "BGR" if mode == "color" else "L").copy()
+        if mode == "grayscale":
+            image = image.squeeze(axis=2)
         return image
     except OSError:
         logger = logging.getLogger(get_logger_name())
@@ -91,11 +92,11 @@ def load_image_array_from_bytes(
     assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
 
     try:
-        bytes_array = np.frombuffer(image_bytes, np.uint8)
-        image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
-        # image = np.asarray(Image.open(BytesIO(image_bytes)))
-        # if mode == "color":
-        #     image = image[:, :, ::-1].copy()
+        # bytes_array = np.frombuffer(image_bytes, np.uint8)
+        # image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
+        image = convert_PIL_to_numpy(Image.open(BytesIO(image_bytes)), "BGR" if mode == "color" else "L").copy()
+        if mode == "grayscale":
+            image = image.squeeze(axis=2)
         return image
     except OSError:
         image_path_info = image_path if image_path is not None else "Filename not given"
