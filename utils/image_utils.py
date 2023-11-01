@@ -33,9 +33,10 @@ def load_image_array_from_path(
     assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
 
     try:
-        # image = cv2.imread(str(image_path), cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
-        image = Image.open(image_path)
-        image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR if mode == "color" else cv2.COLOR_RGB2GRAY)
+        image = cv2.imread(str(image_path), cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
+        # image = np.asarray(Image.open(image_path))
+        # if mode == "color":
+        #     image = image[:, :, ::-1].copy()
         return image
     except OSError:
         logger = logging.getLogger(get_logger_name())
@@ -90,10 +91,11 @@ def load_image_array_from_bytes(
     assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
 
     try:
-        # bytes_array = np.frombuffer(image_bytes, np.uint8)
-        # image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
-        image = Image.open(BytesIO(image_bytes))
-        image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR if mode == "color" else cv2.COLOR_RGB2GRAY)
+        bytes_array = np.frombuffer(image_bytes, np.uint8)
+        image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
+        # image = np.asarray(Image.open(BytesIO(image_bytes)))
+        # if mode == "color":
+        #     image = image[:, :, ::-1].copy()
         return image
     except OSError:
         image_path_info = image_path if image_path is not None else "Filename not given"
