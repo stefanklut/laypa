@@ -97,7 +97,7 @@ def get_file_paths(
     output_paths = []
 
     for input_path in input_paths:
-        input_path = input_path.resolve()
+        input_path = input_path.expanduser().resolve()
         if not input_path.exists():
             raise FileNotFoundError(f"Input dir/file ({input_path}) is not found")
 
