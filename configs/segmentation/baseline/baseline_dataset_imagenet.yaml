@@ -6,3 +6,4 @@ MODEL:
   RESNETS:
     DEPTH: 50
   WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
+  PIXEL_STD: [1, 1, 1]
