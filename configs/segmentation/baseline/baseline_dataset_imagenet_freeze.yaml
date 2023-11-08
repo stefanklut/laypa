@@ -8,4 +8,8 @@ MODEL:
   RESNETS:
     DEPTH: 50
   WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
+  PIXEL_MEAN: [103.530, 116.280, 123.675]
   PIXEL_STD: [1, 1, 1]
+
+INPUT:
+  FORMAT: "BGR"
