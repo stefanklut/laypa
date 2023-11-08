@@ -721,10 +721,12 @@ def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.
         if is_train:
             min_size = cfg.INPUT.MIN_SIZE_TRAIN
             max_size = cfg.INPUT.MAX_SIZE_TRAIN
+            scaling = cfg.INPUT.SCALING_TRAIN
             sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
         else:
             min_size = cfg.INPUT.MIN_SIZE_TEST
             max_size = cfg.INPUT.MAX_SIZE_TEST
+            scaling = cfg.INPUT.SCALING_TEST
             sample_style = "choice"
         if cfg.INPUT.RESIZE_MODE == "shortest_edge":
             augmentation.append(ResizeShortestEdge(min_size, max_size, sample_style))
@@ -733,9 +735,11 @@ def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.
     elif cfg.INPUT.RESIZE_MODE == "scaling":
         if is_train:
             max_size = cfg.INPUT.MAX_SIZE_TRAIN
+            scaling = cfg.INPUT.SCALING_TRAIN
         else:
             max_size = cfg.INPUT.MAX_SIZE_TEST
-        augmentation.append(ResizeScaling(cfg.INPUT.SCALING, cfg.INPUT.MAX_SIZE_TRAIN))
+            scaling = cfg.INPUT.SCALING_TEST
+        augmentation.append(ResizeScaling(scaling, max_size))
     else:
         raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 
