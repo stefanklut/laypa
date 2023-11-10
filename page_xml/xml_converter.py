@@ -322,7 +322,7 @@ class XMLConverter(XMLRegions):
             self.logger.warning(f"File {page.filepath} contains overlapping baseline sem_seg")
         if not sem_seg.any():
             self.logger.warning(f"File {page.filepath} does not contains baseline sem_seg")
-        return sem_seg
+        return sem_seg.astype(np.uint8)
 
     # TOP BOTTOM
 
