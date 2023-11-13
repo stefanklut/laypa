@@ -116,7 +116,7 @@ def main(args) -> None:
         def create_gt_visualization(image_filename, sem_seg_filename):
             image = load_image(image_filename)
             sem_seg_gt = load_sem_seg(sem_seg_filename)
-            vis_im_gt = Visualizer(image[..., ::-1].copy(), metadata=metadata, scale=1)
+            vis_im_gt = Visualizer(image.copy(), metadata=metadata, scale=1)
             vis_im_gt = vis_im_gt.draw_sem_seg(sem_seg_gt, alpha=0.4)
             return vis_im_gt.get_image()
 
@@ -128,7 +128,7 @@ def main(args) -> None:
             pred = torch.argmax(outputs[0]["sem_seg"], dim=-3).to("cpu")
             # outputs["panoptic_seg"] = (outputs["panoptic_seg"][0].to("cpu"),
             #                            outputs["panoptic_seg"][1])
-            vis_im = Visualizer(image[..., ::-1].copy(), metadata=metadata, scale=1)
+            vis_im = Visualizer(image.copy(), metadata=metadata, scale=1)
 
             vis_im = vis_im.draw_sem_seg(pred, alpha=0.4)
             return vis_im.get_image()
@@ -200,10 +200,10 @@ def main(args) -> None:
                     fig.savefig(str(save_path), dpi=240)
                 if args.save in ["all", "pred"]:
                     save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + "_pred.jpg")
-                    save_image_array_to_path(save_path, vis_pred[..., ::-1])
+                    save_image_array_to_path(save_path, vis_pred)
                 if args.save in ["all", "gt"]:
                     save_path = output_dir.joinpath(Path(inputs["file_name"]).stem + "_gt.jpg")
-                    save_image_array_to_path(save_path, vis_gt[..., ::-1])
+                    save_image_array_to_path(save_path, vis_gt)
 
                 i += 1
                 continue

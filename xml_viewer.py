@@ -125,7 +125,7 @@ class Viewer:
         for i, color in enumerate(colors):
             color_image[gray_image == i] = np.asarray(color).reshape((1, 1, 3))
 
-        save_image_array_to_path(str(output_image_path), color_image[..., ::-1])
+        save_image_array_to_path(str(output_image_path), color_image)
 
     def save_overlay_image(self, xml_path_i: Path):
         """
@@ -143,10 +143,10 @@ class Viewer:
         if image is None:
             return
 
-        vis_im = Visualizer(image[..., ::-1].copy(), metadata=self.metadata, scale=1)
+        vis_im = Visualizer(image.copy(), metadata=self.metadata, scale=1)
         vis_im = vis_im.draw_sem_seg(gray_image, alpha=0.4)
         overlay_image = vis_im.get_image()
-        save_image_array_to_path(str(output_image_path), overlay_image[..., ::-1])
+        save_image_array_to_path(str(output_image_path), overlay_image)
 
     @staticmethod
     def check_image_exists(xml_paths: list[Path]):

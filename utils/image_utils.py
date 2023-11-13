@@ -35,7 +35,8 @@ def load_image_array_from_path(
 
     try:
         # image = cv2.imread(str(image_path), cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
-        image = convert_PIL_to_numpy(Image.open(image_path), "BGR" if mode == "color" else "L").copy()
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if mode == "color" else image
+        image = convert_PIL_to_numpy(Image.open(image_path), "RGB" if mode == "color" else "L").copy()
         if mode == "grayscale":
             image = image.squeeze(axis=2)
         return image
@@ -94,7 +95,8 @@ def load_image_array_from_bytes(
     try:
         # bytes_array = np.frombuffer(image_bytes, np.uint8)
         # image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
-        image = convert_PIL_to_numpy(Image.open(BytesIO(image_bytes)), "BGR" if mode == "color" else "L").copy()
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if mode == "color" else image
+        image = convert_PIL_to_numpy(Image.open(BytesIO(image_bytes)), "RGB" if mode == "color" else "L").copy()
         if mode == "grayscale":
             image = image.squeeze(axis=2)
         return image

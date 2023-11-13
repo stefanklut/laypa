@@ -112,10 +112,10 @@ class Predictor(DefaultPredictor):
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
             height, width, channels = original_image.shape
-            assert channels == 3, f"Must be a BGR image, found {channels} channels"
+            assert channels == 3, f"Must be a RBG image, found {channels} channels"
             image = self.aug.get_transform(original_image).apply_image(original_image)
             image = torch.as_tensor(image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
-            if self.input_format == "RGB":
+            if self.input_format == "BGR":
                 # whether the model expects BGR inputs or RGB
                 image = image[[2, 1, 0], :, :]
 
