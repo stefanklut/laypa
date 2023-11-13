@@ -721,12 +721,10 @@ def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.
         if is_train:
             min_size = cfg.INPUT.MIN_SIZE_TRAIN
             max_size = cfg.INPUT.MAX_SIZE_TRAIN
-            scaling = cfg.INPUT.SCALING_TRAIN
             sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
         else:
             min_size = cfg.INPUT.MIN_SIZE_TEST
             max_size = cfg.INPUT.MAX_SIZE_TEST
-            scaling = cfg.INPUT.SCALING_TEST
             sample_style = "choice"
         if cfg.INPUT.RESIZE_MODE == "shortest_edge":
             augmentation.append(ResizeShortestEdge(min_size, max_size, sample_style))
