@@ -733,9 +733,11 @@ def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.
     elif cfg.INPUT.RESIZE_MODE == "scaling":
         if is_train:
             max_size = cfg.INPUT.MAX_SIZE_TRAIN
+            scaling = cfg.INPUT.SCALING_TRAIN
         else:
             max_size = cfg.INPUT.MAX_SIZE_TEST
-        augmentation.append(ResizeScaling(cfg.INPUT.SCALING, cfg.INPUT.MAX_SIZE_TRAIN))
+            scaling = cfg.INPUT.SCALING_TEST
+        augmentation.append(ResizeScaling(scaling, max_size))
     else:
         raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 

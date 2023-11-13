@@ -125,6 +125,7 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
             folder_name.append(cfg.NAME)
         cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, "_".join(folder_name))
 
+    # Overwrite device based on detected hardware
     if cfg.MODEL.DEVICE:
         # If CUDA device cannot be found, default to CPU
         if torch.cuda.device_count() == 0:
@@ -142,6 +143,19 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
             "DeprecationWarning PREPROCESS.RESIZE.USE is losing support; please switch to PREPROCESS.RESIZE.RESIZE_MODE"
         )
         cfg.PREPROCESS.RESIZE.RESIZE_MODE = "shortest_edge"
+
+    if cfg.INPUT.SCALING:
+        logger.warning(
+            "DeprecationWarning INPUT.SCALING is losing support; please switch to INPUT.SCALING_TRAIN and INPUT.SCALING_TEST"
+        )
+        cfg.INPUT.SCALING_TRAIN = cfg.INPUT.SCALING
+
+    if cfg.INPUT.SCALING_TEST <= 0.0:
+        test_scaling = cfg.INPUT.SCALING_TRAIN * cfg.PREPROCESS.RESIZE.SCALING
+        logger.warning(
+            f"INPUT.SCALING_TEST is not set, inferring from INPUT.SCALING_TRAIN and PREPROCESS.RESIZE.SCALING to be {test_scaling}"
+        )
+        cfg.INPUT.SCALING_TEST = test_scaling
 
     cfg.freeze()
     return cfg
