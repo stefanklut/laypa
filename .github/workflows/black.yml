@@ -10,7 +10,7 @@ jobs:
       - name: Run Black formatter
         uses: psf/black@stable
         with:
-          options: "--line-length=128 --diff"
+          options: "--line-length=128"
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
