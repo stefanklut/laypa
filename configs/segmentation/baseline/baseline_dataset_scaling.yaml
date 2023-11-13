@@ -16,10 +16,11 @@ TRAIN:
 PREPROCESS:
   RESIZE:
     RESIZE_MODE: "scaling"
-    SCALING: 0.25
+    SCALING: 0.5
 
 INPUT:
   RESIZE_MODE: "none"
+  SCALING_TRAIN: 0.5
 
 TEST:
   WEIGHTS: pretrained_models/baseline_model_best_mIoU.pth

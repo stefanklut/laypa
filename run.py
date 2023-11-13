@@ -74,7 +74,7 @@ class Predictor(DefaultPredictor):
             elif cfg.INPUT.RESIZE_MODE == "longest_edge":
                 self.aug = ResizeLongestEdge(cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, "choice")
         elif cfg.INPUT.RESIZE_MODE == "scaling":
-            self.aug = ResizeScaling(cfg.INPUT.SCALING, cfg.INPUT.MAX_SIZE_TEST)
+            self.aug = ResizeScaling(cfg.INPUT.SCALING_TEST, cfg.INPUT.MAX_SIZE_TEST)
         else:
             raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 
@@ -96,7 +96,7 @@ class Predictor(DefaultPredictor):
                 )
             elif self.cfg.INPUT.RESIZE_MODE == "scaling":
                 new_height, new_width = self.aug.get_output_shape(
-                    height, width, self.cfg.INPUT.SCALING, self.cfg.INPUT.MAX_SIZE_TEST
+                    height, width, self.cfg.INPUT.SCALING_TEST, self.cfg.INPUT.MAX_SIZE_TEST
                 )
             else:
                 raise NotImplementedError(f"{self.cfg.INPUT.RESIZE_MODE} is not a known resize mode")
