@@ -50,7 +50,7 @@ INPUT:
   # FIXME Have the Min size adjustable
   MIN_SIZE_TEST: 1024
   MAX_SIZE_TEST: 2048
-  SCALING_TEST: -1
+  SCALING_TEST: -1.
 
   FORMAT: RGB
 
