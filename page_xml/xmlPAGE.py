@@ -7,9 +7,10 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import TypedDict
+from typing import Iterable, TypedDict
 
 import numpy as np
+from detectron2.config import CfgNode
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
@@ -211,10 +212,10 @@ class PageData:
         """create a new PAGE xml"""
         self.xml = ET.Element("PcGts")
         self.xml.attrib = self.XMLNS
-        metadata = ET.SubElement(self.xml, "Metadata")
-        ET.SubElement(metadata, "Creator").text = self.creator
-        ET.SubElement(metadata, "Created").text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
-        ET.SubElement(metadata, "LastChange").text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
+        self.metadata = ET.SubElement(self.xml, "Metadata")
+        ET.SubElement(self.metadata, "Creator").text = self.creator
+        ET.SubElement(self.metadata, "Created").text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
+        ET.SubElement(self.metadata, "LastChange").text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
         self.page = ET.SubElement(self.xml, "Page")
         self.page.attrib = {
             "imageFilename": name,
@@ -222,16 +223,49 @@ class PageData:
             "imageHeight": rows,
         }
 
-    def add_element(self, r_class, r_id, r_type, r_coords, parent=None):
+    def add_processing_step(self, git_hash: str, uuid: str, whitelist: Iterable[str], cfg: CfgNode):
+        processing_step = ET.SubElement(self.metadata, "MetadataItem")
+        processing_step.attrib = {
+            "type": "processingStep",
+            "name": "layout-analysis",
+            "value": "laypa",
+        }
+        labels = ET.SubElement(processing_step, "Labels")
+        git_hash_element = ET.SubElement(labels, "Label")
+        git_hash_element.attrib = {
+            "type": "githash",
+            "value": git_hash,
+        }
+
+        uuid_element = ET.SubElement(labels, "Label")
+        uuid_element.attrib = {
+            "type": "uuid",
+            "value": uuid,
+        }
+
+        for key in whitelist:
+            sub_node = cfg
+            for sub_key in key.split("."):
+                try:
+                    sub_node = sub_node[sub_key]
+                except KeyError:
+                    self.logger.warning(f"No key {key} in config, missing {sub_key}")
+                    break
+            whilelisted_element = ET.SubElement(labels, "Label")
+            whilelisted_element.attrib = {
+                "type": key,
+                "value": uuid,
+            }
+
+    def add_element(self, region_class, region_id, region_type, region_coords, parent=None):
         """add element to parent node"""
         parent = self.page if parent == None else parent
-        t_reg = ET.SubElement(parent, r_class)
+        t_reg = ET.SubElement(parent, region_class)
         t_reg.attrib = {
-            # "id": "_".join([r_class, str(r_id)]),
-            "id": str(r_id),
-            "custom": "".join(["structure {type:", r_type, ";}"]),
+            "id": str(region_id),
+            "custom": f"structure {{type:{region_type}, ;}}",
         }
-        ET.SubElement(t_reg, "Coords").attrib = {"points": r_coords}
+        ET.SubElement(t_reg, "Coords").attrib = {"points": region_coords}
         return t_reg
 
     def remove_element(self, element, parent=None):

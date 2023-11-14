@@ -159,12 +159,7 @@ def predict_image(image: np.ndarray | torch.Tensor, image_path: Path, identifier
         if not output_path.parent.is_dir():
             output_path.parent.mkdir()
 
-        if isinstance(image, np.ndarray):
-            outputs = predict_gen_page_wrapper.predictor.cpu_call(image)
-        elif isinstance(image, torch.Tensor):
-            outputs = predict_gen_page_wrapper.predictor.gpu_call(image)
-        else:
-            raise TypeError(f"Unknown image type: {type(image)}")
+        outputs = predict_gen_page_wrapper.predictor(image)
 
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
