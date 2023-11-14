@@ -48,6 +48,17 @@ def setup_logging(cfg: Optional[CfgNode] = None, save_log: bool = True) -> loggi
     return logger
 
 
+def get_git_hash() -> str:
+    version_path = Path("version_info")
+
+    if version_path.is_file():
+        with version_path.open(mode="r") as file:
+            git_hash = file.read()
+    else:
+        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent).strip().decode()
+    return git_hash
+
+
 # TODO Replace with LazyConfig
 def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     """
@@ -89,12 +100,7 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
 
     version_path = Path("version_info")
 
-    if version_path.is_file():
-        with version_path.open(mode="r") as file:
-            git_hash = file.read()
-    else:
-        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent).strip().decode()
-    cfg.LAYPA_GIT_HASH = git_hash
+    cfg.LAYPA_GIT_HASH = get_git_hash()
 
     cfg.CONFIG_PATH = str(Path(args.config).resolve())
 
