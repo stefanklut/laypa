@@ -290,6 +290,8 @@ def main(args: argparse.Namespace) -> None:
         regions=cfg.PREPROCESS.REGION.REGIONS,
         merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
+        cfg=cfg,
+        whitelist={},
     )
 
     predictor = SavePredictor(

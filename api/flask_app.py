@@ -109,6 +109,8 @@ class PredictorGenPageWrapper:
             regions=cfg.PREPROCESS.REGION.REGIONS,
             merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
             region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
+            cfg=cfg,
+            whitelist={},
         )
 
         self.predictor = Predictor(cfg=cfg)
