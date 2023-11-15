@@ -82,7 +82,7 @@ class OutputPageXML(XMLRegions):
 
         self.cfg = cfg
 
-        self.whitelist = {} if whitelist is None else whitelist
+        self.whitelist = {} if whitelist is None else set(whitelist)
 
     def set_output_dir(self, output_dir: str | Path):
         if isinstance(output_dir, str):

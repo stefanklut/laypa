@@ -244,6 +244,15 @@ class PageData:
         }
 
     def add_processing_step(self, git_hash: str, uuid: str, cfg: CfgNode, whitelist: Iterable[str]):
+        if git_hash is None:
+            raise TypeError(f"git_hash is None")
+        if uuid is None:
+            raise TypeError(f"uuid is None")
+        if cfg is None:
+            raise TypeError(f"cfg is None")
+        if whitelist is None:
+            raise TypeError(f"whitelist is None")
+
         processing_step = ET.SubElement(self.metadata, "MetadataItem")
         processing_step.attrib = {
             "type": "processingStep",
