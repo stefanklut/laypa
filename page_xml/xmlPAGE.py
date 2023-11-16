@@ -277,9 +277,9 @@ class PageData:
             for sub_key in key.split("."):
                 try:
                     sub_node = sub_node[sub_key]
-                except KeyError:
-                    self.logger.warning(f"No key {key} in config, missing {sub_key}")
-                    break
+                except KeyError as error:
+                    self.logger.error(f"No key {key} in config, missing sub key {sub_key}")
+                    raise error
             whilelisted_element = ET.SubElement(labels, "Label")
             whilelisted_element.attrib = {
                 "type": key,

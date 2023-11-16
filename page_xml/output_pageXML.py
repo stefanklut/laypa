@@ -82,7 +82,7 @@ class OutputPageXML(XMLRegions):
 
         self.cfg = cfg
 
-        self.whitelist = {} if whitelist is None else set(whitelist)
+        self.whitelist = set() if whitelist is None else set(whitelist)
 
     def set_output_dir(self, output_dir: str | Path):
         if isinstance(output_dir, str):
@@ -98,6 +98,9 @@ class OutputPageXML(XMLRegions):
             self.logger.info(f"Could not find page dir ({page_dir}), creating one at specified location")
             page_dir.mkdir(parents=True)
         self.page_dir = page_dir
+
+    def set_whitelist(self, whitelist: Iterable[str]):
+        self.whitelist = set(whitelist)
 
     def link_image(self, image_path: Path):
         """
