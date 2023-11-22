@@ -37,6 +37,8 @@ def get_arguments() -> argparse.Namespace:
     io_args.add_argument("-i", "--input", nargs="+", help="Input folder", type=str, action="extend", required=True)
     io_args.add_argument("-o", "--output", help="Output folder", type=str, required=True)
 
+    parser.add_argument("-w", "--whitelist", nargs="+", help="Input folder", type=str, action="extend")
+
     args = parser.parse_args()
 
     return args
@@ -290,6 +292,8 @@ def main(args: argparse.Namespace) -> None:
         regions=cfg.PREPROCESS.REGION.REGIONS,
         merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
+        cfg=cfg,
+        whitelist=args.whitelist,
     )
 
     predictor = SavePredictor(

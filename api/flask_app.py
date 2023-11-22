@@ -109,6 +109,8 @@ class PredictorGenPageWrapper:
             regions=cfg.PREPROCESS.REGION.REGIONS,
             merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
             region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
+            cfg=cfg,
+            whitelist={},
         )
 
         self.predictor = Predictor(cfg=cfg)
@@ -129,7 +131,13 @@ images_processed_counter = Counter("images_processed", "Total number of images p
 exception_predict_counter = Counter("exception_predict", "Exception thrown in predict() function")
 
 
-def predict_image(image: np.ndarray | torch.Tensor, image_path: Path, identifier: str, model_name: str) -> dict[str, Any]:
+def predict_image(
+    image: np.ndarray | torch.Tensor,
+    image_path: Path,
+    identifier: str,
+    model_name: str,
+    whitelist: list[str],
+) -> dict[str, Any]:
     """
     Run the prediction for the given image
 
@@ -156,15 +164,11 @@ def predict_image(image: np.ndarray | torch.Tensor, image_path: Path, identifier
             raise TypeError("The current Predictor is not initialized")
 
         predict_gen_page_wrapper.gen_page.set_output_dir(output_path.parent)
+        predict_gen_page_wrapper.gen_page.set_whitelist(whitelist)
         if not output_path.parent.is_dir():
             output_path.parent.mkdir()
 
-        if isinstance(image, np.ndarray):
-            outputs = predict_gen_page_wrapper.predictor.cpu_call(image)
-        elif isinstance(image, torch.Tensor):
-            outputs = predict_gen_page_wrapper.predictor.gpu_call(image)
-        else:
-            raise TypeError(f"Unknown image type: {type(image)}")
+        outputs = predict_gen_page_wrapper.predictor(image)
 
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
@@ -186,6 +190,7 @@ class ResponseInfo(TypedDict, total=False):
     status_code: int
     identifier: str
     filename: str
+    whitelist: list[str]
     added_queue_position: int
     remaining_queue_size: int
     added_time: str
@@ -256,6 +261,12 @@ def predict() -> tuple[Response, int]:
         abort_with_info(400, "Missing model in form", response_info)
 
     try:
+        whitelist = request.form.getlist("whitelist")
+        response_info["whitelist"] = whitelist
+    except KeyError as error:
+        abort_with_info(400, "Missing whitelist in form", response_info)
+
+    try:
         post_file = request.files["image"]
     except KeyError as error:
         abort_with_info(400, "Missing image in form", response_info)
@@ -279,7 +290,7 @@ def predict() -> tuple[Response, int]:
     if image is None:
         abort_with_info(500, "Corrupted image", response_info)
 
-    future = executor.submit(predict_image, image, image_name, identifier, model_name)
+    future = executor.submit(predict_image, image, image_name, identifier, model_name, whitelist)
     future.add_done_callback(check_exception_callback)
 
     response_info["status_code"] = 202

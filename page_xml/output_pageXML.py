@@ -7,12 +7,15 @@ import sys
 import uuid
 from multiprocessing.pool import Pool
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 import cv2
 import numpy as np
 import torch
+from detectron2.config import CfgNode
 from tqdm import tqdm
+
+from core.setup import get_git_hash
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xml_regions import XMLRegions
@@ -51,6 +54,8 @@ class OutputPageXML(XMLRegions):
         regions: Optional[list[str]] = None,
         merge_regions: Optional[list[str]] = None,
         region_type: Optional[list[str]] = None,
+        cfg: Optional[CfgNode] = None,
+        whitelist: Optional[Iterable[str]] = None,
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
@@ -75,6 +80,10 @@ class OutputPageXML(XMLRegions):
 
         self.regions = self.get_regions()
 
+        self.cfg = cfg
+
+        self.whitelist = set() if whitelist is None else set(whitelist)
+
     def set_output_dir(self, output_dir: str | Path):
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
@@ -89,6 +98,9 @@ class OutputPageXML(XMLRegions):
             self.logger.info(f"Could not find page dir ({page_dir}), creating one at specified location")
             page_dir.mkdir(parents=True)
         self.page_dir = page_dir
+
+    def set_whitelist(self, whitelist: Iterable[str]):
+        self.whitelist = set(whitelist)
 
     def link_image(self, image_path: Path):
         """
@@ -144,6 +156,8 @@ class OutputPageXML(XMLRegions):
 
         page = PageData(xml_output_path)
         page.new_page(image_path.name, str(old_height), str(old_width))
+        if self.cfg is not None:
+            page.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
 
         if self.mode == "region":
             sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
