@@ -252,6 +252,8 @@ class PageData:
             raise TypeError(f"cfg is None")
         if whitelist is None:
             raise TypeError(f"whitelist is None")
+        if self.metadata is None:
+            raise TypeError(f"self.metadata is None")
 
         processing_step = ET.SubElement(self.metadata, "MetadataItem")
         processing_step.attrib = {
