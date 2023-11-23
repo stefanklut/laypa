@@ -1,4 +1,5 @@
 name: Lint
+run-name: Deploy to ${{ inputs.deploy_target }} by @${{ github.actor }}
 
 # on: [push, pull_request]
 on:
