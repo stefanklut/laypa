@@ -22,6 +22,7 @@ from detectron2.engine import (
     hooks,
 )
 from detectron2.evaluation import SemSegEvaluator
+from detectron2.projects.deeplab import build_lr_scheduler
 from detectron2.solver.build import maybe_add_gradient_clipping, reduce_param_groups
 from detectron2.utils import comm
 
@@ -321,3 +322,7 @@ class Trainer(DefaultTrainer):
     @classmethod
     def build_optimizer(cls, cfg, model):
         return build_optimizer(cfg, model)
+
+    @classmethod
+    def build_lr_scheduler(cls, cfg, optimizer):
+        return build_lr_scheduler(cfg, optimizer)
