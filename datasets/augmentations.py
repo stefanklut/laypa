@@ -10,6 +10,7 @@ from typing import Optional, Sequence
 import detectron2.data.transforms as T
 import numpy as np
 from detectron2.config import CfgNode
+from fvcore.transforms.transform import Transform
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from scipy.ndimage import gaussian_filter
@@ -20,6 +21,7 @@ from datasets.transforms import (
     GaussianFilterTransform,
     GrayscaleTransform,
     HFlipTransform,
+    OrientationTransform,
     ResizeTransform,
     VFlipTransform,
     WarpFieldTransform,
@@ -311,7 +313,7 @@ class RandomAffine(T.Augmentation):
         r_kappa: float = 30,
         sh_kappa: float = 20,
         sc_stdv: float = 0.12,
-        probs: Optional[Sequence[float]] = None,
+        probabilities: Optional[Sequence[float]] = None,
     ) -> None:
         """
         Apply a random affine transformation to the image
@@ -321,7 +323,7 @@ class RandomAffine(T.Augmentation):
             r_kappa (float, optional): kappa value used for sampling the rotation. Defaults to 30.
             sh_kappa (float, optional): kappa value used for sampling the shear.. Defaults to 20.
             sc_stdv (float, optional): standard deviation used for the scale. Defaults to 0.12.
-            probs (Optional[Sequence[float]], optional): individual probabilities for each sub category of an affine transformation. When None is given default to all 1.0 Defaults to None.
+            probabilities (Optional[Sequence[float]], optional): individual probabilities for each sub category of an affine transformation. When None is given default to all 1.0 Defaults to None.
         """
         super().__init__()
         self.t_stdv = t_stdv
@@ -329,9 +331,9 @@ class RandomAffine(T.Augmentation):
         self.sh_kappa = sh_kappa
         self.sc_stdv = sc_stdv
 
-        if probs is not None:
-            assert len(probs) == 4, f"{len(probs)}: {probs}"
-            self.probs = probs
+        if probabilities is not None:
+            assert len(probabilities) == 4, f"{len(probabilities)}: {probabilities}"
+            self.probs = probabilities
         else:
             self.probs = [1.0] * 4
 
@@ -700,6 +702,21 @@ class RandomBrightness(T.Augmentation):
         return BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
+class RandomOrientation(T.Augmentation):
+    def __init__(self, orientation_percentages: Optional[list[float | int]] = None) -> None:
+        super().__init__()
+        if orientation_percentages is None:
+            orientation_percentages = [1.0] * 4
+        array_percentages = np.asarray(orientation_percentages)
+        assert len(array_percentages) == 4, f"{len(array_percentages)}: {array_percentages}"
+        normalized_percentages = array_percentages / np.sum(array_percentages)
+        self.orientation_percentages = normalized_percentages
+
+    def get_transform(self, image) -> Transform:
+        times_90_degrees = np.random.choice(4, p=self.orientation_percentages)
+        return OrientationTransform(times_90_degrees, image.shape[0], image.shape[1])
+
+
 def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation | T.Transform]:
     """
     Function to generate all the augmentations used in the inference and training process
@@ -831,7 +848,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
                 r_kappa=cfg.INPUT.AFFINE.ROTATION.KAPPA,
                 sh_kappa=cfg.INPUT.AFFINE.SHEAR.KAPPA,
                 sc_stdv=cfg.INPUT.AFFINE.SCALE.STANDARD_DEVIATION,
-                probs=(
+                probabilities=(
                     cfg.INPUT.AFFINE.TRANSLATION.PROBABILITY,
                     cfg.INPUT.AFFINE.ROTATION.PROBABILITY,
                     cfg.INPUT.AFFINE.SHEAR.PROBABILITY,
@@ -892,13 +909,14 @@ def test(args) -> None:
     contrast = RandomContrast()
     brightness = RandomBrightness()
     saturation = RandomSaturation()
+    orientation = RandomOrientation(orientation_percentages=[0, 0, 0, 1])
 
     augs = []
 
     # augs = T.AugmentationList([resize, elastic, affine])
 
-    augs.append(resize)
-    augs.append(elastic)
+    # augs.append(resize)
+    # augs.append(elastic)
     # augs.append(grayscale)
     # augs.append(contrast)
     # augs.append(brightness)
@@ -909,6 +927,7 @@ def test(args) -> None:
     # augs.append(rotation)
     # augs.append(shear)
     # augs.append(scale)
+    augs.append(orientation)
 
     augs_list = T.AugmentationList(augs=augs)
 
@@ -917,6 +936,16 @@ def test(args) -> None:
     transforms = augs_list(input_augs)
 
     output_image = input_augs.image
+
+    input_coords = np.asarray([[10, 20], [4000, 4000]])
+
+    output_coords = transforms.apply_coords(input_coords)
+
+    for coord in input_coords:
+        image = cv2.circle(image.copy(), coord, 10, (255, 0, 0), -1)
+
+    for coord in output_coords:
+        output_image = cv2.circle(output_image.copy(), coord, 10, (255, 0, 0), -1)
 
     im = Image.fromarray(image)
     im.show("Original")
