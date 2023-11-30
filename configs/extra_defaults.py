@@ -222,3 +222,25 @@ _C.MODEL.MASK_FORMER.OVERSAMPLE_RATIO = 3.0
 # Importance sampling parameter for PointRend point sampling during training. Parametr `beta` in
 # the original paper.
 _C.MODEL.MASK_FORMER.IMPORTANCE_SAMPLE_RATIO = 0.75
+
+
+# We retry random cropping until no single category in semantic segmentation GT occupies more
+# than `SINGLE_CATEGORY_MAX_AREA` part of the crop.
+_C.INPUT.CROP.SINGLE_CATEGORY_MAX_AREA = 1.0
+# Used for `poly` learning rate schedule.
+_C.SOLVER.POLY_LR_POWER = 0.9
+_C.SOLVER.POLY_LR_CONSTANT_ENDING = 0.0
+# Loss type, choose from `cross_entropy`, `hard_pixel_mining`.
+_C.MODEL.SEM_SEG_HEAD.LOSS_TYPE = "hard_pixel_mining"
+# DeepLab settings
+_C.MODEL.SEM_SEG_HEAD.PROJECT_FEATURES = ["res2"]
+_C.MODEL.SEM_SEG_HEAD.PROJECT_CHANNELS = [48]
+_C.MODEL.SEM_SEG_HEAD.ASPP_CHANNELS = 256
+_C.MODEL.SEM_SEG_HEAD.ASPP_DILATIONS = [6, 12, 18]
+_C.MODEL.SEM_SEG_HEAD.ASPP_DROPOUT = 0.1
+_C.MODEL.SEM_SEG_HEAD.USE_DEPTHWISE_SEPARABLE_CONV = False
+# Backbone new configs
+_C.MODEL.RESNETS.RES4_DILATION = 1
+_C.MODEL.RESNETS.RES5_MULTI_GRID = [1, 2, 4]
+# ResNet stem type from: `basic`, `deeplab`
+_C.MODEL.RESNETS.STEM_TYPE = "deeplab"
