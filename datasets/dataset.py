@@ -39,21 +39,16 @@ def create_data(input_data: dict) -> dict:
     instances_path = input_data.get("instances_paths")
     pano_path = input_data.get("pano_paths")
     segments_info_path = input_data.get("segments_info_paths")
-    output_size = input_data.get("output_sizes")
 
     if image_path is None:
         raise ValueError(f"Image has not been given in info.json")
     if original_image_path is None:
         raise ValueError(f"Original image has not been given in info.json")
-    if output_size is None:
-        raise ValueError(f"Output size has not been given in info.json")
 
     data = {}
 
     data["file_name"] = str(image_path)
     data["original_file_name"] = str(original_image_path)
-    data["height"] = output_size[0]
-    data["width"] = output_size[1]
     data["image_id"] = image_path.stem
 
     # Data existence check
