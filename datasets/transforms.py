@@ -1,10 +1,13 @@
 # Modified from P2PaLA
 
 import argparse
+import sys
+from pathlib import Path
 
 import cv2
 import detectron2.data.transforms as T
 import numpy as np
+from fvcore.transforms.transform import Transform
 from scipy.ndimage import affine_transform, gaussian_filter, map_coordinates
 
 # REVIEW Check if there is a benefit for using scipy instead of the standard torchvision
@@ -389,6 +392,7 @@ class GrayscaleTransform(T.Transform):
         """
         super().__init__()
 
+        # Previously used to get the grayscale value
         self.rgb_weights = np.asarray([0.299, 0.587, 0.114]).astype(np.float32)
 
         self.image_format = image_format
@@ -566,6 +570,51 @@ class BlendTransform(T.Transform):
         raise NotImplementedError
 
 
+class OrientationTransform(T.Transform):
+    def __init__(self, times_90_degrees: int, height: int, width: int) -> None:
+        super().__init__()
+        self.times_90_degrees = times_90_degrees % 4
+        self.height = height
+        self.width = width
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        if self.times_90_degrees == 0:
+            return img
+        elif self.times_90_degrees == 1:
+            return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+        elif self.times_90_degrees == 2:
+            return cv2.rotate(img, cv2.ROTATE_180)
+        elif self.times_90_degrees == 3:
+            return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        else:
+            raise ValueError("Times 90 degrees should be between 0 and 3")
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        if self.times_90_degrees == 0:
+            return coords
+        elif self.times_90_degrees == 1:
+            new_coords = coords.copy()
+            new_coords[:, 0], new_coords[:, 1] = self.height - coords[:, 1], coords[:, 0]
+            return new_coords
+        elif self.times_90_degrees == 2:
+            new_coords = coords.copy()
+            new_coords[:, 0], new_coords[:, 1] = self.width - coords[:, 1], self.height - coords[:, 0]
+            return new_coords
+        elif self.times_90_degrees == 3:
+            new_coords = coords.copy()
+            new_coords[:, 0], new_coords[:, 1] = coords[:, 1], self.width - coords[:, 0]
+            return new_coords
+        else:
+            raise ValueError("Times 90 degrees should be between 0 and 3")
+
+    def inverse(self) -> Transform:
+        if self.times_90_degrees % 2 == 0:
+            height, width = self.height, self.width
+        else:
+            width, height = self.width, self.height
+        return OrientationTransform(4 - self.times_90_degrees, height, width)
+
+
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Testing the image augmentation and transformations")
     io_args = parser.add_argument_group("IO")
@@ -590,7 +639,7 @@ def test(args) -> None:
     image = cv2.imread(str(input_path))[..., ::-1]
     print(image.dtype)
 
-    affine = AffineTransform(np.eye(3))
+    affine = RandomRotation().get_transform(image)
     output_image = affine.apply_image(image)
 
     im = Image.fromarray(image)
