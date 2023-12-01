@@ -841,6 +841,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
             prob=cfg.INPUT.ELASTIC_DEFORMATION.PROBABILITY,
         )
     )
+
     augmentation.append(
         RandomApply(
             RandomAffine(
@@ -856,6 +857,15 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
                 ),
             ),
             prob=cfg.INPUT.AFFINE.PROBABILITY,
+        )
+    )
+
+    augmentation.append(
+        RandomApply(
+            RandomOrientation(
+                orientation_percentages=cfg.INPUT.ORIENTATION.PERCENTAGES,
+            ),
+            prob=cfg.INPUT.ORIENTATION.PROBABILITY,
         )
     )
 
