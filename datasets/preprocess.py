@@ -314,7 +314,7 @@ class Preprocess:
         image_dir.mkdir(parents=True, exist_ok=True)
 
         if self.resize_mode == "none":
-            copy_mode(image_path, out_image_path, mode="symlink")
+            copy_mode(image_path, out_image_path, mode="link")
         else:
             image = load_image_array_from_path(image_path)
 

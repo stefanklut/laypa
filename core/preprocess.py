@@ -66,7 +66,7 @@ def preprocess_datasets(
     train_output_dir = None
     if train is not None:
         train = clean_input_paths(train)
-        if not all(missing := path.exists() for path in train):
+        if not all((missing := path).exists() for path in train):
             raise FileNotFoundError(f"Train File/Folder not found: {missing} does not exist")
 
         train_output_dir = output_dir.joinpath("train")
