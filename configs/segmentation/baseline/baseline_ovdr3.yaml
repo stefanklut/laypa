@@ -3,7 +3,7 @@ _BASE_: ../segmentation_base.yaml
 
 OUTPUT_DIR: /encrypted/baseline
 
-NAME: ovdr_keep_training
+NAME: ovdr_long_training
 
 PREPROCESS:
   OVERWRITE: False
@@ -95,7 +95,7 @@ MODEL:
   WEIGHTS:
 
 TRAIN:
-  WEIGHTS: /home/stefan/Documents/stefan_klut/RUN_2023-10-06_10-59-08/checkpoints/model_final.pth
+  WEIGHTS: 
 
 TEST:
   EVAL_PERIOD: 10000

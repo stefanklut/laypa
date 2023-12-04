@@ -3,7 +3,7 @@ _BASE_: ../segmentation_base.yaml
 
 OUTPUT_DIR: /encrypted/baseline
 
-NAME: ovdr
+NAME: ovdr_scaling_test
 
 PREPROCESS:
   OVERWRITE: False
