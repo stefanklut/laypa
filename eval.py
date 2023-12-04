@@ -36,7 +36,7 @@ def get_arguments() -> argparse.Namespace:
     # io_args.add_argument("-t", "--train", help="Train input folder/file",
     #                         nargs="+", action="extend", type=str, default=None)
     io_args.add_argument("-i", "--input", help="Input folder/file", nargs="+", action="extend", type=str, default=None)
-    io_args.add_argument("-o", "--output", help="Output folder", type=str, required=True)
+    io_args.add_argument("-o", "--output", help="Output folder", type=str)
 
     tmp_args = parser.add_argument_group("tmp files")
     tmp_args.add_argument("--tmp_dir", help="Temp files folder", type=str, default=None)
