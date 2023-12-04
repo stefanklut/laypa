@@ -124,11 +124,7 @@ def main(args) -> None:
         def create_pred_visualization(image_filename):
             image = load_image(image_filename)
             logger.info(f"Predict: {image_filename}")
-            if cfg.INPUT.FORMAT == "BGR":
-                input_image = image[..., ::-1]
-            else:
-                input_image = image
-            outputs = predictor(input_image)
+            outputs = predictor(image)
             pred = torch.argmax(outputs[0]["sem_seg"], dim=-3).to("cpu")
             # outputs["panoptic_seg"] = (outputs["panoptic_seg"][0].to("cpu"),
             #                            outputs["panoptic_seg"][1])
