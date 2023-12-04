@@ -121,7 +121,6 @@ class Preprocess:
         pre_process_args = parser.add_argument_group("preprocessing")
 
         pre_process_args.add_argument("--resize", action="store_true", help="Resize input images")
-        pre_process_args.add_argument("--resize", action="store_true", help="Resize input images")
         pre_process_args.add_argument(
             "--resize_mode",
             default="none",
