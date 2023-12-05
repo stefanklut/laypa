@@ -30,7 +30,7 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args = parser.add_argument_group("detectron2")
 
     detectron2_args.add_argument("-c", "--config", help="config file", required=True)
-    detectron2_args.add_argument("--opts", nargs="+", help="optional args to change", default=[])
+    detectron2_args.add_argument("--opts", nargs="+", help="optional args to change", action="extend", default=[])
 
     io_args = parser.add_argument_group("IO")
     # io_args.add_argument("-t", "--train", help="Train input folder/file",
@@ -125,12 +125,16 @@ def main(args) -> None:
             image = load_image(image_filename)
             logger.info(f"Predict: {image_filename}")
             outputs = predictor(image)
-            pred = torch.argmax(outputs[0]["sem_seg"], dim=-3).to("cpu")
+            sem_seg = outputs[0]["sem_seg"]
+            sem_seg = torch.nn.functional.interpolate(
+                sem_seg[None], size=(image.shape[0], image.shape[1]), mode="bilinear", align_corners=False
+            )[0]
+            sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
             # outputs["panoptic_seg"] = (outputs["panoptic_seg"][0].to("cpu"),
             #                            outputs["panoptic_seg"][1])
             vis_im = Visualizer(image.copy(), metadata=metadata, scale=1)
 
-            vis_im = vis_im.draw_sem_seg(pred, alpha=0.4)
+            vis_im = vis_im.draw_sem_seg(sem_seg, alpha=0.4)
             return vis_im.get_image()
 
         fig, axes = plt.subplots(1, 2)

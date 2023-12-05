@@ -31,7 +31,7 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args = parser.add_argument_group("detectron2")
 
     detectron2_args.add_argument("-c", "--config", help="config file", required=True)
-    detectron2_args.add_argument("--opts", nargs=argparse.REMAINDER, help="optional args to change", default=[])
+    detectron2_args.add_argument("--opts", nargs="+", help="optional args to change", action="extend", default=[])
 
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", nargs="+", help="Input folder", type=str, action="extend", required=True)
@@ -121,7 +121,7 @@ class Predictor(DefaultPredictor):
                 # whether the model expects BGR inputs or RGB
                 image = image[[2, 1, 0], :, :]
 
-            inputs = {"image": image, "height": height, "width": width}
+            inputs = {"image": image, "height": image.shape[1], "width": image.shape[2]}
             predictions = self.model([inputs])[0]
 
         return predictions, height, width
