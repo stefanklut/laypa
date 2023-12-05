@@ -41,6 +41,8 @@ PREPROCESS:
       ]
     MERGE_REGIONS: ["resolution:Resumption,resumption,Insertion,insertion"]
     REGION_TYPE: []
+  BASELINE:
+    LINE_WIDTH: 5
 
 INPUT:
   RESIZE_MODE: "shortest_edge"
