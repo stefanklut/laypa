@@ -116,8 +116,6 @@ class ResizeScaling(T.Augmentation):
         return (height, width)
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
-        if self.scale == 1:
-            return T.NoOpTransform()
         old_height, old_width, channels = image.shape
 
         height, width = self.get_output_shape(old_height, old_width, self.scale, self.max_size)
