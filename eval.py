@@ -167,7 +167,7 @@ def main(args) -> None:
             inputs = loader[i]
 
             vis_gt = create_gt_visualization(inputs["file_name"], inputs["sem_seg_file_name"])
-            vis_pred = create_pred_visualization(inputs["file_name"])
+            vis_pred = create_pred_visualization(inputs["original_file_name"])
 
             # pano_gt = torch.IntTensor(rgb2id(cv2.imread(inputs["pan_seg_file_name"], cv2.IMREAD_COLOR)))
             # print(inputs["segments_info"])
@@ -187,7 +187,7 @@ def main(args) -> None:
             axes[1].imshow(vis_gt)
 
             if args.save is not None:
-                # TODO Move saving to separate function
+                # TODO Move saving to separate function + Multiprocessing
                 pbar.update(1)
                 if args.save not in ["all", "both", "pred", "gt"]:
                     raise ValueError(f"{args.save} is not a valid save mode")
