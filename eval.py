@@ -118,11 +118,13 @@ def main(args) -> None:
 
         @lru_cache(maxsize=10)
         def create_gt_visualization(image_path):
+            xml_path = image_path_to_xml_path(image_path, check=False)
+            if not xml_path.is_file():
+                return None
             image = load_image(image_path)
             image = predictor.aug.get_transform(image).apply_image(image)
             if image is None:
                 raise ValueError("image can not be None")
-            sem_seg_gt = xml_path = image_path_to_xml_path(image_path)
             sem_seg_gt = xml_converter.to_sem_seg(xml_path, image_shape=(image.shape[0], image.shape[1]))
             vis_im_gt = Visualizer(image.copy(), metadata=metadata, scale=1)
             vis_im_gt = vis_im_gt.draw_sem_seg(sem_seg_gt, alpha=0.4)
@@ -157,6 +159,8 @@ def main(args) -> None:
 
         if args.save:
             for image_path in tqdm(image_paths, desc="Saving Images"):
+                vis_gt = None
+                vis_pred = None
                 if args.save not in ["all", "both", "pred", "gt"]:
                     raise ValueError(f"{args.save} is not a valid save mode")
                 if args.save != "pred":
@@ -171,15 +175,17 @@ def main(args) -> None:
 
                 if args.save in ["all", "both"]:
                     save_path = output_dir.joinpath(image_path.stem + "_both.jpg")
-
-                    vis_gt = cv2.resize(vis_gt, (vis_pred.shape[1], vis_pred.shape[0]), interpolation=cv2.INTER_CUBIC)
-                    save_image_array_to_path(save_path, np.hstack((vis_pred, vis_gt)))
+                    if vis_gt is not None and vis_pred is not None:
+                        vis_gt = cv2.resize(vis_gt, (vis_pred.shape[1], vis_pred.shape[0]), interpolation=cv2.INTER_CUBIC)
+                        save_image_array_to_path(save_path, np.hstack((vis_pred, vis_gt)))
                 if args.save in ["all", "pred"]:
-                    save_path = output_dir.joinpath(image_path.stem + "_pred.jpg")
-                    save_image_array_to_path(save_path, vis_pred)
+                    if vis_pred is not None:
+                        save_path = output_dir.joinpath(image_path.stem + "_pred.jpg")
+                        save_image_array_to_path(save_path, vis_pred)
                 if args.save in ["all", "gt"]:
-                    save_path = output_dir.joinpath(image_path.stem + "_gt.jpg")
-                    save_image_array_to_path(save_path, vis_gt)
+                    if vis_gt is not None:
+                        save_path = output_dir.joinpath(image_path.stem + "_gt.jpg")
+                        save_image_array_to_path(save_path, vis_gt)
 
         else:
             fig, axes = plt.subplots(1, 2)
@@ -212,8 +218,10 @@ def main(args) -> None:
                 axes[0].axis("off")
                 axes[1].axis("off")
 
-                axes[0].imshow(vis_pred)
-                axes[1].imshow(vis_gt)
+                if vis_pred is not None:
+                    axes[0].imshow(vis_pred)
+                if vis_gt is not None:
+                    axes[1].imshow(vis_gt)
 
                 if delete_results[i]:
                     fig.suptitle("Delete")
