@@ -3,10 +3,12 @@
 import argparse
 import sys
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import detectron2.data.transforms as T
 import numpy as np
+import shapely.geometry as geometry
 from fvcore.transforms.transform import Transform
 from scipy.ndimage import affine_transform, gaussian_filter, map_coordinates
 
@@ -613,6 +615,181 @@ class OrientationTransform(T.Transform):
         else:
             width, height = self.width, self.height
         return OrientationTransform(4 - self.times_90_degrees, height, width)
+
+
+class CropTransform(Transform):
+    def __init__(
+        self,
+        x0: int,
+        y0: int,
+        w: int,
+        h: int,
+        orig_w: Optional[int] = None,
+        orig_h: Optional[int] = None,
+    ):
+        """
+        Args:
+            x0, y0, w, h (int): crop the image(s) by img[y0:y0+h, x0:x0+w].
+            orig_w, orig_h (int): optional, the original width and height
+                before cropping. Needed to make this transform invertible.
+        """
+        super().__init__()
+        self.x0 = x0
+        self.y0 = y0
+        self.w = w
+        self.h = h
+        self.orig_w = orig_w
+        self.orig_h = orig_h
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Crop the image(s).
+
+        Args:
+            img (ndarray): of shape NxHxWxC, or HxWxC or HxW. The array can be
+                of type uint8 in range [0, 255], or floating point in range
+                [0, 1] or [0, 255].
+        Returns:
+            ndarray: cropped image(s).
+        """
+        if len(img.shape) <= 3:
+            return img[self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
+        else:
+            return img[..., self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w, :]
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Apply crop transform on coordinates.
+
+        Args:
+            coords (ndarray): floating point array of shape Nx2. Each row is
+                (x, y).
+        Returns:
+            ndarray: cropped coordinates.
+        """
+        coords[:, 0] -= self.x0
+        coords[:, 1] -= self.y0
+        return coords
+
+    def apply_polygons(self, polygons: list) -> list:
+        """
+        Apply crop transform on a list of polygons, each represented by a Nx2 array.
+        It will crop the polygon with the box, therefore the number of points in the
+        polygon might change.
+
+        Args:
+            polygon (list[ndarray]): each is a Nx2 floating point array of
+                (x, y) format in absolute coordinates.
+        Returns:
+            ndarray: cropped polygons.
+        """
+
+        # Create a window that will be used to crop
+        crop_box = geometry.box(self.x0, self.y0, self.x0 + self.w, self.y0 + self.h).buffer(0.0)
+
+        cropped_polygons = []
+
+        for polygon in polygons:
+            polygon = geometry.Polygon(polygon).buffer(0.0)
+            # polygon must be valid to perform intersection.
+            if not polygon.is_valid:
+                continue
+            cropped = polygon.intersection(crop_box)
+            if cropped.is_empty:
+                continue
+            if isinstance(cropped, geometry.collection.BaseMultipartGeometry):
+                cropped = cropped.geoms
+            else:
+                cropped = [cropped]
+            # one polygon may be cropped to multiple ones
+            for poly in cropped:
+                # It could produce lower dimensional objects like lines or
+                # points, which we want to ignore
+                if not isinstance(poly, geometry.Polygon) or not poly.is_valid:
+                    continue
+                coords = np.asarray(poly.exterior.coords)
+                # NOTE This process will produce an extra identical vertex at
+                # the end. So we remove it. This is tested by
+                # `tests/test_data_transform.py`
+                cropped_polygons.append(coords[:-1])
+        return [self.apply_coords(p) for p in cropped_polygons]
+
+    def inverse(self) -> Transform:
+        assert (
+            self.orig_w is not None and self.orig_h is not None
+        ), "orig_w, orig_h are required for CropTransform to be invertible!"
+        pad_x1 = self.orig_w - self.x0 - self.w
+        pad_y1 = self.orig_h - self.y0 - self.h
+        return PadTransform(self.x0, self.y0, pad_x1, pad_y1, orig_w=self.w, orig_h=self.h)
+
+
+class PadTransform(Transform):
+    def __init__(
+        self,
+        x0: int,
+        y0: int,
+        x1: int,
+        y1: int,
+        orig_w: Optional[int] = None,
+        orig_h: Optional[int] = None,
+        pad_value: float = 0,
+        seg_pad_value: int = 0,
+    ):
+        """
+        Args:
+            x0, y0: number of padded pixels on the left and top
+            x1, y1: number of padded pixels on the right and bottom
+            orig_w, orig_h: optional, original width and height.
+                Needed to make this transform invertible.
+            pad_value: the padding value to the image
+            seg_pad_value: the padding value to the segmentation mask
+        """
+        super().__init__()
+        self.x0 = x0
+        self.y0 = y0
+        self.x1 = x1
+        self.y1 = y1
+        self.orig_w = orig_w
+        self.orig_h = orig_h
+        self.pad_value = pad_value
+        self.seg_pad_value = seg_pad_value
+
+    def apply_image(self, img):
+        if img.ndim == 3:
+            padding = ((self.y0, self.y1), (self.x0, self.x1), (0, 0))
+        else:
+            padding = ((self.y0, self.y1), (self.x0, self.x1))
+        return np.pad(
+            img,
+            padding,
+            mode="constant",
+            constant_values=self.pad_value,
+        )
+
+    def apply_segmentation(self, img):
+        if img.ndim == 3:
+            padding = ((self.y0, self.y1), (self.x0, self.x1), (0, 0))
+        else:
+            padding = ((self.y0, self.y1), (self.x0, self.x1))
+        return np.pad(
+            img,
+            padding,
+            mode="constant",
+            constant_values=self.seg_pad_value,
+        )
+
+    def apply_coords(self, coords):
+        coords[:, 0] += self.x0
+        coords[:, 1] += self.y0
+        return coords
+
+    def inverse(self) -> Transform:
+        assert (
+            self.orig_w is not None and self.orig_h is not None
+        ), "orig_w, orig_h are required for PadTransform to be invertible!"
+        neww = self.orig_w + self.x0 + self.x1
+        newh = self.orig_h + self.y0 + self.y1
+        return CropTransform(self.x0, self.y0, self.orig_w, self.orig_h, orig_w=neww, orig_h=newh)
 
 
 def get_arguments() -> argparse.Namespace:
