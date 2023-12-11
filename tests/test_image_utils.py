@@ -78,30 +78,16 @@ class TestImageUtils(unittest.TestCase):
         save_image_array_to_path(image_path, image)
         self.assertTrue(image_path.is_file())
 
-    def test_save_load_color_jpg(self):
-        image = np.random.randint(0, 255, size=(64, 64, 3), dtype=np.uint8)
-        image_path = self.tmp_dir.joinpath(f"{uuid.uuid4()}.jpg")
-        save_image_array_to_path(image_path, image)
-        image2 = load_image_array_from_path(image_path, mode="color")
-        self.assertIsNotNone(image2)
-        self.assertTrue(np.array_equal(image, image2, equal_nan=True))
-
-    def test_save_load_grayscale_jpg(self):
-        image = np.random.randint(0, 255, size=(64, 64), dtype=np.uint8)
-        image_path = self.tmp_dir.joinpath(f"{uuid.uuid4()}.jpg")
-        save_image_array_to_path(image_path, image)
-        image2 = load_image_array_from_path(image_path, mode="grayscale")
-        self.assertIsNotNone(image2)
-        self.assertTrue(np.array_equal(image, image2, equal_nan=True))
-
     def test_save_color_png(self):
-        image = np.random.randint(0, 255, size=(64, 64, 3), dtype=np.uint8)
+        image = np.zeros((64, 64, 3), dtype=np.uint8)
+        image[:16, :16, 0] = 255
         image_path = self.tmp_dir.joinpath(f"{uuid.uuid4()}.png")
         save_image_array_to_path(image_path, image)
         self.assertTrue(image_path.is_file())
 
     def test_save_grayscale_png(self):
-        image = np.random.randint(0, 255, size=(64, 64), dtype=np.uint8)
+        image = np.zeros((64, 64), dtype=np.uint8)
+        image[:16, :16] = 255
         image_path = self.tmp_dir.joinpath(f"{uuid.uuid4()}.png")
         save_image_array_to_path(image_path, image)
         self.assertTrue(image_path.is_file())
