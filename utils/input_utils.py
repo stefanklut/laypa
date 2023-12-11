@@ -33,7 +33,7 @@ def clean_input_paths(
 
     Raises:
         ValueError: Must provide input path
-        NotImplementedError: given input paths are the wrong class
+        TypeError: given input paths are the wrong class
 
     Returns:
         list[Path]: output paths of images
