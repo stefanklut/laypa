@@ -1,3 +1,4 @@
+import logging
 import sys
 import tempfile
 import unittest
@@ -110,8 +111,12 @@ class TestImageUtils(unittest.TestCase):
 
     def test_corrupt_image(self):
         image_path = self.tmp_dir.joinpath(f"{uuid.uuid4()}.jpg")
-        image = load_image_array_from_path(image_path)
+        with self.assertLogs(level=logging.WARNING):
+            image = load_image_array_from_path(image_path)
         self.assertIsNone(image)
+
+    def __del__(self):
+        self._tmp_dir.cleanup()
 
 
 if __name__ == "__main__":
