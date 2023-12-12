@@ -700,13 +700,13 @@ class RandomBrightness(T.Augmentation):
         return BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
-def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.Transform]:
+def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation | T.Transform]:
     """
     Function to generate all the augmentations used in the inference and training process
 
     Args:
         cfg (CfgNode): config node
-        is_train (bool): flag if the augmentation are used for inference or training
+        mode (str): flag if the augmentation are used for inference or training
 
     Returns:
         list[T.Augmentation | T.Transform]: list of augmentations to apply to an image
@@ -716,30 +716,41 @@ def build_augmentation(cfg: CfgNode, is_train: bool) -> list[T.Augmentation | T.
     if cfg.INPUT.RESIZE_MODE == "none":
         pass
     elif cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
-        if is_train:
+        if mode == "train":
             min_size = cfg.INPUT.MIN_SIZE_TRAIN
             max_size = cfg.INPUT.MAX_SIZE_TRAIN
             sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
-        else:
+        elif mode == "val":
+            min_size = cfg.INPUT.MIN_SIZE_TRAIN
+            max_size = cfg.INPUT.MAX_SIZE_TRAIN
+            sample_style = "choice"
+        elif mode == "test":
             min_size = cfg.INPUT.MIN_SIZE_TEST
             max_size = cfg.INPUT.MAX_SIZE_TEST
             sample_style = "choice"
+        else:
+            raise NotImplementedError(f"Unknown mode: {mode}")
         if cfg.INPUT.RESIZE_MODE == "shortest_edge":
             augmentation.append(ResizeShortestEdge(min_size, max_size, sample_style))
         elif cfg.INPUT.RESIZE_MODE == "longest_edge":
             augmentation.append(ResizeLongestEdge(min_size, max_size, sample_style))
     elif cfg.INPUT.RESIZE_MODE == "scaling":
-        if is_train:
+        if mode == "train":
             max_size = cfg.INPUT.MAX_SIZE_TRAIN
             scaling = cfg.INPUT.SCALING_TRAIN
-        else:
+        elif mode == "val":
+            max_size = cfg.INPUT.MAX_SIZE_TRAIN
+            scaling = cfg.INPUT.SCALING_TRAIN
+        elif mode == "test":
             max_size = cfg.INPUT.MAX_SIZE_TEST
             scaling = cfg.INPUT.SCALING_TEST
+        else:
+            raise NotImplementedError(f"Unknown mode: {mode}")
         augmentation.append(ResizeScaling(scaling, max_size))
     else:
         raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 
-    if not is_train:
+    if not mode == "train":
         return augmentation
 
     # TODO Add random crop
