@@ -1,0 +1,42 @@
+_BASE_: ../segmentation_base.yaml
+
+OUTPUT_DIR: ./output/region
+
+NAME: rekesten
+
+PREPROCESS:
+  REGION:
+    REGIONS:
+      [
+        "signature-mark",
+        "date",
+        "metadata\u0020cover",
+        "petitioner",
+        "request",
+        "metadata\u0020request",
+        "appendix",
+        "addressing",
+        "marginalia",
+      ]
+    MERGE_REGIONS: []
+    REGION_TYPE: []
+
+MODEL:
+  MODE: region
+
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 10
+
+  ROI_HEADS:
+    NUM_CLASSES: 9
+
+  WEIGHTS:
+
+DATALOADER:
+  FILTER_EMPTY_ANNOTATIONS: False
+
+TRAIN:
+  WEIGHTS:
+
+TEST:
+  WEIGHTS: pretrained_models/region_model_best_mIoU.pth
