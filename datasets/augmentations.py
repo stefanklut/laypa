@@ -951,35 +951,36 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
     if not mode == "train":
         return augmentation
 
-    # Color augments
-    augmentation.append(RandomApply(Grayscale(image_format=cfg.INPUT.FORMAT), prob=cfg.INPUT.GRAYSCALE.PROBABILITY))
+    # Moving pixels
+
     augmentation.append(
         RandomApply(
-            RandomBrightness(
-                intensity_min=cfg.INPUT.BRIGHTNESS.MIN_INTENSITY,
-                intensity_max=cfg.INPUT.BRIGHTNESS.MAX_INTENSITY,
+            RandomAffine(
+                t_stdv=cfg.INPUT.AFFINE.TRANSLATION.STANDARD_DEVIATION,
+                r_kappa=cfg.INPUT.AFFINE.ROTATION.KAPPA,
+                sh_kappa=cfg.INPUT.AFFINE.SHEAR.KAPPA,
+                sc_stdv=cfg.INPUT.AFFINE.SCALE.STANDARD_DEVIATION,
+                probabilities=(
+                    cfg.INPUT.AFFINE.TRANSLATION.PROBABILITY,
+                    cfg.INPUT.AFFINE.ROTATION.PROBABILITY,
+                    cfg.INPUT.AFFINE.SHEAR.PROBABILITY,
+                    cfg.INPUT.AFFINE.SCALE.PROBABILITY,
+                ),
             ),
-            prob=cfg.INPUT.BRIGHTNESS.PROBABILITY,
+            prob=cfg.INPUT.AFFINE.PROBABILITY,
         )
     )
+
     augmentation.append(
         RandomApply(
-            RandomContrast(
-                intensity_min=cfg.INPUT.CONTRAST.MIN_INTENSITY,
-                intensity_max=cfg.INPUT.CONTRAST.MAX_INTENSITY,
+            RandomElastic(
+                alpha=cfg.INPUT.ELASTIC_DEFORMATION.ALPHA,
+                sigma=cfg.INPUT.ELASTIC_DEFORMATION.SIGMA,
             ),
-            prob=cfg.INPUT.CONTRAST.PROBABILITY,
+            prob=cfg.INPUT.ELASTIC_DEFORMATION.PROBABILITY,
         )
     )
-    augmentation.append(
-        RandomApply(
-            RandomSaturation(
-                intensity_min=cfg.INPUT.SATURATION.MIN_INTENSITY,
-                intensity_max=cfg.INPUT.SATURATION.MAX_INTENSITY,
-            ),
-            prob=cfg.INPUT.SATURATION.PROBABILITY,
-        )
-    )
+
     augmentation.append(
         RandomApply(
             RandomGaussianFilter(
@@ -1010,33 +1011,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
         )
     )
 
-    augmentation.append(
-        RandomApply(
-            RandomElastic(
-                alpha=cfg.INPUT.ELASTIC_DEFORMATION.ALPHA,
-                sigma=cfg.INPUT.ELASTIC_DEFORMATION.SIGMA,
-            ),
-            prob=cfg.INPUT.ELASTIC_DEFORMATION.PROBABILITY,
-        )
-    )
-
-    augmentation.append(
-        RandomApply(
-            RandomAffine(
-                t_stdv=cfg.INPUT.AFFINE.TRANSLATION.STANDARD_DEVIATION,
-                r_kappa=cfg.INPUT.AFFINE.ROTATION.KAPPA,
-                sh_kappa=cfg.INPUT.AFFINE.SHEAR.KAPPA,
-                sc_stdv=cfg.INPUT.AFFINE.SCALE.STANDARD_DEVIATION,
-                probabilities=(
-                    cfg.INPUT.AFFINE.TRANSLATION.PROBABILITY,
-                    cfg.INPUT.AFFINE.ROTATION.PROBABILITY,
-                    cfg.INPUT.AFFINE.SHEAR.PROBABILITY,
-                    cfg.INPUT.AFFINE.SCALE.PROBABILITY,
-                ),
-            ),
-            prob=cfg.INPUT.AFFINE.PROBABILITY,
-        )
-    )
+    # Orientation
 
     augmentation.append(
         RandomApply(
@@ -1047,16 +1022,53 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
         )
     )
 
-    # augmentation.append(RandomApply(RandomTranslation(t_stdv=cfg.INPUT.AFFINE.TRANSLATION.STANDARD_DEVIATION),
-    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.TRANSLATION.PROBABILITY))
-    # augmentation.append(RandomApply(RandomRotation(r_kappa=cfg.INPUT.AFFINE.ROTATION.KAPPA),
-    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.ROTATION.PROBABILITY))
-    # augmentation.append(RandomApply(RandomShear(sh_kappa=cfg.INPUT.AFFINE.SHEAR.KAPPA),
-    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.SHEAR.PROBABILITY))
-    # augmentation.append(RandomApply(RandomScale(sc_stdv=cfg.INPUT.AFFINE.SCALE.STANDARD_DEVIATION),
-    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.SCALE.PROBABILITY))
+    # Color augments
+    augmentation.append(
+        RandomApply(
+            Grayscale(
+                image_format=cfg.INPUT.FORMAT,
+            ),
+            prob=cfg.INPUT.GRAYSCALE.PROBABILITY,
+        )
+    )
+    augmentation.append(
+        RandomApply(
+            RandomBrightness(
+                intensity_min=cfg.INPUT.BRIGHTNESS.MIN_INTENSITY,
+                intensity_max=cfg.INPUT.BRIGHTNESS.MAX_INTENSITY,
+            ),
+            prob=cfg.INPUT.BRIGHTNESS.PROBABILITY,
+        )
+    )
+    augmentation.append(
+        RandomApply(
+            RandomContrast(
+                intensity_min=cfg.INPUT.CONTRAST.MIN_INTENSITY,
+                intensity_max=cfg.INPUT.CONTRAST.MAX_INTENSITY,
+            ),
+            prob=cfg.INPUT.CONTRAST.PROBABILITY,
+        )
+    )
+    augmentation.append(
+        RandomApply(
+            RandomSaturation(
+                intensity_min=cfg.INPUT.SATURATION.MIN_INTENSITY,
+                intensity_max=cfg.INPUT.SATURATION.MAX_INTENSITY,
+            ),
+            prob=cfg.INPUT.SATURATION.PROBABILITY,
+        )
+    )
 
-    # print(augmentation)
+    # Crop
+    if cfg.INPUT.CROP.ENABLED:
+        augmentation.append(
+            RandomCrop_CategoryAreaConstraint(
+                crop_type=cfg.INPUT.CROP.TYPE,
+                crop_size=cfg.INPUT.CROP.SIZE,
+                single_category_max_area=cfg.INPUT.CROP.SINGLE_CATEGORY_MAX_AREA,
+            )
+        )
+
     return augmentation
 
 
