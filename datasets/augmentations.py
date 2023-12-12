@@ -11,9 +11,9 @@ import detectron2.data.transforms as T
 import numpy as np
 from detectron2.config import CfgNode
 from fvcore.transforms.transform import Transform
+from scipy.ndimage import gaussian_filter
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from scipy.ndimage import gaussian_filter
 
 from datasets.transforms import (
     AffineTransform,
