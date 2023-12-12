@@ -21,3 +21,11 @@ jobs:
         run: conda info
       - name: Conda list
         run: conda list
+
+      - name: Test image utils
+        run: |
+          python tests/test_image_utils.py
+      
+      - name: Test input utils
+        run: |
+          python tests/test_input_utils.py

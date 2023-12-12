@@ -90,7 +90,7 @@ def get_file_paths(
         raise TypeError("Cannot run when the input path is None")
 
     if not formats:
-        raise ValueError("Must provide the accepted image types")
+        raise ValueError("Must provide the accepted file formats (extensions)")
 
     input_paths = clean_input_paths(input_paths)
 
