@@ -336,15 +336,7 @@ class AffineTransform(T.Transform):
             np.ndarray: transformed image
         """
         img = img.astype(np.float32)
-        if img.ndim == 2:
-            return affine_transform(img, self.matrix, order=1, mode="constant", cval=0)
-        elif img.ndim == 3:
-            transformed_img = np.empty_like(img)
-            for i in range(img.shape[-1]):  # HxWxC
-                transformed_img[..., i] = affine_transform(img[..., i], self.matrix, order=1, mode="constant", cval=0)
-            return transformed_img
-        else:
-            raise NotImplementedError("No support for multi dimensions (NxHxWxC) right now")
+        return cv2.warpAffine(img, self.matrix[:2, :], (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR)
 
     def apply_coords(self, coords: np.ndarray):
         """
@@ -371,7 +363,9 @@ class AffineTransform(T.Transform):
             np.ndarray: transformed segmentation
         """
         # cval=0 means background cval=255 means ignored
-        return affine_transform(segmentation, self.matrix, order=0, mode="constant", cval=0)
+        return cv2.warpAffine(
+            segmentation, self.matrix[:2, :], (segmentation.shape[1], segmentation.shape[0]), flags=cv2.INTER_NEAREST
+        )
 
     def inverse(self) -> T.Transform:
         """
