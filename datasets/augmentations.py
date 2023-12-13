@@ -895,6 +895,9 @@ class RandomCrop_CategoryAreaConstraint(T.Augmentation):
             return self.crop_aug.get_transform(image)
         else:
             h, w = sem_seg.shape
+            x0 = 0
+            y0 = 0
+            crop_size = (0, 0)
             for _ in range(10):
                 crop_size = self.crop_aug.get_crop_size((h, w))
                 y0 = np.random.randint(h - crop_size[0] + 1)
