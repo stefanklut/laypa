@@ -634,7 +634,7 @@ class RandomSaturation(T.Augmentation):
         elif self.image_format == "BGR":
             self.weights = rgb_weights[::-1]
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Image format {self.image_format} not supported")
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         grayscale = np.tile(image.dot(self.weights), (3, 1, 1)).transpose((1, 2, 0)).astype(np.float32)
@@ -1031,7 +1031,6 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
     )
 
     # Orientation
-
     augmentation.append(
         RandomApply(
             RandomOrientation(
