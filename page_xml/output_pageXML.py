@@ -66,7 +66,8 @@ class OutputPageXML(XMLRegions):
             line_width (Optional[int], optional): width of line. Defaults to None.
             regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
             merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
-            region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
+            region_type (Optional[list[str]], optional): list of strings that map Page XML Region to a class defined in
+            'regions'.
         """
         super().__init__(mode, line_width, regions, merge_regions, region_type)
 
