@@ -705,7 +705,18 @@ class RandomBrightness(T.Augmentation):
 
 
 class RandomOrientation(T.Augmentation):
+    """
+    Apply a random orientation to the image
+    """
+
     def __init__(self, orientation_percentages: Optional[list[float | int]] = None) -> None:
+        """
+        Initialize the Augmentations class.
+
+        Args:
+            orientation_percentages (Optional[list[float | int]]): A list of orientation percentages.
+                If None, default values of [1.0, 1.0, 1.0, 1.0] will be used.
+        """
         super().__init__()
         if orientation_percentages is None:
             orientation_percentages = [1.0] * 4

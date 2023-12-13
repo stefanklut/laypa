@@ -573,13 +573,34 @@ class BlendTransform(T.Transform):
 
 
 class OrientationTransform(T.Transform):
+    """
+    Transform that applies 90 degrees rotation to an image and its corresponding coordinates.
+    """
+
     def __init__(self, times_90_degrees: int, height: int, width: int) -> None:
+        """
+        Transform that applies 90 degrees rotation to an image and its corresponding coordinates.
+
+        Args:
+            times_90_degrees (int): Number of 90-degree rotations to apply. Should be between 0 and 3.
+            height (int): Height of the image.
+            width (int): Width of the image.
+        """
         super().__init__()
         self.times_90_degrees = times_90_degrees % 4
         self.height = height
         self.width = width
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply orientation change to the image.
+
+        Args:
+            img (np.ndarray): Input image.
+
+        Returns:
+            np.ndarray: Rotated image.
+        """
         if self.times_90_degrees == 0:
             return img
         elif self.times_90_degrees == 1:
@@ -592,6 +613,15 @@ class OrientationTransform(T.Transform):
             raise ValueError("Times 90 degrees should be between 0 and 3")
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Apply orientation change to the coordinates.
+
+        Args:
+            coords (np.ndarray): Input coordinates.
+
+        Returns:
+            np.ndarray: Rotated coordinates.
+        """
         if self.times_90_degrees == 0:
             return coords
         elif self.times_90_degrees == 1:
@@ -610,6 +640,12 @@ class OrientationTransform(T.Transform):
             raise ValueError("Times 90 degrees should be between 0 and 3")
 
     def inverse(self) -> Transform:
+        """
+        Compute the inverse of the transformation.
+
+        Returns:
+            Transform: Inverse transformation.
+        """
         if self.times_90_degrees % 2 == 0:
             height, width = self.height, self.width
         else:
