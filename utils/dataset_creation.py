@@ -116,7 +116,20 @@ def copy_image_paths(image_paths: list[Path], output_dir: Path, mode: str = "cop
     return output_paths
 
 
-def train_test_split(data, train_size):
+def train_test_split(data: list, train_size: float):
+    """
+    Splits the given data into training and testing sets based on the specified train size.
+
+    Args:
+        data (list): The data to be split.
+        train_size (float): The proportion of data to be used for training.
+
+    Returns:
+        tuple: A tuple containing the training data and testing data.
+    """
+
+    assert train_size >= 0 and train_size <= 1, "Train size must be between 0 and 1"
+
     np.random.shuffle(data)
     train_len = int(len(data) * train_size)
     train_data = data[:train_len]
