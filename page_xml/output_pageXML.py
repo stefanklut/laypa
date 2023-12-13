@@ -56,6 +56,7 @@ class OutputPageXML(XMLRegions):
         region_type: Optional[list[str]] = None,
         cfg: Optional[CfgNode] = None,
         whitelist: Optional[Iterable[str]] = None,
+        rectangle_regions: Optional[list[str]] = [],
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
@@ -71,6 +72,7 @@ class OutputPageXML(XMLRegions):
         """
         super().__init__(mode, line_width, regions, merge_regions, region_type)
 
+        self.rectangle_regions = rectangle_regions
         self.logger = logging.getLogger(get_logger_name())
 
         self.output_dir = None
@@ -157,6 +159,7 @@ class OutputPageXML(XMLRegions):
 
         page = PageData(xml_output_path)
         page.new_page(image_path.name, str(old_height), str(old_width))
+
         if self.cfg is not None:
             page.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
 
@@ -192,8 +195,16 @@ class OutputPageXML(XMLRegions):
                     approx_poly = np.round((approx_poly * scaling)).astype(np.int32)
 
                     region_coords = ""
-                    for coords in approx_poly.reshape(-1, 2):
-                        region_coords = region_coords + f" {coords[0]},{coords[1]}"
+                    if region in self.rectangle_regions:
+                        # find bounding box
+                        rect = cv2.minAreaRect(approx_poly)
+                        rect = cv2.boxPoints(rect)
+                        for coords in rect:
+                            region_coords = region_coords + f" {round(coords[0])},{round(coords[1])}"
+                    else:
+                        for coords in approx_poly.reshape(-1, 2):
+                            region_coords = region_coords + f" {coords[0]},{coords[1]}"
+
                     region_coords = region_coords.strip()
 
                     _uuid = uuid.uuid4()

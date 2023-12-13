@@ -9,6 +9,7 @@ PREPROCESS:
     REGIONS: ["Photo"]
     MERGE_REGIONS: []
     REGION_TYPE: ["ImageRegion:Photo"]
+    RECTANGLE_REGIONS: ["Photo"]
 
 MODEL:
   MODE: region

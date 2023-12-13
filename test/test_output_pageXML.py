@@ -115,6 +115,149 @@ class TestOutputPageXML(unittest.TestCase):
         self.assertEqual(1, len(image_coords_elements))
         self.assertEqual("8,4 4,8 8,12 10,12 14,8 10,4", image_coords_elements[0].attrib.get("points"))
 
+    def test_rectangle_region_does_cotains_4_points(self):
+        output = tempfile.mktemp("_laypa_test")
+        xml = OutputPageXML(
+            "region",
+            output,
+            5,
+            ["Photo"],
+            [],
+            ["ImageRegion:Photo"],
+            None,
+            [],
+            ["Photo"]
+
+        )
+        background = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                               [1, 1, 0, 0, 0, 0, 0, 0, 1, 1],
+                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
+        image = np.invert(background == 1) * 1
+        array = np.array([background, image])
+        tensor = torch.from_numpy(array)
+
+        xml.generate_single_page(tensor, Path("/tmp/test.png"), 20, 20)
+
+        page_path = path.join(output, "page", "test.xml")
+        self.assertTrue(path.exists(page_path), "Page file does not exist")
+        page = ET.parse(page_path)
+        namespaces = {"page": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"}
+        image_coords_elements = page.findall("./page:Page/page:ImageRegion/page:Coords", namespaces=namespaces)
+        self.assertEqual(1, len(image_coords_elements))
+        coord_points = image_coords_elements[0].attrib.get("points")
+        self.assertEqual(4, coord_points.count(","), f"Contains more then 4 points: '{coord_points}'")
+
+    def test_rectangle_region_does_create_floating_point_coords(self):
+        output = tempfile.mktemp("_laypa_test")
+        xml = OutputPageXML(
+            "region",
+            output,
+            5,
+            ["Photo"],
+            [],
+            ["ImageRegion:Photo"],
+            None,
+            [],
+            ["Photo"]
+
+        )
+        background = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                               [1, 1, 0, 0, 0, 0, 0, 0, 1, 1],
+                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
+        image = np.invert(background == 1) * 1
+        array = np.array([background, image])
+        tensor = torch.from_numpy(array)
+
+        xml.generate_single_page(tensor, Path("/tmp/test.png"), 20, 20)
+
+        page_path = path.join(output, "page", "test.xml")
+        self.assertTrue(path.exists(page_path), "Page file does not exist")
+        page = ET.parse(page_path)
+        namespaces = {"page": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"}
+        image_coords_elements = page.findall("./page:Page/page:ImageRegion/page:Coords", namespaces=namespaces)
+        self.assertEqual(1, len(image_coords_elements))
+        coord_points = image_coords_elements[0].attrib.get("points")
+        self.assertEqual(0, coord_points.count("."), f"Probably contains floating points: '{coord_points}'")
+
+    def test_only_rectangle_region_one_type(self):
+        output = tempfile.mktemp("_laypa_test")
+        xml = OutputPageXML(
+            "region",
+            output,
+            5,
+            ["Photo", "Text"],
+            [],
+            ["ImageRegion:Photo", "TextRegion:Text"],
+            None,
+            [],
+            ["Photo"]
+
+        )
+        background = np.array([[1, 1, 0, 0, 1, 1, 1, 1, 1, 1],
+                               [1, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+                               [0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
+                               [1, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+                               [1, 1, 0, 0, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+                               [1, 1, 1, 1, 1, 0, 0, 0, 0, 1],
+                               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                               [1, 1, 1, 1, 1, 0, 0, 0, 0, 1],
+                               [1, 1, 1, 1, 1, 1, 0, 0, 1, 1]])
+
+        image = np.array([[0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+                          [0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                          [1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                          [0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                          [0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+
+        text = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                         [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
+                         [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                         [0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+                         [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                         [0, 0, 0, 0, 0, 0, 1, 1, 0, 0]])
+        array = np.array([background, image, text])
+        tensor = torch.from_numpy(array)
+
+        xml.generate_single_page(tensor, Path("/tmp/test.png"), 20, 20)
+
+        page_path = path.join(output, "page", "test.xml")
+        self.assertTrue(path.exists(page_path), "Page file does not exist")
+        page = ET.parse(page_path)
+        namespaces = {"page": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"}
+        image_coords_elements = page.findall("./page:Page/page:ImageRegion/page:Coords", namespaces=namespaces)
+        self.assertEqual(1, len(image_coords_elements))
+        image_coord_points = image_coords_elements[0].attrib.get("points")
+        self.assertEqual(4, image_coord_points.count(","),
+                         f"ImageRegion Contains more then 4 points: '{image_coord_points}'")
+        text_coords_elements = page.findall("./page:Page/page:TextRegion/page:Coords", namespaces=namespaces)
+        self.assertEqual(1, len(text_coords_elements))
+        text_coord_points = text_coords_elements[0].attrib.get("points")
+        self.assertEqual(6, text_coord_points.count(","), f"TextRegion less than 6 points: '{text_coord_points}'")
+
 
 if __name__ == "__main__":
     unittest.main()
