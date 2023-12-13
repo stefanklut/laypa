@@ -13,7 +13,6 @@ dependencies:
   - torchvision
   - matplotlib
   - scipy
-  - scikit-learn
   - pip
   - opencv
   - tensorboard

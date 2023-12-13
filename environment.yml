@@ -14,7 +14,6 @@ dependencies:
   - opencv
   - matplotlib
   - scipy
-  - scikit-learn
   - pip
   - flask
   - prometheus_client

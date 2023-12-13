@@ -7,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 from natsort import os_sorted
-from sklearn.model_selection import train_test_split
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.copy_utils import copy_mode
@@ -115,6 +114,14 @@ def copy_image_paths(image_paths: list[Path], output_dir: Path, mode: str = "cop
         output_paths.append(output_image_path)
 
     return output_paths
+
+
+def train_test_split(data, train_size):
+    np.random.shuffle(data)
+    train_len = int(len(data) * train_size)
+    train_data = data[:train_len]
+    test_data = data[train_len:]
+    return train_data, test_data
 
 
 def main(args):
