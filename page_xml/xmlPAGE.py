@@ -20,7 +20,7 @@ from utils.tempdir import AtomicFileName
 _VALID_TYPES = {tuple, list, str, int, float, bool, NoneType}
 
 
-def convert_to_dict(cfg_node, key_list=[]):
+def convert_to_dict(cfg_node, key_list: list = []):
     """Convert a config node to dictionary"""
     if not isinstance(cfg_node, CfgNode):
         if type(cfg_node) not in _VALID_TYPES:
@@ -40,7 +40,7 @@ def convert_to_dict(cfg_node, key_list=[]):
 class PageData:
     """Class to process PAGE xml files"""
 
-    def __init__(self, filepath: Path, logger=None, creator=None):
+    def __init__(self, filepath: Path, creator=None):
         """
         Args:
             filepath (string): Path to PAGE-xml file.
