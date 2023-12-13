@@ -914,11 +914,16 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
     Function to generate all the augmentations used in the inference and training process
 
     Args:
-        cfg (CfgNode): config node
+        cfg (CfgNode): The configuration node containing the parameters for the augmentations.
         mode (str): flag if the augmentation are used for inference or training
+            - Possible values are "train", "val", or "test".
 
     Returns:
         list[T.Augmentation | T.Transform]: list of augmentations to apply to an image
+
+    Raises:
+        NotImplementedError: If the mode is not one of "train", "val", or "test".
+        NotImplementedError: If the resize mode specified in the configuration is not recognized.
     """
     augmentation: list[T.Augmentation | T.Transform] = []
 
