@@ -31,7 +31,7 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args = parser.add_argument_group("detectron2")
 
     detectron2_args.add_argument("-c", "--config", help="config file", required=True)
-    detectron2_args.add_argument("--opts", nargs=argparse.REMAINDER, help="optional args to change", default=[])
+    detectron2_args.add_argument("--opts", nargs="+", help="optional args to change", action="extend", default=[])
 
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", nargs="+", help="Input folder", type=str, action="extend", required=True)
@@ -80,6 +80,22 @@ class Predictor(DefaultPredictor):
         else:
             raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 
+    def get_image_size(self, height, width):
+        if self.cfg.INPUT.RESIZE_MODE == "none":
+            new_height, new_width = height, width
+        elif self.cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
+            new_height, new_width = self.aug.get_output_shape(
+                height, width, self.cfg.INPUT.MIN_SIZE_TEST, self.cfg.INPUT.MAX_SIZE_TEST
+            )
+        elif self.cfg.INPUT.RESIZE_MODE == "scaling":
+            new_height, new_width = self.aug.get_output_shape(
+                height, width, self.cfg.INPUT.SCALING_TEST, self.cfg.INPUT.MAX_SIZE_TEST
+            )
+        else:
+            raise NotImplementedError(f"{self.cfg.INPUT.RESIZE_MODE} is not a known resize mode")
+
+        return new_height, new_width
+
     def gpu_call(self, original_image: torch.Tensor):
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
@@ -90,18 +106,7 @@ class Predictor(DefaultPredictor):
                 # whether the model expects BGR inputs or RGB
                 image = image[[2, 1, 0], :, :]
 
-            if self.cfg.INPUT.RESIZE_MODE == "none":
-                new_height, new_width = height, width
-            elif self.cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
-                new_height, new_width = self.aug.get_output_shape(
-                    height, width, self.cfg.INPUT.MIN_SIZE_TEST, self.cfg.INPUT.MAX_SIZE_TEST
-                )
-            elif self.cfg.INPUT.RESIZE_MODE == "scaling":
-                new_height, new_width = self.aug.get_output_shape(
-                    height, width, self.cfg.INPUT.SCALING_TEST, self.cfg.INPUT.MAX_SIZE_TEST
-                )
-            else:
-                raise NotImplementedError(f"{self.cfg.INPUT.RESIZE_MODE} is not a known resize mode")
+            new_height, new_width = self.get_image_size(height, width)
 
             if self.cfg.INPUT.RESIZE_MODE != "none":
                 image = torch.nn.functional.interpolate(image[None], mode="bilinear", size=(new_height, new_width))[0]
@@ -121,7 +126,7 @@ class Predictor(DefaultPredictor):
                 # whether the model expects BGR inputs or RGB
                 image = image[[2, 1, 0], :, :]
 
-            inputs = {"image": image, "height": height, "width": width}
+            inputs = {"image": image, "height": image.shape[1], "width": image.shape[2]}
             predictions = self.model([inputs])[0]
 
         return predictions, height, width

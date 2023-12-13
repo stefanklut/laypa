@@ -291,7 +291,7 @@ class Trainer(DefaultTrainer):
             mapper = DatasetMapper(
                 is_train=True,
                 recompute_boxes=cfg.MODEL.MASK_ON,
-                augmentations=build_augmentation(cfg, is_train=True),
+                augmentations=build_augmentation(cfg, mode="train"),
                 image_format=cfg.INPUT.FORMAT,
                 use_instance_mask=cfg.MODEL.MASK_ON,
                 instance_mask_format=cfg.INPUT.MASK_FORMAT,
@@ -308,7 +308,7 @@ class Trainer(DefaultTrainer):
             mapper = DatasetMapper(
                 is_train=False,
                 recompute_boxes=cfg.MODEL.MASK_ON,
-                augmentations=build_augmentation(cfg, is_train=False),
+                augmentations=build_augmentation(cfg, mode="val"),
                 image_format=cfg.INPUT.FORMAT,
                 use_instance_mask=cfg.MODEL.MASK_ON,
                 instance_mask_format=cfg.INPUT.MASK_FORMAT,

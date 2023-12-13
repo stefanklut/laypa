@@ -27,7 +27,7 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args = parser.add_argument_group("detectron2")
 
     detectron2_args.add_argument("-c", "--config", help="config file", required=True)
-    detectron2_args.add_argument("--opts", nargs="+", help="optional args to change", default=[])
+    detectron2_args.add_argument("--opts", nargs="+", help="optional args to change", action="extend", default=[])
 
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input folder/files", nargs="+", default=[], required=True, type=str)

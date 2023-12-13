@@ -121,7 +121,6 @@ class Preprocess:
         pre_process_args = parser.add_argument_group("preprocessing")
 
         pre_process_args.add_argument("--resize", action="store_true", help="Resize input images")
-        pre_process_args.add_argument("--resize", action="store_true", help="Resize input images")
         pre_process_args.add_argument(
             "--resize_mode",
             default="none",
@@ -314,7 +313,7 @@ class Preprocess:
         image_dir.mkdir(parents=True, exist_ok=True)
 
         if self.resize_mode == "none":
-            copy_mode(image_path, out_image_path, mode="symlink")
+            copy_mode(image_path, out_image_path, mode="link")
         else:
             image = load_image_array_from_path(image_path)
 

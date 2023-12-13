@@ -66,22 +66,23 @@ def preprocess_datasets(
     train_output_dir = None
     if train is not None:
         train = clean_input_paths(train)
-        if not all(missing := path.exists() for path in train):
+        if not all((missing := path).exists() for path in train):
             raise FileNotFoundError(f"Train File/Folder not found: {missing} does not exist")
 
         train_output_dir = output_dir.joinpath("train")
         process.set_input_paths(train)
         process.set_output_dir(train_output_dir)
-        train_image_paths = get_file_paths(train, supported_image_formats)
         process.run()
 
         if save_image_locations:
+            if process.input_paths is None:
+                raise TypeError("Cannot run when the input path is None")
             # Saving the images used to a txt file
             os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
             train_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("training_images.txt")
 
             with train_image_output_path.open(mode="w") as f:
-                for path in train_image_paths:
+                for path in process.input_paths:
                     f.write(f"{path}\n")
 
     val_output_dir = None
@@ -93,16 +94,17 @@ def preprocess_datasets(
         val_output_dir = output_dir.joinpath("val")
         process.set_input_paths(val)
         process.set_output_dir(val_output_dir)
-        val_image_paths = get_file_paths(val, supported_image_formats)
         process.run()
 
         if save_image_locations:
+            if process.input_paths is None:
+                raise TypeError("Cannot run when the input path is None")
             # Saving the images used to a txt file
             os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
             val_image_output_path = Path(cfg.OUTPUT_DIR).joinpath("validation_images.txt")
 
             with val_image_output_path.open(mode="w") as f:
-                for path in val_image_paths:
+                for path in process.input_paths:
                     f.write(f"{path}\n")
 
     dataset.register_datasets(

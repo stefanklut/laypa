@@ -216,7 +216,9 @@ def register_dataset(path: str | Path, name: str, ignore_label: int = 255) -> Me
     data = convert_to_paths(path, info["data"])
     classes = info["classes"]
 
-    DatasetCatalog.register(name=name, func=lambda data=data: dataset_dict_loader(data))
+    list_of_dicts = dataset_dict_loader(data)
+
+    DatasetCatalog.register(name=name, func=lambda: list_of_dicts)
 
     MetadataCatalog[name] = metadata_from_classes(classes, ignore_label)
     return MetadataCatalog.get(name)

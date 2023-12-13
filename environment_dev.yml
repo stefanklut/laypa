@@ -23,6 +23,7 @@ dependencies:
   - timm
   - gunicorn
   - pillow
+  - shapely
   # - pygments #Optional for colors
   - pip:
       - natsort

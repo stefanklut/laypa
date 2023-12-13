@@ -2,6 +2,10 @@ _BASE_: ../segmentation_base.yaml
 
 OUTPUT_DIR: ./output/top_bottom
 
+PREPROCESS:
+  BASELINE:
+    LINE_WIDTH: 15
+
 MODEL:
   MODE: top_bottom
 

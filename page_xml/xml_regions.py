@@ -41,7 +41,7 @@ class XMLRegions:
             self.region_classes = self._build_class_regions()
             self.region_types = self._build_region_types()
             self.merged_regions = self._build_merged_regions()
-            self.merge_classes()
+            self._merge_classes()
         else:
             assert line_width is not None
 
@@ -117,7 +117,7 @@ class XMLRegions:
         )
         return parser
 
-    def merge_classes(self) -> None:
+    def _merge_classes(self) -> None:
         """
         Merge the classes defined by the merge regions
         """

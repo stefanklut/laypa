@@ -3,25 +3,26 @@ _BASE_: ../segmentation_base.yaml
 
 OUTPUT_DIR: /encrypted/baseline
 
-NAME: ovdr
+NAME: ovdr_scaling_test
 
 PREPROCESS:
   OVERWRITE: False
   DISABLE_CHECK: False
 
   RESIZE:
-    RESIZE_MODE: "shortest_edge"
-    RESIZE_SAMPLING: "choice"
-    MIN_SIZE: [1024]
+    RESIZE_MODE: "scaling"
+    SCALING: 0.5
     MAX_SIZE: -1
 
-INPUT:
-  RESIZE_MODE: "shortest_edge"
-  MIN_SIZE_TRAIN_SAMPLING: choice
-  MIN_SIZE_TRAIN: (1024,)
-  MAX_SIZE_TRAIN: 2024
+  BASELINE:
+    LINE_WIDTH: 10
 
-  MAX_SIZE_TEST: 2024
+INPUT:
+  RESIZE_MODE: "scaling"
+  SCALING_TRAIN: 1.0
+  MAX_SIZE_TRAIN: -1
+
+  MAX_SIZE_TEST: -1
 
   FORMAT: RGB
 
@@ -78,6 +79,11 @@ INPUT:
       PROBABILITY: 0.9
       STANDARD_DEVIATION: 0.12
 
+  CROP:
+    ENABLED: True
+    SIZE: [1024, 1024]
+    TYPE: absolute
+
 SOLVER:
   IMS_PER_BATCH: 2
   CHECKPOINT_PERIOD: 25000
@@ -98,5 +104,5 @@ TRAIN:
   WEIGHTS:
 
 TEST:
-  EVAL_PERIOD: 10000
   WEIGHTS:
+  EVAL_PERIOD: 10000

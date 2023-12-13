@@ -3,7 +3,7 @@ _BASE_: ../segmentation_base.yaml
 
 OUTPUT_DIR: /encrypted/baseline
 
-NAME: ovdr
+NAME: ovdr_scaling_test
 
 PREPROCESS:
   OVERWRITE: False
@@ -14,9 +14,12 @@ PREPROCESS:
     SCALING: 0.5
     MAX_SIZE: -1
 
+  BASELINE:
+    LINE_WIDTH: 10
+
 INPUT:
   RESIZE_MODE: "scaling"
-  SCALING_TRAIN: 0.5
+  SCALING_TRAIN: 1.0
   MAX_SIZE_TRAIN: 2024
 
   MAX_SIZE_TEST: 2024
@@ -82,7 +85,7 @@ SOLVER:
   BASE_LR: 0.0002
   GAMMA: 0.1
   STEPS: () #(80000, 120000, 160000)
-  MAX_ITER: 250000
+  MAX_ITER: 500000
 
 MODEL:
   MODE: baseline

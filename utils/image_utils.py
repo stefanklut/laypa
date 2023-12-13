@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import torchvision
 from detectron2.data.detection_utils import convert_PIL_to_numpy
-from PIL import Image
+from PIL import Image, ImageOps
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
@@ -18,6 +18,7 @@ from utils.logging_utils import get_logger_name
 def load_image_array_from_path(
     image_path: Path | str,
     mode: str = "color",
+    ignore_exif: bool = False,
 ) -> Optional[np.ndarray]:
     """
     Load image from a given path, return None if loading failed due to corruption
@@ -36,7 +37,10 @@ def load_image_array_from_path(
     try:
         # image = cv2.imread(str(image_path), cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if mode == "color" else image
-        image = convert_PIL_to_numpy(Image.open(image_path), "RGB" if mode == "color" else "L").copy()
+        image = Image.open(image_path)
+        if not ignore_exif:
+            image = ImageOps.exif_transpose(image)
+        image = convert_PIL_to_numpy(image, "RGB" if mode == "color" else "L").copy()
         if mode == "grayscale":
             image = image.squeeze(axis=2)
         return image
@@ -77,6 +81,7 @@ def load_image_array_from_bytes(
     image_bytes: bytes,
     image_path: Optional[Path] = None,
     mode: str = "color",
+    ignore_exif: bool = False,
 ) -> Optional[np.ndarray]:
     """
     Load image based on given bytes, return None if loading failed due to corruption
@@ -96,7 +101,10 @@ def load_image_array_from_bytes(
         # bytes_array = np.frombuffer(image_bytes, np.uint8)
         # image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if mode == "color" else image
-        image = convert_PIL_to_numpy(Image.open(BytesIO(image_bytes)), "RGB" if mode == "color" else "L").copy()
+        image = Image.open(BytesIO(image_bytes))
+        if not ignore_exif:
+            image = ImageOps.exif_transpose(image)
+        image = convert_PIL_to_numpy(image, "RGB" if mode == "color" else "L").copy()
         if mode == "grayscale":
             image = image.squeeze(axis=2)
         return image
@@ -147,12 +155,10 @@ def save_image_array_to_path(
 
     Args:
         image_path (Path | str): save path location
-        array (np.ndarray): image in array form (BGR between 0 and 255)
+        array (np.ndarray): image in array form (RGB between 0 and 255)
     """
     try:
         # cv2.imwrite(str(image_path), array)
-        if len(array.shape) == 3:
-            array = cv2.cvtColor(array.astype(np.uint8), cv2.COLOR_BGR2RGB)
         image = Image.fromarray(array)
         image.save(image_path)
     except OSError:
