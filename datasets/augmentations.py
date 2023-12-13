@@ -335,12 +335,12 @@ class RandomAffine(T.Augmentation):
 
         if probabilities is not None:
             assert len(probabilities) == 4, f"{len(probabilities)}: {probabilities}"
-            self.probs = probabilities
+            self.probabilities = probabilities
         else:
-            self.probs = [1.0] * 4
+            self.probabilities = [1.0] * 4
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
-        if not any(self.probs):
+        if not any(self.probabilities):
             return T.NoOpTransform()
 
         h, w = image.shape[:2]
@@ -354,11 +354,11 @@ class RandomAffine(T.Augmentation):
         matrix = np.eye(3)
 
         # Translation
-        if self._rand_range() < self.probs[0]:
+        if self._rand_range() < self.probabilities[0]:
             matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2) * np.asarray([w, h]) * self.t_stdv
 
         # Rotation
-        if self._rand_range() < self.probs[1]:
+        if self._rand_range() < self.probabilities[1]:
             rot = np.eye(3)
             theta = np.random.vonmises(0.0, self.r_kappa)
             rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
@@ -368,7 +368,7 @@ class RandomAffine(T.Augmentation):
             matrix = matrix @ center @ rot @ uncenter
 
         # Shear
-        if self._rand_range() < self.probs[2]:
+        if self._rand_range() < self.probabilities[2]:
             theta1 = np.random.vonmises(0.0, self.sh_kappa)
 
             shear1 = np.eye(3)
@@ -388,13 +388,15 @@ class RandomAffine(T.Augmentation):
             matrix = matrix @ center @ shear2 @ uncenter
 
         # Scale
-        if self._rand_range() < self.probs[3]:
+        if self._rand_range() < self.probabilities[3]:
             scale = np.eye(3)
             scale[0, 0], scale[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
 
             # print(scale)
 
             matrix = matrix @ center @ scale @ uncenter
+
+        print(matrix)
 
         return AffineTransform(matrix)
 
@@ -718,15 +720,16 @@ class RandomOrientation(T.Augmentation):
                 If None, default values of [1.0, 1.0, 1.0, 1.0] will be used.
         """
         super().__init__()
-        if orientation_percentages is None:
-            orientation_percentages = [1.0] * 4
-        array_percentages = np.asarray(orientation_percentages)
+        self.orientation_percentages = orientation_percentages
+        if self.orientation_percentages is None:
+            self.orientation_percentages = [1.0] * 4
+        array_percentages = np.asarray(self.orientation_percentages)
         assert len(array_percentages) == 4, f"{len(array_percentages)}: {array_percentages}"
         normalized_percentages = array_percentages / np.sum(array_percentages)
-        self.orientation_percentages = normalized_percentages
+        self.normalized_percentages = normalized_percentages
 
     def get_transform(self, image) -> Transform:
-        times_90_degrees = np.random.choice(4, p=self.orientation_percentages)
+        times_90_degrees = np.random.choice(4, p=self.normalized_percentages)
         return OrientationTransform(times_90_degrees, image.shape[0], image.shape[1])
 
 
@@ -1113,7 +1116,7 @@ def test(args) -> None:
     print(f"Loading image {input_path}")
     image = cv2.imread(str(input_path))[..., ::-1]
 
-    resize = ResizeShortestEdge(min_size=(640, 672, 704, 736, 768, 800), max_size=1333, sample_style="choice")
+    resize = ResizeShortestEdge(min_size=(1024,), max_size=2048, sample_style="choice")
     elastic = RandomElastic()
 
     affine = RandomAffine()
@@ -1140,14 +1143,16 @@ def test(args) -> None:
     # augs.append(brightness)
     # augs.append(saturation)
     # augs.append(gaussian)
-    # augs.append(affine)
+    augs.append(affine)
     # augs.append(translation)
     # augs.append(rotation)
     # augs.append(shear)
     # augs.append(scale)
-    augs.append(orientation)
+    # augs.append(orientation)
 
     augs_list = T.AugmentationList(augs=augs)
+
+    print(augs)
 
     input_augs = T.AugInput(image)
 
@@ -1155,15 +1160,15 @@ def test(args) -> None:
 
     output_image = input_augs.image
 
-    input_coords = np.asarray([[10, 20], [4000, 4000]])
+    input_coords = np.asarray([[1000, 2000], [4000, 4000]])
 
     output_coords = transforms.apply_coords(input_coords)
 
     for coord in input_coords:
-        image = cv2.circle(image.copy(), coord, 10, (255, 0, 0), -1)
+        image = cv2.circle(image.copy(), coord.astype(np.int32), 10, (255, 0, 0), -1)
 
     for coord in output_coords:
-        output_image = cv2.circle(output_image.copy(), coord, 10, (255, 0, 0), -1)
+        output_image = cv2.circle(output_image.copy(), coord.astype(np.int32), 10, (255, 0, 0), -1)
 
     im = Image.fromarray(image)
     im.show("Original")
