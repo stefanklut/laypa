@@ -92,4 +92,4 @@ def copy_mode(path: str | Path, destination: str | Path, mode: str = "copy") -> 
     elif mode == "symlink":
         symlink_force(path, destination)
     else:
-        raise NotImplementedError
+        raise NotImplementedError(f"Mode {mode} not implemented")

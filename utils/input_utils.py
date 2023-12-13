@@ -53,9 +53,9 @@ def clean_input_paths(
             elif isinstance(path, Path):
                 output.append(path)
             else:
-                raise NotImplementedError
+                raise TypeError(f"Input path {path} is not a str or Path")
     else:
-        raise NotImplementedError
+        raise TypeError(f"Input paths {input_paths} is not a str, Path or Sequence")
 
     return output
 

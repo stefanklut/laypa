@@ -241,6 +241,6 @@ class XMLRegions:
         elif self.mode == "top_bottom":
             remaining_regions.extend(["top", "bottom"])
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Mode {self.mode} not implemented")
 
         return remaining_regions

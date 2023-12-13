@@ -215,7 +215,7 @@ class OutputPageXML(XMLRegions):
             with AtomicFileName(file_path=sem_seg_output_path) as path:
                 save_image_array_to_path(str(path), (sem_seg * 128).clip(0, 255).astype(np.uint8))
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Mode {self.mode} not implemented")
 
         # TODO Overwrite when multiple image have the same name but different extension
         page.save_xml()

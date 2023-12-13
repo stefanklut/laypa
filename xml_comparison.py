@@ -86,7 +86,7 @@ class IOUEvaluator:
             TypeError: number of classes has not been set
         """
         if self._num_classes is None:
-            raise TypeError
+            raise TypeError("Must set number of classes")
 
         self._conf_matrix = np.zeros((self._num_classes + 1, self._num_classes + 1), dtype=np.int64)
         self._b_conf_matrix = np.zeros((self._num_classes + 1, self._num_classes + 1), dtype=np.int64)
