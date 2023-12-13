@@ -1,0 +1,120 @@
+import unittest
+import numpy as np
+import sys
+from pathlib import Path
+import tempfile
+import torch
+import xml.etree.ElementTree as ET
+from os import path
+
+
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from page_xml.output_pageXML import OutputPageXML
+
+
+class TestOutputPageXML(unittest.TestCase):
+
+    def test_one_region_type(self):
+        output = tempfile.mktemp("_laypa_test")
+        xml = OutputPageXML(
+            "region",
+            output,
+            5,
+            ["Photo"],
+            [],
+            ["ImageRegion:Photo"],
+            None,
+            []
+
+        )
+        background = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) <= 5) * 1
+        image = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) > 5) * 1
+        array = np.array([background, image])
+        tensor = torch.from_numpy(array)
+
+        xml.generate_single_page(tensor, Path("/tmp/test.png"), 20, 20)
+
+        page_path = path.join(output, "page", "test.xml")
+        self.assertTrue(path.exists(page_path), "Page file does not exist")
+
+        page = ET.parse(page_path)
+
+        namespaces = {"page": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"}
+        coords_elements = page.findall("./page:Page/page:ImageRegion/page:Coords", namespaces=namespaces)
+        self.assertEqual(1, len(coords_elements))
+        self.assertEqual("10,0 10,18 18,18 18,0", coords_elements[0].attrib.get("points"))
+
+    def test_multiple_region_types(self):
+        output = tempfile.mktemp("_laypa_test")
+        xml = OutputPageXML(
+            "region",
+            output,
+            5,
+            ["Photo", "Text"],
+            [],
+            ["ImageRegion:Photo", "TextRegion:Text"],
+            None,
+            []
+
+        )
+        background = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) <= 2) * 1
+        text = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) > 5) * 1
+        image = ((text | background) == 0) * 1
+        array = np.array([background, image, text])
+        tensor = torch.from_numpy(array)
+
+        xml.generate_single_page(tensor, Path("/tmp/test.png"), 20, 20)
+
+        page_path = path.join(output, "page", "test.xml")
+        self.assertTrue(path.exists(page_path), "Page file does not exist")
+        page = ET.parse(page_path)
+
+        namespaces = {"page": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"}
+        image_coords_elements = page.findall("./page:Page/page:ImageRegion/page:Coords", namespaces=namespaces)
+        self.assertEqual(1, len(image_coords_elements))
+        self.assertEqual("4,0 4,18 8,18 8,0", image_coords_elements[0].attrib.get("points"))
+
+        text_coords_elements = page.findall("./page:Page/page:TextRegion/page:Coords", namespaces=namespaces)
+        self.assertEqual(1, len(text_coords_elements))
+        self.assertEqual("10,0 10,18 18,18 18,0", text_coords_elements[0].attrib.get("points"))
+
+    def test_region_not_square(self):
+        output = tempfile.mktemp("_laypa_test")
+        xml = OutputPageXML(
+            "region",
+            output,
+            5,
+            ["Photo"],
+            [],
+            ["ImageRegion:Photo"],
+            None,
+            []
+
+        )
+        background = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                               [1, 1, 0, 0, 0, 0, 0, 0, 1, 1],
+                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
+        image = np.invert(background == 1) * 1
+        array = np.array([background, image])
+        tensor = torch.from_numpy(array)
+
+        xml.generate_single_page(tensor, Path("/tmp/test.png"), 20, 20)
+
+        page_path = path.join(output, "page", "test.xml")
+        self.assertTrue(path.exists(page_path), "Page file does not exist")
+        page = ET.parse(page_path)
+        namespaces = {"page": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"}
+        image_coords_elements = page.findall("./page:Page/page:ImageRegion/page:Coords", namespaces=namespaces)
+        self.assertEqual(1, len(image_coords_elements))
+        self.assertEqual("8,4 4,8 8,12 10,12 14,8 10,4", image_coords_elements[0].attrib.get("points"))
+
+
+if __name__ == "__main__":
+    unittest.main()
