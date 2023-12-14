@@ -57,6 +57,7 @@ class OutputPageXML(XMLRegions):
         cfg: Optional[CfgNode] = None,
         whitelist: Optional[Iterable[str]] = None,
         rectangle_regions: Optional[list[str]] = [],
+        min_region_contour: int = 10
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
@@ -68,10 +69,19 @@ class OutputPageXML(XMLRegions):
             regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
             merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
             region_type (Optional[list[str]], optional): list of strings that map Page XML Region to a class defined in
-            'regions'.
+            'regions'. Defaults to None.
+            cfg (Optional[CfgNode]): contains the configuration that is used for providence in the pageXML.
+            Defaults to None.
+            whitelist (Optional[Iterable[str]]): names of the configuration fields to be used in the pageXML.
+            Defaults to None.
+            rectangle_regions (Optional[list[str]]): the regions that have to be described with the minimal rectangle,
+            that fits them. Defaults to an empty list.
+            min_region_contour (int): minimum size a region has to be, to be considered a valid region.
+            Defaults to 10 pixels.
         """
         super().__init__(mode, line_width, regions, merge_regions, region_type)
 
+        self.min_region_contour = min_region_contour
         self.rectangle_regions = rectangle_regions
         self.logger = logging.getLogger(get_logger_name())
 
@@ -182,9 +192,8 @@ class OutputPageXML(XMLRegions):
                     # --- remove small objects
                     if cnt.shape[0] < 4:
                         continue
-                    # TODO what size
-                    # if cv2.contourArea(cnt) < size:
-                    #     continue
+                    if cv2.contourArea(cnt) < self.min_region_contour:
+                        continue
 
                     region_id += 1
 
