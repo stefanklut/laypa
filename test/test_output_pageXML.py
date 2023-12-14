@@ -13,20 +13,9 @@ from page_xml.output_pageXML import OutputPageXML
 
 
 class TestOutputPageXML(unittest.TestCase):
-
     def test_one_region_type(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML(
-            "region",
-            output,
-            5,
-            ["Photo"],
-            [],
-            ["ImageRegion:Photo"],
-            None,
-            []
-
-        )
+        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [])
         background = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) <= 5) * 1
         image = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) > 5) * 1
         array = np.array([background, image])
@@ -46,17 +35,7 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_multiple_region_types(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML(
-            "region",
-            output,
-            5,
-            ["Photo", "Text"],
-            [],
-            ["ImageRegion:Photo", "TextRegion:Text"],
-            None,
-            []
-
-        )
+        xml = OutputPageXML("region", output, 5, ["Photo", "Text"], [], ["ImageRegion:Photo", "TextRegion:Text"], None, [])
         background = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) <= 2) * 1
         text = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) > 5) * 1
         image = ((text | background) == 0) * 1
@@ -80,27 +59,21 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_region_not_square(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML(
-            "region",
-            output,
-            5,
-            ["Photo"],
-            [],
-            ["ImageRegion:Photo"],
-            None,
-            []
-
+        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [])
+        background = np.array(
+            [
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                [1, 1, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            ]
         )
-        background = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
-                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-                               [1, 1, 0, 0, 0, 0, 0, 0, 1, 1],
-                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
         image = np.invert(background == 1) * 1
         array = np.array([background, image])
         tensor = torch.from_numpy(array)
@@ -117,28 +90,21 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_rectangle_region_does_cotains_4_points(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML(
-            "region",
-            output,
-            5,
-            ["Photo"],
-            [],
-            ["ImageRegion:Photo"],
-            None,
-            [],
-            ["Photo"]
-
+        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [], ["Photo"])
+        background = np.array(
+            [
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                [1, 1, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            ]
         )
-        background = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
-                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-                               [1, 1, 0, 0, 0, 0, 0, 0, 1, 1],
-                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
         image = np.invert(background == 1) * 1
         array = np.array([background, image])
         tensor = torch.from_numpy(array)
@@ -156,28 +122,21 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_rectangle_region_does_create_floating_point_coords(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML(
-            "region",
-            output,
-            5,
-            ["Photo"],
-            [],
-            ["ImageRegion:Photo"],
-            None,
-            [],
-            ["Photo"]
-
+        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [], ["Photo"])
+        background = np.array(
+            [
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                [1, 1, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+                [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            ]
         )
-        background = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
-                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-                               [1, 1, 0, 0, 0, 0, 0, 0, 1, 1],
-                               [1, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-                               [1, 1, 1, 1, 0, 0, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
         image = np.invert(background == 1) * 1
         array = np.array([background, image])
         tensor = torch.from_numpy(array)
@@ -196,49 +155,52 @@ class TestOutputPageXML(unittest.TestCase):
     def test_only_rectangle_region_one_type(self):
         output = tempfile.mktemp("_laypa_test")
         xml = OutputPageXML(
-            "region",
-            output,
-            5,
-            ["Photo", "Text"],
-            [],
-            ["ImageRegion:Photo", "TextRegion:Text"],
-            None,
-            [],
-            ["Photo"]
-
+            "region", output, 5, ["Photo", "Text"], [], ["ImageRegion:Photo", "TextRegion:Text"], None, [], ["Photo"]
         )
-        background = np.array([[1, 1, 0, 0, 1, 1, 1, 1, 1, 1],
-                               [1, 0, 0, 0, 0, 1, 1, 1, 1, 1],
-                               [0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
-                               [1, 0, 0, 0, 0, 1, 1, 1, 1, 1],
-                               [1, 1, 0, 0, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
-                               [1, 1, 1, 1, 1, 0, 0, 0, 0, 1],
-                               [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
-                               [1, 1, 1, 1, 1, 0, 0, 0, 0, 1],
-                               [1, 1, 1, 1, 1, 1, 0, 0, 1, 1]])
+        background = np.array(
+            [
+                [1, 1, 0, 0, 1, 1, 1, 1, 1, 1],
+                [1, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+                [0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
+                [1, 0, 0, 0, 0, 1, 1, 1, 1, 1],
+                [1, 1, 0, 0, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+                [1, 1, 1, 1, 1, 0, 0, 0, 0, 1],
+                [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+                [1, 1, 1, 1, 1, 0, 0, 0, 0, 1],
+                [1, 1, 1, 1, 1, 1, 0, 0, 1, 1],
+            ]
+        )
 
-        image = np.array([[0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-                          [0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
-                          [1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
-                          [0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
-                          [0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+        image = np.array(
+            [
+                [0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                [1, 1, 1, 1, 1, 1, 0, 0, 0, 0],
+                [0, 1, 1, 1, 1, 0, 0, 0, 0, 0],
+                [0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ]
+        )
 
-        text = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                         [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
-                         [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-                         [0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
-                         [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
-                         [0, 0, 0, 0, 0, 0, 1, 1, 0, 0]])
+        text = np.array(
+            [
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
+                [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+                [0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
+                [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
+            ]
+        )
         array = np.array([background, image, text])
         tensor = torch.from_numpy(array)
 
@@ -251,8 +213,7 @@ class TestOutputPageXML(unittest.TestCase):
         image_coords_elements = page.findall("./page:Page/page:ImageRegion/page:Coords", namespaces=namespaces)
         self.assertEqual(1, len(image_coords_elements))
         image_coord_points = image_coords_elements[0].attrib.get("points")
-        self.assertEqual(4, image_coord_points.count(","),
-                         f"ImageRegion Contains more then 4 points: '{image_coord_points}'")
+        self.assertEqual(4, image_coord_points.count(","), f"ImageRegion Contains more then 4 points: '{image_coord_points}'")
         text_coords_elements = page.findall("./page:Page/page:TextRegion/page:Coords", namespaces=namespaces)
         self.assertEqual(1, len(text_coords_elements))
         text_coord_points = text_coords_elements[0].attrib.get("points")
@@ -261,28 +222,21 @@ class TestOutputPageXML(unittest.TestCase):
     @unittest.skip("Not enough time/priority for implementation")
     def test_merge_overlapping_squares(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML(
-            "region",
-            output,
-            5,
-            ["Photo"],
-            [],
-            ["ImageRegion:Photo"],
-            None,
-            [],
-            ["Photo"]
-
+        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [], ["Photo"])
+        background = np.array(
+            [
+                [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 0, 0, 1, 1, 1, 1, 1, 1, 1],
+                [1, 0, 0, 1, 0, 0, 1, 1, 1, 1],
+                [1, 0, 0, 1, 0, 0, 1, 1, 1, 1],
+                [1, 0, 0, 1, 1, 1, 1, 1, 1, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            ]
         )
-        background = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-                               [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-                               [1, 0, 0, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 0, 0, 1, 0, 0, 1, 1, 1, 1],
-                               [1, 0, 0, 1, 0, 0, 1, 1, 1, 1],
-                               [1, 0, 0, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-                               [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
         image = np.invert(background == 1) * 1
         array = np.array([background, image])
         tensor = torch.from_numpy(array)
@@ -298,28 +252,21 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_ignores_too_small_regions(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML(
-            "region",
-            output,
-            5,
-            ["Photo"],
-            [],
-            ["ImageRegion:Photo"],
-            None,
-            [],
-            ["Photo"],
-            10
+        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [], ["Photo"], 10)
+        background = np.array(
+            [
+                [0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+                [0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            ]
         )
-        background = np.array([[0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [0, 0, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
 
         image = np.invert(background == 1) * 1
         array = np.array([background, image])
