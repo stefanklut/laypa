@@ -69,7 +69,7 @@ class Predictor(DefaultPredictor):
         if not cfg.TEST.WEIGHTS:
             raise FileNotFoundError("Cannot do inference without weights. Specify a checkpoint file to --opts TEST.WEIGHTS")
 
-        print(checkpointer.load(cfg.TEST.WEIGHTS))
+        checkpointer.load(cfg.TEST.WEIGHTS)
 
         if cfg.INPUT.RESIZE_MODE == "none":
             self.aug = ResizeScaling(scale=1)  # HACK percentage of 1 is no scaling
