@@ -57,7 +57,7 @@ class OutputPageXML(XMLRegions):
         cfg: Optional[CfgNode] = None,
         whitelist: Optional[Iterable[str]] = None,
         rectangle_regions: Optional[list[str]] = [],
-        min_region_size: int = 10
+        min_region_size: int = 10,
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
