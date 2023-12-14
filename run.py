@@ -66,7 +66,10 @@ class Predictor(DefaultPredictor):
         assert self.input_format in ["RGB", "BGR"], self.input_format
 
         checkpointer = DetectionCheckpointer(self.model)
-        checkpointer.load(cfg.TEST.WEIGHTS)
+        if not cfg.TEST.WEIGHTS:
+            raise FileNotFoundError("Cannot do evaluation without weights. Specify a checkpoint file to --opts TEST.WEIGHTS")
+
+        print(checkpointer.load(cfg.TEST.WEIGHTS))
 
         if cfg.INPUT.RESIZE_MODE == "none":
             self.aug = ResizeScaling(scale=1)  # HACK percentage of 1 is no scaling
