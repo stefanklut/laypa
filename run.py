@@ -67,7 +67,7 @@ class Predictor(DefaultPredictor):
 
         checkpointer = DetectionCheckpointer(self.model)
         if not cfg.TEST.WEIGHTS:
-            raise FileNotFoundError("Cannot do evaluation without weights. Specify a checkpoint file to --opts TEST.WEIGHTS")
+            raise FileNotFoundError("Cannot do inference without weights. Specify a checkpoint file to --opts TEST.WEIGHTS")
 
         print(checkpointer.load(cfg.TEST.WEIGHTS))
 
