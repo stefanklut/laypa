@@ -258,6 +258,44 @@ class TestOutputPageXML(unittest.TestCase):
         text_coord_points = text_coords_elements[0].attrib.get("points")
         self.assertEqual(6, text_coord_points.count(","), f"TextRegion less than 6 points: '{text_coord_points}'")
 
+    @unittest.skip("Not enough time/priority for implementation")
+    def test_merge_overlapping_squares(self):
+        output = tempfile.mktemp("_laypa_test")
+        xml = OutputPageXML(
+            "region",
+            output,
+            5,
+            ["Photo"],
+            [],
+            ["ImageRegion:Photo"],
+            None,
+            [],
+            ["Photo"]
+
+        )
+        background = np.array([[1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                               [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                               [1, 0, 0, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 0, 0, 1, 0, 0, 1, 1, 1, 1],
+                               [1, 0, 0, 1, 0, 0, 1, 1, 1, 1],
+                               [1, 0, 0, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                               [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                               [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
+        image = np.invert(background == 1) * 1
+        array = np.array([background, image])
+        tensor = torch.from_numpy(array)
+
+        xml.generate_single_page(tensor, Path("/tmp/test.png"), 10, 10)
+
+        page_path = path.join(output, "page", "test.xml")
+        self.assertTrue(path.exists(page_path), "Page file does not exist")
+        page = ET.parse(page_path)
+        namespaces = {"page": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15"}
+        image_coords_elements = page.findall("./page:Page/page:ImageRegion/page:Coords", namespaces=namespaces)
+        self.assertEqual(1, len(image_coords_elements), "more than 1 image is found")
+
 
 if __name__ == "__main__":
     unittest.main()
