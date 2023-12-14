@@ -57,7 +57,7 @@ class OutputPageXML(XMLRegions):
         cfg: Optional[CfgNode] = None,
         whitelist: Optional[Iterable[str]] = None,
         rectangle_regions: Optional[list[str]] = [],
-        min_region_contour: int = 10
+        min_region_size: int = 10
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
@@ -76,12 +76,12 @@ class OutputPageXML(XMLRegions):
             Defaults to None.
             rectangle_regions (Optional[list[str]]): the regions that have to be described with the minimal rectangle,
             that fits them. Defaults to an empty list.
-            min_region_contour (int): minimum size a region has to be, to be considered a valid region.
+            min_region_size (int): minimum size a region has to be, to be considered a valid region.
             Defaults to 10 pixels.
         """
         super().__init__(mode, line_width, regions, merge_regions, region_type)
 
-        self.min_region_contour = min_region_contour
+        self.min_region_size = min_region_size
         self.rectangle_regions = rectangle_regions
         self.logger = logging.getLogger(get_logger_name())
 
@@ -192,7 +192,7 @@ class OutputPageXML(XMLRegions):
                     # --- remove small objects
                     if cnt.shape[0] < 4:
                         continue
-                    if cv2.contourArea(cnt) < self.min_region_contour:
+                    if cv2.contourArea(cnt) < self.min_region_size:
                         continue
 
                     region_id += 1

@@ -10,6 +10,7 @@ PREPROCESS:
     MERGE_REGIONS: []
     REGION_TYPE: ["ImageRegion:Photo"]
     RECTANGLE_REGIONS: ["Photo"]
+    MIN_REGION_SIZE: 10
 
 MODEL:
   MODE: region
