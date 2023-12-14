@@ -74,8 +74,8 @@ class OutputPageXML(XMLRegions):
             Defaults to None.
             whitelist (Optional[Iterable[str]]): names of the configuration fields to be used in the pageXML.
             Defaults to None.
-            rectangle_regions (Optional[list[str]]): the regions that have to be described with the minimal rectangle,
-            that fits them. Defaults to an empty list.
+            rectangle_regions (Optional[Iterable[str]]): the regions that have to be described with the minimal rectangle,
+            that fits them. Defaults to None.
             min_region_size (int): minimum size a region has to be, to be considered a valid region.
             Defaults to 10 pixels.
         """
