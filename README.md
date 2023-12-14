@@ -308,6 +308,7 @@ python run.py \
     [--opts OPTS [OPTS ...]]
 ``` 
 The optional arguments are shown using square brackets. The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8.
+List values have to be overridden by encapsulating the whole list with quotes like `--opts PREPROCESS.REGION.RECTANGLE_REGIONS '["Photo"]'` 
 </details>
 
 An example of how to call the `run.py` command is given below:
