@@ -4,11 +4,8 @@ import os
 from multiprocessing.pool import Pool
 from pathlib import Path
 
-import cv2
 import numpy as np
-from detectron2.data import Metadata
 from detectron2.utils.visualizer import Visualizer
-
 # from multiprocessing.pool import ThreadPool as Pool
 from tqdm import tqdm
 
@@ -57,9 +54,9 @@ class Viewer:
         Simple viewer to convert xml files to images (grayscale, color or overlay)
 
         Args:
-            xml_to_image (XMLImage): converter from xml to a label mask
+            xml_converter: helps to convert page xml to images
             output_dir (str | Path): path to output dir
-            mode (str, optional): output mode: gray, color, or overlay. Defaults to 'gray'.
+            output_type (str): the colour type to use for the output
 
         Raises:
             ValueError: Colors do not match the number of region types
