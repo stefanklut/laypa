@@ -46,9 +46,15 @@ class OutputPageXML:
     Class for the generation of the pageXML from class predictions on images
     """
 
-    def __init__(self,  xml_regions: XMLRegions = None, output_dir: Optional[str | Path] = None,
-                 cfg: Optional[CfgNode] = None, whitelist: Optional[Iterable[str]] = None,
-                 rectangle_regions: Optional[Iterable[str]] = None, min_region_size: int = 10) -> None:
+    def __init__(
+        self,
+        xml_regions: XMLRegions = None,
+        output_dir: Optional[str | Path] = None,
+        cfg: Optional[CfgNode] = None,
+        whitelist: Optional[Iterable[str]] = None,
+        rectangle_regions: Optional[Iterable[str]] = None,
+        min_region_size: int = 10,
+    ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
 
@@ -286,8 +292,14 @@ def main(args):
     sem_seg_paths = get_file_paths(args.sem_seg, formats=[".png"])
     image_paths = get_file_paths(args.input, formats=supported_image_formats)
 
-    gen_page = OutputPageXML(mode=args.mode, line_width=args.line_width, regions=args.regions,
-                             merge_regions=args.merge_regions, region_type=args.region_type, output_dir=args.output)
+    gen_page = OutputPageXML(
+        mode=args.mode,
+        line_width=args.line_width,
+        regions=args.regions,
+        merge_regions=args.merge_regions,
+        region_type=args.region_type,
+        output_dir=args.output,
+    )
 
     gen_page.run(sem_seg_paths, image_paths)
 
