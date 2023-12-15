@@ -395,8 +395,6 @@ class RandomAffine(T.Augmentation):
 
             matrix = matrix @ center @ scale @ uncenter
 
-        print(matrix)
-
         return AffineTransform(matrix)
 
 
