@@ -294,7 +294,7 @@ class PageData:
         t_reg = ET.SubElement(parent, region_class)
         t_reg.attrib = {
             "id": str(region_id),
-            "custom": f"structure {{type:{region_type}, ;}}",
+            "custom": f"structure {{type:{region_type};}}",
         }
         ET.SubElement(t_reg, "Coords").attrib = {"points": region_coords}
         return t_reg
