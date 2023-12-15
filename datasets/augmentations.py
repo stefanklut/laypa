@@ -1052,7 +1052,6 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
             prob=cfg.INPUT.GRAYSCALE.PROBABILITY,
         )
     )
-
     augmentation.append(
         RandomApply(
             RandomBrightness(

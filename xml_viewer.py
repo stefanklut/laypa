@@ -86,7 +86,7 @@ class Viewer:
         elif self.output_type == "overlay":
             self.save_function = self.save_overlay_image
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Output type {self.output_type} not implemented")
 
     def save_gray_image(self, xml_path_i: Path):
         """
@@ -96,12 +96,12 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
-        gray_image = self.xml_converter.to_sem_seg(xml_path_i)
+        sem_seg = self.xml_converter.to_sem_seg(xml_path_i)
 
-        if gray_image is None:
-            raise ValueError
+        if sem_seg is None:
+            raise ValueError(f"Could not convert {xml_path_i} to sem_seg image")
 
-        save_image_array_to_path(str(output_image_path), gray_image)
+        save_image_array_to_path(str(output_image_path), sem_seg)
 
     def save_color_image(self, xml_path_i: Path):
         """
@@ -111,19 +111,19 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
-        gray_image = self.xml_converter.to_sem_seg(xml_path_i)
+        sem_seg = self.xml_converter.to_sem_seg(xml_path_i)
 
-        if gray_image is None:
-            raise ValueError
+        if sem_seg is None:
+            raise ValueError(f"Could not convert {xml_path_i} to sem_seg image")
 
-        color_image = np.empty((*gray_image.shape, 3), dtype=np.uint8)
+        color_image = np.empty((*sem_seg.shape, 3), dtype=np.uint8)
 
         colors = self.metadata.get("stuff_colors")
         assert colors is not None, "Can't make color images without colors"
-        assert np.max(gray_image) < len(colors), "Not enough colors, grayscale has too many classes"
+        assert np.max(sem_seg) < len(colors), "Not enough colors, grayscale has too many classes"
 
         for i, color in enumerate(colors):
-            color_image[gray_image == i] = np.asarray(color).reshape((1, 1, 3))
+            color_image[sem_seg == i] = np.asarray(color).reshape((1, 1, 3))
 
         save_image_array_to_path(str(output_image_path), color_image)
 
