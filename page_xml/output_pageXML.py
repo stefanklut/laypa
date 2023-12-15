@@ -56,6 +56,8 @@ class OutputPageXML(XMLRegions):
         region_type: Optional[list[str]] = None,
         cfg: Optional[CfgNode] = None,
         whitelist: Optional[Iterable[str]] = None,
+        rectangle_regions: Optional[Iterable[str]] = None,
+        min_region_size: int = 10,
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
@@ -66,7 +68,16 @@ class OutputPageXML(XMLRegions):
             line_width (Optional[int], optional): width of line. Defaults to None.
             regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
             merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
-            region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
+            region_type (Optional[list[str]], optional): list of strings that map Page XML Region to a class defined in
+            'regions'. Defaults to None.
+            cfg (Optional[CfgNode]): contains the configuration that is used for providence in the pageXML.
+            Defaults to None.
+            whitelist (Optional[Iterable[str]]): names of the configuration fields to be used in the pageXML.
+            Defaults to None.
+            rectangle_regions (Optional[Iterable[str]]): the regions that have to be described with the minimal rectangle,
+            that fits them. Defaults to None.
+            min_region_size (int): minimum size a region has to be, to be considered a valid region.
+            Defaults to 10 pixels.
         """
         super().__init__(mode, line_width, regions, merge_regions, region_type)
 
@@ -83,6 +94,8 @@ class OutputPageXML(XMLRegions):
         self.cfg = cfg
 
         self.whitelist = set() if whitelist is None else set(whitelist)
+        self.min_region_size = min_region_size
+        self.rectangle_regions = set() if rectangle_regions is None else set(rectangle_regions)
 
     def set_output_dir(self, output_dir: str | Path):
         if isinstance(output_dir, str):
@@ -152,10 +165,10 @@ class OutputPageXML(XMLRegions):
         height, width = sem_seg.shape[-2:]
 
         scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
-        # scaling = np.asarray((1,1))
 
         page = PageData(xml_output_path)
         page.new_page(image_path.name, str(old_height), str(old_width))
+
         if self.cfg is not None:
             page.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
 
@@ -175,24 +188,31 @@ class OutputPageXML(XMLRegions):
                 contours, hierarchy = cv2.findContours(binary_region_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
                 for cnt in contours:
-                    # --- remove small objects
+                    # remove small objects
                     if cnt.shape[0] < 4:
                         continue
-                    # TODO what size
-                    # if cv2.contourArea(cnt) < size:
-                    #     continue
+                    if cv2.contourArea(cnt) < self.min_region_size:
+                        continue
 
                     region_id += 1
 
-                    # --- soft a bit the region to prevent spikes
-                    epsilon = 0.0005 * cv2.arcLength(cnt, True)
-                    approx_poly = cv2.approxPolyDP(cnt, epsilon, True)
-
-                    approx_poly = np.round((approx_poly * scaling)).astype(np.int32)
-
                     region_coords = ""
-                    for coords in approx_poly.reshape(-1, 2):
-                        region_coords = region_coords + f" {coords[0]},{coords[1]}"
+                    if region in self.rectangle_regions:
+                        # find bounding box
+                        rect = cv2.minAreaRect(cnt)
+                        poly = cv2.boxPoints(rect) * scaling
+                    else:
+                        # soft a bit the region to prevent spikes
+                        epsilon = 0.0005 * cv2.arcLength(cnt, True)
+                        approx_poly = cv2.approxPolyDP(cnt, epsilon, True)
+
+                        approx_poly = np.round((approx_poly * scaling)).astype(np.int32)
+
+                        poly = approx_poly.reshape(-1, 2)
+
+                    for coords in poly:
+                        region_coords = region_coords + f" {round(coords[0])},{round(coords[1])}"
+
                     region_coords = region_coords.strip()
 
                     _uuid = uuid.uuid4()

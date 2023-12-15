@@ -299,6 +299,8 @@ def main(args: argparse.Namespace) -> None:
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
         cfg=cfg,
         whitelist=args.whitelist,
+        rectangle_regions=cfg.PREPROCESS.REGION.RECTANGLE_REGIONS,
+        min_region_size=cfg.PREPROCESS.REGION.MIN_REGION_SIZE,
     )
 
     predictor = SavePredictor(
