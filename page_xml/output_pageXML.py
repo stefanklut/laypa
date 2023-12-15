@@ -41,34 +41,20 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-class OutputPageXML(XMLRegions):
+class OutputPageXML:
     """
     Class for the generation of the pageXML from class predictions on images
     """
 
-    def __init__(
-        self,
-        mode: str,
-        output_dir: Optional[str | Path] = None,
-        line_width: Optional[int] = None,
-        regions: Optional[list[str]] = None,
-        merge_regions: Optional[list[str]] = None,
-        region_type: Optional[list[str]] = None,
-        cfg: Optional[CfgNode] = None,
-        whitelist: Optional[Iterable[str]] = None,
-        rectangle_regions: Optional[Iterable[str]] = None,
-        min_region_size: int = 10,
-    ) -> None:
+    def __init__(self,  xml_regions: XMLRegions = None, output_dir: Optional[str | Path] = None,
+                 cfg: Optional[CfgNode] = None, whitelist: Optional[Iterable[str]] = None,
+                 rectangle_regions: Optional[Iterable[str]] = None, min_region_size: int = 10) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
 
         Args:
-            mode (str): mode of the region type
+            xml_regions (XMLRegions): contains the page xml configurations
             output_dir (str | Path): path to output dir
-            line_width (Optional[int], optional): width of line. Defaults to None.
-            regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
-            merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
-            region_type (Optional[list[str]], optional): list of strings that map Page XML Region to a class defined in
             'regions'. Defaults to None.
             cfg (Optional[CfgNode]): contains the configuration that is used for providence in the pageXML.
             Defaults to None.
@@ -79,7 +65,6 @@ class OutputPageXML(XMLRegions):
             min_region_size (int): minimum size a region has to be, to be considered a valid region.
             Defaults to 10 pixels.
         """
-        super().__init__(mode, line_width, regions, merge_regions, region_type)
 
         self.logger = logging.getLogger(get_logger_name())
 
@@ -89,7 +74,9 @@ class OutputPageXML(XMLRegions):
         if output_dir is not None:
             self.set_output_dir(output_dir)
 
-        self.regions = self.get_regions()
+        self.regions = xml_regions.get_regions()
+        self.region_types = xml_regions.region_types
+        self.mode = xml_regions.mode
 
         self.cfg = cfg
 
@@ -299,14 +286,8 @@ def main(args):
     sem_seg_paths = get_file_paths(args.sem_seg, formats=[".png"])
     image_paths = get_file_paths(args.input, formats=supported_image_formats)
 
-    gen_page = OutputPageXML(
-        mode=args.mode,
-        output_dir=args.output,
-        line_width=args.line_width,
-        regions=args.regions,
-        merge_regions=args.merge_regions,
-        region_type=args.region_type,
-    )
+    gen_page = OutputPageXML(mode=args.mode, line_width=args.line_width, regions=args.regions,
+                             merge_regions=args.merge_regions, region_type=args.region_type, output_dir=args.output)
 
     gen_page.run(sem_seg_paths, image_paths)
 
