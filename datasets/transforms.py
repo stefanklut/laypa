@@ -9,7 +9,6 @@ import cv2
 import detectron2.data.transforms as T
 import numpy as np
 import shapely.geometry as geometry
-from fvcore.transforms.transform import Transform
 from scipy.ndimage import affine_transform, gaussian_filter, map_coordinates
 
 # REVIEW Check if there is a benefit for using scipy instead of the standard torchvision
@@ -633,7 +632,7 @@ class OrientationTransform(T.Transform):
         else:
             raise ValueError("Times 90 degrees should be between 0 and 3")
 
-    def inverse(self) -> Transform:
+    def inverse(self) -> T.Transform:
         """
         Compute the inverse of the transformation.
 
@@ -647,7 +646,7 @@ class OrientationTransform(T.Transform):
         return OrientationTransform(4 - self.times_90_degrees, height, width)
 
 
-class CropTransform(Transform):
+class CropTransform(T.Transform):
     def __init__(
         self,
         x0: int,
@@ -744,7 +743,7 @@ class CropTransform(Transform):
                 cropped_polygons.append(coords[:-1])
         return [self.apply_coords(p) for p in cropped_polygons]
 
-    def inverse(self) -> Transform:
+    def inverse(self) -> T.Transform:
         assert (
             self.orig_w is not None and self.orig_h is not None
         ), "orig_w, orig_h are required for CropTransform to be invertible!"
@@ -753,7 +752,7 @@ class CropTransform(Transform):
         return PadTransform(self.x0, self.y0, pad_x1, pad_y1, orig_w=self.w, orig_h=self.h)
 
 
-class PadTransform(Transform):
+class PadTransform(T.Transform):
     def __init__(
         self,
         x0: int,
@@ -813,7 +812,7 @@ class PadTransform(Transform):
         coords[:, 1] += self.y0
         return coords
 
-    def inverse(self) -> Transform:
+    def inverse(self) -> T.Transform:
         assert (
             self.orig_w is not None and self.orig_h is not None
         ), "orig_w, orig_h are required for PadTransform to be invertible!"
@@ -846,8 +845,7 @@ def test(args) -> None:
     image = cv2.imread(str(input_path))[..., ::-1]
     print(image.dtype)
 
-    affine = RandomRotation().get_transform(image)
-    output_image = affine.apply_image(image)
+    output_image = OrientationTransform(1, image.shape[0], image.shape[1]).apply_image(image)
 
     im = Image.fromarray(image)
     im.show("Original")

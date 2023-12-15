@@ -10,7 +10,6 @@ from typing import Optional, Sequence
 import detectron2.data.transforms as T
 import numpy as np
 from detectron2.config import CfgNode
-from fvcore.transforms.transform import Transform
 from scipy.ndimage import gaussian_filter
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
@@ -728,7 +727,7 @@ class RandomOrientation(T.Augmentation):
         normalized_percentages = array_percentages / np.sum(array_percentages)
         self.normalized_percentages = normalized_percentages
 
-    def get_transform(self, image) -> Transform:
+    def get_transform(self, image) -> T.Transform:
         times_90_degrees = np.random.choice(4, p=self.normalized_percentages)
         return OrientationTransform(times_90_degrees, image.shape[0], image.shape[1])
 
@@ -761,7 +760,7 @@ class FixedSizeCrop(T.Augmentation):
         self.pad_value = pad_value
         self.seg_pad_value = seg_pad_value
 
-    def _get_crop(self, image: np.ndarray) -> Transform:
+    def _get_crop(self, image: np.ndarray) -> T.Transform:
         # Compute the image scale and scaled size.
         input_size = image.shape[:2]
         output_size = self.crop_size
@@ -773,7 +772,7 @@ class FixedSizeCrop(T.Augmentation):
         offset = np.round(offset).astype(int)
         return CropTransform(offset[1], offset[0], output_size[1], output_size[0], input_size[1], input_size[0])
 
-    def _get_pad(self, image: np.ndarray) -> Transform:
+    def _get_pad(self, image: np.ndarray) -> T.Transform:
         # Compute the image scale and scaled size.
         input_size = image.shape[:2]
         output_size = self.crop_size
@@ -828,7 +827,7 @@ class RandomCrop(T.Augmentation):
         self.crop_type = crop_type
         self.crop_size = crop_size
 
-    def get_transform(self, image):
+    def get_transform(self, image) -> T.Transform:
         h, w = image.shape[:2]
         croph, cropw = self.get_crop_size((h, w))
         assert h >= croph and w >= cropw, "Shape computation in {} has bugs.".format(self)
@@ -836,7 +835,7 @@ class RandomCrop(T.Augmentation):
         w0 = np.random.randint(w - cropw + 1)
         return CropTransform(w0, h0, cropw, croph)
 
-    def get_crop_size(self, image_size):
+    def get_crop_size(self, image_size) -> tuple[int, int]:
         """
         Args:
             image_size (tuple): height, width
@@ -893,7 +892,7 @@ class RandomCrop_CategoryAreaConstraint(T.Augmentation):
         self.single_category_max_area = single_category_max_area
         self.ignored_category = ignored_category
 
-    def get_transform(self, image, sem_seg):
+    def get_transform(self, image, sem_seg) -> T.Transform:
         if self.single_category_max_area >= 1.0:
             return self.crop_aug.get_transform(image)
         else:
