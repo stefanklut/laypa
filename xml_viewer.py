@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 from detectron2.utils.visualizer import Visualizer
+
 # from multiprocessing.pool import ThreadPool as Pool
 from tqdm import tqdm
 
