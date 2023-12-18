@@ -442,7 +442,6 @@ class Preprocess:
             image_shape = original_image_shape
 
         results = {}
-        results["output_sizes"] = image_shape
         results["original_image_paths"] = str(image_path)
 
         out_image_path = self.save_image(image_path, image_stem, image_shape)

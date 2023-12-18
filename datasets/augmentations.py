@@ -10,16 +10,19 @@ from typing import Optional, Sequence
 import detectron2.data.transforms as T
 import numpy as np
 from detectron2.config import CfgNode
+from scipy.ndimage import gaussian_filter
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from scipy.ndimage import gaussian_filter
 
 from datasets.transforms import (
     AffineTransform,
     BlendTransform,
+    CropTransform,
     GaussianFilterTransform,
     GrayscaleTransform,
     HFlipTransform,
+    OrientationTransform,
+    PadTransform,
     ResizeTransform,
     VFlipTransform,
     WarpFieldTransform,
@@ -311,7 +314,7 @@ class RandomAffine(T.Augmentation):
         r_kappa: float = 30,
         sh_kappa: float = 20,
         sc_stdv: float = 0.12,
-        probs: Optional[Sequence[float]] = None,
+        probabilities: Optional[Sequence[float]] = None,
     ) -> None:
         """
         Apply a random affine transformation to the image
@@ -321,7 +324,7 @@ class RandomAffine(T.Augmentation):
             r_kappa (float, optional): kappa value used for sampling the rotation. Defaults to 30.
             sh_kappa (float, optional): kappa value used for sampling the shear.. Defaults to 20.
             sc_stdv (float, optional): standard deviation used for the scale. Defaults to 0.12.
-            probs (Optional[Sequence[float]], optional): individual probabilities for each sub category of an affine transformation. When None is given default to all 1.0 Defaults to None.
+            probabilities (Optional[Sequence[float]], optional): individual probabilities for each sub category of an affine transformation. When None is given default to all 1.0 Defaults to None.
         """
         super().__init__()
         self.t_stdv = t_stdv
@@ -329,14 +332,14 @@ class RandomAffine(T.Augmentation):
         self.sh_kappa = sh_kappa
         self.sc_stdv = sc_stdv
 
-        if probs is not None:
-            assert len(probs) == 4, f"{len(probs)}: {probs}"
-            self.probs = probs
+        if probabilities is not None:
+            assert len(probabilities) == 4, f"{len(probabilities)}: {probabilities}"
+            self.probabilities = probabilities
         else:
-            self.probs = [1.0] * 4
+            self.probabilities = [1.0] * 4
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
-        if not any(self.probs):
+        if not any(self.probabilities):
             return T.NoOpTransform()
 
         h, w = image.shape[:2]
@@ -350,11 +353,11 @@ class RandomAffine(T.Augmentation):
         matrix = np.eye(3)
 
         # Translation
-        if self._rand_range() < self.probs[0]:
+        if self._rand_range() < self.probabilities[0]:
             matrix[0:2, 2] = ((np.random.rand(2) - 1) * 2) * np.asarray([w, h]) * self.t_stdv
 
         # Rotation
-        if self._rand_range() < self.probs[1]:
+        if self._rand_range() < self.probabilities[1]:
             rot = np.eye(3)
             theta = np.random.vonmises(0.0, self.r_kappa)
             rot[0:2, 0:2] = [[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]]
@@ -364,7 +367,7 @@ class RandomAffine(T.Augmentation):
             matrix = matrix @ center @ rot @ uncenter
 
         # Shear
-        if self._rand_range() < self.probs[2]:
+        if self._rand_range() < self.probabilities[2]:
             theta1 = np.random.vonmises(0.0, self.sh_kappa)
 
             shear1 = np.eye(3)
@@ -384,7 +387,7 @@ class RandomAffine(T.Augmentation):
             matrix = matrix @ center @ shear2 @ uncenter
 
         # Scale
-        if self._rand_range() < self.probs[3]:
+        if self._rand_range() < self.probabilities[3]:
             scale = np.eye(3)
             scale[0, 0], scale[1, 1] = np.exp(np.random.rand(2) * self.sc_stdv)
 
@@ -630,7 +633,7 @@ class RandomSaturation(T.Augmentation):
         elif self.image_format == "BGR":
             self.weights = rgb_weights[::-1]
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Image format {self.image_format} not supported")
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         grayscale = np.tile(image.dot(self.weights), (3, 1, 1)).transpose((1, 2, 0)).astype(np.float32)
@@ -700,16 +703,230 @@ class RandomBrightness(T.Augmentation):
         return BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
+class RandomOrientation(T.Augmentation):
+    """
+    Apply a random orientation to the image
+    """
+
+    def __init__(self, orientation_percentages: Optional[list[float | int]] = None) -> None:
+        """
+        Initialize the Augmentations class.
+
+        Args:
+            orientation_percentages (Optional[list[float | int]]): A list of orientation percentages.
+                If None, default values of [1.0, 1.0, 1.0, 1.0] will be used.
+        """
+        super().__init__()
+        self.orientation_percentages = orientation_percentages
+        if self.orientation_percentages is None:
+            self.orientation_percentages = [1.0] * 4
+        array_percentages = np.asarray(self.orientation_percentages)
+        assert len(array_percentages) == 4, f"{len(array_percentages)}: {array_percentages}"
+        normalized_percentages = array_percentages / np.sum(array_percentages)
+        self.normalized_percentages = normalized_percentages
+
+    def get_transform(self, image) -> T.Transform:
+        times_90_degrees = np.random.choice(4, p=self.normalized_percentages)
+        return OrientationTransform(times_90_degrees, image.shape[0], image.shape[1])
+
+
+class FixedSizeCrop(T.Augmentation):
+    """
+    If `crop_size` is smaller than the input image size, then it uses a random crop of
+    the crop size. If `crop_size` is larger than the input image size, then it pads
+    the right and the bottom of the image to the crop size if `pad` is True, otherwise
+    it returns the smaller image.
+    """
+
+    def __init__(
+        self,
+        crop_size: tuple[int, int],
+        pad: bool = True,
+        pad_value: float = 128.0,
+        seg_pad_value: int = 255,
+    ):
+        """
+        Args:
+            crop_size: target image (height, width).
+            pad: if True, will pad images smaller than `crop_size` up to `crop_size`
+            pad_value: the padding value to the image.
+            seg_pad_value: the padding value to the segmentation mask.
+        """
+        super().__init__()
+        self.crop_size = crop_size
+        self.pad = pad
+        self.pad_value = pad_value
+        self.seg_pad_value = seg_pad_value
+
+    def _get_crop(self, image: np.ndarray) -> T.Transform:
+        # Compute the image scale and scaled size.
+        input_size = image.shape[:2]
+        output_size = self.crop_size
+
+        # Add random crop if the image is scaled up.
+        max_offset = np.subtract(input_size, output_size)
+        max_offset = np.maximum(max_offset, 0)
+        offset = np.multiply(max_offset, np.random.uniform(0.0, 1.0))
+        offset = np.round(offset).astype(int)
+        return CropTransform(offset[1], offset[0], output_size[1], output_size[0], input_size[1], input_size[0])
+
+    def _get_pad(self, image: np.ndarray) -> T.Transform:
+        # Compute the image scale and scaled size.
+        input_size = image.shape[:2]
+        output_size = self.crop_size
+
+        # Add padding if the image is scaled down.
+        pad_size = np.subtract(output_size, input_size)
+        pad_size = np.maximum(pad_size, 0)
+        original_size = np.minimum(input_size, output_size)
+        return PadTransform(
+            0,
+            0,
+            pad_size[1],
+            pad_size[0],
+            original_size[1],
+            original_size[0],
+            self.pad_value,
+            self.seg_pad_value,
+        )
+
+    def get_transform(self, image: np.ndarray) -> T.TransformList:
+        transforms = [self._get_crop(image)]
+        if self.pad:
+            transforms.append(self._get_pad(image))
+        return T.TransformList(transforms)
+
+
+class RandomCrop(T.Augmentation):
+    """
+    Randomly crop a rectangle region out of an image.
+    """
+
+    def __init__(self, crop_type: str, crop_size):
+        """
+        Args:
+            crop_type (str): one of "relative_range", "relative", "absolute", "absolute_range".
+            crop_size (tuple[float, float]): two floats, explained below.
+
+        - "relative": crop a (H * crop_size[0], W * crop_size[1]) region from an input image of
+          size (H, W). crop size should be in (0, 1]
+        - "relative_range": uniformly sample two values from [crop_size[0], 1]
+          and [crop_size[1]], 1], and use them as in "relative" crop type.
+        - "absolute" crop a (crop_size[0], crop_size[1]) region from input image.
+          crop_size must be smaller than the input image size.
+        - "absolute_range", for an input of size (H, W), uniformly sample H_crop in
+          [crop_size[0], min(H, crop_size[1])] and W_crop in [crop_size[0], min(W, crop_size[1])].
+          Then crop a region (H_crop, W_crop).
+        """
+        # TODO style of relative_range and absolute_range are not consistent:
+        # one takes (h, w) but another takes (min, max)
+        super().__init__()
+        assert crop_type in ["relative_range", "relative", "absolute", "absolute_range"]
+        self.crop_type = crop_type
+        self.crop_size = crop_size
+
+    def get_transform(self, image) -> T.Transform:
+        h, w = image.shape[:2]
+        croph, cropw = self.get_crop_size((h, w))
+        assert h >= croph and w >= cropw, "Shape computation in {} has bugs.".format(self)
+        h0 = np.random.randint(h - croph + 1)
+        w0 = np.random.randint(w - cropw + 1)
+        return CropTransform(w0, h0, cropw, croph)
+
+    def get_crop_size(self, image_size) -> tuple[int, int]:
+        """
+        Args:
+            image_size (tuple): height, width
+
+        Returns:
+            crop_size (tuple): height, width in absolute pixels
+        """
+        h, w = image_size
+        if self.crop_type == "relative":
+            ch, cw = self.crop_size
+            return int(h * ch + 0.5), int(w * cw + 0.5)
+        elif self.crop_type == "relative_range":
+            crop_size = np.asarray(self.crop_size, dtype=np.float32)
+            ch, cw = crop_size + np.random.rand(2) * (1 - crop_size)
+            return int(h * ch + 0.5), int(w * cw + 0.5)
+        elif self.crop_type == "absolute":
+            return (min(self.crop_size[0], h), min(self.crop_size[1], w))
+        elif self.crop_type == "absolute_range":
+            assert self.crop_size[0] <= self.crop_size[1]
+            ch = np.random.randint(min(h, self.crop_size[0]), min(h, self.crop_size[1]) + 1)
+            cw = np.random.randint(min(w, self.crop_size[0]), min(w, self.crop_size[1]) + 1)
+            return ch, cw
+        else:
+            raise NotImplementedError("Unknown crop type {}".format(self.crop_type))
+
+
+class RandomCrop_CategoryAreaConstraint(T.Augmentation):
+    """
+    Similar to :class:`RandomCrop`, but find a cropping window such that no single category
+    occupies a ratio of more than `single_category_max_area` in semantic segmentation ground
+    truth, which can cause unstability in training. The function attempts to find such a valid
+    cropping window for at most 10 times.
+    """
+
+    def __init__(
+        self,
+        crop_type: str,
+        crop_size,
+        single_category_max_area: float = 1.0,
+        ignored_category: Optional[int] = None,
+    ):
+        """
+        Args:
+            crop_type, crop_size: same as in :class:`RandomCrop`
+            single_category_max_area: the maximum allowed area ratio of a
+                category. Set to 1.0 to disable
+            ignored_category: allow this category in the semantic segmentation
+                ground truth to exceed the area ratio. Usually set to the category
+                that's ignored in training.
+        """
+        self.crop_aug = RandomCrop(crop_type, crop_size)
+        self.crop_type = crop_type
+        self.crop_size = crop_size
+        self.single_category_max_area = single_category_max_area
+        self.ignored_category = ignored_category
+
+    def get_transform(self, image, sem_seg) -> T.Transform:
+        if self.single_category_max_area >= 1.0:
+            return self.crop_aug.get_transform(image)
+        else:
+            h, w = sem_seg.shape
+            x0 = 0
+            y0 = 0
+            crop_size = (0, 0)
+            for _ in range(10):
+                crop_size = self.crop_aug.get_crop_size((h, w))
+                y0 = np.random.randint(h - crop_size[0] + 1)
+                x0 = np.random.randint(w - crop_size[1] + 1)
+                sem_seg_temp = sem_seg[y0 : y0 + crop_size[0], x0 : x0 + crop_size[1]]
+                labels, cnt = np.unique(sem_seg_temp, return_counts=True)
+                if self.ignored_category is not None:
+                    cnt = cnt[labels != self.ignored_category]
+                if len(cnt) > 1 and np.max(cnt) < np.sum(cnt) * self.single_category_max_area:
+                    break
+            crop_tfm = CropTransform(x0, y0, crop_size[1], crop_size[0])
+            return crop_tfm
+
+
 def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation | T.Transform]:
     """
     Function to generate all the augmentations used in the inference and training process
 
     Args:
-        cfg (CfgNode): config node
+        cfg (CfgNode): The configuration node containing the parameters for the augmentations.
         mode (str): flag if the augmentation are used for inference or training
+            - Possible values are "train", "val", or "test".
 
     Returns:
         list[T.Augmentation | T.Transform]: list of augmentations to apply to an image
+
+    Raises:
+        NotImplementedError: If the mode is not one of "train", "val", or "test".
+        NotImplementedError: If the resize mode specified in the configuration is not recognized.
     """
     augmentation: list[T.Augmentation | T.Transform] = []
 
@@ -753,38 +970,36 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
     if not mode == "train":
         return augmentation
 
-    # TODO Add random crop
-    # TODO 90 degree rotation
+    # Moving pixels
 
-    # Color augments
-    augmentation.append(RandomApply(Grayscale(image_format=cfg.INPUT.FORMAT), prob=cfg.INPUT.GRAYSCALE.PROBABILITY))
     augmentation.append(
         RandomApply(
-            RandomBrightness(
-                intensity_min=cfg.INPUT.BRIGHTNESS.MIN_INTENSITY,
-                intensity_max=cfg.INPUT.BRIGHTNESS.MAX_INTENSITY,
+            RandomAffine(
+                t_stdv=cfg.INPUT.AFFINE.TRANSLATION.STANDARD_DEVIATION,
+                r_kappa=cfg.INPUT.AFFINE.ROTATION.KAPPA,
+                sh_kappa=cfg.INPUT.AFFINE.SHEAR.KAPPA,
+                sc_stdv=cfg.INPUT.AFFINE.SCALE.STANDARD_DEVIATION,
+                probabilities=(
+                    cfg.INPUT.AFFINE.TRANSLATION.PROBABILITY,
+                    cfg.INPUT.AFFINE.ROTATION.PROBABILITY,
+                    cfg.INPUT.AFFINE.SHEAR.PROBABILITY,
+                    cfg.INPUT.AFFINE.SCALE.PROBABILITY,
+                ),
             ),
-            prob=cfg.INPUT.BRIGHTNESS.PROBABILITY,
+            prob=cfg.INPUT.AFFINE.PROBABILITY,
         )
     )
+
     augmentation.append(
         RandomApply(
-            RandomContrast(
-                intensity_min=cfg.INPUT.CONTRAST.MIN_INTENSITY,
-                intensity_max=cfg.INPUT.CONTRAST.MAX_INTENSITY,
+            RandomElastic(
+                alpha=cfg.INPUT.ELASTIC_DEFORMATION.ALPHA,
+                sigma=cfg.INPUT.ELASTIC_DEFORMATION.SIGMA,
             ),
-            prob=cfg.INPUT.CONTRAST.PROBABILITY,
+            prob=cfg.INPUT.ELASTIC_DEFORMATION.PROBABILITY,
         )
     )
-    augmentation.append(
-        RandomApply(
-            RandomSaturation(
-                intensity_min=cfg.INPUT.SATURATION.MIN_INTENSITY,
-                intensity_max=cfg.INPUT.SATURATION.MAX_INTENSITY,
-            ),
-            prob=cfg.INPUT.SATURATION.PROBABILITY,
-        )
-    )
+
     augmentation.append(
         RandomApply(
             RandomGaussianFilter(
@@ -815,43 +1030,63 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
         )
     )
 
+    # Orientation
     augmentation.append(
         RandomApply(
-            RandomElastic(
-                alpha=cfg.INPUT.ELASTIC_DEFORMATION.ALPHA,
-                sigma=cfg.INPUT.ELASTIC_DEFORMATION.SIGMA,
+            RandomOrientation(
+                orientation_percentages=cfg.INPUT.ORIENTATION.PERCENTAGES,
             ),
-            prob=cfg.INPUT.ELASTIC_DEFORMATION.PROBABILITY,
+            prob=cfg.INPUT.ORIENTATION.PROBABILITY,
+        )
+    )
+
+    # Color augments
+    augmentation.append(
+        RandomApply(
+            Grayscale(
+                image_format=cfg.INPUT.FORMAT,
+            ),
+            prob=cfg.INPUT.GRAYSCALE.PROBABILITY,
         )
     )
     augmentation.append(
         RandomApply(
-            RandomAffine(
-                t_stdv=cfg.INPUT.AFFINE.TRANSLATION.STANDARD_DEVIATION,
-                r_kappa=cfg.INPUT.AFFINE.ROTATION.KAPPA,
-                sh_kappa=cfg.INPUT.AFFINE.SHEAR.KAPPA,
-                sc_stdv=cfg.INPUT.AFFINE.SCALE.STANDARD_DEVIATION,
-                probs=(
-                    cfg.INPUT.AFFINE.TRANSLATION.PROBABILITY,
-                    cfg.INPUT.AFFINE.ROTATION.PROBABILITY,
-                    cfg.INPUT.AFFINE.SHEAR.PROBABILITY,
-                    cfg.INPUT.AFFINE.SCALE.PROBABILITY,
-                ),
+            RandomBrightness(
+                intensity_min=cfg.INPUT.BRIGHTNESS.MIN_INTENSITY,
+                intensity_max=cfg.INPUT.BRIGHTNESS.MAX_INTENSITY,
             ),
-            prob=cfg.INPUT.AFFINE.PROBABILITY,
+            prob=cfg.INPUT.BRIGHTNESS.PROBABILITY,
+        )
+    )
+    augmentation.append(
+        RandomApply(
+            RandomContrast(
+                intensity_min=cfg.INPUT.CONTRAST.MIN_INTENSITY,
+                intensity_max=cfg.INPUT.CONTRAST.MAX_INTENSITY,
+            ),
+            prob=cfg.INPUT.CONTRAST.PROBABILITY,
+        )
+    )
+    augmentation.append(
+        RandomApply(
+            RandomSaturation(
+                intensity_min=cfg.INPUT.SATURATION.MIN_INTENSITY,
+                intensity_max=cfg.INPUT.SATURATION.MAX_INTENSITY,
+            ),
+            prob=cfg.INPUT.SATURATION.PROBABILITY,
         )
     )
 
-    # augmentation.append(RandomApply(RandomTranslation(t_stdv=cfg.INPUT.AFFINE.TRANSLATION.STANDARD_DEVIATION),
-    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.TRANSLATION.PROBABILITY))
-    # augmentation.append(RandomApply(RandomRotation(r_kappa=cfg.INPUT.AFFINE.ROTATION.KAPPA),
-    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.ROTATION.PROBABILITY))
-    # augmentation.append(RandomApply(RandomShear(sh_kappa=cfg.INPUT.AFFINE.SHEAR.KAPPA),
-    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.SHEAR.PROBABILITY))
-    # augmentation.append(RandomApply(RandomScale(sc_stdv=cfg.INPUT.AFFINE.SCALE.STANDARD_DEVIATION),
-    #                                 prob=cfg.INPUT.AFFINE.PROBABILITY * cfg.INPUT.AFFINE.SCALE.PROBABILITY))
+    # Crop
+    if cfg.INPUT.CROP.ENABLED:
+        augmentation.append(
+            RandomCrop_CategoryAreaConstraint(
+                crop_type=cfg.INPUT.CROP.TYPE,
+                crop_size=cfg.INPUT.CROP.SIZE,
+                single_category_max_area=cfg.INPUT.CROP.SINGLE_CATEGORY_MAX_AREA,
+            )
+        )
 
-    # print(augmentation)
     return augmentation
 
 
@@ -878,7 +1113,7 @@ def test(args) -> None:
     print(f"Loading image {input_path}")
     image = cv2.imread(str(input_path))[..., ::-1]
 
-    resize = ResizeShortestEdge(min_size=(640, 672, 704, 736, 768, 800), max_size=1333, sample_style="choice")
+    resize = ResizeShortestEdge(min_size=(1024,), max_size=2048, sample_style="choice")
     elastic = RandomElastic()
 
     affine = RandomAffine()
@@ -892,31 +1127,45 @@ def test(args) -> None:
     contrast = RandomContrast()
     brightness = RandomBrightness()
     saturation = RandomSaturation()
+    orientation = RandomOrientation(orientation_percentages=[0, 0, 0, 1])
 
     augs = []
 
     # augs = T.AugmentationList([resize, elastic, affine])
 
-    augs.append(resize)
-    augs.append(elastic)
+    # augs.append(resize)
+    # augs.append(elastic)
     # augs.append(grayscale)
     # augs.append(contrast)
     # augs.append(brightness)
     # augs.append(saturation)
     # augs.append(gaussian)
-    # augs.append(affine)
+    augs.append(affine)
     # augs.append(translation)
     # augs.append(rotation)
     # augs.append(shear)
     # augs.append(scale)
+    # augs.append(orientation)
 
     augs_list = T.AugmentationList(augs=augs)
+
+    print(augs)
 
     input_augs = T.AugInput(image)
 
     transforms = augs_list(input_augs)
 
     output_image = input_augs.image
+
+    input_coords = np.asarray([[1000, 2000], [4000, 4000]])
+
+    output_coords = transforms.apply_coords(input_coords)
+
+    for coord in input_coords:
+        image = cv2.circle(image.copy(), coord.astype(np.int32), 10, (255, 0, 0), -1)
+
+    for coord in output_coords:
+        output_image = cv2.circle(output_image.copy(), coord.astype(np.int32), 10, (255, 0, 0), -1)
 
     im = Image.fromarray(image)
     im.show("Original")

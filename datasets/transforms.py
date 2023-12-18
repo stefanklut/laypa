@@ -1,10 +1,14 @@
 # Modified from P2PaLA
 
 import argparse
+import sys
+from pathlib import Path
+from typing import Optional
 
 import cv2
 import detectron2.data.transforms as T
 import numpy as np
+import shapely.geometry as geometry
 from scipy.ndimage import affine_transform, gaussian_filter, map_coordinates
 
 # REVIEW Check if there is a benefit for using scipy instead of the standard torchvision
@@ -331,15 +335,7 @@ class AffineTransform(T.Transform):
             np.ndarray: transformed image
         """
         img = img.astype(np.float32)
-        if img.ndim == 2:
-            return affine_transform(img, self.matrix, order=1, mode="constant", cval=0)
-        elif img.ndim == 3:
-            transformed_img = np.empty_like(img)
-            for i in range(img.shape[-1]):  # HxWxC
-                transformed_img[..., i] = affine_transform(img[..., i], self.matrix, order=1, mode="constant", cval=0)
-            return transformed_img
-        else:
-            raise NotImplementedError("No support for multi dimensions (NxHxWxC) right now")
+        return cv2.warpAffine(img, self.matrix[:2, :], (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR)
 
     def apply_coords(self, coords: np.ndarray):
         """
@@ -366,7 +362,9 @@ class AffineTransform(T.Transform):
             np.ndarray: transformed segmentation
         """
         # cval=0 means background cval=255 means ignored
-        return affine_transform(segmentation, self.matrix, order=0, mode="constant", cval=0)
+        return cv2.warpAffine(
+            segmentation, self.matrix[:2, :], (segmentation.shape[1], segmentation.shape[0]), flags=cv2.INTER_NEAREST
+        )
 
     def inverse(self) -> T.Transform:
         """
@@ -389,6 +387,7 @@ class GrayscaleTransform(T.Transform):
         """
         super().__init__()
 
+        # Previously used to get the grayscale value
         self.rgb_weights = np.asarray([0.299, 0.587, 0.114]).astype(np.float32)
 
         self.image_format = image_format
@@ -566,6 +565,262 @@ class BlendTransform(T.Transform):
         raise NotImplementedError
 
 
+class OrientationTransform(T.Transform):
+    """
+    Transform that applies 90 degrees rotation to an image and its corresponding coordinates.
+    """
+
+    def __init__(self, times_90_degrees: int, height: int, width: int) -> None:
+        """
+        Transform that applies 90 degrees rotation to an image and its corresponding coordinates.
+
+        Args:
+            times_90_degrees (int): Number of 90-degree rotations to apply. Should be between 0 and 3.
+            height (int): Height of the image.
+            width (int): Width of the image.
+        """
+        super().__init__()
+        self.times_90_degrees = times_90_degrees % 4
+        self.height = height
+        self.width = width
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply orientation change to the image.
+
+        Args:
+            img (np.ndarray): Input image.
+
+        Returns:
+            np.ndarray: Rotated image.
+        """
+        if self.times_90_degrees == 0:
+            return img
+        elif self.times_90_degrees == 1:
+            return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
+        elif self.times_90_degrees == 2:
+            return cv2.rotate(img, cv2.ROTATE_180)
+        elif self.times_90_degrees == 3:
+            return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        else:
+            raise ValueError("Times 90 degrees should be between 0 and 3")
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Apply orientation change to the coordinates.
+
+        Args:
+            coords (np.ndarray): Input coordinates.
+
+        Returns:
+            np.ndarray: Rotated coordinates.
+        """
+        if self.times_90_degrees == 0:
+            return coords
+        elif self.times_90_degrees == 1:
+            new_coords = coords.copy()
+            new_coords[:, 0], new_coords[:, 1] = self.height - coords[:, 1], coords[:, 0]
+            return new_coords
+        elif self.times_90_degrees == 2:
+            new_coords = coords.copy()
+            new_coords[:, 0], new_coords[:, 1] = self.width - coords[:, 1], self.height - coords[:, 0]
+            return new_coords
+        elif self.times_90_degrees == 3:
+            new_coords = coords.copy()
+            new_coords[:, 0], new_coords[:, 1] = coords[:, 1], self.width - coords[:, 0]
+            return new_coords
+        else:
+            raise ValueError("Times 90 degrees should be between 0 and 3")
+
+    def inverse(self) -> T.Transform:
+        """
+        Compute the inverse of the transformation.
+
+        Returns:
+            Transform: Inverse transformation.
+        """
+        if self.times_90_degrees % 2 == 0:
+            height, width = self.height, self.width
+        else:
+            width, height = self.width, self.height
+        return OrientationTransform(4 - self.times_90_degrees, height, width)
+
+
+class CropTransform(T.Transform):
+    def __init__(
+        self,
+        x0: int,
+        y0: int,
+        w: int,
+        h: int,
+        orig_w: Optional[int] = None,
+        orig_h: Optional[int] = None,
+    ):
+        """
+        Args:
+            x0, y0, w, h (int): crop the image(s) by img[y0:y0+h, x0:x0+w].
+            orig_w, orig_h (int): optional, the original width and height
+                before cropping. Needed to make this transform invertible.
+        """
+        super().__init__()
+        self.x0 = x0
+        self.y0 = y0
+        self.w = w
+        self.h = h
+        self.orig_w = orig_w
+        self.orig_h = orig_h
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Crop the image(s).
+
+        Args:
+            img (ndarray): of shape NxHxWxC, or HxWxC or HxW. The array can be
+                of type uint8 in range [0, 255], or floating point in range
+                [0, 1] or [0, 255].
+        Returns:
+            ndarray: cropped image(s).
+        """
+        if len(img.shape) <= 3:
+            return img[self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
+        else:
+            return img[..., self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w, :]
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Apply crop transform on coordinates.
+
+        Args:
+            coords (ndarray): floating point array of shape Nx2. Each row is
+                (x, y).
+        Returns:
+            ndarray: cropped coordinates.
+        """
+        coords[:, 0] -= self.x0
+        coords[:, 1] -= self.y0
+        return coords
+
+    def apply_polygons(self, polygons: list) -> list:
+        """
+        Apply crop transform on a list of polygons, each represented by a Nx2 array.
+        It will crop the polygon with the box, therefore the number of points in the
+        polygon might change.
+
+        Args:
+            polygon (list[ndarray]): each is a Nx2 floating point array of
+                (x, y) format in absolute coordinates.
+        Returns:
+            ndarray: cropped polygons.
+        """
+
+        # Create a window that will be used to crop
+        crop_box = geometry.box(self.x0, self.y0, self.x0 + self.w, self.y0 + self.h).buffer(0.0)
+
+        cropped_polygons = []
+
+        for polygon in polygons:
+            polygon = geometry.Polygon(polygon).buffer(0.0)
+            # polygon must be valid to perform intersection.
+            if not polygon.is_valid:
+                continue
+            cropped = polygon.intersection(crop_box)
+            if cropped.is_empty:
+                continue
+            if isinstance(cropped, geometry.collection.BaseMultipartGeometry):
+                cropped = cropped.geoms
+            else:
+                cropped = [cropped]
+            # one polygon may be cropped to multiple ones
+            for poly in cropped:
+                # It could produce lower dimensional objects like lines or
+                # points, which we want to ignore
+                if not isinstance(poly, geometry.Polygon) or not poly.is_valid:
+                    continue
+                coords = np.asarray(poly.exterior.coords)
+                # NOTE This process will produce an extra identical vertex at
+                # the end. So we remove it. This is tested by
+                # `tests/test_data_transform.py`
+                cropped_polygons.append(coords[:-1])
+        return [self.apply_coords(p) for p in cropped_polygons]
+
+    def inverse(self) -> T.Transform:
+        assert (
+            self.orig_w is not None and self.orig_h is not None
+        ), "orig_w, orig_h are required for CropTransform to be invertible!"
+        pad_x1 = self.orig_w - self.x0 - self.w
+        pad_y1 = self.orig_h - self.y0 - self.h
+        return PadTransform(self.x0, self.y0, pad_x1, pad_y1, orig_w=self.w, orig_h=self.h)
+
+
+class PadTransform(T.Transform):
+    def __init__(
+        self,
+        x0: int,
+        y0: int,
+        x1: int,
+        y1: int,
+        orig_w: Optional[int] = None,
+        orig_h: Optional[int] = None,
+        pad_value: float = 0,
+        seg_pad_value: int = 0,
+    ):
+        """
+        Args:
+            x0, y0: number of padded pixels on the left and top
+            x1, y1: number of padded pixels on the right and bottom
+            orig_w, orig_h: optional, original width and height.
+                Needed to make this transform invertible.
+            pad_value: the padding value to the image
+            seg_pad_value: the padding value to the segmentation mask
+        """
+        super().__init__()
+        self.x0 = x0
+        self.y0 = y0
+        self.x1 = x1
+        self.y1 = y1
+        self.orig_w = orig_w
+        self.orig_h = orig_h
+        self.pad_value = pad_value
+        self.seg_pad_value = seg_pad_value
+
+    def apply_image(self, img):
+        if img.ndim == 3:
+            padding = ((self.y0, self.y1), (self.x0, self.x1), (0, 0))
+        else:
+            padding = ((self.y0, self.y1), (self.x0, self.x1))
+        return np.pad(
+            img,
+            padding,
+            mode="constant",
+            constant_values=self.pad_value,
+        )
+
+    def apply_segmentation(self, img):
+        if img.ndim == 3:
+            padding = ((self.y0, self.y1), (self.x0, self.x1), (0, 0))
+        else:
+            padding = ((self.y0, self.y1), (self.x0, self.x1))
+        return np.pad(
+            img,
+            padding,
+            mode="constant",
+            constant_values=self.seg_pad_value,
+        )
+
+    def apply_coords(self, coords):
+        coords[:, 0] += self.x0
+        coords[:, 1] += self.y0
+        return coords
+
+    def inverse(self) -> T.Transform:
+        assert (
+            self.orig_w is not None and self.orig_h is not None
+        ), "orig_w, orig_h are required for PadTransform to be invertible!"
+        neww = self.orig_w + self.x0 + self.x1
+        newh = self.orig_h + self.y0 + self.y1
+        return CropTransform(self.x0, self.y0, self.orig_w, self.orig_h, orig_w=neww, orig_h=newh)
+
+
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Testing the image augmentation and transformations")
     io_args = parser.add_argument_group("IO")
@@ -590,8 +845,7 @@ def test(args) -> None:
     image = cv2.imread(str(input_path))[..., ::-1]
     print(image.dtype)
 
-    affine = AffineTransform(np.eye(3))
-    output_image = affine.apply_image(image)
+    output_image = OrientationTransform(1, image.shape[0], image.shape[1]).apply_image(image)
 
     im = Image.fromarray(image)
     im.show("Original")

@@ -66,6 +66,9 @@ class Predictor(DefaultPredictor):
         assert self.input_format in ["RGB", "BGR"], self.input_format
 
         checkpointer = DetectionCheckpointer(self.model)
+        if not cfg.TEST.WEIGHTS:
+            raise FileNotFoundError("Cannot do inference without weights. Specify a checkpoint file to --opts TEST.WEIGHTS")
+
         checkpointer.load(cfg.TEST.WEIGHTS)
 
         if cfg.INPUT.RESIZE_MODE == "none":
