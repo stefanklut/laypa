@@ -12,6 +12,8 @@ import imagesize
 import numpy as np
 from tqdm import tqdm
 
+from page_xml.xml_regions import XMLRegions
+
 # from multiprocessing.pool import ThreadPool as Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
@@ -545,13 +547,14 @@ def list_of_dict_to_dict_of_list(input_list: list[dict[str, Any]]) -> dict[str, 
 
 
 def main(args) -> None:
-    xml_converter = XMLConverter(
+    xml_regions = XMLRegions(
         mode=args.mode,
         line_width=args.line_width,
         regions=args.regions,
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
+    xml_converter = XMLConverter(xml_regions, args.line_width)
     process = Preprocess(
         input_paths=args.input,
         output_dir=args.output,

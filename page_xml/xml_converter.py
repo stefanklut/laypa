@@ -17,7 +17,7 @@ from utils.logging_utils import get_logger_name
 
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(parents=[XMLConverter.get_parser()], description="Code to turn an xml file into an array")
+    parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()], description="Code to turn an xml file into an array")
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input file", required=True, type=str)
     io_args.add_argument("-o", "--output", help="Output file", required=True, type=str)
@@ -50,30 +50,33 @@ class SegmentsInfo(TypedDict):
 
 
 # IDEA have fixed ordering of the classes, maybe look at what order is best
-class XMLConverter(XMLRegions):
+class XMLConverter:
     """
     Class for turning a pageXML into ground truth with classes (for segmentation)
     """
 
     def __init__(
         self,
-        mode: str,
+        xml_regions: XMLRegions,
         line_width: Optional[int] = None,
-        regions: Optional[list[str]] = None,
-        merge_regions: Optional[list[str]] = None,
-        region_type: Optional[list[str]] = None,
     ) -> None:
         """
         Class for turning a pageXML into an image with classes
 
         Args:
             mode (str): mode of the region type
+            xml_regions (XMLRegions): contains the page xml configurations
             line_width (Optional[int], optional): width of line. Defaults to None.
             regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
             merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
             region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
-        super().__init__(mode, line_width, regions, merge_regions, region_type)
+        self.mode = xml_regions.mode
+        self.line_width = line_width
+        self.get_parser = xml_regions.get_parser
+        self.region_types = xml_regions.region_types
+        self.region_classes = xml_regions.region_classes
+        self.regions = xml_regions.get_regions()
         self.logger = logging.getLogger(get_logger_name())
 
     @staticmethod
@@ -619,16 +622,15 @@ class XMLConverter(XMLRegions):
         else:
             return None
 
+    def get_regions(self) -> list[str]:
+        return self.regions
+
 
 if __name__ == "__main__":
     args = get_arguments()
-    XMLConverter(
-        mode=args.mode,
-        line_width=args.line_width,
-        regions=args.regions,
-        merge_regions=args.merge_regions,
-        region_type=args.region_type,
-    )
+    xml_regions = XMLRegions(mode=args.mode, line_width=args.line_width, regions=args.regions,
+                             merge_regions=args.merge_regions, region_type=args.region_type)
+    XMLConverter(xml_regions, args.line_width)
 
     input_path = Path(args.input)
     output_path = Path(args.output)

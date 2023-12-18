@@ -7,6 +7,7 @@ from detectron2.config import CfgNode
 from datasets import dataset
 from datasets.preprocess import Preprocess
 from page_xml.xml_converter import XMLConverter
+from page_xml.xml_regions import XMLRegions
 from utils.input_utils import clean_input_paths, get_file_paths, supported_image_formats
 
 
@@ -38,13 +39,14 @@ def preprocess_datasets(
     if not output_dir.is_dir():
         raise FileNotFoundError(f"Output Folder not found: {output_dir} does not exist")
 
-    xml_converter = XMLConverter(
+    xml_regions = XMLRegions(
         mode=cfg.MODEL.MODE,
         line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
         regions=cfg.PREPROCESS.REGION.REGIONS,
         merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
     )
+    xml_converter = XMLConverter(xml_regions, cfg.PREPROCESS.BASELINE.LINE_WIDTH)
 
     assert (n_regions := len(xml_converter.get_regions())) == (
         n_classes := cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES
