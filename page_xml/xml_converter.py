@@ -628,8 +628,13 @@ class XMLConverter:
 
 if __name__ == "__main__":
     args = get_arguments()
-    xml_regions = XMLRegions(mode=args.mode, line_width=args.line_width, regions=args.regions,
-                             merge_regions=args.merge_regions, region_type=args.region_type)
+    xml_regions = XMLRegions(
+        mode=args.mode,
+        line_width=args.line_width,
+        regions=args.regions,
+        merge_regions=args.merge_regions,
+        region_type=args.region_type,
+    )
     XMLConverter(xml_regions, args.line_width)
 
     input_path = Path(args.input)
