@@ -46,9 +46,9 @@ def preprocess_datasets(
         merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
     )
-    xml_converter = XMLConverter(xml_regions, cfg.PREPROCESS.BASELINE.LINE_WIDTH)
+    xml_converter = XMLConverter(xml_regions)
 
-    assert (n_regions := len(xml_converter.get_regions())) == (
+    assert (n_regions := len(xml_converter.xml_regions.regions)) == (
         n_classes := cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES
     ), f"Number of specified regions ({n_regions}) does not match the number of specified classes ({n_classes})"
 

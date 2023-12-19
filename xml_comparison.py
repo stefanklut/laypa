@@ -484,9 +484,9 @@ def main(args):
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
-    xml_to_image = XMLConverter(xml_regions, args.line_width)
+    xml_to_image = XMLConverter(xml_regions)
 
-    evaluator = IOUEvaluator(ignore_label=255, class_names=xml_to_image.get_regions())
+    evaluator = IOUEvaluator(ignore_label=255, class_names=xml_regions.regions)
 
     eval_runner = EvalWrapper(xml_to_image, evaluator)
     eval_runner.run_xml(xml_list1, xml_list2)

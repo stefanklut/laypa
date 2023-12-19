@@ -104,8 +104,8 @@ def main(args) -> None:
             merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
             region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
         )
-        xml_converter = XMLConverter(xml_regions, cfg.PREPROCESS.BASELINE.LINE_WIDTH)
-        metadata = metadata_from_classes(xml_converter.get_regions())
+        xml_converter = XMLConverter(xml_regions)
+        metadata = metadata_from_classes(xml_regions.regions)
 
         image_paths = get_file_paths(args.input, supported_image_formats, cfg.PREPROCESS.DISABLE_CHECK)
 

@@ -48,7 +48,7 @@ class OutputPageXML:
 
     def __init__(
         self,
-        xml_regions: XMLRegions = None,
+        xml_regions: XMLRegions,
         output_dir: Optional[str | Path] = None,
         cfg: Optional[CfgNode] = None,
         whitelist: Optional[Iterable[str]] = None,
@@ -74,15 +74,13 @@ class OutputPageXML:
 
         self.logger = logging.getLogger(get_logger_name())
 
+        self.xml_regions = xml_regions
+
         self.output_dir = None
         self.page_dir = None
 
         if output_dir is not None:
             self.set_output_dir(output_dir)
-
-        self.regions = xml_regions.get_regions()
-        self.region_types = xml_regions.region_types
-        self.mode = xml_regions.mode
 
         self.cfg = cfg
 
@@ -165,18 +163,18 @@ class OutputPageXML:
         if self.cfg is not None:
             page.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
 
-        if self.mode == "region":
+        if self.xml_regions.mode == "region":
             sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
 
             region_id = 0
 
-            for i, region in enumerate(self.regions):
+            for region in self.xml_regions.regions:
                 if region == "background":
                     continue
                 binary_region_mask = np.zeros_like(sem_seg).astype(np.uint8)
-                binary_region_mask[sem_seg == i] = 1
+                binary_region_mask[sem_seg == self.xml_regions.region_classes[region]] = 1
 
-                region_type = self.region_types[region]
+                region_type = self.xml_regions.region_types[region]
 
                 contours, hierarchy = cv2.findContours(binary_region_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -210,25 +208,25 @@ class OutputPageXML:
 
                     _uuid = uuid.uuid4()
                     text_reg = page.add_element(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
-        elif self.mode in ["baseline", "start", "end", "separator"]:
+        elif self.xml_regions.mode in ["baseline", "start", "end", "separator"]:
             # Push the calculation to outside of the python code <- mask is used by minion
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
             sem_seg = torch.nn.functional.interpolate(
                 sem_seg[None], size=(old_height, old_width), mode="bilinear", align_corners=False
             )[0]
-            sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+            sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy()
             with AtomicFileName(file_path=sem_seg_output_path) as path:
-                save_image_array_to_path(str(path), (sem_seg * 255).astype(np.uint8))
-        elif self.mode in ["baseline_separator", "top_bottom"]:
+                save_image_array_to_path(str(path), (sem_seg_image * 255).astype(np.uint8))
+        elif self.xml_regions.mode in ["baseline_separator", "top_bottom"]:
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
             sem_seg = torch.nn.functional.interpolate(
                 sem_seg[None], size=(old_height, old_width), mode="bilinear", align_corners=False
             )[0]
-            sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+            sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy()
             with AtomicFileName(file_path=sem_seg_output_path) as path:
-                save_image_array_to_path(str(path), (sem_seg * 128).clip(0, 255).astype(np.uint8))
+                save_image_array_to_path(str(path), (sem_seg_image * 128).clip(0, 255).astype(np.uint8))
         else:
-            raise NotImplementedError(f"Mode {self.mode} not implemented")
+            raise NotImplementedError(f"Mode {self.xml_regions.mode} not implemented")
 
         # TODO Overwrite when multiple image have the same name but different extension
         page.save_xml()
@@ -292,13 +290,19 @@ def main(args):
     sem_seg_paths = get_file_paths(args.sem_seg, formats=[".png"])
     image_paths = get_file_paths(args.input, formats=supported_image_formats)
 
-    gen_page = OutputPageXML(
+    xml_regions = XMLRegions(
         mode=args.mode,
-        line_width=args.line_width,
         regions=args.regions,
+        region_type=args.region_types,
         merge_regions=args.merge_regions,
-        region_type=args.region_type,
+        line_width=args.line_width,
+    )
+
+    gen_page = OutputPageXML(
+        xml_regions=xml_regions,
         output_dir=args.output,
+        rectangle_regions=args.rectangle_regions,
+        min_region_size=args.min_region_size,
     )
 
     gen_page.run(sem_seg_paths, image_paths)

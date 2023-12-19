@@ -67,7 +67,7 @@ class Preprocess:
             resize_sampling (str, optional): sample type used when resizing. Defaults to "choice".
             min_size (list, optional): when resizing, the length the shortest edge is resized to. Defaults to [1024].
             max_size (int, optional): when resizing, the max length a side may have. Defaults to 2048.
-            xml_to_image (XMLImage, optional): Class for turning pageXML to an image format. Defaults to None.
+            xml_converter (XMLConverter, optional): converter to convert xml to image. Defaults to None.
             disable_check (bool, optional): flag to turn of filesystem checks, useful if run was already successful once. Defaults to False.
             overwrite (bool, optional): flag to force overwrite of images. Defaults to False.
 
@@ -206,29 +206,6 @@ class Preprocess:
             paths (list[Path]): paths to be checked
         """
         all(check_path_accessible(path) for path in paths)
-
-    def resize_image_old(self, image: np.ndarray) -> np.ndarray:
-        """
-        Old version of image resizing, uses the multiple of 256 and smaller than maxsize * minsize
-
-        Args:
-            image (np.ndarray): image array HxWxC
-
-        Returns:
-            np.ndarray: resized image
-        """
-        old_height, old_width, channels = image.shape
-        counter = 1
-        height = np.ceil(old_height / (256 * counter)) * 256
-        width = np.ceil(old_width / (256 * counter)) * 256
-        while height * width > self.min_size[-1] * self.max_size:
-            height = np.ceil(old_height / (256 * counter)) * 256
-            width = np.ceil(old_width / (256 * counter)) * 256
-            counter += 1
-
-        res_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)
-
-        return res_image
 
     def sample_edge_length(self):
         """
@@ -499,11 +476,11 @@ class Preprocess:
         if mode_path.exists():
             with mode_path.open(mode="r") as f:
                 mode = f.read()
-            if mode != self.xml_converter.mode:
+            if mode != self.xml_converter.xml_regions.mode:
                 self.overwrite = True
 
         with mode_path.open(mode="w") as f:
-            f.write(self.xml_converter.mode)
+            f.write(self.xml_converter.xml_regions.mode)
 
         # Single thread
         # results = []
@@ -523,8 +500,8 @@ class Preprocess:
         # Assuming all key are the same make one dict
         results = {
             "data": list_of_dict_to_dict_of_list(results),
-            "classes": self.xml_converter.get_regions(),
-            "mode": self.xml_converter.mode,
+            "classes": self.xml_converter.xml_regions.regions,
+            "mode": self.xml_converter.xml_regions.mode,
         }
 
         output_path = self.output_dir.joinpath("info.json")
@@ -554,7 +531,7 @@ def main(args) -> None:
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
-    xml_converter = XMLConverter(xml_regions, args.line_width)
+    xml_converter = XMLConverter(xml_regions)
     process = Preprocess(
         input_paths=args.input,
         output_dir=args.output,

@@ -58,26 +58,15 @@ class XMLConverter:
     def __init__(
         self,
         xml_regions: XMLRegions,
-        line_width: Optional[int] = None,
     ) -> None:
         """
         Class for turning a pageXML into an image with classes
 
         Args:
-            mode (str): mode of the region type
-            xml_regions (XMLRegions): contains the page xml configurations
-            line_width (Optional[int], optional): width of line. Defaults to None.
-            regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
-            merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
-            region_type (Optional[list[str]], optional): type of region for each region. Defaults to None.
+            xml_regions (XMLRegions): helps to convert page xml regions to images
         """
-        self.mode = xml_regions.mode
-        self.line_width = line_width
-        self.get_parser = xml_regions.get_parser
-        self.region_types = xml_regions.region_types
-        self.region_classes = xml_regions.region_classes
-        self.regions = xml_regions.get_regions()
         self.logger = logging.getLogger(get_logger_name())
+        self.xml_regions = xml_regions
 
     @staticmethod
     def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]) -> np.ndarray:
@@ -177,6 +166,9 @@ class XMLConverter:
     ## TEXT LINE
 
     def build_text_line_instances(self, page: PageData, out_size: tuple[int, int]) -> list[Instance]:
+        """
+        Create the instance version of the text line
+        """
         text_line_class = 0
         size = page.get_size()
         instances = []
@@ -201,7 +193,7 @@ class XMLConverter:
 
     def build_text_line_pano(self, page: PageData, out_size: tuple[int, int]):
         """
-        Create the pano version of the textline
+        Create the pano version of the text line
         """
         text_line_class = 0
         size = page.get_size()
@@ -228,7 +220,7 @@ class XMLConverter:
 
     def build_text_line_sem_seg(self, page: PageData, out_size: tuple[int, int]):
         """
-        Builds a "image" mask of desired elements
+        Builds a "image" mask of the text line
         """
         text_line_class = 1
         size = page.get_size()
@@ -244,6 +236,9 @@ class XMLConverter:
     ## BASELINE
 
     def build_baseline_instances(self, page: PageData, out_size: tuple[int, int], line_width: int):
+        """
+        Create the instance version of the baselines
+        """
         baseline_class = 0
         size = page.get_size()
         mask = np.zeros(out_size, np.uint8)
@@ -281,6 +276,9 @@ class XMLConverter:
         return instances
 
     def build_baseline_pano(self, page: PageData, out_size: tuple[int, int], line_width: int):
+        """
+        Create the pano version of the baselines
+        """
         baseline_class = 0
         size = page.get_size()
         pano_mask = np.zeros((*out_size, 3), np.uint8)
@@ -304,7 +302,7 @@ class XMLConverter:
 
     def build_baseline_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
-        Builds a "image" mask of Baselines on XML-PAGE
+        Create the sem_seg version of the baselines
         """
         baseline_color = 1
         size = page.get_size()
@@ -331,7 +329,7 @@ class XMLConverter:
 
     def build_top_bottom_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
-        Builds a "image" mask of Baselines Top Bottom on XML-PAGE
+        Create the sem_seg version of the top bottom
         """
         baseline_color = 1
         top_color = 1
@@ -358,7 +356,7 @@ class XMLConverter:
 
     def build_start_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
-        Builds a "image" mask of Starts on XML-PAGE
+        Create the sem_seg version of the start
         """
         start_color = 1
         size = page.get_size()
@@ -375,7 +373,7 @@ class XMLConverter:
 
     def build_end_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
-        Builds a "image" mask of Ends on XML-PAGE
+        Create the sem_seg version of the end
         """
         end_color = 1
         size = page.get_size()
@@ -392,7 +390,7 @@ class XMLConverter:
 
     def build_separator_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
-        Builds a "image" mask of Separators on XML-PAGE
+        Create the sem_seg version of the separator
         """
         separator_color = 1
         size = page.get_size()
@@ -412,7 +410,7 @@ class XMLConverter:
 
     def build_baseline_separator_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
         """
-        Builds a "image" mask of Separators and Baselines on XML-PAGE
+        Create the sem_seg version of the baseline separator
         """
         baseline_color = 1
         separator_color = 2
@@ -461,53 +459,57 @@ class XMLConverter:
         if image_shape is None:
             image_shape = gt_data.get_size()
 
-        if self.mode == "region":
+        if self.xml_regions.mode == "region":
             sem_seg = self.build_region_sem_seg(
                 gt_data,
                 image_shape,
-                set(self.region_types.values()),
-                self.region_classes,
+                set(self.xml_regions.region_types.values()),
+                self.xml_regions.region_classes,
             )
             return sem_seg
-        elif self.mode == "baseline":
+        elif self.xml_regions.mode == "baseline":
             sem_seg = self.build_baseline_sem_seg(
                 gt_data,
                 image_shape,
-                line_width=self.line_width,
+                line_width=xml_regions.line_width,
             )
             return sem_seg
-        elif self.mode == "top_bottom":
-            sem_seg = self.build_top_bottom_sem_seg(gt_data, image_shape, line_width=self.line_width)
+        elif self.xml_regions.mode == "top_bottom":
+            sem_seg = self.build_top_bottom_sem_seg(
+                gt_data,
+                image_shape,
+                line_width=xml_regions.line_width,
+            )
             return sem_seg
-        elif self.mode == "start":
+        elif self.xml_regions.mode == "start":
             sem_seg = self.build_start_sem_seg(
                 gt_data,
                 image_shape,
-                line_width=self.line_width,
+                line_width=xml_regions.line_width,
             )
             return sem_seg
-        elif self.mode == "end":
+        elif self.xml_regions.mode == "end":
             sem_seg = self.build_end_sem_seg(
                 gt_data,
                 image_shape,
-                line_width=self.line_width,
+                line_width=xml_regions.line_width,
             )
             return sem_seg
-        elif self.mode == "separator":
+        elif self.xml_regions.mode == "separator":
             sem_seg = self.build_separator_sem_seg(
                 gt_data,
                 image_shape,
-                line_width=self.line_width,
+                line_width=xml_regions.line_width,
             )
             return sem_seg
-        elif self.mode == "baseline_separator":
+        elif self.xml_regions.mode == "baseline_separator":
             sem_seg = self.build_baseline_separator_sem_seg(
                 gt_data,
                 image_shape,
-                line_width=self.line_width,
+                line_width=xml_regions.line_width,
             )
             return sem_seg
-        elif self.mode == "text_line":
+        elif self.xml_regions.mode == "text_line":
             sem_seg = self.build_text_line_sem_seg(
                 gt_data,
                 image_shape,
@@ -545,22 +547,22 @@ class XMLConverter:
         if image_shape is None:
             image_shape = gt_data.get_size()
 
-        if self.mode == "region":
+        if self.xml_regions.mode == "region":
             instances = self.build_region_instances(
                 gt_data,
                 image_shape,
-                set(self.region_types.values()),
-                self.region_classes,
+                set(self.xml_regions.region_types.values()),
+                self.xml_regions.region_classes,
             )
             return instances
-        elif self.mode == "baseline":
+        elif self.xml_regions.mode == "baseline":
             instances = self.build_baseline_instances(
                 gt_data,
                 image_shape,
-                self.line_width,
+                xml_regions.line_width,
             )
             return instances
-        elif self.mode == "text_line":
+        elif self.xml_regions.mode == "text_line":
             instances = self.build_text_line_instances(
                 gt_data,
                 image_shape,
@@ -598,22 +600,22 @@ class XMLConverter:
         if image_shape is None:
             image_shape = gt_data.get_size()
 
-        if self.mode == "region":
+        if self.xml_regions.mode == "region":
             pano, segments_info = self.build_region_pano(
                 gt_data,
                 image_shape,
-                set(self.region_types.values()),
-                self.region_classes,
+                set(self.xml_regions.region_types.values()),
+                self.xml_regions.region_classes,
             )
             return pano, segments_info
-        elif self.mode == "baseline":
+        elif self.xml_regions.mode == "baseline":
             pano, segments_info = self.build_baseline_pano(
                 gt_data,
                 image_shape,
-                self.line_width,
+                xml_regions.line_width,
             )
             return pano, segments_info
-        elif self.mode == "text_line":
+        elif self.xml_regions.mode == "text_line":
             pano, segments_info = self.build_text_line_pano(
                 gt_data,
                 image_shape,
@@ -621,9 +623,6 @@ class XMLConverter:
             return pano, segments_info
         else:
             return None
-
-    def get_regions(self) -> list[str]:
-        return self.regions
 
 
 if __name__ == "__main__":
@@ -635,7 +634,7 @@ if __name__ == "__main__":
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
-    XMLConverter(xml_regions, args.line_width)
+    XMLConverter(xml_regions)
 
     input_path = Path(args.input)
     output_path = Path(args.output)

@@ -73,8 +73,7 @@ class Viewer:
         self.output_dir: Path = output_dir
         self.xml_converter: XMLConverter = xml_converter
 
-        region_names = xml_converter.get_regions()
-        self.metadata = metadata_from_classes(region_names)
+        self.metadata = metadata_from_classes(xml_converter.xml_regions.regions)
 
         self.output_type = output_type
 
@@ -196,7 +195,7 @@ def main(args) -> None:
         merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
     )
-    xml_converter = XMLConverter(xml_regions, cfg.PREPROCESS.BASELINE.LINE_WIDTH)
+    xml_converter = XMLConverter(xml_regions)
 
     viewer = Viewer(xml_converter=xml_converter, output_dir=args.output, output_type=args.output_type)
     viewer.run(xml_list)
