@@ -83,7 +83,20 @@ class Predictor(DefaultPredictor):
         else:
             raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 
-    def get_image_size(self, height, width):
+    def get_image_size(self, height: int, width: int) -> tuple[int, int]:
+        """
+        Get the new image size based on the resize mode
+
+        Args:
+            height (int): the height of the image
+            width (int): the width of the image
+
+        Raises:
+            NotImplementedError: resize mode is not known
+
+        Returns:
+            tuple[int, int]: new height and width
+        """
         if self.cfg.INPUT.RESIZE_MODE == "none":
             new_height, new_width = height, width
         elif self.cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
@@ -100,6 +113,15 @@ class Predictor(DefaultPredictor):
         return new_height, new_width
 
     def gpu_call(self, original_image: torch.Tensor):
+        """
+        Run the model on the image with preprocessing on the gpu
+
+        Args:
+            original_image (torch.Tensor): image to run the model on
+
+        Returns:
+            tuple[dict, int, int]: predictions, height, width
+        """
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
             channels, height, width = original_image.shape
@@ -119,6 +141,15 @@ class Predictor(DefaultPredictor):
             return predictions, height, width
 
     def cpu_call(self, original_image: np.ndarray):
+        """
+        Run the model on the image with preprocessing on the cpu
+
+        Args:
+            original_image (np.ndarray): image to run the model on
+
+        Returns:
+            tuple[dict, int, int]: predictions, height, width
+        """
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
             height, width, channels = original_image.shape
@@ -136,7 +167,16 @@ class Predictor(DefaultPredictor):
 
     def __call__(self, original_image):
         """
-        Not really useful, but shows what call needs to be made
+        Run the model on the image with preprocessing
+
+        Args:
+            original_image (torch.Tensor | np.ndarray): image to run the model on
+
+        Raises:
+            TypeError: image is not a torch.Tensor or np.ndarray
+
+        Returns:
+            tuple[dict, int, int]: predictions, height, width
         """
 
         if isinstance(original_image, np.ndarray):
