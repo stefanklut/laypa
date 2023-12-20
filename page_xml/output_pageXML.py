@@ -58,6 +58,7 @@ class OutputPageXML:
         whitelist: Optional[Iterable[str]] = None,
         rectangle_regions: Optional[Iterable[str]] = None,
         min_region_size: int = 10,
+        save_confidence_heatmap: bool = False,
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
@@ -91,6 +92,7 @@ class OutputPageXML:
         self.whitelist = set() if whitelist is None else set(whitelist)
         self.min_region_size = min_region_size
         self.rectangle_regions = set() if rectangle_regions is None else set(rectangle_regions)
+        self.save_confidence_heatmap = save_confidence_heatmap
 
     def set_output_dir(self, output_dir: str | Path):
         if isinstance(output_dir, str):
@@ -190,6 +192,44 @@ class OutputPageXML:
 
         page.save_xml()
 
+    @staticmethod
+    def scale_to_range(
+        tensor: torch.Tensor,
+        min_value: float = 0.0,
+        max_value: float = 1.0,
+        tensor_min: Optional[float] = None,
+        tensor_max: Optional[float] = None,
+    ) -> torch.Tensor:
+        """
+        Scale tensor to a range
+
+        Args:
+            image (torch.Tensor): image to be scaled
+            min_value (float, optional): minimum value of the range. Defaults to 0.0.
+            max_value (float, optional): maximum value of the range. Defaults to 1.0.
+            tensor_min (Optional[float], optional): minimum value of the tensor. Defaults to None.
+            tensor_max (Optional[float], optional): maximum value of the tensor. Defaults to None.
+
+        Returns:
+            torch.Tensor: scaled image
+        """
+
+        if tensor_min is None:
+            tensor_min = torch.min(tensor).item()
+        if tensor_max is None:
+            tensor_max = torch.max(tensor).item()
+
+        tensor = (max_value - min_value) * (tensor - tensor_min) / (tensor_max - tensor_min) + min_value
+
+        return tensor
+
+    @staticmethod
+    def save_heatmap(scaled_confidence: torch.Tensor, confidence_output_path: Path):
+        confidence_grayscale = (scaled_confidence * 255).cpu().numpy().astype(np.uint8)
+        confidence_colored = cv2.applyColorMap(confidence_grayscale, cv2.COLORMAP_PLASMA)[..., ::-1]
+        with AtomicFileName(file_path=confidence_output_path) as path:
+            save_image_array_to_path(str(path), confidence_colored)
+
     def generate_single_page(
         self,
         sem_seg: torch.Tensor,
@@ -232,7 +272,20 @@ class OutputPageXML:
             page.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
 
         if self.xml_regions.mode == "region":
-            sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+            confidence_output_path = self.page_dir.joinpath(image_path.stem + "_confidence.png")
+            sem_seg_normalized = torch.nn.functional.softmax(sem_seg, dim=-3)
+            confidence, sem_seg_classes = torch.max(sem_seg_normalized, dim=-3)
+
+            scaled_confidence = self.scale_to_range(confidence, tensor_min=1 / len(self.xml_regions.regions), tensor_max=1.0)
+
+            # Apply a color map
+            if self.save_confidence_heatmap:
+                self.save_heatmap(scaled_confidence, confidence_output_path)
+
+            sem_seg_classes = sem_seg_classes.cpu().numpy()
+            mean_confidence = torch.mean(scaled_confidence).cpu().numpy().item()
+
+            page.add_confidence(mean_confidence)
 
             region_id = 0
 
@@ -247,7 +300,7 @@ class OutputPageXML:
                 contours, hierarchy = cv2.findContours(binary_region_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
                 for cnt in contours:
-                    # remove small objects
+                    # Remove small objects
                     if cnt.shape[0] < 4:
                         continue
                     if cv2.contourArea(cnt) < self.min_region_size:
@@ -257,11 +310,11 @@ class OutputPageXML:
 
                     region_coords = ""
                     if region in self.rectangle_regions:
-                        # find bounding box
+                        # Find bounding box
                         rect = cv2.minAreaRect(cnt)
                         poly = cv2.boxPoints(rect) * scaling
                     else:
-                        # soft a bit the region to prevent spikes
+                        # Soft a bit the region to prevent spikes
                         epsilon = 0.0005 * cv2.arcLength(cnt, True)
                         approx_poly = cv2.approxPolyDP(cnt, epsilon, True)
 
@@ -276,23 +329,47 @@ class OutputPageXML:
 
                     _uuid = uuid.uuid4()
                     text_reg = page.add_element(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
+
         elif self.xml_regions.mode in ["baseline", "start", "end", "separator"]:
-            # Push the calculation to outside of the python code <- mask is used by minion
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            sem_seg = torch.nn.functional.interpolate(
-                sem_seg[None], size=(old_height, old_width), mode="bilinear", align_corners=False
-            )[0]
-            sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+            confidence_output_path = self.page_dir.joinpath(image_path.stem + "_confidence.png")
+
+            sem_seg_normalized = torch.nn.functional.softmax(sem_seg, dim=-3)
+            confidence, sem_seg_classes = torch.max(sem_seg_normalized, dim=-3)
+
+            scaled_confidence = self.scale_to_range(confidence, tensor_min=1 / len(self.xml_regions.regions), tensor_max=1.0)
+
+            # Apply a color map
+            if self.save_confidence_heatmap:
+                self.save_heatmap(scaled_confidence, confidence_output_path)
+
+            sem_seg_classes = sem_seg_classes.cpu().numpy()
+            mean_confidence = torch.mean(scaled_confidence).cpu().numpy().item()
+
+            page.add_confidence(mean_confidence)
+
+            # Save the mask
             with AtomicFileName(file_path=sem_seg_output_path) as path:
-                save_image_array_to_path(str(path), (sem_seg_image * 255).astype(np.uint8))
+                save_image_array_to_path(str(path), (sem_seg_classes * 255).astype(np.uint8))
+
         elif self.xml_regions.mode in ["baseline_separator", "top_bottom"]:
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            sem_seg = torch.nn.functional.interpolate(
-                sem_seg[None], size=(old_height, old_width), mode="bilinear", align_corners=False
-            )[0]
-            sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+            confidence_output_path = self.page_dir.joinpath(image_path.stem + "_confidence.png")
+            sem_seg_normalized = torch.nn.functional.softmax(sem_seg, dim=-3)
+            confidence, sem_seg_classes = torch.max(sem_seg_normalized, dim=-3)
+
+            scaled_confidence = self.scale_to_range(confidence, tensor_min=1 / len(self.xml_regions.regions), tensor_max=1.0)
+
+            # Apply a color map
+            if self.save_confidence_heatmap:
+                self.save_heatmap(scaled_confidence, confidence_output_path)
+
+            sem_seg_classes = sem_seg_classes.cpu().numpy()
+            mean_confidence = torch.mean(scaled_confidence).cpu().numpy()
+
+            # Save the mask
             with AtomicFileName(file_path=sem_seg_output_path) as path:
-                save_image_array_to_path(str(path), (sem_seg_image * 128).clip(0, 255).astype(np.uint8))
+                save_image_array_to_path(str(path), (sem_seg_classes * 128).clip(0, 255).astype(np.uint8))
         else:
             raise NotImplementedError(f"Mode {self.xml_regions.mode} not implemented")
 

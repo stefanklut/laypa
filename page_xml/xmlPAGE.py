@@ -312,6 +312,19 @@ class PageData:
                 "value": str(convert_to_dict(sub_node)),
             }
 
+    def add_confidence(self, confidence: float):
+        if confidence is None:
+            raise TypeError(f"confidence is None")
+        if self.metadata is None:
+            raise TypeError(f"self.metadata is None")
+
+        confidence_element = ET.SubElement(self.metadata, "MetadataItem")
+        confidence_element.attrib = {
+            "type": "confidence",
+            "name": "layout-analysis",
+            "value": str(confidence),
+        }
+
     def add_element(self, region_class, region_id, region_type, region_coords, parent=None):
         """add element to parent node"""
         parent = self.page if parent == None else parent
