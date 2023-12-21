@@ -225,10 +225,47 @@ class OutputPageXML:
 
     @staticmethod
     def save_heatmap(scaled_confidence: torch.Tensor, confidence_output_path: Path):
+        """
+        Save a heatmap of the confidence.
+
+        Args:
+            scaled_confidence (torch.Tensor): confidence as tensor.
+            confidence_output_path (Path): path to save the heatmap.
+        """
         confidence_grayscale = (scaled_confidence * 255).cpu().numpy().astype(np.uint8)
         confidence_colored = cv2.applyColorMap(confidence_grayscale, cv2.COLORMAP_PLASMA)[..., ::-1]
         with AtomicFileName(file_path=confidence_output_path) as path:
             save_image_array_to_path(str(path), confidence_colored)
+
+    def sem_seg_to_classes_and_confidence(
+        self,
+        sem_seg: torch.Tensor,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Convert a single prediction into classes and confidence.
+
+        Args:
+            sem_seg (torch.Tensor): sem_seg as tensor.
+
+        Returns:
+            torch.Tensor, torch.Tensor: classes and confidence.
+        """
+        sem_seg_normalized = torch.nn.functional.softmax(sem_seg, dim=-3)
+        if height is not None and width is not None:
+            sem_seg_interpolated = torch.nn.functional.interpolate(
+                sem_seg_normalized[None], size=(height, width), mode="bilinear", align_corners=False
+            )[0]
+        else:
+            sem_seg_interpolated = sem_seg_normalized
+
+        confidence, _ = torch.max(sem_seg_normalized, dim=-3)
+        sem_seg_classes = torch.argmax(sem_seg_interpolated, dim=-3)
+
+        scaled_confidence = self.scale_to_range(confidence, tensor_min=1 / len(self.xml_regions.regions), tensor_max=1.0)
+
+        return sem_seg_classes, scaled_confidence
 
     def generate_single_page(
         self,
@@ -238,18 +275,18 @@ class OutputPageXML:
         old_width: Optional[int] = None,
     ):
         """
-        Convert a single prediction into a page
+        Convert a single prediction into a page.
 
         Args:
-            sem_seg (torch.Tensor): sem_seg as tensor
-            image_path (Path): Image path, used for path name
+            sem_seg (torch.Tensor): sem_seg as tensor.
+            image_path (Path): Image path, used for path name.
             old_height (Optional[int], optional): height of the original image. Defaults to None.
             old_width (Optional[int], optional): width of the original image. Defaults to None.
 
         Raises:
-            TypeError: Output dir has not been set
-            TypeError: Page dir has not been set
-            NotImplementedError: mode is not known
+            TypeError: Output dir has not been set.
+            TypeError: Page dir has not been set.
+            NotImplementedError: mode is not known.
         """
         if self.output_dir is None:
             raise TypeError("Output dir is None")
@@ -273,17 +310,14 @@ class OutputPageXML:
 
         if self.xml_regions.mode == "region":
             confidence_output_path = self.page_dir.joinpath(image_path.stem + "_confidence.png")
-            sem_seg_normalized = torch.nn.functional.softmax(sem_seg, dim=-3)
-            confidence, sem_seg_classes = torch.max(sem_seg_normalized, dim=-3)
-
-            scaled_confidence = self.scale_to_range(confidence, tensor_min=1 / len(self.xml_regions.regions), tensor_max=1.0)
+            sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg)
 
             # Apply a color map
             if self.save_confidence_heatmap:
-                self.save_heatmap(scaled_confidence, confidence_output_path)
+                self.save_heatmap(confidence, confidence_output_path)
 
             sem_seg_classes = sem_seg_classes.cpu().numpy()
-            mean_confidence = torch.mean(scaled_confidence).cpu().numpy().item()
+            mean_confidence = torch.mean(confidence).cpu().numpy().item()
 
             page.add_confidence(mean_confidence)
 
@@ -333,18 +367,14 @@ class OutputPageXML:
         elif self.xml_regions.mode in ["baseline", "start", "end", "separator"]:
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
             confidence_output_path = self.page_dir.joinpath(image_path.stem + "_confidence.png")
-
-            sem_seg_normalized = torch.nn.functional.softmax(sem_seg, dim=-3)
-            confidence, sem_seg_classes = torch.max(sem_seg_normalized, dim=-3)
-
-            scaled_confidence = self.scale_to_range(confidence, tensor_min=1 / len(self.xml_regions.regions), tensor_max=1.0)
+            sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
 
             # Apply a color map
             if self.save_confidence_heatmap:
-                self.save_heatmap(scaled_confidence, confidence_output_path)
+                self.save_heatmap(confidence, confidence_output_path)
 
             sem_seg_classes = sem_seg_classes.cpu().numpy()
-            mean_confidence = torch.mean(scaled_confidence).cpu().numpy().item()
+            mean_confidence = torch.mean(confidence).cpu().numpy().item()
 
             page.add_confidence(mean_confidence)
 
@@ -355,17 +385,15 @@ class OutputPageXML:
         elif self.xml_regions.mode in ["baseline_separator", "top_bottom"]:
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
             confidence_output_path = self.page_dir.joinpath(image_path.stem + "_confidence.png")
-            sem_seg_normalized = torch.nn.functional.softmax(sem_seg, dim=-3)
-            confidence, sem_seg_classes = torch.max(sem_seg_normalized, dim=-3)
 
-            scaled_confidence = self.scale_to_range(confidence, tensor_min=1 / len(self.xml_regions.regions), tensor_max=1.0)
+            sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
 
             # Apply a color map
             if self.save_confidence_heatmap:
-                self.save_heatmap(scaled_confidence, confidence_output_path)
+                self.save_heatmap(confidence, confidence_output_path)
 
             sem_seg_classes = sem_seg_classes.cpu().numpy()
-            mean_confidence = torch.mean(scaled_confidence).cpu().numpy()
+            mean_confidence = torch.mean(confidence).cpu().numpy()
 
             # Save the mask
             with AtomicFileName(file_path=sem_seg_output_path) as path:
@@ -378,13 +406,13 @@ class OutputPageXML:
 
     def generate_single_page_wrapper(self, info):
         """
-        Convert a single prediction into a page
+        Convert a single prediction into a page.
 
         Args:
             info (tuple[torch.Tensor | Path, Path]):
                 (tuple containing)
-                torch.Tensor | Path: mask as array or path to mask
-                Path: original image path
+                torch.Tensor | Path: mask as array or path to mask.
+                Path: original image path.
         """
         mask, image_path = info
         if isinstance(mask, Path):
@@ -398,14 +426,14 @@ class OutputPageXML:
         image_path_list: list[Path],
     ) -> None:
         """
-        Generate pageXML for all sem_seg-image pairs in the lists
+        Generate pageXML for all sem_seg-image pairs in the lists.
 
         Args:
-            sem_seg_list (list[np.ndarray] | list[Path]): all sem_seg as arrays or path to the sem_seg
-            image_path_list (list[Path]): path to the original image
+            sem_seg_list (list[np.ndarray] | list[Path]): all sem_seg as arrays or path to the sem_seg.
+            image_path_list (list[Path]): path to the original image.
 
         Raises:
-            ValueError: length of sem_seg list and image list do not match
+            ValueError: length of sem_seg list and image list do not match.
         """
 
         if len(sem_seg_list) != len(image_path_list):
