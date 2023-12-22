@@ -11,15 +11,15 @@ PREPROCESS:
         "Text",
         "request",
         "addressing",
-        "metadata\u0020request",
+        "metadata\\u0020request",
         "appendix",
-        "metadata\u0020cover",
+        "metadata\\u0020cover",
         "petitioner",
         "signature-mark",
         "date",
         "marginalia",
       ]
-    MERGE_REGIONS: ["request:metadata\u0020request,marginalia"]
+    MERGE_REGIONS: ["request:metadata\\u0020request,marginalia"]
     REGION_TYPE: []
 
 MODEL:
