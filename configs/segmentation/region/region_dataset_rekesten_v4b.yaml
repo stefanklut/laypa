@@ -2,33 +2,33 @@ _BASE_: ../segmentation_base.yaml
 
 OUTPUT_DIR: ./output/region
 
-NAME: rekesten
+NAME: rekesten_v4b
 
 PREPROCESS:
   REGION:
     REGIONS:
       [
-        "signature-mark",
-        "date",
-        "metadata\u0020cover",
-        "petitioner",
         "request",
+        "addressing",
         "metadata\u0020request",
         "appendix",
-        "addressing",
+        "metadata\u0020cover",
+        "petitioner",
+        "signature-mark",
+        "date",
         "marginalia",
       ]
-    MERGE_REGIONS: []
+    MERGE_REGIONS: ["request:metadata\u0020request,marginalia"]
     REGION_TYPE: []
 
 MODEL:
   MODE: region
 
   SEM_SEG_HEAD:
-    NUM_CLASSES: 10
+    NUM_CLASSES: 8
 
   ROI_HEADS:
-    NUM_CLASSES: 9
+    NUM_CLASSES: 7
 
   WEIGHTS:
 
