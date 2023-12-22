@@ -37,7 +37,6 @@ class SimpleSecurity:
             return Response(status=401)
 
     def login(self, api_key: str) -> str | None:
-
         if self.enabled and api_key in self.api_key_user:
             session_key = str(uuid.uuid4())
             self.session_key_user[session_key] = self.api_key_user[api_key]
@@ -56,7 +55,7 @@ def session_key_required(func):
                 if security_.is_known_session_key(session_key):
                     return func(*args, **kwargs)
 
-            response = jsonify({'message': 'Expected a valid session key in the Authorization header'})
+            response = jsonify({"message": "Expected a valid session key in the Authorization header"})
             response.status_code = 401
             return response
         else:
