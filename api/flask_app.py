@@ -19,6 +19,7 @@ from page_xml.output_pageXML import OutputPageXML
 from run import Predictor
 from utils.image_utils import load_image_array_from_bytes, load_image_tensor_from_bytes
 from utils.logging_utils import get_logger_name
+from api.simple_security import SimpleSecurity, session_key_required
 
 # Reading environment files
 try:
@@ -44,6 +45,10 @@ setup_logging()
 logger = logging.getLogger(get_logger_name())
 
 app = Flask(__name__)
+
+enable_security = os.getenv("SECURITY_ENABLED", False)
+api_key_user_json_string = os.getenv("API_KEY_USER_JSON_STRING")
+SimpleSecurity(app, enable_security, api_key_user_json_string)
 
 predictor = None
 gen_page = None
@@ -233,6 +238,7 @@ def check_exception_callback(future: Future):
 
 @app.route("/predict", methods=["POST"])
 @exception_predict_counter.count_exceptions()
+@session_key_required
 def predict() -> tuple[Response, int]:
     """
     Run the prediction on a submitted image
