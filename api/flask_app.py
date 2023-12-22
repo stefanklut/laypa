@@ -305,6 +305,7 @@ def predict() -> tuple[Response, int]:
 
 
 @app.route("/prometheus", methods=["GET"])
+@session_key_required
 def metrics() -> bytes:
     """
     Return the Prometheus metrics for the running flask application
