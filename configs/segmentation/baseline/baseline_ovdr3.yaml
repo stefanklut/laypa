@@ -1,4 +1,3 @@
-# python main.py --config configs/segmentation/baseline_ovdr.yaml --tmp_dir /encrypted/tmp
 _BASE_: ../segmentation_base.yaml
 
 OUTPUT_DIR: /encrypted/baseline
