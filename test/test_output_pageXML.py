@@ -10,12 +10,14 @@ from os import path
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.output_pageXML import OutputPageXML
+from page_xml.xml_regions import XMLRegions
 
 
 class TestOutputPageXML(unittest.TestCase):
     def test_one_region_type(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [])
+        xml_regions = XMLRegions("region", 5, ["Photo"], [], ["ImageRegion:Photo"])
+        xml = OutputPageXML(xml_regions, output, None, [])
         background = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) <= 5) * 1
         image = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) > 5) * 1
         array = np.array([background, image])
@@ -35,7 +37,8 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_multiple_region_types(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML("region", output, 5, ["Photo", "Text"], [], ["ImageRegion:Photo", "TextRegion:Text"], None, [])
+        xml_regions = XMLRegions("region", 5, ["Photo", "Text"], [], ["ImageRegion:Photo", "TextRegion:Text"])
+        xml = OutputPageXML(xml_regions, output, None, [])
         background = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) <= 2) * 1
         text = (np.full((10, 10), [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) > 5) * 1
         image = ((text | background) == 0) * 1
@@ -59,7 +62,8 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_region_not_square(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [])
+        xml_regions = XMLRegions("region", 5, ["Photo"], [], ["ImageRegion:Photo"])
+        xml = OutputPageXML(xml_regions, output, None, [])
         background = np.array(
             [
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -90,7 +94,8 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_rectangle_region_does_cotains_4_points(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [], ["Photo"])
+        xml_regions = XMLRegions("region", 5, ["Photo"], [], ["ImageRegion:Photo"])
+        xml = OutputPageXML(xml_regions, output, None, [], ["Photo"])
         background = np.array(
             [
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -122,7 +127,8 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_rectangle_region_does_create_floating_point_coords(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [], ["Photo"])
+        xml_regions = XMLRegions("region", 5, ["Photo"], [], ["ImageRegion:Photo"])
+        xml = OutputPageXML(xml_regions, output, None, [], ["Photo"])
         background = np.array(
             [
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
@@ -154,9 +160,8 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_only_rectangle_region_one_type(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML(
-            "region", output, 5, ["Photo", "Text"], [], ["ImageRegion:Photo", "TextRegion:Text"], None, [], ["Photo"]
-        )
+        xml_regions = XMLRegions("region", 5, ["Photo", "Text"], [], ["ImageRegion:Photo", "TextRegion:Text"])
+        xml = OutputPageXML(xml_regions, output, None, [], ["Photo"])
         background = np.array(
             [
                 [1, 1, 0, 0, 1, 1, 1, 1, 1, 1],
@@ -222,7 +227,8 @@ class TestOutputPageXML(unittest.TestCase):
     @unittest.skip("Not enough time/priority for implementation")
     def test_merge_overlapping_squares(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [], ["Photo"])
+        xml_regions = XMLRegions("region", 5, ["Photo"], [], ["ImageRegion:Photo"])
+        xml = OutputPageXML(xml_regions, output, None, [], ["Photo"])
         background = np.array(
             [
                 [1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
@@ -252,7 +258,8 @@ class TestOutputPageXML(unittest.TestCase):
 
     def test_ignores_too_small_regions(self):
         output = tempfile.mktemp("_laypa_test")
-        xml = OutputPageXML("region", output, 5, ["Photo"], [], ["ImageRegion:Photo"], None, [], ["Photo"], 10)
+        xml_regions = XMLRegions("region", 5, ["Photo"], [], ["ImageRegion:Photo"])
+        xml = OutputPageXML(xml_regions, output, None, [], ["Photo"], 10)
         background = np.array(
             [
                 [0, 0, 1, 1, 1, 1, 1, 1, 1, 1],

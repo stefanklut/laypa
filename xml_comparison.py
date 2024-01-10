@@ -15,12 +15,13 @@ from detectron2.data import Metadata
 from tqdm import tqdm
 
 from page_xml.xml_converter import XMLConverter
+from page_xml.xml_regions import XMLRegions
 from utils.input_utils import get_file_paths
 
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        parents=[XMLConverter.get_parser()], description="Compare two sets of pagexml, based on pixel level metrics"
+        parents=[XMLRegions.get_parser()], description="Compare two sets of pagexml, based on pixel level metrics"
     )
 
     io_args = parser.add_argument_group("IO")
@@ -476,15 +477,16 @@ def main(args):
     xml_list2 = get_file_paths(args.input, formats=[".xml"])
 
     # REVIEW Maybe this should also use the config file.
-    xml_to_image = XMLConverter(
+    xml_regions = XMLRegions(
         mode=args.mode,
         line_width=args.line_width,
         regions=args.regions,
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
+    xml_to_image = XMLConverter(xml_regions)
 
-    evaluator = IOUEvaluator(ignore_label=255, class_names=xml_to_image.get_regions())
+    evaluator = IOUEvaluator(ignore_label=255, class_names=xml_regions.regions)
 
     eval_runner = EvalWrapper(xml_to_image, evaluator)
     eval_runner.run_xml(xml_list1, xml_list2)

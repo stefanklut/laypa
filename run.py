@@ -20,6 +20,7 @@ from tqdm import tqdm
 from core.setup import setup_cfg, setup_logging
 from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
 from page_xml.output_pageXML import OutputPageXML
+from page_xml.xml_regions import XMLRegions
 from utils.image_utils import load_image_array_from_path, load_image_tensor_from_path
 from utils.input_utils import get_file_paths, supported_image_formats
 from utils.logging_utils import get_logger_name
@@ -332,14 +333,16 @@ class SavePredictor(Predictor):
 def main(args: argparse.Namespace) -> None:
     cfg = setup_cfg(args)
     setup_logging(cfg, save_log=False)
-
-    output_page = OutputPageXML(
+    xml_regions = XMLRegions(
         mode=cfg.MODEL.MODE,
-        output_dir=args.output,
         line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
         regions=cfg.PREPROCESS.REGION.REGIONS,
         merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
+    )
+    output_page = OutputPageXML(
+        xml_regions=xml_regions,
+        output_dir=args.output,
         cfg=cfg,
         whitelist=args.whitelist,
         rectangle_regions=cfg.PREPROCESS.REGION.RECTANGLE_REGIONS,

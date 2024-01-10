@@ -18,6 +18,7 @@ from core.preprocess import preprocess_datasets
 from core.setup import setup_cfg
 from datasets.dataset import metadata_from_classes
 from page_xml.xml_converter import XMLConverter
+from page_xml.xml_regions import XMLRegions
 from run import Predictor
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import get_file_paths, supported_image_formats
@@ -96,14 +97,15 @@ def main(args) -> None:
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not args.keep_tmp_dir) as tmp_dir:
         # preprocess_datasets(cfg, None, args.input, tmp_dir, save_image_locations=False)
 
-        xml_converter = XMLConverter(
+        xml_regions = XMLRegions(
             mode=cfg.MODEL.MODE,
             line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
             regions=cfg.PREPROCESS.REGION.REGIONS,
             merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
             region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
         )
-        metadata = metadata_from_classes(xml_converter.get_regions())
+        xml_converter = XMLConverter(xml_regions)
+        metadata = metadata_from_classes(xml_regions.regions)
 
         image_paths = get_file_paths(args.input, supported_image_formats, cfg.PREPROCESS.DISABLE_CHECK)
 

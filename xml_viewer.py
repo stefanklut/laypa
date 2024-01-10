@@ -4,9 +4,7 @@ import os
 from multiprocessing.pool import Pool
 from pathlib import Path
 
-import cv2
 import numpy as np
-from detectron2.data import Metadata
 from detectron2.utils.visualizer import Visualizer
 
 # from multiprocessing.pool import ThreadPool as Pool
@@ -15,6 +13,7 @@ from tqdm import tqdm
 from core.setup import setup_cfg
 from datasets.dataset import metadata_from_classes
 from page_xml.xml_converter import XMLConverter
+from page_xml.xml_regions import XMLRegions
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import get_file_paths
 from utils.logging_utils import get_logger_name
@@ -57,9 +56,9 @@ class Viewer:
         Simple viewer to convert xml files to images (grayscale, color or overlay)
 
         Args:
-            xml_to_image (XMLImage): converter from xml to a label mask
+            xml_converter: helps to convert page xml to images
             output_dir (str | Path): path to output dir
-            mode (str, optional): output mode: gray, color, or overlay. Defaults to 'gray'.
+            output_type (str): the colour type to use for the output
 
         Raises:
             ValueError: Colors do not match the number of region types
@@ -74,8 +73,7 @@ class Viewer:
         self.output_dir: Path = output_dir
         self.xml_converter: XMLConverter = xml_converter
 
-        region_names = xml_converter.get_regions()
-        self.metadata = metadata_from_classes(region_names)
+        self.metadata = metadata_from_classes(xml_converter.xml_regions.regions)
 
         self.output_type = output_type
 
@@ -190,13 +188,14 @@ def main(args) -> None:
 
     xml_list = get_file_paths(args.input, formats=[".xml"])
 
-    xml_converter = XMLConverter(
+    xml_regions = XMLRegions(
         mode=cfg.MODEL.MODE,
         line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
         regions=cfg.PREPROCESS.REGION.REGIONS,
         merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
     )
+    xml_converter = XMLConverter(xml_regions)
 
     viewer = Viewer(xml_converter=xml_converter, output_dir=args.output, output_type=args.output_type)
     viewer.run(xml_list)

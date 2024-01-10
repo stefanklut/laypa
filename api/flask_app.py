@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional, TypedDict
 
-import cv2
 import numpy as np
 import torch
 from flask import Flask, Response, abort, jsonify, request
@@ -16,8 +15,9 @@ from prometheus_client import Counter, Gauge, generate_latest
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from main import setup_cfg, setup_logging
 from page_xml.output_pageXML import OutputPageXML
+from page_xml.xml_regions import XMLRegions
 from run import Predictor
-from utils.image_utils import load_image_array_from_bytes, load_image_tensor_from_bytes
+from utils.image_utils import load_image_array_from_bytes
 from utils.logging_utils import get_logger_name
 
 # Reading environment files
@@ -101,17 +101,14 @@ class PredictorGenPageWrapper:
         args.opts = ["TEST.WEIGHTS", str(weights_paths[0])]
 
         cfg = setup_cfg(args)
-
-        self.gen_page = OutputPageXML(
+        xml_regions = XMLRegions(
             mode=cfg.MODEL.MODE,
-            output_dir=None,
             line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
             regions=cfg.PREPROCESS.REGION.REGIONS,
             merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
             region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
-            cfg=cfg,
-            whitelist={},
         )
+        self.gen_page = OutputPageXML(xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={})
 
         self.predictor = Predictor(cfg=cfg)
 

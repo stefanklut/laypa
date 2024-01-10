@@ -41,19 +41,15 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-class OutputPageXML(XMLRegions):
+class OutputPageXML:
     """
     Class for the generation of the pageXML from class predictions on images
     """
 
     def __init__(
         self,
-        mode: str,
+        xml_regions: XMLRegions,
         output_dir: Optional[str | Path] = None,
-        line_width: Optional[int] = None,
-        regions: Optional[list[str]] = None,
-        merge_regions: Optional[list[str]] = None,
-        region_type: Optional[list[str]] = None,
         cfg: Optional[CfgNode] = None,
         whitelist: Optional[Iterable[str]] = None,
         rectangle_regions: Optional[Iterable[str]] = None,
@@ -63,12 +59,8 @@ class OutputPageXML(XMLRegions):
         Class for the generation of the pageXML from class predictions on images
 
         Args:
-            mode (str): mode of the region type
+            xml_regions (XMLRegions): contains the page xml configurations
             output_dir (str | Path): path to output dir
-            line_width (Optional[int], optional): width of line. Defaults to None.
-            regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
-            merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
-            region_type (Optional[list[str]], optional): list of strings that map Page XML Region to a class defined in
             'regions'. Defaults to None.
             cfg (Optional[CfgNode]): contains the configuration that is used for providence in the pageXML.
             Defaults to None.
@@ -79,17 +71,16 @@ class OutputPageXML(XMLRegions):
             min_region_size (int): minimum size a region has to be, to be considered a valid region.
             Defaults to 10 pixels.
         """
-        super().__init__(mode, line_width, regions, merge_regions, region_type)
 
         self.logger = logging.getLogger(get_logger_name())
+
+        self.xml_regions = xml_regions
 
         self.output_dir = None
         self.page_dir = None
 
         if output_dir is not None:
             self.set_output_dir(output_dir)
-
-        self.regions = self.get_regions()
 
         self.cfg = cfg
 
@@ -172,18 +163,18 @@ class OutputPageXML(XMLRegions):
         if self.cfg is not None:
             page.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
 
-        if self.mode == "region":
+        if self.xml_regions.mode == "region":
             sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
 
             region_id = 0
 
-            for i, region in enumerate(self.regions):
+            for region in self.xml_regions.regions:
                 if region == "background":
                     continue
                 binary_region_mask = np.zeros_like(sem_seg).astype(np.uint8)
-                binary_region_mask[sem_seg == i] = 1
+                binary_region_mask[sem_seg == self.xml_regions.region_classes[region]] = 1
 
-                region_type = self.region_types[region]
+                region_type = self.xml_regions.region_types[region]
 
                 contours, hierarchy = cv2.findContours(binary_region_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -217,25 +208,25 @@ class OutputPageXML(XMLRegions):
 
                     _uuid = uuid.uuid4()
                     text_reg = page.add_element(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
-        elif self.mode in ["baseline", "start", "end", "separator"]:
+        elif self.xml_regions.mode in ["baseline", "start", "end", "separator"]:
             # Push the calculation to outside of the python code <- mask is used by minion
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
             sem_seg = torch.nn.functional.interpolate(
                 sem_seg[None], size=(old_height, old_width), mode="bilinear", align_corners=False
             )[0]
-            sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+            sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy()
             with AtomicFileName(file_path=sem_seg_output_path) as path:
-                save_image_array_to_path(str(path), (sem_seg * 255).astype(np.uint8))
-        elif self.mode in ["baseline_separator", "top_bottom"]:
+                save_image_array_to_path(str(path), (sem_seg_image * 255).astype(np.uint8))
+        elif self.xml_regions.mode in ["baseline_separator", "top_bottom"]:
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
             sem_seg = torch.nn.functional.interpolate(
                 sem_seg[None], size=(old_height, old_width), mode="bilinear", align_corners=False
             )[0]
-            sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+            sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy()
             with AtomicFileName(file_path=sem_seg_output_path) as path:
-                save_image_array_to_path(str(path), (sem_seg * 128).clip(0, 255).astype(np.uint8))
+                save_image_array_to_path(str(path), (sem_seg_image * 128).clip(0, 255).astype(np.uint8))
         else:
-            raise NotImplementedError(f"Mode {self.mode} not implemented")
+            raise NotImplementedError(f"Mode {self.xml_regions.mode} not implemented")
 
         # TODO Overwrite when multiple image have the same name but different extension
         page.save_xml()
@@ -299,13 +290,19 @@ def main(args):
     sem_seg_paths = get_file_paths(args.sem_seg, formats=[".png"])
     image_paths = get_file_paths(args.input, formats=supported_image_formats)
 
-    gen_page = OutputPageXML(
+    xml_regions = XMLRegions(
         mode=args.mode,
-        output_dir=args.output,
-        line_width=args.line_width,
         regions=args.regions,
+        region_type=args.region_types,
         merge_regions=args.merge_regions,
-        region_type=args.region_type,
+        line_width=args.line_width,
+    )
+
+    gen_page = OutputPageXML(
+        xml_regions=xml_regions,
+        output_dir=args.output,
+        rectangle_regions=args.rectangle_regions,
+        min_region_size=args.min_region_size,
     )
 
     gen_page.run(sem_seg_paths, image_paths)
