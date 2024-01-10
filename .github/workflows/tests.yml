@@ -31,3 +31,13 @@ jobs:
         if: always()
         run: |
           python tests/test_input_utils.py
+
+      - name: Test dataset
+        if: always()
+        run: |
+          python tests/test_dataset.py
+
+      - name: Test output pageMXL
+        if: always()
+        run: |
+          python tests/test_output_pageMXL.py
