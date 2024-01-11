@@ -39,6 +39,7 @@ class XMLRegions:
             self.regions = regions
             self.region_types = region_type
             self.merged_regions = merge_regions
+            self.region_classes = self._build_class_regions()
         else:
             assert line_width is not None
 
