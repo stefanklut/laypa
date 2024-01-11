@@ -33,13 +33,16 @@ class XMLRegions:
             self._merge_regions: dict[str, str] = {}
             self._region_type: dict[str, str] = {}
 
+            self._regions_internal = []
+            self._merge_regions_internal = None
+            self._region_type_internal = None
+
             # regions: list of type names (required for lookup)
             # merge_regions: regions to be merged. r1:r2,r3  -> r2 and r3 become region r1
             # region_type: type per_region. t1:r1,r2  -> r1 and r2 become type t1
             self.regions = regions
             self.region_types = region_type
             self.merged_regions = merge_regions
-            self.region_classes = self._build_class_regions()
         else:
             assert line_width is not None
 
@@ -115,30 +118,6 @@ class XMLRegions:
         )
         return parser
 
-    def _merge_classes(self) -> None:
-        """
-        Merge the classes defined by the merge regions
-        """
-        if self.merged_regions is None:
-            return
-        if len(self.merged_regions) == 0:
-            return
-
-        self.region_classes = self._build_class_regions()
-
-        for parent, childs in self.merged_regions.items():
-            for child in childs:
-                self.region_classes[child] = self.region_classes[parent]
-
-    def _build_class_regions(self) -> dict[str, int]:
-        """
-        Given a list of regions assign a equally separated class to each one
-
-        Returns:
-            dict[str, str]: keys are the class name, values are the class number
-        """
-        return {region: i for i, region in enumerate(self.regions)}
-
     def _build_merged_regions(self) -> dict[str, str]:
         """
         Build dict of regions to be merged into a single class
@@ -156,7 +135,7 @@ class XMLRegions:
         to_merge = {}
         for c in self._merge_regions_internal:
             parent, childs = c.split(":")
-            if parent in self.regions:
+            if parent in self._regions_internal:
                 to_merge[parent] = childs.split(",")
             else:
                 raise argparse.ArgumentTypeError(f'Malformed argument {c}\nRegion "{parent}" to merge is not defined as region')
@@ -184,7 +163,7 @@ class XMLRegions:
         """
         region_types = {"full_page": "TextRegion"}
         if self._region_type_internal is None or len(self._region_type_internal) == 0:
-            for region in self.regions:
+            for region in self._regions_internal:
                 region_types[region] = "TextRegion"
             return region_types
 
@@ -192,16 +171,25 @@ class XMLRegions:
             region_type, childs = c.split(":")
             regions = childs.split(",")
             for region in regions:
-                if region in self.regions:
+                if region in self._regions_internal:
                     region_types[region] = region_type
                 else:
                     raise argparse.ArgumentTypeError(
                         f'Malformed argument {c}\nCannot assign region "{region}" to any type. {region} not defined as region'
                     )
-            for region in self.regions:
-                if region not in regions:
-                    region_types[region] = "TextRegion"
+        for region in self._regions_internal:
+            if region not in region_types.keys():
+                region_types[region] = "TextRegion"
         return region_types
+
+    def _build_region_classes(self) -> dict[str, int]:
+        region_classes = {region: i for i, region in enumerate(self.regions)}
+
+        for parent, childs in self.merged_regions.items():
+            for child in childs:
+                region_classes[child] = region_classes[parent]
+
+        return region_classes
 
     def _build_regions(self) -> list[str]:
         """
@@ -260,7 +248,19 @@ class XMLRegions:
         """
         self._regions_internal = [region for region in regions if region != "background"]
         self._regions = self._build_regions()
-        self._merge_classes()
+        self._merge_regions = self._build_merged_regions()
+        self._region_classes = self._build_region_classes()
+
+    @property
+    def region_classes(self) -> dict[str, int]:
+        """
+        Return the region classes
+
+        Returns:
+            dict[str, int]: Mapping from region to class
+        """
+
+        return self._region_classes
 
     @property
     def region_types(self) -> dict[str, str]:
@@ -303,4 +303,5 @@ class XMLRegions:
         """
         self._merge_regions_internal = merged_regions
         self._merge_regions = self._build_merged_regions()
-        self._merge_classes()
+        self._regions = self._build_regions()
+        self._region_classes = self._build_region_classes()
