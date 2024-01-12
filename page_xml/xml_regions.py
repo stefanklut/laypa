@@ -46,6 +46,7 @@ class XMLRegions:
         else:
             assert line_width is not None
 
+            self._regions = self._build_regions()
             self.line_width = line_width
 
     # REVIEW is this the best place for this

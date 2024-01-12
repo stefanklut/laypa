@@ -471,7 +471,7 @@ class XMLConverter:
             sem_seg = self.build_baseline_sem_seg(
                 gt_data,
                 image_shape,
-                line_width=xml_regions.line_width,
+                line_width=self.xml_regions.line_width,
             )
             return sem_seg
         elif self.xml_regions.mode == "top_bottom":
@@ -485,28 +485,28 @@ class XMLConverter:
             sem_seg = self.build_start_sem_seg(
                 gt_data,
                 image_shape,
-                line_width=xml_regions.line_width,
+                line_width=self.xml_regions.line_width,
             )
             return sem_seg
         elif self.xml_regions.mode == "end":
             sem_seg = self.build_end_sem_seg(
                 gt_data,
                 image_shape,
-                line_width=xml_regions.line_width,
+                line_width=self.xml_regions.line_width,
             )
             return sem_seg
         elif self.xml_regions.mode == "separator":
             sem_seg = self.build_separator_sem_seg(
                 gt_data,
                 image_shape,
-                line_width=xml_regions.line_width,
+                line_width=self.xml_regions.line_width,
             )
             return sem_seg
         elif self.xml_regions.mode == "baseline_separator":
             sem_seg = self.build_baseline_separator_sem_seg(
                 gt_data,
                 image_shape,
-                line_width=xml_regions.line_width,
+                line_width=self.xml_regions.line_width,
             )
             return sem_seg
         elif self.xml_regions.mode == "text_line":
