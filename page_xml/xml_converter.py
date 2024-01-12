@@ -559,7 +559,7 @@ class XMLConverter:
             instances = self.build_baseline_instances(
                 gt_data,
                 image_shape,
-                xml_regions.line_width,
+                self.xml_regions.line_width,
             )
             return instances
         elif self.xml_regions.mode == "text_line":
@@ -612,7 +612,7 @@ class XMLConverter:
             pano, segments_info = self.build_baseline_pano(
                 gt_data,
                 image_shape,
-                xml_regions.line_width,
+                self.xml_regions.line_width,
             )
             return pano, segments_info
         elif self.xml_regions.mode == "text_line":
