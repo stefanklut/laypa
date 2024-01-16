@@ -83,7 +83,7 @@ class XMLConverter:
 
     # Taken from https://github.com/cocodataset/panopticapi/blob/master/panopticapi/utils.py
     @staticmethod
-    def id2rgb(id_map: int | np.ndarray) -> tuple | np.ndarray:
+    def id2rgb(id_map: int | np.ndarray) -> tuple[int, int, int] | np.ndarray:
         if isinstance(id_map, np.ndarray):
             rgb_shape = tuple(list(id_map.shape) + [3])
             rgb_map = np.zeros(rgb_shape, dtype=np.uint8)
@@ -96,6 +96,34 @@ class XMLConverter:
             color.append(id_map % 256)
             id_map //= 256
         return tuple(color)
+
+    def draw_lines(self, image: np.ndarray, coords: np.ndarray, color: int | tuple[int, int, int], thickness: int = 1):
+        """
+        Draw lines on an image
+
+        Args:
+            image (np.ndarray): image to draw on
+            lines (np.ndarray): lines to draw
+            color (tuple[int, int, int]): color of the lines
+            thickness (int, optional): thickness of the lines. Defaults to 1.
+        """
+        temp_image = np.zeros_like(image)
+
+        rounded_coords = np.round(coords).astype(np.int32)
+
+        # Clear the temp image
+        temp_image.fill(0)
+        cv2.polylines(temp_image, [rounded_coords.reshape(-1, 1, 2)], False, color, thickness)
+
+        overlap = np.logical_and(temp_image, image)
+        image = np.where(temp_image == 0, image, temp_image)
+
+        if overlap.any():
+            self.logger.warning(f"Overlap detected when drawing lines")
+        if not image.any():
+            self.logger.warning(f"Image is empty when drawing lines")
+
+        return image
 
     ## REGIONS
 
@@ -245,10 +273,9 @@ class XMLConverter:
         instances = []
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
             mask.fill(0)
             # HACK Currenty the most simple quickest solution used can probably be optimized
-            cv2.polylines(mask, [rounded_coords.reshape(-1, 1, 2)], False, 255, line_width)
+            mask = self.draw_lines(mask, coords, 255, thickness=line_width)
             contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             if len(contours) == 0:
                 raise ValueError(f"{page.filepath} has no contours")
@@ -286,9 +313,8 @@ class XMLConverter:
         _id = 1
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
             rgb_color = self.id2rgb(_id)
-            cv2.polylines(pano_mask, [rounded_coords.reshape(-1, 1, 2)], False, rgb_color, line_width)
+            pano_mask = self.draw_lines(pano_mask, coords, rgb_color, thickness=line_width)
             segment: SegmentsInfo = {
                 "id": _id,
                 "category_id": baseline_class,
