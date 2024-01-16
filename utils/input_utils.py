@@ -113,6 +113,9 @@ def get_file_paths(
             if len(sub_output_paths) == 0:
                 raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
 
+        elif input_path.is_file() and is_path_supported_format(input_path, formats):
+            sub_output_paths = [input_path.absolute()]
+
         elif input_path.is_file() and input_path.suffix == ".txt":
             with input_path.open(mode="r") as f:
                 paths_from_file = [Path(line) for line in f.read().splitlines()]
