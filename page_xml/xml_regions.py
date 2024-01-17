@@ -76,7 +76,7 @@ class XMLRegions:
         republic_merge_regions = ["resolution:Resumption,resumption,Insertion,insertion"]
         parser = argparse.ArgumentParser(add_help=False)
 
-        region_args = parser.add_argument_group("regions")
+        region_args = parser.add_argument_group("Regions")
 
         region_args.add_argument(
             "-m",

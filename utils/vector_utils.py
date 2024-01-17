@@ -42,7 +42,7 @@ def point_line_segment_distance(line_segments: np.ndarray, points: np.ndarray) -
     return distances
 
 
-def point_at_start_or_end(line_segments: np.ndarray, points: np.ndarray) -> np.ndarray:
+def point_at_start_or_end_assignment(line_segments: np.ndarray, points: np.ndarray) -> np.ndarray:
     """
     Find and remove points that are at the start or end of a line segment.
 
@@ -97,8 +97,6 @@ def point_at_start_or_end(line_segments: np.ndarray, points: np.ndarray) -> np.n
     is_min_value = distances == min_values[:, np.newaxis]
 
     label = np.zeros(len(points))
-
-    print(is_min_value.shape)
 
     closest_to_start = np.any(is_min_value[:, [0]], axis=1)
     closest_to_end = np.any(is_min_value[:, [-1]], axis=1)
@@ -379,7 +377,9 @@ def draw_lines(lines: np.ndarray, thickness: int) -> np.ndarray:
         line_pixel_coords = np.column_stack(np.where(empty_mask == 1))[:, ::-1]
         print(line_pixel_coords.shape)
         empty_mask.fill(0)
-        mask[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = (point_at_start_or_end(line, line_pixel_coords) + 1) * 100
+        mask[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = (
+            point_at_start_or_end_assignment(line, line_pixel_coords) + 1
+        ) * 100
 
     return mask
 
