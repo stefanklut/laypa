@@ -40,9 +40,9 @@ Laypa is a segmentation network, with the goal of finding regions (paragraph, pa
 ## Tested Environments
 Developed using the following software and hardware:
 <!-- TODO Change to recent information, maybe write small script te generate this information -->
-Operating System | Python | PyTorch | Cudatoolkit | GPU | CPU | Success
----------------- | ------ | ------- | ----------- | --- | --- | -------
-Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
+| Operating System                                                  | Python | PyTorch | Cudatoolkit | GPU                                   | CPU                                  | Success            |
+| ----------------------------------------------------------------- | ------ | ------- | ----------- | ------------------------------------- | ------------------------------------ | ------------------ |
+| Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1   | 11.7        | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark: |
 
 <details>
 <summary> Click here to show all tested environments </summary>
@@ -52,9 +52,9 @@ More coming soon
 
 Run [`utils/collect_env_info.py`][collect_env_info_link] to retrieve your environment information, and add them via [pull request][pull_request_link].
 
-Operating System | Python | PyTorch | Cudatoolkit | GPU | CPU | Success
----------------- | ------ | ------- | ----------- | --- | --- | -------
-Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1 | 11.7 | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark:
+| Operating System                                                  | Python | PyTorch | Cudatoolkit | GPU                                   | CPU                                  | Success            |
+| ----------------------------------------------------------------- | ------ | ------- | ----------- | ------------------------------------- | ------------------------------------ | ------------------ |
+| Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1   | 11.7        | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark: |
 
 </details>
 
@@ -235,7 +235,7 @@ Some dataset that should work with laypa are listed below, some preprocessing ma
 ## Training 
 Three things are required to train a model using [`main.py`][main_link].
 1. A config file, See [`configs/segmentation`][configs_link] for examples of config files and their contents.
-2. Ground truth training/validation data in the form of images and their corresponding pageXML. The training/validation data can be provided by giving either a `.txt` file containing image paths or the path of a directory containing there images.
+2. Ground truth training/validation data in the form of images and their corresponding pageXML. The training/validation data can be provided by giving either a `.txt` file containing image paths, the image paths themselves, or the path of a directory containing the images.
 
 Required arguments:
 ```sh
@@ -286,7 +286,7 @@ How to run the Laypa inference individually will be explained first, and how to 
 ### Without External Processing
 To just run the Laypa inference in [`run.py`][run_link], you need three things:
 1. A config file, See [`configs/segmentation`][configs_link] for examples of config files and their contents.
-2. A directory with images to be processed
+2. The data can be provided by giving either a `.txt` file containing image paths, the image paths themselves, or the path of a directory containing the images.
 3. A location to which the processed files can be written. The directory will be created if it does not exist yet.
 
 Required arguments
@@ -402,7 +402,7 @@ Example of running [`eval.py`][eval_link]:
 python eval.py -c config.yml -i input_dir
 ```
 
-The [`eval.py`][eval_link] will then open a window with both the prediction and the ground truth side by side. Allowing for easier comparison. The visualization masks are created in the same way the preprocessing converts pageXML to masks.
+The [`eval.py`][eval_link] will then open a window with both the prediction and the ground truth side by side (if the ground truth exists). Allowing for easier comparison. The visualization masks are created in the same way the preprocessing converts pageXML to masks.
 
 The second tool is a program to compare the similarity of two sets of pageXML. This can mean either comparing ground truth to predicted pageXML, or determining the similarity of two annotations by different people. This tool is the [`xml_comparison.py`][xml_comparison_link] file. The comparison allows you to specify how regions and baseline should be drawn in when creating the pixel masks. The pixel masks are then compared based on their Intersection over Union (IoU) and Accuracy (Acc) scores. For the sake of the Accuracy metric one of the two sets needs to be specified as the ground truth set. So one set is the ground truth directory (`--gt`) argument and the other is the input directory (`--input`) argument.
 
