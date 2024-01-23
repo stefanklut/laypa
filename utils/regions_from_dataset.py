@@ -59,6 +59,8 @@ def main(args):
     image_paths = get_file_paths(args.input, supported_image_formats)
     xml_paths = [image_path_to_xml_path(image_path) for image_path in image_paths]
 
+    # xml_paths = get_file_paths(args.input, [".xml"])
+
     # Single thread
     # regions_per_page = []
     # for xml_path_i in tqdm(xml_paths):
