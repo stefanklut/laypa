@@ -308,5 +308,16 @@ def metrics() -> bytes:
     return generate_latest()
 
 
+@app.route("/health", methods=["GET"])
+def health_check() -> tuple[str, int]:
+    """
+    Health check endpoint for Kubernetes checks
+
+    Returns:
+        tuple[str, int]: Response and status code
+    """
+    return "OK", 200
+
+
 if __name__ == "__main__":
     app.run()
