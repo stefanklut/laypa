@@ -176,6 +176,10 @@ def predict_image(
         images_processed_counter.inc()
         return input_args
     except Exception as e:
+        if isinstance(e, RuntimeError):
+            torch.cuda.empty_cache()
+        if isinstance(e, torch.cuda.OutOfMemoryError):
+            torch.cuda.reset_peak_memory_stats()
         return input_args | {"exception": e.with_traceback(e.__traceback__)}
 
 
