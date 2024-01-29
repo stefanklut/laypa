@@ -35,13 +35,9 @@ output_base_path = Path(output_base_path_string)
 
 # Checks if ENV variable exist
 if not model_base_path.is_dir():
-    raise FileNotFoundError(
-        f"LAYPA_MODEL_BASE_PATH: {model_base_path} is not found in the current filesystem"
-    )
+    raise FileNotFoundError(f"LAYPA_MODEL_BASE_PATH: {model_base_path} is not found in the current filesystem")
 if not output_base_path.is_dir():
-    raise FileNotFoundError(
-        f"LAYPA_OUTPUT_BASE_PATH: {output_base_path} is not found in the current filesystem"
-    )
+    raise FileNotFoundError(f"LAYPA_OUTPUT_BASE_PATH: {output_base_path} is not found in the current filesystem")
 
 # Capture logging
 setup_logging()
@@ -112,9 +108,7 @@ class PredictorGenPageWrapper:
             merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
             region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
         )
-        self.gen_page = OutputPageXML(
-            xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={}
-        )
+        self.gen_page = OutputPageXML(xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={})
 
         self.predictor = Predictor(cfg=cfg)
 
@@ -129,15 +123,9 @@ max_queue_size = max_workers + max_queue_size
 executor = ThreadPoolExecutor(max_workers=max_workers)
 
 # Prometheus metrics to be returned
-queue_size_gauge = Gauge("queue_size", "Size of worker queue").set_function(
-    lambda: executor._work_queue.qsize()
-)
-images_processed_counter = Counter(
-    "images_processed", "Total number of images processed"
-)
-exception_predict_counter = Counter(
-    "exception_predict", "Exception thrown in predict() function"
-)
+queue_size_gauge = Gauge("queue_size", "Size of worker queue").set_function(lambda: executor._work_queue.qsize())
+images_processed_counter = Counter("images_processed", "Total number of images processed")
+exception_predict_counter = Counter("exception_predict", "Exception thrown in predict() function")
 
 
 def predict_image(
@@ -187,19 +175,16 @@ def predict_image(
         )
         images_processed_counter.inc()
         return input_args
-    except Exception as e:
-        exception_string = e.with_traceback(e.__traceback__)
-
+    except Exception as exception:
         # Catch CUDA out of memory errors
-        if isinstance(e, RuntimeError) and (
-            "CUDA out of memory." in str(e)
-            or "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(e)
+        if isinstance(exception, RuntimeError) and (
+            "CUDA out of memory." in str(exception) or "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(exception)
         ):
             torch.cuda.empty_cache()
             torch.cuda.reset_peak_memory_stats()
-            exception_string = e.with_traceback(None)
+            exception = exception.with_traceback(None)
 
-        return input_args | {"exception": exception_string}
+        return input_args | {"exception": exception}
 
 
 class ResponseInfo(TypedDict, total=False):
@@ -310,9 +295,7 @@ def predict() -> tuple[Response, int]:
     if image is None:
         abort_with_info(500, "Image could not be loaded correctly", response_info)
 
-    future = executor.submit(
-        predict_image, image, image_name, identifier, model_name, whitelist
-    )
+    future = executor.submit(predict_image, image, image_name, identifier, model_name, whitelist)
     future.add_done_callback(check_exception_callback)
 
     response_info["status_code"] = 202
