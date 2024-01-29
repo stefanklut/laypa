@@ -27,18 +27,34 @@ from utils.logging_utils import get_logger_name
 
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run file to inference using the model found in the config file")
+    parser = argparse.ArgumentParser(
+        description="Run file to inference using the model found in the config file"
+    )
 
     detectron2_args = parser.add_argument_group("detectron2")
 
     detectron2_args.add_argument("-c", "--config", help="config file", required=True)
-    detectron2_args.add_argument("--opts", nargs="+", help="optional args to change", action="extend", default=[])
+    detectron2_args.add_argument(
+        "--opts", nargs="+", help="optional args to change", action="extend", default=[]
+    )
 
     io_args = parser.add_argument_group("IO")
-    io_args.add_argument("-i", "--input", nargs="+", help="Input folder", type=str, action="extend", required=True)
-    io_args.add_argument("-o", "--output", help="Output folder", type=str, required=True)
+    io_args.add_argument(
+        "-i",
+        "--input",
+        nargs="+",
+        help="Input folder",
+        type=str,
+        action="extend",
+        required=True,
+    )
+    io_args.add_argument(
+        "-o", "--output", help="Output folder", type=str, required=True
+    )
 
-    parser.add_argument("-w", "--whitelist", nargs="+", help="Input folder", type=str, action="extend")
+    parser.add_argument(
+        "-w", "--whitelist", nargs="+", help="Input folder", type=str, action="extend"
+    )
 
     args = parser.parse_args()
 
@@ -61,8 +77,6 @@ class Predictor(DefaultPredictor):
 
         self.model = build_model(self.cfg)
         self.model.eval()
-        if cfg.MODEL.HALF_PRECISION:
-            self.model.half()
 
         if len(cfg.DATASETS.TEST):
             self.metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
@@ -72,7 +86,9 @@ class Predictor(DefaultPredictor):
 
         checkpointer = DetectionCheckpointer(self.model)
         if not cfg.TEST.WEIGHTS:
-            raise FileNotFoundError("Cannot do inference without weights. Specify a checkpoint file to --opts TEST.WEIGHTS")
+            raise FileNotFoundError(
+                "Cannot do inference without weights. Specify a checkpoint file to --opts TEST.WEIGHTS"
+            )
 
         checkpointer.load(cfg.TEST.WEIGHTS)
 
@@ -81,13 +97,19 @@ class Predictor(DefaultPredictor):
             self.aug = ResizeScaling(scale=1)
         elif cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
             if cfg.INPUT.RESIZE_MODE == "shortest_edge":
-                self.aug = ResizeShortestEdge(cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, "choice")
+                self.aug = ResizeShortestEdge(
+                    cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, "choice"
+                )
             elif cfg.INPUT.RESIZE_MODE == "longest_edge":
-                self.aug = ResizeLongestEdge(cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, "choice")
+                self.aug = ResizeLongestEdge(
+                    cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, "choice"
+                )
         elif cfg.INPUT.RESIZE_MODE == "scaling":
             self.aug = ResizeScaling(cfg.INPUT.SCALING_TEST, cfg.INPUT.MAX_SIZE_TEST)
         else:
-            raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
+            raise NotImplementedError(
+                f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode"
+            )
 
     def get_image_size(self, height: int, width: int) -> tuple[int, int]:
         """
@@ -107,14 +129,19 @@ class Predictor(DefaultPredictor):
             new_height, new_width = height, width
         elif self.cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
             new_height, new_width = self.aug.get_output_shape(
-                height, width, self.cfg.INPUT.MIN_SIZE_TEST, self.cfg.INPUT.MAX_SIZE_TEST
+                height,
+                width,
+                self.cfg.INPUT.MIN_SIZE_TEST,
+                self.cfg.INPUT.MAX_SIZE_TEST,
             )
         elif self.cfg.INPUT.RESIZE_MODE == "scaling":
             new_height, new_width = self.aug.get_output_shape(
                 height, width, self.cfg.INPUT.SCALING_TEST, self.cfg.INPUT.MAX_SIZE_TEST
             )
         else:
-            raise NotImplementedError(f"{self.cfg.INPUT.RESIZE_MODE} is not a known resize mode")
+            raise NotImplementedError(
+                f"{self.cfg.INPUT.RESIZE_MODE} is not a known resize mode"
+            )
 
         return new_height, new_width
 
@@ -132,10 +159,9 @@ class Predictor(DefaultPredictor):
             # Apply pre-processing to image.
             channels, height, width = original_image.shape
             assert channels == 3, f"Must be a BGR image, found {channels} channels"
-            image = torch.as_tensor(original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE)
-
-            if self.cfg.MODEL.HALF_PRECISION:
-                image = image.half()
+            image = torch.as_tensor(
+                original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE
+            )
 
             if self.input_format == "BGR":
                 # whether the model expects BGR inputs or RGB
@@ -144,10 +170,17 @@ class Predictor(DefaultPredictor):
             new_height, new_width = self.get_image_size(height, width)
 
             if self.cfg.INPUT.RESIZE_MODE != "none":
-                image = torch.nn.functional.interpolate(image[None], mode="bilinear", size=(new_height, new_width))[0]
+                image = torch.nn.functional.interpolate(
+                    image[None], mode="bilinear", size=(new_height, new_width)
+                )[0]
 
             inputs = {"image": image, "height": new_height, "width": new_width}
-            predictions = self.model([inputs])[0]
+
+            with torch.autocast(
+                device_type=self.cfg.MODEL.DEVICE, enabled=self.cfg.MODEL.AUTOCAST
+            ):
+                predictions = self.model([inputs])[0]
+
             return predictions, height, width
 
     def cpu_call(self, original_image: np.ndarray):
@@ -165,17 +198,20 @@ class Predictor(DefaultPredictor):
             height, width, channels = original_image.shape
             assert channels == 3, f"Must be a RBG image, found {channels} channels"
             image = self.aug.get_transform(original_image).apply_image(original_image)
-            image = torch.as_tensor(image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
-
-            if self.cfg.MODEL.HALF_PRECISION:
-                image = image.half()
+            image = torch.as_tensor(
+                image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE
+            ).permute(2, 0, 1)
 
             if self.input_format == "BGR":
                 # whether the model expects BGR inputs or RGB
                 image = image[[2, 1, 0], :, :]
 
             inputs = {"image": image, "height": image.shape[1], "width": image.shape[2]}
-            predictions = self.model([inputs])[0]
+
+            with torch.autocast(
+                device_type=self.cfg.MODEL.DEVICE, enabled=self.cfg.MODEL.AUTOCAST
+            ):
+                predictions = self.model([inputs])[0]
 
         return predictions, height, width
 
@@ -218,7 +254,11 @@ class LoadingDataset(Dataset):
 def collate_numpy(batch):
     collate_map = default_collate_fn_map
 
-    def new_map(batch, *, collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None):
+    def new_map(
+        batch,
+        *,
+        collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    ):
         return batch
 
     collate_map.update({np.ndarray: new_map, type(None): new_map})
@@ -292,7 +332,9 @@ class SavePredictor(Predictor):
             output_dir = Path(output_dir)
 
         if not output_dir.is_dir():
-            self.logger.info(f"Could not find output dir ({output_dir}), creating one at specified location")
+            self.logger.info(
+                f"Could not find output dir ({output_dir}), creating one at specified location"
+            )
             output_dir.mkdir(parents=True)
 
         self.output_dir = output_dir.resolve()
@@ -311,7 +353,9 @@ class SavePredictor(Predictor):
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         if image is None:
-            self.logger.warning(f"Image at {input_path} has not loaded correctly, ignoring for now")
+            self.logger.warning(
+                f"Image at {input_path} has not loaded correctly, ignoring for now"
+            )
             return
 
         outputs = self.__call__(image)
@@ -320,7 +364,9 @@ class SavePredictor(Predictor):
         # output_image = torch.argmax(output_image, dim=-3).cpu().numpy()
 
         self.output_page.link_image(input_path)
-        self.output_page.generate_single_page(output_image, input_path, old_height=outputs[1], old_width=outputs[2])
+        self.output_page.generate_single_page(
+            output_image, input_path, old_height=outputs[1], old_width=outputs[2]
+        )
 
     def process(self):
         """
@@ -337,7 +383,12 @@ class SavePredictor(Predictor):
 
         dataset = LoadingDataset(self.input_paths)
         dataloader = DataLoader(
-            dataset, shuffle=False, batch_size=None, num_workers=16, pin_memory=False, collate_fn=collate_numpy
+            dataset,
+            shuffle=False,
+            batch_size=None,
+            num_workers=16,
+            pin_memory=False,
+            collate_fn=collate_numpy,
         )
         for inputs in tqdm(dataloader, desc="Predicting PageXML"):
             self.save_prediction(inputs[0], inputs[1])
