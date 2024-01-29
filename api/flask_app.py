@@ -182,6 +182,7 @@ def predict_image(
         ):
             torch.cuda.empty_cache()
             torch.cuda.reset_peak_memory_stats()
+            # HACK remove traceback to prevent complete halt of program, not sure why this happens
             exception = exception.with_traceback(None)
 
         return input_args | {"exception": exception}
