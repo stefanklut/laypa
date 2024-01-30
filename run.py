@@ -73,8 +73,7 @@ class Predictor(DefaultPredictor):
         if len(cfg.DATASETS.TEST):
             self.metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
 
-        self.input_format = cfg.INPUT.FORMAT
-        assert self.input_format in ["RGB", "BGR"], self.input_format
+        assert self.cfg.INPUT.FORMAT in ["RGB", "BGR"], self.cfg.INPUT.FORMAT
 
         checkpointer = DetectionCheckpointer(self.model)
         if not cfg.TEST.WEIGHTS:
@@ -143,7 +142,7 @@ class Predictor(DefaultPredictor):
             assert channels == 3, f"Must be a BGR image, found {channels} channels"
             image = torch.as_tensor(original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE)
 
-            if self.input_format == "BGR":
+            if self.cfg.INPUT.FORMAT == "BGR":
                 # whether the model expects BGR inputs or RGB
                 image = image[[2, 1, 0], :, :]
 
@@ -176,7 +175,7 @@ class Predictor(DefaultPredictor):
             image = self.aug.get_transform(original_image).apply_image(original_image)
             image = torch.as_tensor(image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
 
-            if self.input_format == "BGR":
+            if self.cfg.INPUT.FORMAT == "BGR":
                 # whether the model expects BGR inputs or RGB
                 image = image[[2, 1, 0], :, :]
 
