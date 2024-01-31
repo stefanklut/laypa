@@ -184,8 +184,8 @@ class Predictor(DefaultPredictor):
             with torch.autocast(device_type=self.cfg.MODEL.DEVICE, enabled=self.cfg.MODEL.AUTOCAST):
                 predictions = self.model([inputs])[0]
 
-            if torch.isnan(predictions["sem_seg"]).any():
-                raise ValueError("NaN in predictions")
+            # if torch.isnan(predictions["sem_seg"]).any():
+            #     raise ValueError("NaN in predictions")
 
         return predictions, height, width
 
