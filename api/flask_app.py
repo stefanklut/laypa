@@ -12,7 +12,7 @@ import torch
 from flask import Flask, Response, abort, jsonify, request
 from prometheus_client import Counter, Gauge, generate_latest
 
-sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))  # noqa
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from main import setup_cfg, setup_logging
 from page_xml.output_pageXML import OutputPageXML
 from page_xml.xml_regions import XMLRegions
@@ -177,8 +177,8 @@ def predict_image(
         return input_args
     except Exception as exception:
         # Catch CUDA out of memory errors
-        if isinstance(exception, RuntimeError) and (
-            "CUDA out of memory." in str(exception) or "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(exception)
+        if isinstance(exception, torch.cuda.OutOfMemoryError) or (
+            isinstance(exception, RuntimeError) and "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(exception)
         ):
             torch.cuda.empty_cache()
             torch.cuda.reset_peak_memory_stats()
