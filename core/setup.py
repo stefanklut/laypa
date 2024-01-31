@@ -98,11 +98,10 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     _uuid = uuid.uuid4()
     cfg.LAYPA_UUID = str(_uuid)
 
-    version_path = Path("version_info")
-
     cfg.LAYPA_GIT_HASH = get_git_hash()
 
-    cfg.CONFIG_PATH = str(Path(args.config).resolve())
+    config_path = Path(args.config).resolve()
+    cfg.CONFIG_PATH = str(config_path)
 
     if not hasattr(args, "train"):
         pass
@@ -130,6 +129,9 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
         if cfg.NAME:
             folder_name.append(cfg.NAME)
         cfg.OUTPUT_DIR = os.path.join(cfg.OUTPUT_DIR, "_".join(folder_name))
+
+    if cfg.MODEL.RESUME:
+        cfg.OUTPUT_DIR = str(config_path.parent)
 
     # Overwrite device based on detected hardware
     if cfg.MODEL.DEVICE:
