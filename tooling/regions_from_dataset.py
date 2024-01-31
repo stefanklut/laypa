@@ -11,9 +11,9 @@ from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xmlPAGE import PageData
+from tooling.xml_comparison import pretty_print
 from utils.input_utils import get_file_paths, supported_image_formats
 from utils.path_utils import image_path_to_xml_path
-from xml_comparison import pretty_print
 
 
 def get_arguments() -> argparse.Namespace:
