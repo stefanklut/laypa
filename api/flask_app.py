@@ -175,8 +175,17 @@ def predict_image(
         )
         images_processed_counter.inc()
         return input_args
-    except Exception as e:
-        return input_args | {"exception": e.with_traceback(e.__traceback__)}
+    except Exception as exception:
+        # Catch CUDA out of memory errors
+        if isinstance(exception, torch.cuda.OutOfMemoryError) or (
+            isinstance(exception, RuntimeError) and "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(exception)
+        ):
+            torch.cuda.empty_cache()
+            torch.cuda.reset_peak_memory_stats()
+            # HACK remove traceback to prevent complete halt of program, not sure why this happens
+            exception = exception.with_traceback(None)
+
+        return input_args | {"exception": exception}
 
 
 class ResponseInfo(TypedDict, total=False):
@@ -306,6 +315,17 @@ def metrics() -> bytes:
     if request.method != "GET":
         abort(405)
     return generate_latest()
+
+
+@app.route("/health", methods=["GET"])
+def health_check() -> tuple[str, int]:
+    """
+    Health check endpoint for Kubernetes checks
+
+    Returns:
+        tuple[str, int]: Response and status code
+    """
+    return "OK", 200
 
 
 if __name__ == "__main__":
