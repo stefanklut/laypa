@@ -28,13 +28,17 @@ from utils.path_utils import check_path_accessible, image_path_to_xml_path
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        parents=[Preprocess.get_parser(), XMLConverter.get_parser()],
+        parents=[Preprocess.get_parser(), XMLRegions.get_parser()],
         description="Preprocessing an annotated dataset of documents with pageXML",
     )
 
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input folder/file", nargs="+", action="extend", type=str)
     io_args.add_argument("-o", "--output", help="Output folder", required=True, type=str)
+
+    xml_converter_args = parser.add_argument_group("XML Converter")
+    xml_converter_args.add_argument("--square-lines", help="Square the lines", action="store_true")
+
     args = parser.parse_args()
     return args
 
@@ -530,7 +534,7 @@ def main(args) -> None:
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
-    xml_converter = XMLConverter(xml_regions)
+    xml_converter = XMLConverter(xml_regions, args.square_lines)
     process = Preprocess(
         input_paths=args.input,
         output_dir=args.output,

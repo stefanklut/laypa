@@ -8,12 +8,14 @@ import cv2
 import numpy as np
 from detectron2 import structures
 
-from utils.vector_utils import point_top_bottom_assignment
-
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xml_regions import XMLRegions
 from page_xml.xmlPAGE import PageData
 from utils.logging_utils import get_logger_name
+from utils.vector_utils import (
+    point_at_start_or_end_assignment,
+    point_top_bottom_assignment,
+)
 
 
 def get_arguments() -> argparse.Namespace:
@@ -21,6 +23,9 @@ def get_arguments() -> argparse.Namespace:
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input file", required=True, type=str)
     io_args.add_argument("-o", "--output", help="Output file", required=True, type=str)
+
+    xml_converter_args = parser.add_argument_group("XML Converter")
+    xml_converter_args.add_argument("--square-lines", help="Square the lines", action="store_true")
 
     args = parser.parse_args()
     return args
@@ -58,6 +63,7 @@ class XMLConverter:
     def __init__(
         self,
         xml_regions: XMLRegions,
+        square_lines: bool = True,
     ) -> None:
         """
         Class for turning a pageXML into an image with classes
@@ -67,6 +73,7 @@ class XMLConverter:
         """
         self.logger = logging.getLogger(get_logger_name())
         self.xml_regions = xml_regions
+        self.square_lines = square_lines
 
     @staticmethod
     def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]) -> np.ndarray:
@@ -83,7 +90,7 @@ class XMLConverter:
 
     # Taken from https://github.com/cocodataset/panopticapi/blob/master/panopticapi/utils.py
     @staticmethod
-    def id2rgb(id_map: int | np.ndarray) -> tuple | np.ndarray:
+    def id2rgb(id_map: int | np.ndarray) -> tuple[int, int, int] | np.ndarray:
         if isinstance(id_map, np.ndarray):
             rgb_shape = tuple(list(id_map.shape) + [3])
             rgb_map = np.zeros(rgb_shape, dtype=np.uint8)
@@ -96,6 +103,43 @@ class XMLConverter:
             color.append(id_map % 256)
             id_map //= 256
         return tuple(color)
+
+    def draw_line(
+        self,
+        image: np.ndarray,
+        coords: np.ndarray,
+        color: int | tuple[int, int, int],
+        thickness: int = 1,
+    ) -> tuple[np.ndarray, bool]:
+        """
+        Draw lines on an image
+
+        Args:
+            image (np.ndarray): image to draw on
+            lines (np.ndarray): lines to draw
+            color (tuple[int, int, int]): color of the lines
+            thickness (int, optional): thickness of the lines. Defaults to 1.
+        """
+        temp_image = np.zeros_like(image)
+
+        rounded_coords = np.round(coords).astype(np.int32)
+
+        # Clear the temp image
+        temp_image.fill(0)
+
+        if self.square_lines:
+            cv2.polylines(temp_image, [rounded_coords.reshape(-1, 1, 2)], False, 1, thickness)
+            line_pixel_coords = np.column_stack(np.where(temp_image == 1))[:, ::-1]
+            start_or_end = point_at_start_or_end_assignment(rounded_coords, line_pixel_coords)
+            colored_start_or_end = np.where(start_or_end, 0, color)
+            temp_image[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = colored_start_or_end
+        else:
+            cv2.polylines(temp_image, [rounded_coords.reshape(-1, 1, 2)], False, color, thickness)
+
+        overlap = np.logical_and(temp_image, image).any().item()
+        image = np.where(temp_image == 0, image, temp_image)
+
+        return image, overlap
 
     ## REGIONS
 
@@ -245,10 +289,9 @@ class XMLConverter:
         instances = []
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
             mask.fill(0)
             # HACK Currenty the most simple quickest solution used can probably be optimized
-            cv2.polylines(mask, [rounded_coords.reshape(-1, 1, 2)], False, 255, line_width)
+            mask, _ = self.draw_line(mask, coords, 255, thickness=line_width)
             contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             if len(contours) == 0:
                 raise ValueError(f"{page.filepath} has no contours")
@@ -284,11 +327,12 @@ class XMLConverter:
         pano_mask = np.zeros((*out_size, 3), np.uint8)
         segments_info = []
         _id = 1
+        total_overlap = False
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
             rgb_color = self.id2rgb(_id)
-            cv2.polylines(pano_mask, [rounded_coords.reshape(-1, 1, 2)], False, rgb_color, line_width)
+            pano_mask, overlap = self.draw_line(pano_mask, coords, rgb_color, thickness=line_width)
+            total_overlap = total_overlap or overlap
             segment: SegmentsInfo = {
                 "id": _id,
                 "category_id": baseline_class,
@@ -296,6 +340,9 @@ class XMLConverter:
             }
             segments_info.append(segment)
             _id += 1
+
+        if total_overlap:
+            self.logger.warning(f"File {page.filepath} contains overlapping baseline pano")
         if not pano_mask.any():
             self.logger.warning(f"File {page.filepath} does not contains baseline pano")
         return pano_mask, segments_info
@@ -307,23 +354,17 @@ class XMLConverter:
         baseline_color = 1
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
-        binary_mask = np.zeros(out_size, dtype=np.uint8)
-        overlap = False
+        total_overlap = False
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
-            binary_mask.fill(0)
-            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            sem_seg, overlap = self.draw_line(sem_seg, coords, baseline_color, thickness=line_width)
+            total_overlap = total_overlap or overlap
 
-            overlap = np.logical_or(overlap, np.any(np.logical_and(sem_seg, binary_mask)))
-            # Add single line to full sem_seg
-            sem_seg = np.logical_or(sem_seg, binary_mask)
-
-        if overlap:
+        if total_overlap:
             self.logger.warning(f"File {page.filepath} contains overlapping baseline sem_seg")
         if not sem_seg.any():
             self.logger.warning(f"File {page.filepath} does not contains baseline sem_seg")
-        return sem_seg.astype(np.uint8)
+        return sem_seg
 
     # TOP BOTTOM
 
@@ -337,17 +378,21 @@ class XMLConverter:
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
         binary_mask = np.zeros(out_size, dtype=np.uint8)
+        total_overlap = False
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
-            rounded_coords = np.round(coords).astype(np.int32)
-            binary_mask.fill(0)
-            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            binary_mask, overlap = self.draw_line(binary_mask, coords, baseline_color, thickness=line_width)
+            total_overlap = total_overlap or overlap
 
             # Add single line to full sem_seg
             line_pixel_coords = np.column_stack(np.where(binary_mask == 1))[:, ::-1]
+            rounded_coords = np.round(coords).astype(np.int32)
             top_bottom = point_top_bottom_assignment(rounded_coords, line_pixel_coords)
             colored_top_bottom = np.where(top_bottom, top_color, bottom_color)
             sem_seg[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = colored_top_bottom
+
+        if total_overlap:
+            self.logger.warning(f"File {page.filepath} contains overlapping top bottom sem_seg")
         if not sem_seg.any():
             self.logger.warning(f"File {page.filepath} does not contains top bottom sem_seg")
         return sem_seg
@@ -417,15 +462,20 @@ class XMLConverter:
 
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
+        total_overlap = False
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.polylines(sem_seg, [coords.reshape(-1, 1, 2)], False, baseline_color, line_width)
+            sem_seg, overlap = self.draw_line(sem_seg, rounded_coords, baseline_color, thickness=line_width)
+            total_overlap = total_overlap or overlap
 
             coords_start = rounded_coords[0]
             cv2.circle(sem_seg, coords_start, line_width, separator_color, -1)
             coords_end = rounded_coords[-1]
             cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
+
+        if total_overlap:
+            self.logger.warning(f"File {page.filepath} contains overlapping baseline separator sem_seg")
         if not sem_seg.any():
             self.logger.warning(f"File {page.filepath} does not contains baseline separator sem_seg")
         return sem_seg
@@ -634,7 +684,7 @@ if __name__ == "__main__":
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
-    XMLConverter(xml_regions)
+    XMLConverter(xml_regions, args.square_lines)
 
     input_path = Path(args.input)
     output_path = Path(args.output)

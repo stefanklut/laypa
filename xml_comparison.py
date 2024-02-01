@@ -32,6 +32,9 @@ def get_arguments() -> argparse.Namespace:
         "-i", "--input", help="Input folder/files", nargs="+", default=[], required=True, type=str, action="extend"
     )
 
+    xml_converter_args = parser.add_argument_group("XML Converter")
+    xml_converter_args.add_argument("--square-lines", help="Square the lines", action="store_true")
+
     args = parser.parse_args()
     return args
 
@@ -484,7 +487,7 @@ def main(args):
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
-    xml_to_image = XMLConverter(xml_regions)
+    xml_to_image = XMLConverter(xml_regions, args.square_lines)
 
     evaluator = IOUEvaluator(ignore_label=255, class_names=xml_regions.regions)
 

@@ -46,7 +46,7 @@ def preprocess_datasets(
         merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
         region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
     )
-    xml_converter = XMLConverter(xml_regions)
+    xml_converter = XMLConverter(xml_regions, cfg.PREPROCESS.BASELINE.SQUARE_LINES)
 
     assert (n_regions := len(xml_converter.xml_regions.regions)) == (
         n_classes := cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES
