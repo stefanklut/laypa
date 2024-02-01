@@ -223,7 +223,17 @@ class Trainer(DefaultTrainer):
         data_loader = self.build_train_loader(cfg)
 
         model = create_ddp_model(model, broadcast_buffers=False)
-        self._trainer = (AMPTrainer if cfg.SOLVER.AMP.ENABLED else SimpleTrainer)(model, data_loader, optimizer)
+        self._trainer = (AMPTrainer if cfg.MODEL.AMP_TRAIN.ENABLED else SimpleTrainer)(model, data_loader, optimizer)
+        if isinstance(self._trainer, AMPTrainer):
+            precision_converter = {
+                "float32": torch.float32,
+                "float16": torch.float16,
+                "bfloat16": torch.bfloat16,
+            }
+            precision = precision_converter.get(cfg.AMP_TRAIN.PRECISION, None)
+            if precision is None:
+                raise ValueError(f"Unrecognized precision: {cfg.AMP_TRAIN.PRECISION}")
+            self._trainer.precision = precision
 
         self.scheduler = self.build_lr_scheduler(cfg, optimizer)
 

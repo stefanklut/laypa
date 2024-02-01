@@ -73,6 +73,15 @@ class Predictor(DefaultPredictor):
         if len(cfg.DATASETS.TEST):
             self.metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
 
+        precision_converter = {
+            "float32": torch.float32,
+            "float16": torch.float16,
+            "bfloat16": torch.bfloat16,
+        }
+        self.precision = precision_converter.get(cfg.MODEL.AMP_TEST.PRECISION, None)
+        if self.precision is None:
+            raise ValueError(f"Unrecognized precision: {cfg.MODEL.AMP_TEST.PRECISION}")
+
         assert self.cfg.INPUT.FORMAT in ["RGB", "BGR"], self.cfg.INPUT.FORMAT
 
         checkpointer = DetectionCheckpointer(self.model)
@@ -153,8 +162,15 @@ class Predictor(DefaultPredictor):
 
             inputs = {"image": image, "height": new_height, "width": new_width}
 
-            with torch.autocast(device_type=self.cfg.MODEL.DEVICE, enabled=self.cfg.MODEL.AUTOCAST):
+            with torch.autocast(
+                device_type=self.cfg.MODEL.DEVICE,
+                enabled=self.cfg.MODEL.AMP_TEST.ENABLED,
+                dtype=self.precision,
+            ):
                 predictions = self.model([inputs])[0]
+
+            # if torch.isnan(predictions["sem_seg"]).any():
+            #     raise ValueError("NaN in predictions")
 
             return predictions, height, width
 
@@ -181,7 +197,11 @@ class Predictor(DefaultPredictor):
 
             inputs = {"image": image, "height": image.shape[1], "width": image.shape[2]}
 
-            with torch.autocast(device_type=self.cfg.MODEL.DEVICE, enabled=self.cfg.MODEL.AUTOCAST):
+            with torch.autocast(
+                device_type=self.cfg.MODEL.DEVICE,
+                enabled=self.cfg.MODEL.AMP_TEST.ENABLED,
+                dtype=self.precision,
+            ):
                 predictions = self.model([inputs])[0]
 
             # if torch.isnan(predictions["sem_seg"]).any():
