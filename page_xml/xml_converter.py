@@ -121,16 +121,19 @@ class XMLConverter:
             thickness (int, optional): thickness of the lines. Defaults to 1.
         """
         temp_image = np.zeros_like(image)
+        if isinstance(color, tuple) and len(color) == 3 and temp_image.ndim == 2:
+            raise ValueError("Color should be a single int")
+
+        binary_mask = np.zeros(image.shape[:2], dtype=np.uint8)
 
         rounded_coords = np.round(coords).astype(np.int32)
 
-        # Clear the temp image
-        temp_image.fill(0)
-
         if self.square_lines:
-            cv2.polylines(temp_image, [rounded_coords.reshape(-1, 1, 2)], False, 1, thickness)
-            line_pixel_coords = np.column_stack(np.where(temp_image == 1))[:, ::-1]
+            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, 1, thickness)
+            line_pixel_coords = np.column_stack(np.where(binary_mask == 1))[:, ::-1]
             start_or_end = point_at_start_or_end_assignment(rounded_coords, line_pixel_coords)
+            if temp_image.ndim == 3:
+                start_or_end = np.expand_dims(start_or_end, axis=1)
             colored_start_or_end = np.where(start_or_end, 0, color)
             temp_image[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = colored_start_or_end
         else:
