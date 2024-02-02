@@ -230,9 +230,9 @@ class Trainer(DefaultTrainer):
                 "float16": torch.float16,
                 "bfloat16": torch.bfloat16,
             }
-            precision = precision_converter.get(cfg.AMP_TRAIN.PRECISION, None)
+            precision = precision_converter.get(cfg.MODEL.AMP_TRAIN.PRECISION, None)
             if precision is None:
-                raise ValueError(f"Unrecognized precision: {cfg.AMP_TRAIN.PRECISION}")
+                raise ValueError(f"Unrecognized precision: {cfg.MODEL.AMP_TRAIN.PRECISION}")
             self._trainer.precision = precision
 
         self.scheduler = self.build_lr_scheduler(cfg, optimizer)
