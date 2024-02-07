@@ -121,6 +121,48 @@ class OutputPageXML:
         image_output_path = self.output_dir.joinpath(image_path.name)
 
         copy_mode(image_path, image_output_path, mode="link")
+        
+    def generate_image_from_sem_seg(self, sem_seg: torch.Tensor, image_path: Path, old_height: int, old_width: int):
+        """
+        Generate image from sem_seg
+
+        Args:
+            sem_seg (torch.Tensor): sem_seg as tensor
+            image_path (Path): Image path, used for path name
+            old_height (int): height of the original image
+            old_width (int): width of the original image
+
+        Raises:
+            TypeError: Output dir has not been set
+        """
+        if self.output_dir is None:
+            raise TypeError("Output dir is None")
+
+        sem_seg = torch.nn.functional.interpolate(
+            sem_seg[None], size=(old_height, old_width), mode="bilinear", align_corners=False
+        )[0]
+        sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+        
+        return sem_seg_image
+        
+       
+    def add_baselines_to_page():
+    
+    def add_regions_to_page(sem_seg):
+        
+        
+    def process_tensor(self, sem_seg: torch.Tensor, image_path: Path, old_height, old_width, external_processing: bool = False,):
+        if external_processing:
+            sem_seg_output_path = self.output_dir.joinpath(image_path.stem + ".png")
+            sem_seg_image = generate_image_from_sem_seg(sem_seg, image_path, old_height, old_width)
+            with AtomicFileName(file_path=sem_seg_output_path) as path:
+                save_image_array_to_path(str(path), sem_seg_image.astype(np.uint8))
+    
+        
+        if self.xml_regions.mode == "region":
+            
+        
+        
 
     def generate_single_page(
         self,
