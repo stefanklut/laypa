@@ -22,10 +22,9 @@ dependencies:
   - gunicorn
   - pillow
   - shapely
+  - natsort
   # - pygments #Optional for colors
   - pip:
-      - natsort
-      - distinctipy
       - "git+https://github.com/facebookresearch/detectron2.git"
       - "git+https://github.com/cocodataset/panopticapi.git"
       - ./models/pixel_decoder/ops/

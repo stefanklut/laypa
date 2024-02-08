@@ -7,8 +7,9 @@ from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import Any, Optional
 
-import distinctipy
 from detectron2.data import DatasetCatalog, Metadata, MetadataCatalog
+
+from utils.color_utils import n_distinct_colors
 
 
 def get_arguments() -> argparse.Namespace:
@@ -144,7 +145,7 @@ def convert_to_paths(dataset_dir: Path, input_data: dict[str, list]) -> list[dic
     return converted_data
 
 
-def classes_to_colors(classes: list[str]) -> list[tuple[int, int, int]]:
+def classes_to_colors(classes: list[str], grayscale=False) -> list[tuple[int, int, int] | int]:
     """
     Assign a unique distinct color to each class
 
@@ -159,13 +160,18 @@ def classes_to_colors(classes: list[str]) -> list[tuple[int, int, int]]:
     """
     if len(classes) < 2:
         raise ValueError(f"Expecting at least 2 classes got {len(classes)}")
-    background_color = (0, 0, 0)
-    line_color = (255, 255, 255)
+    if grayscale:
+        background_color = 0
+        line_color = 255
+    else:
+        background_color = (0, 0, 0)
+        line_color = (255, 255, 255)
     if len(classes) == 2:
         return [background_color, line_color]
 
-    distinct_colors = distinctipy.get_colors(len(classes) - 1, rng=0)  # no rng should give the same colors
-    colors = [background_color] + [tuple(int(channel * 255) for channel in color) for color in distinct_colors]
+    # No rng should give the same colors every time
+    distinct_colors = n_distinct_colors(len(classes) - 1, grayscale=grayscale, rng=0)
+    colors = [background_color] + distinct_colors
     return colors
 
 

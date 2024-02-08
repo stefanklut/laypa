@@ -1,12 +1,12 @@
 # Based on: distinctipy https://github.com/alan-turing-institute/distinctipy
 
 import random
+from typing import Optional
 
 import numpy as np
 
 # pre-define interesting colours/points at corners, edges, faces and interior of
 # r,g,b cube
-
 
 CORNERS = [
     (255, 255, 255),
@@ -105,6 +105,17 @@ def color_distance_squared(color1: tuple[int, int, int], color2: tuple[int, int,
 
 
 def distinct_grayscale(exclude_colors: list[int], n_attempts=1000, rng=None) -> int:
+    """
+    Find a grayscale color that is distinct from the given colors
+
+    Args:
+        exclude_colors (list[int]): list of grayscale colors to exclude
+        n_attempts (int, optional): number of attempts to find a distinct color. Defaults to 1000.
+        rng (optional): random number generator. Defaults to None.
+
+    Returns:
+        int: a grayscale color
+    """
     rng = _ensure_rng(rng)
     if not exclude_colors:
         return rng.randint(0, 255)
@@ -142,11 +153,31 @@ def distinct_grayscale(exclude_colors: list[int], n_attempts=1000, rng=None) -> 
 
 
 def get_random_color(rng=None) -> tuple[int, int, int]:
+    """
+    Get a random color in RGB space
+
+    Args:
+        rng (optional): random number generator. Defaults to None.
+
+    Returns:
+        tuple[int, int, int]: a random RGB color
+    """
     rng = _ensure_rng(rng)
     return rng.randint(0, 255), rng.randint(0, 255), rng.randint(0, 255)
 
 
 def distinct_color(exclude_colors: list[tuple[int, int, int]], n_attempts=1000, rng=None) -> tuple[int, int, int]:
+    """
+    Find a color that is distinct from the given colors
+
+    Args:
+        exclude_colors (list[tuple[int, int, int]]): list of RGB colors to exclude
+        n_attempts (int, optional): number of attempts to find a distinct color. Defaults to 1000.
+        rng (optional): random number generator. Defaults to None.
+
+    Returns:
+        tuple[int, int, int]: a distinct RGB color
+    """
     rng = _ensure_rng(rng)
 
     if not exclude_colors:
@@ -187,23 +218,46 @@ def distinct_color(exclude_colors: list[tuple[int, int, int]], n_attempts=1000, 
 
 def n_distinct_colors(
     n_colors: int,
-    exclude_colors=None,
+    exclude_colors: Optional[list[tuple[int, int, int] | int]] = None,
     return_excluded=False,
     n_attempts=1000,
     grayscale: bool = False,
     rng=None,
-) -> list[np.ndarray] | list[int]:
+) -> list[tuple[int, int, int] | int]:
+    """
+    Generate n distinct colors
+
+    Args:
+        n_colors (int): number of colors to generate
+        exclude_colors (Optional[list[tuple[int, int, int]  |  int]], optional): colors to exclude. Defaults to None.
+        return_excluded (bool, optional): flag indicating whether to return the excluded colors. Defaults to False.
+        n_attempts (int, optional): number of attempts to generate a distinct color. Defaults to 1000.
+        grayscale (bool, optional): flag indicating whether to generate grayscale colors. Defaults to False.
+        rng (_type_, optional): random number generator. Defaults to None.
+
+    Returns:
+        list[tuple[int, int, int] | int]: list of distinct colors
+    """
     rng = _ensure_rng(rng)
 
     if grayscale:
+        assert n_colors <= 256, "Grayscale only supports 256 colors"
         if exclude_colors is None:
             exclude_colors = [0]
+        else:
+            assert isinstance(exclude_colors, list), "Expected list of grayscale colors"
+            assert isinstance(exclude_colors[0], int), "Expected grayscale colors"
         colors = exclude_colors.copy()
         for i in range(n_colors):
             colors.append(distinct_grayscale(colors, n_attempts=n_attempts, rng=rng))
     else:
+        assert n_colors <= 256**3, "RGB only supports 256^3 colors"
         if exclude_colors is None:
             exclude_colors = [(0, 0, 0), (255, 255, 255)]
+        else:
+            assert isinstance(exclude_colors, list), "Expected list of RGB colors"
+            assert isinstance(exclude_colors[0], tuple), "Expected RGB colors"
+            assert len(exclude_colors[0]) == 3, "Expected RGB colors"
         colors = exclude_colors.copy()
         for i in range(n_colors):
             colors.append(distinct_color(colors, n_attempts=n_attempts, rng=rng))

@@ -18,6 +18,7 @@ from tqdm import tqdm
 from core.setup import get_git_hash
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from datasets.dataset import classes_to_colors
 from page_xml.xml_regions import XMLRegions
 from page_xml.xmlPAGE import PageData
 from utils.copy_utils import copy_mode
@@ -54,6 +55,8 @@ class OutputPageXML:
         whitelist: Optional[Iterable[str]] = None,
         rectangle_regions: Optional[Iterable[str]] = None,
         min_region_size: int = 10,
+        external_processing: bool = False,
+        grayscale: bool = False,
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
@@ -88,6 +91,10 @@ class OutputPageXML:
         self.min_region_size = min_region_size
         self.rectangle_regions = set() if rectangle_regions is None else set(rectangle_regions)
 
+        self.external_processing = external_processing
+        self.grayscale = grayscale
+        self.classes_to_colors = classes_to_colors(xml_regions.regions, grayscale)
+
     def set_output_dir(self, output_dir: str | Path):
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
@@ -121,8 +128,8 @@ class OutputPageXML:
         image_output_path = self.output_dir.joinpath(image_path.name)
 
         copy_mode(image_path, image_output_path, mode="link")
-        
-    def generate_image_from_sem_seg(self, sem_seg: torch.Tensor, image_path: Path, old_height: int, old_width: int):
+
+    def generate_image_from_sem_seg(self, sem_seg: torch.Tensor, old_height: int, old_width: int) -> np.ndarray:
         """
         Generate image from sem_seg
 
@@ -142,27 +149,101 @@ class OutputPageXML:
             sem_seg[None], size=(old_height, old_width), mode="bilinear", align_corners=False
         )[0]
         sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy()
-        
-        return sem_seg_image
-        
-       
-    def add_baselines_to_page():
-    
-    def add_regions_to_page(sem_seg):
-        
-        
-    def process_tensor(self, sem_seg: torch.Tensor, image_path: Path, old_height, old_width, external_processing: bool = False,):
-        if external_processing:
-            sem_seg_output_path = self.output_dir.joinpath(image_path.stem + ".png")
-            sem_seg_image = generate_image_from_sem_seg(sem_seg, image_path, old_height, old_width)
+
+        # If we have only two classes, we can use the binary image
+        if len(self.classes_to_colors) == 2:
+            return sem_seg_image * 255
+
+        if self.grayscale:
+            image = np.zeros((old_height, old_width, 1), dtype=np.uint8)
+        else:
+            image = np.zeros((old_height, old_width, 3), dtype=np.uint8)
+        for class_id, color in enumerate(self.classes_to_colors):
+            # Skip background
+            if class_id == 0:
+                continue
+            image[sem_seg_image == class_id] = color
+
+        return image
+
+    def add_baselines_to_page(self, page: PageData, sem_seg: torch.Tensor, image_path: Path, old_height, old_width):
+        pass
+
+    def add_regions_to_page(self, page: PageData, sem_seg: torch.Tensor, old_height, old_width) -> PageData:
+        if self.output_dir is None:
+            raise TypeError("Output dir is None")
+        if self.page_dir is None:
+            raise TypeError("Page dir is None")
+
+        if old_height is None or old_width is None:
+            old_height, old_width = sem_seg.shape[-2:]
+
+        height, width = sem_seg.shape[-2:]
+
+        scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
+
+        sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+
+        region_id = 0
+
+        for class_id, region in enumerate(self.xml_regions.regions):
+            # Skip background
+            if class_id == 0:
+                continue
+            binary_region_mask = np.zeros_like(sem_seg).astype(np.uint8)
+            binary_region_mask[sem_seg == class_id] = 1
+
+            region_type = self.xml_regions.region_types[region]
+
+            contours, hierarchy = cv2.findContours(binary_region_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+            for cnt in contours:
+                # remove small objects
+                if cnt.shape[0] < 4:
+                    continue
+                if cv2.contourArea(cnt) < self.min_region_size:
+                    continue
+
+                region_id += 1
+
+                region_coords = ""
+                if region in self.rectangle_regions:
+                    # find bounding box
+                    rect = cv2.minAreaRect(cnt)
+                    poly = cv2.boxPoints(rect) * scaling
+                else:
+                    # soft a bit the region to prevent spikes
+                    epsilon = 0.0005 * cv2.arcLength(cnt, True)
+                    approx_poly = cv2.approxPolyDP(cnt, epsilon, True)
+
+                    approx_poly = np.round((approx_poly * scaling)).astype(np.int32)
+
+                    poly = approx_poly.reshape(-1, 2)
+
+                for coords in poly:
+                    region_coords = region_coords + f" {round(coords[0])},{round(coords[1])}"
+
+                region_coords = region_coords.strip()
+
+                _uuid = uuid.uuid4()
+                text_reg = page.add_element(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
+
+        return page
+
+    def process_tensor(self, page: PageData, sem_seg: torch.Tensor, image_path: Path, old_height, old_width):
+        if self.output_dir is None:
+            raise TypeError("Output dir is None")
+        if self.page_dir is None:
+            raise TypeError("Page dir is None")
+
+        if self.external_processing:
+            sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
+            colored_image = self.generate_image_from_sem_seg(sem_seg, old_height, old_width)
             with AtomicFileName(file_path=sem_seg_output_path) as path:
-                save_image_array_to_path(str(path), sem_seg_image.astype(np.uint8))
-    
-        
+                save_image_array_to_path(str(path), colored_image.astype(np.uint8))
+
         if self.xml_regions.mode == "region":
-            
-        
-        
+            pass
 
     def generate_single_page(
         self,
