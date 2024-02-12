@@ -295,7 +295,7 @@ class OutputPageXML:
                 if region == "background":
                     continue
                 binary_region_mask = np.zeros_like(sem_seg).astype(np.uint8)
-                binary_region_mask[sem_seg == self.xml_regions.region_classes[region]] = 1
+                binary_region_mask[sem_seg == self.xml_regions.regions_to_classes[region]] = 1
 
                 region_type = self.xml_regions.region_types[region]
 

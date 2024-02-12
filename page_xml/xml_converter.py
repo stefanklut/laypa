@@ -517,7 +517,7 @@ class XMLConverter:
                 gt_data,
                 image_shape,
                 set(self.xml_regions.region_types.values()),
-                self.xml_regions.region_classes,
+                self.xml_regions.regions_to_classes,
             )
             return sem_seg
         elif self.xml_regions.mode == "baseline":
@@ -605,7 +605,7 @@ class XMLConverter:
                 gt_data,
                 image_shape,
                 set(self.xml_regions.region_types.values()),
-                self.xml_regions.region_classes,
+                self.xml_regions.regions_to_classes,
             )
             return instances
         elif self.xml_regions.mode == "baseline":
@@ -658,7 +658,7 @@ class XMLConverter:
                 gt_data,
                 image_shape,
                 set(self.xml_regions.region_types.values()),
-                self.xml_regions.region_classes,
+                self.xml_regions.regions_to_classes,
             )
             return pano, segments_info
         elif self.xml_regions.mode == "baseline":
