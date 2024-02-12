@@ -17,11 +17,6 @@ def baseline_converter(image: np.ndarray, minimum_height: int = 3, minimum_width
     output = cv2.connectedComponentsWithStats(image, connectivity=8)
     num_labels = output[0]
     labels = output[1]
-
-    # import matplotlib.pyplot as plt
-
-    # plt.imshow(labels, cmap="gray")
-    # plt.show()
     stats = output[2]
     centroids = output[3]
 
@@ -29,7 +24,6 @@ def baseline_converter(image: np.ndarray, minimum_height: int = 3, minimum_width
 
     for i in range(1, num_labels):
         x_offset, y_offset, width, height, area = stats[i]
-        # print(x_offset, y_offset, width, height, area)
         sub_image = labels[y_offset : y_offset + height, x_offset : x_offset + width]
         sub_image = (sub_image == i).astype(np.uint8)
 
@@ -41,15 +35,6 @@ def baseline_converter(image: np.ndarray, minimum_height: int = 3, minimum_width
 
         if np.max(baseline[:, 0]) - np.min(baseline[:, 0]) < minimum_width:
             continue
-
-        # baselines.append(baseline)
-
-        # import matplotlib.pyplot as plt
-
-        # plt.imshow(sub_image, cmap="gray")
-        # plt.show()
-
-        print(baseline)
 
     return baselines
 
@@ -102,11 +87,7 @@ def image_to_baselines(image: np.ndarray, xml_regions: XMLRegions):
 
 if __name__ == "__main__":
     image = cv2.imread("/tmp/results/page/NL-HaNA_2.09.09_5_0023.png", cv2.IMREAD_GRAYSCALE)
-    import matplotlib.pyplot as plt
 
-    plt.imshow(image, cmap="gray")
-    plt.show()
-    print(image.shape)
     baselines = image_to_baselines(image, XMLRegions("baseline", 10))
 
     for baseline in baselines:
