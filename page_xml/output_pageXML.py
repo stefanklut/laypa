@@ -15,12 +15,11 @@ import torch
 from detectron2.config import CfgNode
 from tqdm import tqdm
 
-from core.setup import get_git_hash
-
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from core.setup import get_git_hash
 from datasets.dataset import classes_to_colors
+from page_xml.pageXML_creator import PageXMLCreator
 from page_xml.xml_regions import XMLRegions
-from page_xml.xmlPAGE import PageData
 from utils.copy_utils import copy_mode
 from utils.image_utils import save_image_array_to_path
 from utils.input_utils import get_file_paths, supported_image_formats
@@ -166,10 +165,10 @@ class OutputPageXML:
 
         return image
 
-    def add_baselines_to_page(self, page: PageData, sem_seg: torch.Tensor, image_path: Path, old_height, old_width):
+    def add_baselines_to_page(self, page: PageXMLCreator, sem_seg: torch.Tensor, image_path: Path, old_height, old_width):
         pass
 
-    def add_regions_to_page(self, page: PageData, sem_seg: torch.Tensor, old_height, old_width) -> PageData:
+    def add_regions_to_page(self, page: PageXMLCreator, sem_seg: torch.Tensor, old_height, old_width) -> PageXMLCreator:
         if self.output_dir is None:
             raise TypeError("Output dir is None")
         if self.page_dir is None:
@@ -226,11 +225,11 @@ class OutputPageXML:
                 region_coords = region_coords.strip()
 
                 _uuid = uuid.uuid4()
-                text_reg = page.add_element(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
+                text_reg = page.add_region(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
 
         return page
 
-    def process_tensor(self, page: PageData, sem_seg: torch.Tensor, image_path: Path, old_height, old_width):
+    def process_tensor(self, page: PageXMLCreator, sem_seg: torch.Tensor, image_path: Path, old_height, old_width):
         if self.output_dir is None:
             raise TypeError("Output dir is None")
         if self.page_dir is None:
@@ -280,7 +279,7 @@ class OutputPageXML:
 
         scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
 
-        page = PageData(xml_output_path)
+        page = PageXMLCreator(xml_output_path)
         page.new_page(image_path.name, str(old_height), str(old_width))
 
         if self.cfg is not None:
@@ -330,7 +329,7 @@ class OutputPageXML:
                     region_coords = region_coords.strip()
 
                     _uuid = uuid.uuid4()
-                    text_reg = page.add_element(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
+                    text_reg = page.add_region(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
         elif self.xml_regions.mode in ["baseline", "start", "end", "separator"]:
             # Push the calculation to outside of the python code <- mask is used by minion
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")

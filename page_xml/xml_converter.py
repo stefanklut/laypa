@@ -9,8 +9,8 @@ import numpy as np
 from detectron2 import structures
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from page_xml.pageXML_parser import PageXMLParser
 from page_xml.xml_regions import XMLRegions
-from page_xml.xmlPAGE import PageData
 from utils.logging_utils import get_logger_name
 from utils.vector_utils import (
     point_at_start_or_end_assignment,
@@ -146,7 +146,7 @@ class XMLConverter:
 
     ## REGIONS
 
-    def build_region_instances(self, page: PageData, out_size: tuple[int, int], elements, class_dict) -> list[Instance]:
+    def build_region_instances(self, page: PageXMLParser, out_size: tuple[int, int], elements, class_dict) -> list[Instance]:
         size = page.get_size()
         instances = []
         for element in elements:
@@ -168,7 +168,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains region instances")
         return instances
 
-    def build_region_pano(self, page: PageData, out_size: tuple[int, int], elements, class_dict):
+    def build_region_pano(self, page: PageXMLParser, out_size: tuple[int, int], elements, class_dict):
         """
         Create the pano version of the regions
         """
@@ -195,7 +195,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains region pano")
         return pano_mask, segments_info
 
-    def build_region_sem_seg(self, page: PageData, out_size: tuple[int, int], elements, class_dict):
+    def build_region_sem_seg(self, page: PageXMLParser, out_size: tuple[int, int], elements, class_dict):
         """
         Builds a "image" mask of desired elements
         """
@@ -212,7 +212,7 @@ class XMLConverter:
 
     ## TEXT LINE
 
-    def build_text_line_instances(self, page: PageData, out_size: tuple[int, int]) -> list[Instance]:
+    def build_text_line_instances(self, page: PageXMLParser, out_size: tuple[int, int]) -> list[Instance]:
         """
         Create the instance version of the text line
         """
@@ -238,7 +238,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains text line instances")
         return instances
 
-    def build_text_line_pano(self, page: PageData, out_size: tuple[int, int]):
+    def build_text_line_pano(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Create the pano version of the text line
         """
@@ -265,7 +265,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains text line pano")
         return pano_mask, segments_info
 
-    def build_text_line_sem_seg(self, page: PageData, out_size: tuple[int, int]):
+    def build_text_line_sem_seg(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Builds a "image" mask of the text line
         """
@@ -282,7 +282,7 @@ class XMLConverter:
 
     ## BASELINE
 
-    def build_baseline_instances(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_baseline_instances(self, page: PageXMLParser, out_size: tuple[int, int], line_width: int):
         """
         Create the instance version of the baselines
         """
@@ -321,7 +321,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains baseline instances")
         return instances
 
-    def build_baseline_pano(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_baseline_pano(self, page: PageXMLParser, out_size: tuple[int, int], line_width: int):
         """
         Create the pano version of the baselines
         """
@@ -334,7 +334,7 @@ class XMLConverter:
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             rgb_color = self.id2rgb(_id)
-            pano_mask, overlap = self.draw_line(pano_mask, coords, rgb_color, thickness=line_width)
+            pano_mask, overlap = self.draw_line(pano_mask, coords, rgb_color, thickness=line_width)  # type: ignore
             total_overlap = total_overlap or overlap
             segment: SegmentsInfo = {
                 "id": _id,
@@ -350,7 +350,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains baseline pano")
         return pano_mask, segments_info
 
-    def build_baseline_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_baseline_sem_seg(self, page: PageXMLParser, out_size: tuple[int, int], line_width: int):
         """
         Create the sem_seg version of the baselines
         """
@@ -371,7 +371,7 @@ class XMLConverter:
 
     # TOP BOTTOM
 
-    def build_top_bottom_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_top_bottom_sem_seg(self, page: PageXMLParser, out_size: tuple[int, int], line_width: int):
         """
         Create the sem_seg version of the top bottom
         """
@@ -402,7 +402,7 @@ class XMLConverter:
 
     ## START
 
-    def build_start_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_start_sem_seg(self, page: PageXMLParser, out_size: tuple[int, int], line_width: int):
         """
         Create the sem_seg version of the start
         """
@@ -419,7 +419,7 @@ class XMLConverter:
 
     ## END
 
-    def build_end_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_end_sem_seg(self, page: PageXMLParser, out_size: tuple[int, int], line_width: int):
         """
         Create the sem_seg version of the end
         """
@@ -436,7 +436,7 @@ class XMLConverter:
 
     ## SEPARATOR
 
-    def build_separator_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_separator_sem_seg(self, page: PageXMLParser, out_size: tuple[int, int], line_width: int):
         """
         Create the sem_seg version of the separator
         """
@@ -456,7 +456,7 @@ class XMLConverter:
 
     ## BASELINE + SEPARATOR
 
-    def build_baseline_separator_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_baseline_separator_sem_seg(self, page: PageXMLParser, out_size: tuple[int, int], line_width: int):
         """
         Create the sem_seg version of the baseline separator
         """
@@ -503,7 +503,7 @@ class XMLConverter:
         Returns:
             Optional[np.ndarray]: mask of labels
         """
-        gt_data = PageData(xml_path)
+        gt_data = PageXMLParser(xml_path)
         gt_data.parse()
 
         if original_image_shape is not None:
@@ -591,7 +591,7 @@ class XMLConverter:
         Returns:
             Optional[dict]: scaled coordinates about the location of the objects in the image
         """
-        gt_data = PageData(xml_path)
+        gt_data = PageXMLParser(xml_path)
         gt_data.parse()
 
         if original_image_shape is not None:
@@ -644,7 +644,7 @@ class XMLConverter:
         Returns:
             Optional[tuple[np.ndarray, list]]: pano mask and the segments information
         """
-        gt_data = PageData(xml_path)
+        gt_data = PageXMLParser(xml_path)
         gt_data.parse()
 
         if original_image_shape is not None:

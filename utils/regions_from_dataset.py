@@ -10,7 +10,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.xmlPAGE import PageData
+from page_xml.pageXML_parser import PageXMLParser
 from utils.input_utils import get_file_paths, supported_image_formats
 from utils.path_utils import image_path_to_xml_path
 from xml_comparison import pretty_print
@@ -35,7 +35,7 @@ def count_regions_single_page(xml_path: Path) -> Counter:
     Returns:
         Counter: Count of all unique regions
     """
-    page_data = PageData(xml_path)
+    page_data = PageXMLParser(xml_path)
     page_data.parse()
 
     region_names = ["TextRegion"]  # Assuming this is all there is
