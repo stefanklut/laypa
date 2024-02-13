@@ -129,9 +129,9 @@ class Region(_Polygon):
         if re_match is None:
             self.logger.warning(f"No region type defined for {self.attrib["id"]}")
             return None
-        e_type = re_match.group(1)
+        region_type = re_match.group(1)
 
-        return e_type
+        return region_type
     
     @region_type.setter
     def region_type(self, value: str):
