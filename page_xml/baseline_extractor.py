@@ -32,7 +32,7 @@ def baseline_converter(
         sub_image = labels[y_offset : y_offset + height, x_offset : x_offset + width]
         sub_image = (sub_image == i).astype(np.uint8)
 
-        baseline = extract_baseline_v2(sub_image, (x_offset, y_offset), minimum_height, "test.xml", step)
+        baseline = extract_baseline_v2(sub_image, "test.xml", (x_offset, y_offset), minimum_height, step)
         if len(baseline) < 2:
             continue
         baseline = cv2.approxPolyDP(np.array(baseline, dtype=np.float32), 1, False).reshape(-1, 2)
@@ -44,11 +44,12 @@ def baseline_converter(
     return baselines
 
 
-def extract_baseline(baseline_mat: np.ndarray, offset: tuple[int, int], minimum_height: int, xml_file: str, step: int = 50):
+def extract_baseline(baseline_mat: np.ndarray, xml_file: str, offset: tuple[int, int], minimum_height: int, step: int = 50):
     baseline = []
     pixel_counter = -1
     merged_line_detected = False
     point = None
+    minimum_height = np.minimum(minimum_height, 1)
 
     for i in range(baseline_mat.shape[1]):
         merged_line_detected_step1 = False
@@ -85,7 +86,7 @@ def extract_baseline(baseline_mat: np.ndarray, offset: tuple[int, int], minimum_
     return baseline
 
 
-def extract_baseline_v2(baseline_mat: np.ndarray, offset: tuple[int, int], minimum_height: int, xml_file: str, step: int = 50):
+def extract_baseline_v2(baseline_mat: np.ndarray, xml_file: str, offset: tuple[int, int], minimum_height: int, step: int = 50):
     baseline = []
     pixel_counter = -1
     merged_line_detected = False
@@ -117,8 +118,45 @@ def extract_baseline_v2(baseline_mat: np.ndarray, offset: tuple[int, int], minim
     return baseline
 
 
-def extract_baseline_v3(baseline_mat: np.ndarray, offset: tuple[int, int], minimum_height: int, xml_file: str, step: int = 50):
-    pass
+def test(image: np.ndarray, minimum_height: int, step: int = 50):
+    output = cv2.connectedComponentsWithStats(image, connectivity=8)
+    num_labels = output[0]
+    labels = output[1]
+    stats = output[2]
+    centroids = output[3]
+
+    baselines = []
+
+    for i in range(1, num_labels):
+        x_offset, y_offset, width, height, area = stats[i]
+        print(x_offset, y_offset, width, height, area)
+        sub_image = labels[y_offset : y_offset + height, x_offset : x_offset + width]
+        sub_image = (sub_image == i).astype(np.uint8)
+
+        extract_baseline_v3(sub_image, "test.xml", (x_offset, y_offset), minimum_height, step)
+
+
+def extract_baseline_v3(baseline_mat: np.ndarray, xml_file: str, offset: tuple[int, int], minimum_height: int, step: int = 50):
+    baseline = []
+
+    import scipy.ndimage as ndi
+    import skimage.morphology as morph
+
+    skeleton_mat = morph.skeletonize(baseline_mat).astype(np.uint8)
+    edge = ndi.convolve(skeleton_mat, np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]]), mode="constant", cval=0)
+    edge = np.logical_and(edge == 1, skeleton_mat).astype(np.uint8)
+
+    # skeleton_mat = cv2.ximgproc.thinning(baseline_mat * 255, thinningType=cv2.ximgproc.THINNING_GUOHALL)
+    if np.sum(edge) != 2:
+
+        import matplotlib.pyplot as plt
+
+        plt.imshow(baseline_mat * 255, cmap="gray")
+        plt.show()
+        plt.imshow(skeleton_mat * 255, cmap="gray")
+        plt.show()
+        plt.imshow(edge * 255, cmap="gray")
+        plt.show()
 
 
 def image_to_baselines(image: np.ndarray, xml_regions: XMLRegions):
@@ -129,7 +167,4 @@ def image_to_baselines(image: np.ndarray, xml_regions: XMLRegions):
 if __name__ == "__main__":
     image = cv2.imread("/tmp/results/page/NL-HaNA_2.09.09_5_0023.png", cv2.IMREAD_GRAYSCALE)
 
-    baselines = image_to_baselines(image, XMLRegions("baseline", 10))
-
-    for baseline in baselines:
-        print(baseline)
+    test(image, 3)
