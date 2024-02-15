@@ -13,7 +13,11 @@ def round_up(array: np.ndarray):
     return np.floor(array + 0.5)
 
 
-def baseline_converter(image: np.ndarray, minimum_height: int = 3, minimum_width: int = 15):
+def baseline_converter(
+    image: np.ndarray,
+    minimum_width: int = 15,
+    minimum_height: int = 3,
+):
     output = cv2.connectedComponentsWithStats(image, connectivity=8)
     num_labels = output[0]
     labels = output[1]
@@ -31,10 +35,10 @@ def baseline_converter(image: np.ndarray, minimum_height: int = 3, minimum_width
         if len(baseline) < 2:
             continue
         baseline = cv2.approxPolyDP(np.array(baseline, dtype=np.float32), 1, False).reshape(-1, 2)
-        baseline = round_up(baseline).astype(int)
 
         if np.max(baseline[:, 0]) - np.min(baseline[:, 0]) < minimum_width:
             continue
+        baselines.append(baseline)
 
     return baselines
 

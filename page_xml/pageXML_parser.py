@@ -1,21 +1,15 @@
 # Modified from P2PaLA
 
-import datetime
 import logging
-import os
 import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from types import NoneType
-from typing import Iterable, Optional, TypedDict
 
 import numpy as np
-from detectron2.config import CfgNode
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
-from utils.tempdir import AtomicFileName
 
 
 class PageXMLParser:

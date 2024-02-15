@@ -1,14 +1,11 @@
-# Modified from P2PaLA
-
 import datetime
 import logging
-import os
 import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import NoneType
-from typing import Iterable, Optional, TypedDict
+from typing import Iterable, Optional
 
 import numpy as np
 from detectron2.config import CfgNode
@@ -39,8 +36,7 @@ def convert_to_dict(cfg_node, key_list: list = []):
 
 class Coords(ET.Element):
     def __init__(self, points: np.ndarray, **kwargs):
-        super().__init__(**kwargs)
-        self.tag = "Coords"
+        super().__init__("Coords", **kwargs)
         self.points = points
 
     @property
@@ -66,8 +62,7 @@ class Baseline(Coords):
 
 class _Polygon(ET.Element):
     def __init__(self, points: np.ndarray, id: Optional[str] = None, custom: Optional[str] = None, **kwargs):
-        super().__init__(**kwargs)
-        self.tag = "_Polygon"
+        super().__init__("_Polygon", **kwargs)
         self.append(Coords(points))
         if id is not None:
             self.attrib["id"] = id
@@ -79,9 +74,9 @@ class TextLine(_Polygon):
     def __init__(self, points: np.ndarray, reading_order: Optional[int]=None, **kwargs):
         super().__init__(points, **kwargs)
         self.tag = "TextLine"
+        self.logger = logging.getLogger(get_logger_name())
         self.reading_order = reading_order
         
-        self.logger = logging.getLogger(get_logger_name())
 
     @property
     def reading_order(self) -> Optional[int]:
@@ -105,19 +100,19 @@ class TextLine(_Polygon):
 
 class TextEquiv(ET.Element):
     def __init__(self, value: str, **kwargs):
-        super().__init__(**kwargs)
-        self.tag = "TextEquiv"
+        super().__init__("TextEquiv", **kwargs)
         unicode = ET.SubElement(self, "Unicode")
         unicode.text = value
 
 
 class Region(_Polygon):
-    def __init__(self, points: np.ndarray, region_type: str, **kwargs):
+    def __init__(self, points: np.ndarray, region_type: Optional[str]=None, **kwargs):
         super().__init__(points, **kwargs)
-        self.tag = "Region"
-        self.attrib["custom"] = f"structure {{type:{region_type};}}"
-        
         self.logger = logging.getLogger(get_logger_name())
+        
+        self.tag = "Region"
+        self.region_type = region_type
+        
         
     @property
     def region_type(self) -> Optional[str]:
@@ -134,15 +129,20 @@ class Region(_Polygon):
         return region_type
     
     @region_type.setter
-    def region_type(self, value: str):
+    def region_type(self, value: Optional[str]):
         if value is not None:
             self.attrib["custom"] = f"structure {{type:{value};}}"
+        
+    @classmethod
+    def with_tag(cls, tag: str, points: np.ndarray, region_type: Optional[str]=None, **kwargs):
+        region = cls(points, region_type, **kwargs)
+        region.tag = tag
+        return region
 
 
 class PcGts(ET.Element):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.tag = "PcGts"
+        super().__init__("PcGts", **kwargs)
         self.attrib = {
             "xmlns": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15",
             "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
@@ -152,121 +152,42 @@ class PcGts(ET.Element):
 
 class Metadata(ET.Element):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.tag = "Metadata"
-        creator = ET.SubElement(self, "Creator")
-        creator.text = "Laypa"
-        created = ET.SubElement(self, "Created")
-        created.text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
-        last_change = ET.SubElement(self, "LastChange")
-        last_change.text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
+        super().__init__("Metadata", **kwargs)
+    
+class Creator(ET.Element):
+    def __init__(self, text, **kwargs):
+        super().__init__("Creator", **kwargs)
+        self.text = text
+
+class Created(ET.Element):
+    def __init__(self, **kwargs):
+        super().__init__("Created", **kwargs)
+        self.text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
+
+class LastChange(ET.Element):
+    def __init__(self, **kwargs):
+        super().__init__("LastChange", **kwargs)
+        self.text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
         
 class Page(ET.Element):
-    def __init__(self, imageFilename: str, imageWidth: int, imageHeight: int, **kwargs):
-        super().__init__(**kwargs)
-        self.tag = "Page"
+    def __init__(self, image_filename: str, image_width: int, image_height: int, **kwargs):
+        super().__init__("Page", **kwargs)
         self.attrib = {
-            "imageFilename": imageFilename,
-            "imageWidth": str(imageWidth),
-            "imageHeight": str(imageHeight),
+            "imageFilename": image_filename,
+            "imageWidth": str(image_width),
+            "imageHeight": str(image_height),
         }
-
-
-class PageXML(ET.ElementTree):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._root = PcGts()
-
-    def save_xml(self, filepath: Path):
-        """write out XML file of current PAGE data"""
-        self._indent(self._root)
-        tree = ET.ElementTree(self._root)
-        with AtomicFileName(filepath) as path:
-            tree.write(path, encoding="UTF-8", xml_declaration=True)
-
-    def _indent(self, elem, level=0):
-        """
-        Function borrowed from:
-            http://effbot.org/zone/element-lib.htm
-        """
-        i = "\n" + level * "  "
-        if len(elem):
-            if not elem.text or not elem.text.strip():
-                elem.text = i + "  "
-            if not elem.tail or not elem.tail.strip():
-                elem.tail = i
-            for elem in elem:
-                self._indent(elem, level + 1)
-            if not elem.tail or not elem.tail.strip():
-                elem.tail = i
-        else:
-            if level and (not elem.tail or not elem.tail.strip()):
-                elem.tail = i
-
-
-class PageXMLCreator:
-    """Class to process PAGE xml files"""
-
-    def __init__(self, filepath: Path, creator=None):
-        """
-        Args:
-            filepath (string): Path to PAGE-xml file.
-        """
+        
+class LaypaProcessingStep(ET.Element):
+    def __init__(self, git_hash: str, uuid: str, cfg: CfgNode, whitelist: Iterable[str], **kwargs):
+        super().__init__("MetadataItem", **kwargs)
         self.logger = logging.getLogger(get_logger_name())
-        self.filepath = filepath
-        self.name = self.filepath.stem
-        self.creator = "Laypa" if creator == None else creator
-
-        # REVIEW should this be replaced with the newer pageXML standard?
-        self.XMLNS = {
-            "xmlns": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15",
-            "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "xsi:schemaLocation": " ".join(
-                [
-                    "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15",
-                    " http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15/pagecontent.xsd",
-                ]
-            ),
-        }
-        self.size = None
-
-    def set_size(self, size: tuple[int, int]):
-        self.size = size
-
-    def new_page(self, name, rows, cols):
-        """create a new PAGE xml"""
-        self.xml = ET.Element("PcGts")
-        self.xml.attrib = self.XMLNS
-        self.metadata = ET.SubElement(self.xml, "Metadata")
-        ET.SubElement(self.metadata, "Creator").text = self.creator
-        ET.SubElement(self.metadata, "Created").text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
-        ET.SubElement(self.metadata, "LastChange").text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
-        self.page = ET.SubElement(self.xml, "Page")
-        self.page.attrib = {
-            "imageFilename": name,
-            "imageWidth": cols,
-            "imageHeight": rows,
-        }
-
-    def add_processing_step(self, git_hash: str, uuid: str, cfg: CfgNode, whitelist: Iterable[str]):
-        if git_hash is None:
-            raise TypeError(f"git_hash is None")
-        if uuid is None:
-            raise TypeError(f"uuid is None")
-        if cfg is None:
-            raise TypeError(f"cfg is None")
-        if whitelist is None:
-            raise TypeError(f"whitelist is None")
-        if self.metadata is None:
-            raise TypeError(f"self.metadata is None")
-
-        processing_step = ET.SubElement(self.metadata, "MetadataItem")
-        processing_step.attrib = {
+        self.attrib = {
             "type": "processingStep",
             "name": "layout-analysis",
             "value": "laypa",
         }
-        labels = ET.SubElement(processing_step, "Labels")
+        labels = ET.SubElement(self, "Labels")
         git_hash_element = ET.SubElement(labels, "Label")
         git_hash_element.attrib = {
             "type": "githash",
@@ -293,38 +214,21 @@ class PageXMLCreator:
                 "value": str(convert_to_dict(sub_node)),
             }
 
-    def add_region(self, region_class, region_id, region_type, region_coords, parent=None):
-        """add element to parent node"""
-        parent = self.page if parent == None else parent
-        t_reg = ET.SubElement(parent, region_class)
-        t_reg.attrib = {
-            "id": str(region_id),
-            "custom": f"structure {{type:{region_type};}}",
-        }
-        ET.SubElement(t_reg, "Coords").attrib = {"points": region_coords}
-        return t_reg
+class PageXML(ET.ElementTree):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._root = PcGts()
 
-    def remove_element(self, element, parent=None):
-        """remove element from parent node"""
-        parent = self.page if parent == None else parent
-        parent.remove(element)
-
-    def add_textline(self, t_coords, t_id, reading_order, parent):
-        """add textline element to parent region node"""
-        ET.SubElement(parent, "TextLine").attrib = {
-            "id": t_id,
-            "custom": f"readingOrder {{index:{reading_order};}}",
-        }
-        ET.SubElement(parent, "Coords").attrib = {"points": t_coords}
-
-    def add_baseline(self, b_coords, parent):
-        """add baseline element ot parent line node"""
-        ET.SubElement(parent, "Baseline").attrib = {"points": b_coords}
+    def save_xml(self, filepath: Path):
+        """write out XML file of current PAGE data"""
+        self._indent(self._root)
+        with AtomicFileName(filepath) as path:
+            super().write(path, encoding="UTF-8", xml_declaration=True)
 
     def _indent(self, elem, level=0):
         """
         Function borrowed from:
-            http://effbot.org/zone/element-lib.htm#prettyprint
+            http://effbot.org/zone/element-lib.htm
         """
         i = "\n" + level * "  "
         if len(elem):
@@ -340,9 +244,50 @@ class PageXMLCreator:
             if level and (not elem.tail or not elem.tail.strip()):
                 elem.tail = i
 
-    def save_xml(self):
-        """write out XML file of current PAGE data"""
-        self._indent(self.xml)
-        tree = ET.ElementTree(self.xml)
-        with AtomicFileName(self.filepath) as path:
-            tree.write(path, encoding="UTF-8", xml_declaration=True)
+
+class PageXMLCreator:
+    """Class to process PAGE xml files"""
+    def __init__(self, filepath: Optional[Path] = None):
+        self.pageXML = PageXML()
+        self.filepath = filepath
+        if filepath is not None:
+            if filepath.exists():
+                self.pageXML.parse(filepath)
+            else:
+                raise FileNotFoundError(f"File {filepath} does not exist")
+        
+        if filepath is None:
+            self.add_metadata()
+        
+    def add_metadata(self):
+        metadata = Metadata()
+        metadata.append(Creator("laypa"))
+        metadata.append(Created())
+        metadata.append(LastChange())
+        self.pageXML.getroot().append(metadata)
+        return metadata
+    
+    def add_page(self, image_filename: str, image_width: int, image_height: int):
+        page = Page(image_filename, image_width, image_height)
+        self.pageXML.getroot().append(page)
+        return page
+    
+    def add_processing_step(self, git_hash: str, uuid: str, cfg: CfgNode, whitelist: Iterable[str]):
+        processing_step = LaypaProcessingStep(git_hash, uuid, cfg, whitelist)
+        metadata = self.pageXML.getroot().find("Metadata")
+        if metadata is None:
+            metadata = self.add_metadata()
+        
+        metadata.append(processing_step)
+        return processing_step
+    
+    
+
+            
+        
+    
+    
+        
+        
+        
+    
