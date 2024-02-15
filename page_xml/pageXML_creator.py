@@ -71,22 +71,21 @@ class _Polygon(ET.Element):
 
 
 class TextLine(_Polygon):
-    def __init__(self, points: np.ndarray, reading_order: Optional[int]=None, **kwargs):
+    def __init__(self, points: np.ndarray, reading_order: Optional[int] = None, **kwargs):
         super().__init__(points, **kwargs)
         self.tag = "TextLine"
         self.logger = logging.getLogger(get_logger_name())
         self.reading_order = reading_order
-        
 
     @property
     def reading_order(self) -> Optional[int]:
         try:
             re_match = re.match(r".*readingOrder {index:(\d+);.*}", self.attrib["custom"])
         except KeyError:
-            self.logger.warning(f"No reading order defined for {self.attrib["id"]}")
+            self.logger.warning(f"No reading order defined for {self.attrib['id']}")
             return None
         if re_match is None:
-            self.logger.warning(f"No reading order defined for {self.attrib["id"]}")
+            self.logger.warning(f"No reading order defined for {self.attrib['id']}")
             return None
         reading_order_index = re_match.group(1)
 
@@ -106,35 +105,34 @@ class TextEquiv(ET.Element):
 
 
 class Region(_Polygon):
-    def __init__(self, points: np.ndarray, region_type: Optional[str]=None, **kwargs):
+    def __init__(self, points: np.ndarray, region_type: Optional[str] = None, **kwargs):
         super().__init__(points, **kwargs)
         self.logger = logging.getLogger(get_logger_name())
-        
+
         self.tag = "Region"
         self.region_type = region_type
-        
-        
+
     @property
     def region_type(self) -> Optional[str]:
         try:
             re_match = re.match(r".*structure {.*type:(.*);.*}", self.attrib["custom"])
         except KeyError:
-            self.logger.warning(f"No region type defined for {self.attrib["id"]}")
+            self.logger.warning(f"No region type defined for {self.attrib['id']}")
             return None
         if re_match is None:
-            self.logger.warning(f"No region type defined for {self.attrib["id"]}")
+            self.logger.warning(f"No region type defined for {self.attrib['id']}")
             return None
         region_type = re_match.group(1)
 
         return region_type
-    
+
     @region_type.setter
     def region_type(self, value: Optional[str]):
         if value is not None:
             self.attrib["custom"] = f"structure {{type:{value};}}"
-        
+
     @classmethod
-    def with_tag(cls, tag: str, points: np.ndarray, region_type: Optional[str]=None, **kwargs):
+    def with_tag(cls, tag: str, points: np.ndarray, region_type: Optional[str] = None, **kwargs):
         region = cls(points, region_type, **kwargs)
         region.tag = tag
         return region
@@ -153,22 +151,26 @@ class PcGts(ET.Element):
 class Metadata(ET.Element):
     def __init__(self, **kwargs):
         super().__init__("Metadata", **kwargs)
-    
+
+
 class Creator(ET.Element):
     def __init__(self, text, **kwargs):
         super().__init__("Creator", **kwargs)
         self.text = text
+
 
 class Created(ET.Element):
     def __init__(self, **kwargs):
         super().__init__("Created", **kwargs)
         self.text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
 
+
 class LastChange(ET.Element):
     def __init__(self, **kwargs):
         super().__init__("LastChange", **kwargs)
         self.text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
-        
+
+
 class Page(ET.Element):
     def __init__(self, image_filename: str, image_width: int, image_height: int, **kwargs):
         super().__init__("Page", **kwargs)
@@ -177,7 +179,8 @@ class Page(ET.Element):
             "imageWidth": str(image_width),
             "imageHeight": str(image_height),
         }
-        
+
+
 class LaypaProcessingStep(ET.Element):
     def __init__(self, git_hash: str, uuid: str, cfg: CfgNode, whitelist: Iterable[str], **kwargs):
         super().__init__("MetadataItem", **kwargs)
@@ -214,6 +217,7 @@ class LaypaProcessingStep(ET.Element):
                 "value": str(convert_to_dict(sub_node)),
             }
 
+
 class PageXML(ET.ElementTree):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -247,6 +251,7 @@ class PageXML(ET.ElementTree):
 
 class PageXMLCreator:
     """Class to process PAGE xml files"""
+
     def __init__(self, filepath: Optional[Path] = None):
         self.pageXML = PageXML()
         self.filepath = filepath
@@ -255,10 +260,10 @@ class PageXMLCreator:
                 self.pageXML.parse(filepath)
             else:
                 raise FileNotFoundError(f"File {filepath} does not exist")
-        
+
         if filepath is None:
             self.add_metadata()
-        
+
     def add_metadata(self):
         metadata = Metadata()
         metadata.append(Creator("laypa"))
@@ -266,28 +271,17 @@ class PageXMLCreator:
         metadata.append(LastChange())
         self.pageXML.getroot().append(metadata)
         return metadata
-    
+
     def add_page(self, image_filename: str, image_width: int, image_height: int):
         page = Page(image_filename, image_width, image_height)
         self.pageXML.getroot().append(page)
         return page
-    
+
     def add_processing_step(self, git_hash: str, uuid: str, cfg: CfgNode, whitelist: Iterable[str]):
         processing_step = LaypaProcessingStep(git_hash, uuid, cfg, whitelist)
         metadata = self.pageXML.getroot().find("Metadata")
         if metadata is None:
             metadata = self.add_metadata()
-        
+
         metadata.append(processing_step)
         return processing_step
-    
-    
-
-            
-        
-    
-    
-        
-        
-        
-    
