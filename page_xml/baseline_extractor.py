@@ -17,6 +17,7 @@ def baseline_converter(
     image: np.ndarray,
     minimum_width: int = 15,
     minimum_height: int = 3,
+    step: int = 50,
 ):
     output = cv2.connectedComponentsWithStats(image, connectivity=8)
     num_labels = output[0]
@@ -31,7 +32,7 @@ def baseline_converter(
         sub_image = labels[y_offset : y_offset + height, x_offset : x_offset + width]
         sub_image = (sub_image == i).astype(np.uint8)
 
-        baseline = extract_baseline(sub_image, (x_offset, y_offset), minimum_height, "test.xml")
+        baseline = extract_baseline_v2(sub_image, (x_offset, y_offset), minimum_height, "test.xml", step)
         if len(baseline) < 2:
             continue
         baseline = cv2.approxPolyDP(np.array(baseline, dtype=np.float32), 1, False).reshape(-1, 2)
@@ -43,7 +44,7 @@ def baseline_converter(
     return baselines
 
 
-def extract_baseline(baseline_mat: np.ndarray, offset: tuple[int, int], minimum_height: int, xml_file: str):
+def extract_baseline(baseline_mat: np.ndarray, offset: tuple[int, int], minimum_height: int, xml_file: str, step: int = 50):
     baseline = []
     pixel_counter = -1
     merged_line_detected = False
@@ -72,16 +73,52 @@ def extract_baseline(baseline_mat: np.ndarray, offset: tuple[int, int], minimum_
             sum_ /= counter
 
         point = (i + offset[0], sum_ + offset[1])
-        if pixel_counter % 50 == 0:
+        if pixel_counter % step == 0:
             baseline.append(point)
 
-    if pixel_counter % 50 != 0:
+    if pixel_counter % step != 0:
         baseline.append(point)
 
     if merged_line_detected:
         print(f"mergedLineDetected: {xml_file}")
 
     return baseline
+
+
+def extract_baseline_v2(baseline_mat: np.ndarray, offset: tuple[int, int], minimum_height: int, xml_file: str, step: int = 50):
+    baseline = []
+    pixel_counter = -1
+    merged_line_detected = False
+    point = None
+    minimum_height = np.minimum(minimum_height, 1)
+
+    for i in range(baseline_mat.shape[1]):
+        height_points = np.where(baseline_mat[:, i])[0]
+        if height_points.size > 1:
+            merged_line_detected = merged_line_detected or np.any(height_points[0:-1] + 1 != height_points[1:])
+
+        if height_points.size < minimum_height:
+            continue
+
+        pixel_counter += 1
+
+        if pixel_counter % step == 0:
+            point = (i + offset[0], np.mean(height_points) + offset[1])
+            baseline.append(point)
+
+    if pixel_counter % step != 0:
+        if not height_points.size < minimum_height:
+            point = (i + offset[0], np.mean(height_points) + offset[1])
+        baseline.append(point)
+
+    if merged_line_detected:
+        print(f"mergedLineDetected: {xml_file}")
+
+    return baseline
+
+
+def extract_baseline_v3(baseline_mat: np.ndarray, offset: tuple[int, int], minimum_height: int, xml_file: str, step: int = 50):
+    pass
 
 
 def image_to_baselines(image: np.ndarray, xml_regions: XMLRegions):

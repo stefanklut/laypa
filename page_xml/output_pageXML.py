@@ -55,7 +55,7 @@ class OutputPageXML:
         whitelist: Optional[Iterable[str]] = None,
         rectangle_regions: Optional[Iterable[str]] = None,
         min_region_size: int = 10,
-        external_processing: bool = True,
+        external_processing: bool = False,
         grayscale: bool = False,
     ) -> None:
         """
@@ -197,7 +197,13 @@ class OutputPageXML:
 
         sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy().astype(np.uint8)
 
-        coords_baselines = baseline_converter(sem_seg_image, minimum_width=15 / scaling[0], minimum_height=3 / scaling[1])
+        minimum_width = 15 / scaling[0]
+        minimum_height = 3 / scaling[1]
+        step = 50 // scaling[0]
+
+        coords_baselines = baseline_converter(
+            sem_seg_image, minimum_width=minimum_width, minimum_height=minimum_height, step=step
+        )
 
         text_region = page.find("TextRegion")
         if text_region is None:
