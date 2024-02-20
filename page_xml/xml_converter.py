@@ -394,6 +394,8 @@ class XMLConverter:
             colored_top_bottom = np.where(top_bottom, top_color, bottom_color)
             sem_seg[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = colored_top_bottom
 
+            binary_mask.fill(0)
+
         if total_overlap:
             self.logger.warning(f"File {page.filepath} contains overlapping top bottom sem_seg")
         if not sem_seg.any():

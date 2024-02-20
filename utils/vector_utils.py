@@ -378,7 +378,7 @@ def draw_lines(lines: np.ndarray, thickness: int) -> np.ndarray:
         print(line_pixel_coords.shape)
         empty_mask.fill(0)
         mask[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = (
-            point_at_start_or_end_assignment(line, line_pixel_coords) + 1
+            point_top_bottom_assignment(line, line_pixel_coords) + 1
         ) * 100
 
     return mask

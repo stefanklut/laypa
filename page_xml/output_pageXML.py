@@ -18,7 +18,7 @@ from tqdm import tqdm
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.setup import get_git_hash
 from datasets.dataset import classes_to_colors
-from page_xml.baseline_extractor import baseline_converter
+from page_xml.baseline_extractor import baseline_converter, image_to_baselines
 from page_xml.pageXML_creator import Baseline, PageXMLCreator, Region, TextLine
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
@@ -56,7 +56,7 @@ class OutputPageXML:
         rectangle_regions: Optional[Iterable[str]] = None,
         min_region_size: int = 10,
         external_processing: bool = False,
-        grayscale: bool = False,
+        grayscale: bool = True,
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
@@ -155,7 +155,7 @@ class OutputPageXML:
             return sem_seg_image * 255
 
         if self.grayscale:
-            image = np.zeros((old_height, old_width, 1), dtype=np.uint8)
+            image = np.zeros((old_height, old_width), dtype=np.uint8)
         else:
             image = np.zeros((old_height, old_width, 3), dtype=np.uint8)
         for class_id, color in enumerate(self.classes_to_colors):
@@ -201,8 +201,8 @@ class OutputPageXML:
         minimum_height = 3 / scaling[1]
         step = 50 // scaling[0]
 
-        coords_baselines = baseline_converter(
-            sem_seg_image, minimum_width=minimum_width, minimum_height=minimum_height, step=step
+        coords_baselines = image_to_baselines(
+            sem_seg_image, self.xml_regions, minimum_width=minimum_width, minimum_height=minimum_height, step=step
         )
 
         text_region = page.find("TextRegion")
@@ -333,11 +333,9 @@ class OutputPageXML:
         if self.xml_regions.mode == "region":
             pageXML_creator = self.add_regions_to_page(pageXML_creator, sem_seg, old_height, old_width)
             pageXML_creator.pageXML.save_xml(self.page_dir.joinpath(image_path.stem + ".xml"))
-        elif self.xml_regions.mode == "baseline":
+        else:
             pageXML_creator = self.add_baselines_to_page(pageXML_creator, sem_seg, old_height, old_width)
             pageXML_creator.pageXML.save_xml(self.page_dir.joinpath(image_path.stem + ".xml"))
-        else:
-            raise NotImplementedError(f"Mode {self.xml_regions.mode} not implemented")
 
     def generate_single_page_wrapper(self, info):
         """

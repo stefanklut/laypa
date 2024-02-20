@@ -78,7 +78,8 @@ def keypress(event):
 
 
 def on_close(event):
-    sys.exit()
+    if __file__ == "eval.py":
+        sys.exit()
 
 
 def main(args) -> None:
