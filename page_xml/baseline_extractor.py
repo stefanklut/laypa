@@ -266,7 +266,7 @@ def most_likely_orientation(overlap_image: np.ndarray, top_image: np.ndarray, bo
                 rotated_top_image,
                 rotated_bottom_image,
                 rotation_matrix,
-                ((max_dimension + h) / 2, (max_dimension + w) / 2),
+                (max_dimension - w // 2, max_dimension - h // 2),
             )
 
     return output
@@ -367,19 +367,13 @@ def top_bottom_converter(
             top_bottom_overlap_sub_image,
             top_sub_image,
             bottom_sub_image,
-            15,
+            45,
         )
 
         if best_orientation is None:
             raise ValueError("No best orientation found")
 
         rotated_overlap_image, rotated_top_image, rotated_bottom_image, rotation_matrix, offset = best_orientation
-
-        print("BEST ORIENTATION", rotation_matrix)
-        import matplotlib.pyplot as plt
-
-        plt.imshow(labels_overlap == i, cmap="gray")
-        plt.show()
 
         baseline = extract_baseline_v2(rotated_overlap_image, "test.xml", (0, 0), 1, step)
         if len(baseline) < 2:
@@ -390,11 +384,11 @@ def top_bottom_converter(
             continue
 
         inv_rotation_matrix = np.eye(3)
-        inv_rotation_matrix[:2, :2] = rotation_matrix[:2, :2]
+        inv_rotation_matrix[:2] = rotation_matrix
         inv_rotation_matrix = np.linalg.inv(inv_rotation_matrix)
 
         baseline = cv2.transform(baseline[:, None, :], inv_rotation_matrix)[:, 0, :2]
-        baseline += np.asarray([x_offset_overlap, y_offset_overlap]) - offset
+        baseline += np.asarray([rectangle_combined[0], rectangle_combined[1]]) - offset
 
         baselines.append(baseline)
 
