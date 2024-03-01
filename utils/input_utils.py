@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from typing import Container, Sequence
 
-from PIL import Image, features
+from PIL import Image
 
 Image.init()
 supported_image_formats = set(Image.EXTENSION.keys())
