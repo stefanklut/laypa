@@ -12,13 +12,12 @@ import imagesize
 import numpy as np
 from tqdm import tqdm
 
-from page_xml.xml_regions import XMLRegions
-
 # from multiprocessing.pool import ThreadPool as Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
 from page_xml.xml_converter import XMLConverter
+from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import get_file_paths, supported_image_formats
@@ -85,6 +84,7 @@ class Preprocess:
         self.logger = logging.getLogger(get_logger_name())
 
         self.input_paths: Optional[Sequence[Path]] = None
+        self.disable_check = disable_check
         if input_paths is not None:
             self.set_input_paths(input_paths)
 
@@ -97,7 +97,6 @@ class Preprocess:
 
         self.xml_converter = xml_converter
 
-        self.disable_check = disable_check
         self.overwrite = overwrite
 
         self.resize_mode = resize_mode
@@ -156,16 +155,28 @@ class Preprocess:
 
     def set_input_paths(self, input_paths: str | Path | Sequence[str | Path]) -> None:
         """
-        Setter for image paths, also cleans them to be a list of Paths
+        Setter of the input paths, turn string to path. And resolve full path
 
         Args:
-            input_paths (str | Path | Sequence[str | Path]): path(s) from which to extract the images
-
-        Raises:
-            FileNotFoundError: input path not found on the filesystem
-            PermissionError: input path not accessible
+            input_paths (str | Path | Sequence[str  |  Path]): path(s) from which to extract the images
         """
-        self.input_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
+        input_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
+        names = set(path.name for path in input_paths)
+        duplicates = {}
+        for path in input_paths:
+            if path.name in names:
+                if path.name in duplicates:
+                    duplicates[path.name].append(path)
+                else:
+                    duplicates[path.name] = [path]
+        if duplicates:
+            number_of_duplicates = {name: len(paths) for name, paths in duplicates.items()}
+            total_duplicates = sum(number_of_duplicates.values())
+            raise ValueError(
+                f"Found duplicate names in input paths: {duplicates} \n Duplicates {total_duplicates}/{len(input_paths)} images"
+            )
+
+        self.input_paths = input_paths
 
     def get_input_paths(self) -> Optional[Sequence[Path]]:
         """
