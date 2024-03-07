@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+from collections import Counter
 from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import Any, Optional, Sequence
@@ -161,19 +162,31 @@ class Preprocess:
             input_paths (str | Path | Sequence[str  |  Path]): path(s) from which to extract the images
         """
         input_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
-        names = set(path.name for path in input_paths)
+
+        count_duplicates_names = Counter([path.name for path in input_paths])
         duplicates = {}
         for path in input_paths:
-            if path.name in names:
+            if count_duplicates_names[path.name] > 1:
                 if path.name in duplicates:
                     duplicates[path.name].append(path)
                 else:
                     duplicates[path.name] = [path]
         if duplicates:
-            number_of_duplicates = {name: len(paths) for name, paths in duplicates.items()}
-            total_duplicates = sum(number_of_duplicates.values())
+            total_duplicates = sum(count_duplicates_names[name] for name in duplicates.keys())
+            count_per_dir = Counter([path.parent for path in input_paths])
+            dirs_with_duplicates = {}
+            for name, paths in duplicates.items():
+                for path in paths:
+                    if path.parent in dirs_with_duplicates:
+                        dirs_with_duplicates[path.parent].append(name)
+                    else:
+                        dirs_with_duplicates[path.parent] = [name]
+            duplicate_warning = "Duplicates found in the following directories:\n"
+            for dir_path, count in count_per_dir.items():
+                duplicate_warning += f"Directory: {dir_path} Count: {len(dirs_with_duplicates.get(dir_path, []))}/{count}\n"
+            self.logger.warning(duplicate_warning.strip())
             raise ValueError(
-                f"Found duplicate names in input paths: {duplicates} \n Duplicates {total_duplicates}/{len(input_paths)} images"
+                f"Found duplicate names in input paths. \n\tDuplicates: {total_duplicates}/{len(input_paths)} \n\tTotal unique names: {len(count_duplicates_names)}"
             )
 
         self.input_paths = input_paths
