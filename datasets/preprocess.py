@@ -3,7 +3,7 @@ import json
 import logging
 import os
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import Any, Optional, Sequence
@@ -169,33 +169,21 @@ class Preprocess:
 
     def check_duplicates(self, input_paths: Sequence[Path]) -> None:
         count_duplicates_names = Counter([path.name for path in input_paths])
-        duplicates = {}
+        duplicates = defaultdict(list)
         for path in input_paths:
             if count_duplicates_names[path.name] > 1:
-                if path.name in duplicates:
-                    duplicates[path.name].append(path)
-                else:
-                    duplicates[path.name] = [path]
+                duplicates[path.name].append(path)
         if duplicates:
             total_duplicates = sum(count_duplicates_names[name] for name in duplicates.keys())
             count_per_dir = Counter([path.parent for path in input_paths])
-            duplicates_in_dir = {}
-            duplicates_makeup = {}
+            duplicates_in_dir = defaultdict(int)
+            duplicates_makeup = defaultdict(lambda: defaultdict(int))
             for name, paths in duplicates.items():
                 for path in paths:
-                    if path.parent in duplicates_in_dir:
-                        duplicates_in_dir[path.parent] += 1
-                        for other_path in duplicates[name]:
-                            if other_path.parent != path.parent:
-                                if path.parent in duplicates_makeup:
-                                    if other_path.parent in duplicates_makeup[path.parent]:
-                                        duplicates_makeup[path.parent][other_path.parent] += 1
-                                    else:
-                                        duplicates_makeup[path.parent].update({other_path.parent: 1})
-                                else:
-                                    duplicates_makeup[path.parent] = {other_path.parent: 1}
-                    else:
-                        duplicates_in_dir[path.parent] = 1
+                    duplicates_in_dir[path.parent] += 1
+                    for other_path in duplicates[name]:
+                        if other_path.parent != path.parent:
+                            duplicates_makeup[path.parent][other_path.parent] += 1
             duplicate_warning = "Duplicates found in the following directories:\n"
             for dir_path, count in count_per_dir.items():
                 duplicate_warning += f"Directory: {dir_path} Count: {duplicates_in_dir.get(dir_path, 0)}/{count}\n"
