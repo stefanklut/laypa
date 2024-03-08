@@ -187,8 +187,8 @@ class Preprocess:
             duplicate_warning = "Duplicates found in the following directories:\n"
             for dir_path, count in count_per_dir.items():
                 duplicate_warning += f"Directory: {dir_path} Count: {duplicates_in_dir.get(dir_path, 0)}/{count}\n"
-                duplicate_warning += "Shared Duplicates:"
                 if dir_path in duplicates_makeup:
+                    duplicate_warning += "Shared Duplicates:"
                     for other_dir, makeup_count in duplicates_makeup[dir_path].items():
                         duplicate_warning += f"\n\t{other_dir} Count: {makeup_count}/{count}"
                     duplicate_warning += "\n"
