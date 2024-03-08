@@ -154,7 +154,7 @@ class Preprocess:
 
         return parser
 
-    def set_input_paths(self, input_paths: str | Path | Sequence[str | Path]) -> None:
+    def set_input_paths(self, input_paths: str | Path | Sequence[str | Path], ignore_duplicates=False) -> None:
         """
         Setter of the input paths, turn string to path. And resolve full path
 
@@ -162,7 +162,12 @@ class Preprocess:
             input_paths (str | Path | Sequence[str  |  Path]): path(s) from which to extract the images
         """
         input_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
+        if not ignore_duplicates:
+            self.check_duplicates(input_paths)
 
+        self.input_paths = input_paths
+
+    def check_duplicates(self, input_paths: Sequence[Path]) -> None:
         count_duplicates_names = Counter([path.name for path in input_paths])
         duplicates = {}
         for path in input_paths:
@@ -174,22 +179,35 @@ class Preprocess:
         if duplicates:
             total_duplicates = sum(count_duplicates_names[name] for name in duplicates.keys())
             count_per_dir = Counter([path.parent for path in input_paths])
-            dirs_with_duplicates = {}
+            duplicates_in_dir = {}
+            duplicates_makeup = {}
             for name, paths in duplicates.items():
                 for path in paths:
-                    if path.parent in dirs_with_duplicates:
-                        dirs_with_duplicates[path.parent].append(name)
+                    if path.parent in duplicates_in_dir:
+                        duplicates_in_dir[path.parent] += 1
+                        for other_path in duplicates[name]:
+                            if other_path.parent != path.parent:
+                                if path.parent in duplicates_makeup:
+                                    if other_path.parent in duplicates_makeup[path.parent]:
+                                        duplicates_makeup[path.parent][other_path.parent] += 1
+                                    else:
+                                        duplicates_makeup[path.parent].update({other_path.parent: 1})
+                                else:
+                                    duplicates_makeup[path.parent] = {other_path.parent: 1}
                     else:
-                        dirs_with_duplicates[path.parent] = [name]
+                        duplicates_in_dir[path.parent] = 1
             duplicate_warning = "Duplicates found in the following directories:\n"
             for dir_path, count in count_per_dir.items():
-                duplicate_warning += f"Directory: {dir_path} Count: {len(dirs_with_duplicates.get(dir_path, []))}/{count}\n"
+                duplicate_warning += f"Directory: {dir_path} Count: {duplicates_in_dir.get(dir_path, 0)}/{count}\n"
+                duplicate_warning += "Shared Duplicates:"
+                if dir_path in duplicates_makeup:
+                    for other_dir, makeup_count in duplicates_makeup[dir_path].items():
+                        duplicate_warning += f"\n\t{other_dir} Count: {makeup_count}/{count}"
+                    duplicate_warning += "\n"
             self.logger.warning(duplicate_warning.strip())
             raise ValueError(
                 f"Found duplicate names in input paths. \n\tDuplicates: {total_duplicates}/{len(input_paths)} \n\tTotal unique names: {len(count_duplicates_names)}"
             )
-
-        self.input_paths = input_paths
 
     def get_input_paths(self) -> Optional[Sequence[Path]]:
         """
