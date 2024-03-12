@@ -1,3 +1,4 @@
+import itertools
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -119,7 +120,7 @@ def extract_baseline_v2(baseline_mat: np.ndarray, xml_file: str, offset: tuple[i
     return baseline
 
 
-def test(image: np.ndarray, minimum_height: int, step: int = 50):
+def test(image: np.ndarray, minimum_height: int = 3, step: int = 50):
     output = cv2.connectedComponentsWithStats(image, connectivity=8)
     num_labels = output[0]
     labels = output[1]
@@ -134,30 +135,45 @@ def test(image: np.ndarray, minimum_height: int, step: int = 50):
         sub_image = labels[y_offset : y_offset + height, x_offset : x_offset + width]
         sub_image = (sub_image == i).astype(np.uint8)
 
-        extract_baseline_v3(sub_image, "test.xml", (x_offset, y_offset), minimum_height, step)
+        if area < 2:
+            continue
+
+        print(extract_baseline_v3(sub_image, "test.xml", (x_offset, y_offset), minimum_height, step))
 
 
 def extract_baseline_v3(baseline_mat: np.ndarray, xml_file: str, offset: tuple[int, int], minimum_height: int, step: int = 50):
     baseline = []
 
     import scipy.ndimage as ndi
+    import skimage.graph as graph
     import skimage.morphology as morph
 
     skeleton_mat = morph.skeletonize(baseline_mat).astype(np.uint8)
     edge = ndi.convolve(skeleton_mat, np.array([[1, 1, 1], [1, 0, 1], [1, 1, 1]]), mode="constant", cval=0)
     edge = np.logical_and(edge == 1, skeleton_mat).astype(np.uint8)
 
-    # skeleton_mat = cv2.ximgproc.thinning(baseline_mat * 255, thinningType=cv2.ximgproc.THINNING_GUOHALL)
-    if np.sum(edge) != 2:
+    longest_path = 0
+    longest_path_points = None
+    for (i1, j1), (i2, j2) in itertools.combinations(np.argwhere(edge), 2):
+        route, cost = graph.route_through_array(np.where(skeleton_mat, 1, np.inf), (i1, j1), (i2, j2), fully_connected=True)
 
+        if cost > longest_path:
+            longest_path = cost
+            longest_path_points = route
+
+    if longest_path_points is None:
         import matplotlib.pyplot as plt
 
-        plt.imshow(baseline_mat * 255, cmap="gray")
+        plt.imshow(baseline_mat, cmap="gray")
         plt.show()
-        plt.imshow(skeleton_mat * 255, cmap="gray")
+
+        plt.imshow(skeleton_mat, cmap="gray")
         plt.show()
-        plt.imshow(edge * 255, cmap="gray")
+
+        plt.imshow(edge, cmap="gray")
         plt.show()
+
+    return longest_path_points
 
 
 def top_bottom_overlap(image: np.ndarray, top: int, bottom: int):
@@ -415,6 +431,6 @@ def image_to_baselines(
 
 
 if __name__ == "__main__":
-    image = cv2.imread("/tmp/results/page/NL-HaNA_2.09.09_5_0023.png", cv2.IMREAD_GRAYSCALE)
+    image = cv2.imread("/home/stefan/Downloads/276/page/NL-HaNA_2.01.01.01_276_0011.png", cv2.IMREAD_GRAYSCALE)
 
-    print(test2(image))
+    print(test(image))
