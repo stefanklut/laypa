@@ -40,6 +40,8 @@ def load_image_array_from_path(
         image = Image.open(image_path)
         if not ignore_exif:
             image = ImageOps.exif_transpose(image)
+        dpi = image.info.get("dpi")
+        print(dpi)
         image = convert_PIL_to_numpy(image, "RGB" if mode == "color" else "L").copy()
         if mode == "grayscale":
             image = image.squeeze(axis=2)

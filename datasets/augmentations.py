@@ -277,7 +277,7 @@ class RandomElastic(T.Augmentation):
     Apply a random elastic transformation to the image, made using random warpfield and gaussian filters
     """
 
-    def __init__(self, alpha: float = 0.1, sigma: float = 0.01) -> None:
+    def __init__(self, alpha: float = 0.1, sigma: float = 0.01, ignore_value=255) -> None:
         """
         Apply a random elastic transformation to the image, made using random warpfield and gaussian filters
 
@@ -288,6 +288,7 @@ class RandomElastic(T.Augmentation):
         super().__init__()
         self.alpha = alpha
         self.sigma = sigma
+        self.ignore_value = ignore_value
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
@@ -300,7 +301,7 @@ class RandomElastic(T.Augmentation):
         warpfield[..., 0] = dx * min_length * self.alpha
         warpfield[..., 1] = dy * min_length * self.alpha
 
-        return WarpFieldTransform(warpfield)
+        return WarpFieldTransform(warpfield, ignore_value=self.ignore_value)
 
 
 class RandomAffine(T.Augmentation):
@@ -315,6 +316,7 @@ class RandomAffine(T.Augmentation):
         sh_kappa: float = 20,
         sc_stdv: float = 0.12,
         probabilities: Optional[Sequence[float]] = None,
+        ignore_value: int = 255,
     ) -> None:
         """
         Apply a random affine transformation to the image
@@ -331,6 +333,7 @@ class RandomAffine(T.Augmentation):
         self.r_kappa = r_kappa
         self.sh_kappa = sh_kappa
         self.sc_stdv = sc_stdv
+        self.ignore_value = ignore_value
 
         if probabilities is not None:
             assert len(probabilities) == 4, f"{len(probabilities)}: {probabilities}"
@@ -395,7 +398,7 @@ class RandomAffine(T.Augmentation):
 
             matrix = matrix @ center @ scale @ uncenter
 
-        return AffineTransform(matrix)
+        return AffineTransform(matrix, ignore_value=self.ignore_value)
 
 
 class RandomTranslation(T.Augmentation):
@@ -403,7 +406,7 @@ class RandomTranslation(T.Augmentation):
     Apply a random translation to the image
     """
 
-    def __init__(self, t_stdv: float = 0.02) -> None:
+    def __init__(self, t_stdv: float = 0.02, ignore_value=255) -> None:
         """
         Apply a random affine transformation to the image
 
@@ -412,6 +415,7 @@ class RandomTranslation(T.Augmentation):
         """
         super().__init__()
         self.t_stdv = t_stdv
+        self.ignore_value = ignore_value
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
@@ -423,7 +427,7 @@ class RandomTranslation(T.Augmentation):
 
         # print(matrix)
 
-        return AffineTransform(matrix)
+        return AffineTransform(matrix, ignore_value=self.ignore_value)
 
 
 class RandomRotation(T.Augmentation):
@@ -431,7 +435,7 @@ class RandomRotation(T.Augmentation):
     Apply a random rotation to the image
     """
 
-    def __init__(self, r_kappa: float = 30) -> None:
+    def __init__(self, r_kappa: float = 30, ignore_value=255) -> None:
         """
         Apply a random rotation to the image
 
@@ -440,6 +444,7 @@ class RandomRotation(T.Augmentation):
         """
         super().__init__()
         self.r_kappa = r_kappa
+        self.ignore_value = ignore_value
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
@@ -468,7 +473,7 @@ class RandomRotation(T.Augmentation):
 
         # print(matrix)
 
-        return AffineTransform(matrix)
+        return AffineTransform(matrix, ignore_value=self.ignore_value)
 
 
 class RandomShear(T.Augmentation):
@@ -476,7 +481,7 @@ class RandomShear(T.Augmentation):
     Apply a random shearing to the image
     """
 
-    def __init__(self, sh_kappa: float = 20) -> None:
+    def __init__(self, sh_kappa: float = 20, ignore_value=255) -> None:
         """
         Apply a random shearing to the image
 
@@ -485,6 +490,7 @@ class RandomShear(T.Augmentation):
         """
         super().__init__()
         self.sh_kappa = sh_kappa
+        self.ignore_value = ignore_value
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
@@ -517,7 +523,7 @@ class RandomShear(T.Augmentation):
 
         matrix = matrix @ center @ shear2 @ uncenter
 
-        return AffineTransform(matrix)
+        return AffineTransform(matrix, ignore_value=self.ignore_value)
 
 
 class RandomScale(T.Augmentation):
@@ -525,7 +531,7 @@ class RandomScale(T.Augmentation):
     Apply a random shearing to the image
     """
 
-    def __init__(self, sc_stdv: float = 0.12) -> None:
+    def __init__(self, sc_stdv: float = 0.12, ignore_value=255) -> None:
         """
         Apply a random shearing to the image
 
@@ -534,6 +540,7 @@ class RandomScale(T.Augmentation):
         """
         super().__init__()
         self.sc_stdv = sc_stdv
+        self.ignore_value = ignore_value
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
@@ -554,7 +561,7 @@ class RandomScale(T.Augmentation):
 
         matrix = matrix @ center @ scale @ uncenter
 
-        return AffineTransform(matrix)
+        return AffineTransform(matrix, ignore_value=self.ignore_value)
 
 
 class Grayscale(T.Augmentation):
@@ -742,7 +749,7 @@ class FixedSizeCrop(T.Augmentation):
         self,
         crop_size: tuple[int, int],
         pad: bool = True,
-        pad_value: float = 128.0,
+        pad_value: float = 0,
         seg_pad_value: int = 255,
     ):
         """
@@ -970,8 +977,17 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
     if not mode == "train":
         return augmentation
 
-    # Moving pixels
+    # Crop
+    if cfg.INPUT.CROP.ENABLED:
+        augmentation.append(
+            RandomCrop_CategoryAreaConstraint(
+                crop_type=cfg.INPUT.CROP.TYPE,
+                crop_size=cfg.INPUT.CROP.SIZE,
+                single_category_max_area=cfg.INPUT.CROP.SINGLE_CATEGORY_MAX_AREA,
+            )
+        )
 
+    # Moving pixels
     augmentation.append(
         RandomApply(
             RandomAffine(
@@ -985,6 +1001,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
                     cfg.INPUT.AFFINE.SHEAR.PROBABILITY,
                     cfg.INPUT.AFFINE.SCALE.PROBABILITY,
                 ),
+                ignore_value=cfg.MODEL.SEM_SEG_HEAD.IGNORE_VALUE,
             ),
             prob=cfg.INPUT.AFFINE.PROBABILITY,
         )
@@ -995,6 +1012,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
             RandomElastic(
                 alpha=cfg.INPUT.ELASTIC_DEFORMATION.ALPHA,
                 sigma=cfg.INPUT.ELASTIC_DEFORMATION.SIGMA,
+                ignore_value=cfg.MODEL.SEM_SEG_HEAD.IGNORE_VALUE,
             ),
             prob=cfg.INPUT.ELASTIC_DEFORMATION.PROBABILITY,
         )
@@ -1076,16 +1094,6 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
             prob=cfg.INPUT.SATURATION.PROBABILITY,
         )
     )
-
-    # Crop
-    if cfg.INPUT.CROP.ENABLED:
-        augmentation.append(
-            RandomCrop_CategoryAreaConstraint(
-                crop_type=cfg.INPUT.CROP.TYPE,
-                crop_size=cfg.INPUT.CROP.SIZE,
-                single_category_max_area=cfg.INPUT.CROP.SINGLE_CATEGORY_MAX_AREA,
-            )
-        )
 
     return augmentation
 
