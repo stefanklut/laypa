@@ -19,6 +19,7 @@ from tqdm import tqdm
 
 from core.setup import setup_cfg, setup_logging
 from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
+from datasets.mapper import AugInput
 from page_xml.output_pageXML import OutputPageXML
 from page_xml.xml_regions import XMLRegions
 from utils.image_utils import load_image_array_from_path, load_image_tensor_from_path
@@ -174,7 +175,7 @@ class Predictor(DefaultPredictor):
 
             return predictions, height, width
 
-    def cpu_call(self, original_image: np.ndarray):
+    def cpu_call(self, data: AugInput):
         """
         Run the model on the image with preprocessing on the cpu
 
@@ -186,10 +187,10 @@ class Predictor(DefaultPredictor):
         """
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
-            height, width, channels = original_image.shape
+            height, width, channels = data.image.shape
             assert channels == 3, f"Must be a RBG image, found {channels} channels"
-            image = self.aug.get_transform(original_image).apply_image(original_image)
-            image = torch.as_tensor(image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
+            transform = self.aug(data)
+            image = torch.as_tensor(data.image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
 
             if self.cfg.INPUT.FORMAT == "BGR":
                 # whether the model expects BGR inputs or RGB
@@ -223,12 +224,13 @@ class Predictor(DefaultPredictor):
             tuple[dict, int, int]: predictions, height, width
         """
 
-        if isinstance(original_image, np.ndarray):
-            return self.cpu_call(original_image)
-        elif isinstance(original_image, torch.Tensor):
-            return self.gpu_call(original_image)
-        else:
-            raise TypeError(f"Unknown image type: {type(original_image)}")
+        # if isinstance(original_image, np.ndarray):
+        #     return self.cpu_call(original_image)
+        # elif isinstance(original_image, torch.Tensor):
+        #     return self.gpu_call(original_image)
+        # else:
+        #     raise TypeError(f"Unknown image type: {type(original_image)}")
+        return self.cpu_call(original_image)
 
 
 class LoadingDataset(Dataset):
@@ -242,7 +244,13 @@ class LoadingDataset(Dataset):
         path = self.data[index]
 
         # TODO Move resize and load to this part of the dataloader
-        return load_image_array_from_path(path), path
+        data = load_image_array_from_path(path)
+        if data is None:
+            return None, path
+        image = data["image"]
+        dpi = data["dpi"]
+        _input = AugInput(image, dpi=dpi)
+        return _input, path
 
 
 def collate_numpy(batch):

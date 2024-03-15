@@ -19,7 +19,7 @@ def load_image_array_from_path(
     image_path: Path | str,
     mode: str = "color",
     ignore_exif: bool = False,
-) -> Optional[np.ndarray]:
+) -> Optional[dict]:
     """
     Load image from a given path, return None if loading failed due to corruption
 
@@ -41,11 +41,14 @@ def load_image_array_from_path(
         if not ignore_exif:
             image = ImageOps.exif_transpose(image)
         dpi = image.info.get("dpi")
-        print(dpi)
+        if dpi is not None:
+            assert len(dpi) == 2, f"Invalid DPI: {dpi}"
+            assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}"
+            dpi = dpi[0]
         image = convert_PIL_to_numpy(image, "RGB" if mode == "color" else "L").copy()
         if mode == "grayscale":
             image = image.squeeze(axis=2)
-        return image
+        return {"image": image, "dpi": dpi}
     except OSError:
         logger = logging.getLogger(get_logger_name())
         logger.warning(f"Cannot load image: {image_path} skipping for now")
@@ -84,7 +87,7 @@ def load_image_array_from_bytes(
     image_path: Optional[Path] = None,
     mode: str = "color",
     ignore_exif: bool = False,
-) -> Optional[np.ndarray]:
+) -> Optional[dict]:
     """
     Load image based on given bytes, return None if loading failed due to corruption
 
@@ -106,10 +109,15 @@ def load_image_array_from_bytes(
         image = Image.open(BytesIO(image_bytes))
         if not ignore_exif:
             image = ImageOps.exif_transpose(image)
+        dpi = image.info.get("dpi")
+        if dpi is not None:
+            assert len(dpi) == 2, f"Invalid DPI: {dpi}"
+            assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}"
+            dpi = dpi[0]
         image = convert_PIL_to_numpy(image, "RGB" if mode == "color" else "L").copy()
         if mode == "grayscale":
             image = image.squeeze(axis=2)
-        return image
+        return {"image": image, "dpi": dpi}
     except OSError:
         image_path_info = image_path if image_path is not None else "Filename not given"
         logger = logging.getLogger(get_logger_name())
@@ -151,6 +159,7 @@ def load_image_tensor_from_bytes(
 def save_image_array_to_path(
     image_path: Path | str,
     array: np.ndarray,
+    dpi: Optional[int] = None,
 ):
     """
     Save image to a given path, log error in case of an error
@@ -162,6 +171,8 @@ def save_image_array_to_path(
     try:
         # cv2.imwrite(str(image_path), array)
         image = Image.fromarray(array)
+        if dpi is not None:
+            image.info["dpi"] = (dpi, dpi)
         image.save(image_path)
     except OSError:
         logger = logging.getLogger(get_logger_name())

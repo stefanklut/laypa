@@ -12,10 +12,72 @@ from detectron2.data.detection_utils import (
     create_keypoint_hflip_indices,
     transform_proposals,
 )
+from detectron2.data.transforms.augmentation import _check_img_dtype
 
 from datasets.augmentations import build_augmentation
 from utils.image_utils import load_image_array_from_path
 from utils.logging_utils import get_logger_name
+
+
+class _TransformToAug(T.Augmentation):
+    def __init__(self, tfm: T.Transform):
+        self.tfm = tfm
+
+    def get_transform(self, *args):
+        return self.tfm
+
+    def __repr__(self):
+        return repr(self.tfm)
+
+    __str__ = __repr__
+
+
+def _transform_to_aug(tfm_or_aug):
+    """
+    Wrap Transform into Augmentation.
+    Private, used internally to implement augmentations.
+    """
+    assert isinstance(tfm_or_aug, (T.Transform, T.Augmentation)), tfm_or_aug
+    if isinstance(tfm_or_aug, T.Augmentation):
+        return tfm_or_aug
+    else:
+        return _TransformToAug(tfm_or_aug)
+
+
+class AugInput(T.AugInput):
+    def __init__(
+        self,
+        image: np.ndarray,
+        *,
+        boxes: Optional[np.ndarray] = None,
+        sem_seg: Optional[np.ndarray] = None,
+        dpi: Optional[int] = None,
+    ):
+
+        _check_img_dtype(image)
+        self.image = image
+        self.boxes = boxes
+        self.sem_seg = sem_seg
+        self.dpi = dpi
+
+    def transform(self, tfm: T.Transform) -> None:
+        """
+        In-place transform all attributes of this class.
+
+        By "in-place", it means after calling this method, accessing an attribute such
+        as ``self.image`` will return transformed data.
+        """
+        self.image = tfm.apply_image(self.image)
+        if self.boxes is not None:
+            self.boxes = tfm.apply_box(self.boxes)
+        if self.sem_seg is not None:
+            self.sem_seg = tfm.apply_segmentation(self.sem_seg)
+
+    def apply_augmentations(self, augmentations: list[T.Augmentation | T.Transform]) -> T.TransformList:
+        """
+        Equivalent of ``AugmentationList(augmentations)(self)``
+        """
+        return T.AugmentationList(augmentations)(self)
 
 
 class Mapper(DatasetMapper):
@@ -100,10 +162,12 @@ class Mapper(DatasetMapper):
         # USER: Remove if you don't do semantic/panoptic segmentation.
         if "sem_seg_file_name" in dataset_dict:
             sem_seg_gt = load_image_array_from_path(dataset_dict["sem_seg_file_name"], mode="grayscale")
+            if sem_seg_gt is None:
+                raise ValueError(f"Sem-seg {dataset_dict['sem_seg_file_name']} cannot be loaded")
         else:
-            sem_seg_gt = None
+            sem_seg_gt = {"image": None}
 
-        aug_input = T.AugInput(image, sem_seg=sem_seg_gt)
+        aug_input = AugInput(image["image"], sem_seg=sem_seg_gt["image"], dpi=image["dpi"])
         transforms = self.augmentations(aug_input)
         image, sem_seg_gt = aug_input.image, aug_input.sem_seg
 

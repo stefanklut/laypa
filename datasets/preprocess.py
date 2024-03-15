@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Optional, Sequence
 
 import cv2
+import detectron2.data.transforms as T
 import imagesize
 import numpy as np
 from tqdm import tqdm
@@ -16,7 +17,14 @@ from tqdm import tqdm
 # from multiprocessing.pool import ThreadPool as Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
+from datasets.augmentations import (
+    Augmentation,
+    ResizeLongestEdge,
+    ResizeScaling,
+    ResizeShortestEdge,
+)
+from datasets.mapper import AugInput
+from datasets.transforms import ResizeTransform
 from page_xml.xml_converter import XMLConverter
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
@@ -50,13 +58,9 @@ class Preprocess:
 
     def __init__(
         self,
+        augmentations: list[Augmentation],
         input_paths=None,
         output_dir=None,
-        resize_mode="none",
-        resize_sampling="choice",
-        scaling=0.5,
-        min_size=[1024],
-        max_size=2048,
         xml_converter=None,
         disable_check=False,
         overwrite=False,
@@ -100,20 +104,7 @@ class Preprocess:
 
         self.overwrite = overwrite
 
-        self.resize_mode = resize_mode
-        self.scaling = scaling
-        self.resize_sampling = resize_sampling
-        self.min_size = min_size
-        self.max_size = max_size
-
-        if self.resize_sampling == "choice":
-            if len(self.min_size) < 1:
-                raise ValueError("Must specify at least one choice when using the choice option.")
-        elif self.resize_sampling == "range":
-            if len(self.min_size) != 2:
-                raise ValueError("Must have two int to set the range")
-        else:
-            raise NotImplementedError('Only "choice" and "range" are accepted values')
+        self.augmentations = augmentations
 
     @classmethod
     def get_parser(cls) -> argparse.ArgumentParser:
@@ -241,82 +232,25 @@ class Preprocess:
         """
         all(check_path_accessible(path) for path in paths)
 
-    def sample_edge_length(self):
-        """
-        Samples the shortest edge for resizing
-
-        Raises:
-            NotImplementedError: not choice or sample for resize mode
-
-        Returns:
-            int: shortest edge length
-        """
-        if self.resize_sampling == "range":
-            short_edge_length = np.random.randint(self.min_size[0], self.min_size[1] + 1)
-        elif self.resize_sampling == "choice":
-            short_edge_length = np.random.choice(self.min_size)
-        else:
-            raise NotImplementedError('Only "choice" and "range" are accepted values')
-
-        return short_edge_length
-
-    def get_output_shape(self, old_height, old_width) -> tuple[int, int]:
-        """
-        Compute the output size given input size and target short edge length.
-
-        Returns:
-            tuple[int, int]: height and width
-        """
-        if self.resize_mode == "none":
-            return old_height, old_width
-        elif self.resize_mode in ["shortest_edge", "longest_edge"]:
-            edge_length = self.sample_edge_length()
-            if edge_length == 0:
-                return old_height, old_width
-            if self.resize_mode == "shortest_edge":
-                return ResizeShortestEdge.get_output_shape(old_height, old_width, edge_length, self.max_size)
-            else:
-                return ResizeLongestEdge.get_output_shape(old_height, old_width, edge_length, self.max_size)
-        elif self.resize_mode == "scaling":
-            return ResizeScaling.get_output_shape(old_height, old_width, self.scaling, self.max_size)
-        else:
-            raise NotImplementedError(f"{self.resize_mode} is not a known resize mode")
-
-    def resize_image(self, image: np.ndarray, image_shape: Optional[tuple[int, int]] = None) -> np.ndarray:
-        """
-        Resize image. If image size is given resize to given value. Otherwise sample the shortest edge and resize to the calculated output shape
-
-        Args:
-            image (np.ndarray): image array HxWxC
-            image_shape (Optional[tuple[int, int]], optional): desired output shape. Defaults to None.
-
-        Returns:
-            np.ndarray: resized image
-        """
-        old_height, old_width, channels = image.shape
-
-        if image_shape is not None:
-            height, width = image_shape
-        else:
-            height, width = self.get_output_shape(old_height, old_width)
-
-        resized_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)
-
-        return resized_image
-
     def save_image(
         self,
         image_path: Path,
         image_stem: str,
+        original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
+
         image_dir = self.output_dir.joinpath("original")
-        if self.resize_mode == "none":
+
+        copy_image = True if original_image_shape == image_shape else False
+
+        if copy_image:
             out_image_path = image_dir.joinpath(image_path.name)
         else:
             out_image_path = image_dir.joinpath(image_stem + ".png")
+
         # Check if image already exist and if it doesn't need resizing
         if not self.overwrite and out_image_path.exists():
             out_image_shape = imagesize.get(out_image_path)[::-1]
@@ -325,14 +259,14 @@ class Preprocess:
 
         image_dir.mkdir(parents=True, exist_ok=True)
 
-        if self.resize_mode == "none":
+        if copy_image:
             copy_mode(image_path, out_image_path, mode="link")
         else:
-            image = load_image_array_from_path(image_path)
-
-            if image is None:
+            data = load_image_array_from_path(image_path)
+            if data is None:
                 raise TypeError(f"Image {image_path} is None, loading failed")
-            image = self.resize_image(image, image_shape=image_shape)
+            aug_input = AugInput(data["image"], sem_seg=None, dpi=data["dpi"])
+            image = T.AugmentationList(self.augmentations)(aug_input).image
             save_image_array_to_path(out_image_path, image)
 
         return str(out_image_path.relative_to(self.output_dir))
@@ -449,15 +383,18 @@ class Preprocess:
         # xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
 
         original_image_shape = tuple(int(value) for value in imagesize.get(image_path)[::-1])
-        if self.resize_mode != "none":
-            image_shape = self.get_output_shape(old_height=original_image_shape[0], old_width=original_image_shape[1])
-        else:
-            image_shape = original_image_shape
+        original_image_dpi = imagesize.getDPI(image_path)
+        assert len(original_image_dpi) == 2, f"Invalid DPI: {original_image_dpi}"
+        assert original_image_dpi[0] == original_image_dpi[1], f"Non-square DPI: {original_image_dpi}"
+        original_image_dpi = original_image_dpi[0]
+        image_shape = self.augmentations[0].get_output_shape(
+            original_image_shape[0], original_image_shape[1], dpi=original_image_dpi
+        )
 
         results = {}
         results["original_image_paths"] = str(image_path)
 
-        out_image_path = self.save_image(image_path, image_stem, image_shape)
+        out_image_path = self.save_image(image_path, image_stem, original_image_shape, image_shape)
         if out_image_path is not None:
             results["image_paths"] = out_image_path
 
@@ -565,13 +502,29 @@ def main(args) -> None:
         region_type=args.region_type,
     )
     xml_converter = XMLConverter(xml_regions, args.square_lines)
+
+    resize_mode = args.resize_mode
+    resize_sampling = args.resize_sampling
+    min_size = args.min_size
+    max_size = args.max_size
+    scaling = args.scaling
+
+    augmentations = []
+    if resize_mode == "none":
+        augmentations.append(ResizeScaling(scale=1))
+    elif resize_mode == "shortest_edge":
+        augmentations.append(ResizeShortestEdge(min_size=min_size, max_size=max_size, sample_style=resize_sampling))
+    elif resize_mode == "longest_edge":
+        augmentations.append(ResizeLongestEdge(min_size=min_size, max_size=max_size, sample_style=resize_sampling))
+    elif resize_mode == "scaling":
+        augmentations.append(ResizeScaling(scale=scaling, max_size=max_size))
+    else:
+        raise NotImplementedError(f"Resize mode {resize_mode} not implemented")
+
     process = Preprocess(
+        augmentations=augmentations,
         input_paths=args.input,
         output_dir=args.output,
-        resize_mode=args.resize_mode,
-        resize_sampling=args.resize_sampling,
-        min_size=args.min_size,
-        max_size=args.max_size,
         xml_converter=xml_converter,
         disable_check=args.disable_check,
         overwrite=args.overwrite,
