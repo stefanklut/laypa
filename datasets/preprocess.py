@@ -266,8 +266,8 @@ class Preprocess:
             if data is None:
                 raise TypeError(f"Image {image_path} is None, loading failed")
             aug_input = AugInput(data["image"], sem_seg=None, dpi=data["dpi"])
-            image = T.AugmentationList(self.augmentations)(aug_input).image
-            save_image_array_to_path(out_image_path, image)
+            transforms = T.AugmentationList(self.augmentations)(aug_input)
+            save_image_array_to_path(out_image_path, aug_input.image.astype(np.uint8))
 
         return str(out_image_path.relative_to(self.output_dir))
 
@@ -382,11 +382,14 @@ class Preprocess:
         xml_path = image_path_to_xml_path(image_path, self.disable_check)
         # xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
 
-        original_image_shape = tuple(int(value) for value in imagesize.get(image_path)[::-1])
+        _original_image_shape = imagesize.get(image_path)
+        original_image_shape = int(_original_image_shape[1]), int(_original_image_shape[0])
         original_image_dpi = imagesize.getDPI(image_path)
-        assert len(original_image_dpi) == 2, f"Invalid DPI: {original_image_dpi}"
-        assert original_image_dpi[0] == original_image_dpi[1], f"Non-square DPI: {original_image_dpi}"
-        original_image_dpi = original_image_dpi[0]
+        original_image_dpi = None if original_image_dpi == (-1, -1) else original_image_dpi
+        if original_image_dpi is not None:
+            assert len(original_image_dpi) == 2, f"Invalid DPI: {original_image_dpi}"
+            assert original_image_dpi[0] == original_image_dpi[1], f"Non-square DPI: {original_image_dpi}"
+            original_image_dpi = original_image_dpi[0]
         image_shape = self.augmentations[0].get_output_shape(
             original_image_shape[0], original_image_shape[1], dpi=original_image_dpi
         )

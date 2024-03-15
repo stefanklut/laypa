@@ -194,7 +194,7 @@ def main(args):
             raise ValueError(f"{args.save} is not a valid check mode")
         temp_image_paths = []
         for image_path in all_image_paths:
-            image = load_image_array_from_path(image_path)
+            image = load_image_array_from_path(image_path)["image"]
             if args.check in ["all", "image"]:
                 if image is None:
                     continue

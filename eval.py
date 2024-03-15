@@ -113,9 +113,11 @@ def main(args) -> None:
 
         @lru_cache(maxsize=10)
         def load_image(path):
-            image = load_image_array_from_path(path, mode="color")
-            if image is None:
+            data = load_image_array_from_path(path, mode="color")
+            if data is None:
                 raise TypeError(f"Image {path} is None, loading failed")
+
+            image = data["image"]
             return image
 
         @lru_cache(maxsize=10)

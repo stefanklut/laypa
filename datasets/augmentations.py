@@ -960,7 +960,7 @@ class RandomCrop_CategoryAreaConstraint(T.Augmentation):
             return crop_tfm
 
 
-def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation | T.Transform]:
+def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation]:
     """
     Function to generate all the augmentations used in the inference and training process
 
@@ -980,7 +980,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
     augmentation: list[T.Augmentation | T.Transform] = []
 
     if mode == "preprocess":
-        if cfg.PREPROCESS.REZISE_MODE == "none":
+        if cfg.PREPROCESS.RESIZE.RESIZE_MODE == "none":
             augmentation.append(ResizeScaling(scale=1.0))
         elif cfg.PREPROCESS.RESIZE.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
             min_size = cfg.PREPROCESS.RESIZE.MIN_SIZE

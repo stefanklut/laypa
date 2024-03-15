@@ -137,7 +137,7 @@ class Viewer:
 
         image_path_i = xml_path_to_image_path(xml_path_i)
 
-        image = load_image_array_from_path(str(image_path_i))
+        image = load_image_array_from_path(str(image_path_i))["image"]
         if image is None:
             return
 

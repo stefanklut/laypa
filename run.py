@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional, Sequence, Tuple, Type, Union
 
 import cv2
+import detectron2.data.transforms as T
 import numpy as np
 import torch
 from detectron2.checkpoint import DetectionCheckpointer
@@ -18,7 +19,12 @@ from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from tqdm import tqdm
 
 from core.setup import setup_cfg, setup_logging
-from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
+from datasets.augmentations import (
+    ResizeLongestEdge,
+    ResizeScaling,
+    ResizeShortestEdge,
+    build_augmentation,
+)
 from datasets.mapper import AugInput
 from page_xml.output_pageXML import OutputPageXML
 from page_xml.xml_regions import XMLRegions
@@ -91,50 +97,7 @@ class Predictor(DefaultPredictor):
 
         checkpointer.load(cfg.TEST.WEIGHTS)
 
-        if cfg.INPUT.RESIZE_MODE == "none":
-            # HACK percentage of 1 is no scaling
-            self.aug = ResizeScaling(scale=1)
-        elif cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
-            if cfg.INPUT.RESIZE_MODE == "shortest_edge":
-                self.aug = ResizeShortestEdge(cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, "choice")
-            elif cfg.INPUT.RESIZE_MODE == "longest_edge":
-                self.aug = ResizeLongestEdge(cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST, "choice")
-        elif cfg.INPUT.RESIZE_MODE == "scaling":
-            self.aug = ResizeScaling(cfg.INPUT.SCALING_TEST, cfg.INPUT.MAX_SIZE_TEST)
-        else:
-            raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
-
-    def get_image_size(self, height: int, width: int) -> tuple[int, int]:
-        """
-        Get the new image size based on the resize mode
-
-        Args:
-            height (int): the height of the image
-            width (int): the width of the image
-
-        Raises:
-            NotImplementedError: resize mode is not known
-
-        Returns:
-            tuple[int, int]: new height and width
-        """
-        if self.cfg.INPUT.RESIZE_MODE == "none":
-            new_height, new_width = height, width
-        elif self.cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
-            new_height, new_width = self.aug.get_output_shape(
-                height,
-                width,
-                self.cfg.INPUT.MIN_SIZE_TEST,
-                self.cfg.INPUT.MAX_SIZE_TEST,
-            )
-        elif self.cfg.INPUT.RESIZE_MODE == "scaling":
-            new_height, new_width = self.aug.get_output_shape(
-                height, width, self.cfg.INPUT.SCALING_TEST, self.cfg.INPUT.MAX_SIZE_TEST
-            )
-        else:
-            raise NotImplementedError(f"{self.cfg.INPUT.RESIZE_MODE} is not a known resize mode")
-
-        return new_height, new_width
+        self.aug = T.AugmentationList(build_augmentation(cfg, "test"))
 
     def gpu_call(self, original_image: torch.Tensor):
         """
@@ -210,7 +173,7 @@ class Predictor(DefaultPredictor):
 
         return predictions, height, width
 
-    def __call__(self, original_image):
+    def __call__(self, data: AugInput):
         """
         Run the model on the image with preprocessing
 
@@ -230,7 +193,7 @@ class Predictor(DefaultPredictor):
         #     return self.gpu_call(original_image)
         # else:
         #     raise TypeError(f"Unknown image type: {type(original_image)}")
-        return self.cpu_call(original_image)
+        return self.cpu_call(data)
 
 
 class LoadingDataset(Dataset):
@@ -246,11 +209,10 @@ class LoadingDataset(Dataset):
         # TODO Move resize and load to this part of the dataloader
         data = load_image_array_from_path(path)
         if data is None:
-            return None, path
+            return None, None, path
         image = data["image"]
         dpi = data["dpi"]
-        _input = AugInput(image, dpi=dpi)
-        return _input, path
+        return image, dpi, path
 
 
 def collate_numpy(batch):
@@ -340,7 +302,7 @@ class SavePredictor(Predictor):
         self.output_dir = output_dir.resolve()
 
     # def save_prediction(self, input_path: Path | str):
-    def save_prediction(self, image, input_path):
+    def save_prediction(self, image, dpi, input_path):
         """
         Run the model and get the prediction, and save pageXML or a mask image depending on the mode
 
@@ -356,7 +318,9 @@ class SavePredictor(Predictor):
             self.logger.warning(f"Image at {input_path} has not loaded correctly, ignoring for now")
             return
 
-        outputs = self.__call__(image)
+        data = AugInput(image, dpi=dpi)
+
+        outputs = self.__call__(data)
 
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(output_image, dim=-3).cpu().numpy()
@@ -387,7 +351,7 @@ class SavePredictor(Predictor):
             collate_fn=collate_numpy,
         )
         for inputs in tqdm(dataloader, desc="Predicting PageXML"):
-            self.save_prediction(inputs[0], inputs[1])
+            self.save_prediction(inputs[0], inputs[1], inputs[2])
 
 
 def main(args: argparse.Namespace) -> None:

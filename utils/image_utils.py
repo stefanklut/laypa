@@ -181,7 +181,7 @@ def save_image_array_to_path(
 
 if __name__ == "__main__":
     image_path = Path("./tutorial/data/inference/NL-HaNA_1.01.02_3112_0395.jpg")
-    image = load_image_array_from_path(image_path, mode="color")
+    image = load_image_array_from_path(image_path, mode="color")["image"]
 
     # image = np.zeros((100, 100)).astype(np.uint8)
     # image[25:75, 25:75] = 255

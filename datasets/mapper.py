@@ -157,7 +157,7 @@ class Mapper(DatasetMapper):
         image = load_image_array_from_path(dataset_dict["file_name"], mode="color")
         if image is None:
             raise ValueError(f"Image {dataset_dict['file_name']} cannot be loaded")
-        check_image_size(dataset_dict, image)
+        check_image_size(dataset_dict, image["image"])
 
         # USER: Remove if you don't do semantic/panoptic segmentation.
         if "sem_seg_file_name" in dataset_dict:

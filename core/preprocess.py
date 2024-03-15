@@ -5,6 +5,7 @@ from typing import Optional, Sequence
 from detectron2.config import CfgNode
 
 from datasets import dataset
+from datasets.augmentations import build_augmentation
 from datasets.preprocess import Preprocess
 from page_xml.xml_converter import XMLConverter
 from page_xml.xml_regions import XMLRegions
@@ -52,14 +53,12 @@ def preprocess_datasets(
         n_classes := cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES
     ), f"Number of specified regions ({n_regions}) does not match the number of specified classes ({n_classes})"
 
+    augmentations = build_augmentation(cfg, "preprocess")
+
     process = Preprocess(
+        augmentations=augmentations,
         input_paths=None,
         output_dir=None,
-        resize_mode=cfg.PREPROCESS.RESIZE.RESIZE_MODE,
-        resize_sampling=cfg.PREPROCESS.RESIZE.RESIZE_SAMPLING,
-        scaling=cfg.PREPROCESS.RESIZE.SCALING,
-        min_size=cfg.PREPROCESS.RESIZE.MIN_SIZE,
-        max_size=cfg.PREPROCESS.RESIZE.MAX_SIZE,
         xml_converter=xml_converter,
         disable_check=cfg.PREPROCESS.DISABLE_CHECK,
         overwrite=cfg.PREPROCESS.OVERWRITE,
