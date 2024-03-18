@@ -322,9 +322,9 @@ class SavePredictor(Predictor):
         data = AugInput(
             image,
             dpi=dpi,
-            auto_dpi=self.cfg.INPUT.DPI.AUTO_DETECT,
-            default_dpi=self.cfg.INPUT.DPI.DEFAULT_DPI,
-            manual_dpi=self.cfg.INPUT.DPI.MANUAL_DPI,
+            auto_dpi=self.cfg.INPUT.DPI.AUTO_DETECT_TEST,
+            default_dpi=self.cfg.INPUT.DPI.DEFAULT_DPI_TEST,
+            manual_dpi=self.cfg.INPUT.DPI.MANUAL_DPI_TEST,
         )
 
         outputs = self.__call__(data)

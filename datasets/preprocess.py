@@ -150,6 +150,10 @@ class Preprocess:
 
         pre_process_args.add_argument("--overwrite", action="store_true", help="Overwrite the images and label masks")
 
+        pre_process_args.add_argument("--auto_dpi", action="store_true", help="Automatically detect DPI")
+        pre_process_args.add_argument("--default_dpi", type=int, help="Default DPI")
+        pre_process_args.add_argument("--manual_dpi", type=int, help="Manually set DPI")
+
         return parser
 
     def set_input_paths(self, input_paths: str | Path | Sequence[str | Path], ignore_duplicates=False) -> None:
@@ -544,6 +548,9 @@ def main(args) -> None:
         xml_converter=xml_converter,
         disable_check=args.disable_check,
         overwrite=args.overwrite,
+        auto_dpi=args.auto_dpi,
+        default_dpi=args.default_dpi,
+        manual_dpi=args.manual_dpi,
     )
     process.run()
 
