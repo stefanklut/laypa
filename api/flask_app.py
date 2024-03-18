@@ -13,6 +13,7 @@ from flask import Flask, Response, abort, jsonify, request
 from prometheus_client import Counter, Gauge, generate_latest
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from datasets.mapper import AugInput
 from main import setup_cfg, setup_logging
 from page_xml.output_pageXML import OutputPageXML
 from page_xml.xml_regions import XMLRegions
@@ -129,7 +130,8 @@ exception_predict_counter = Counter("exception_predict", "Exception thrown in pr
 
 
 def predict_image(
-    image: np.ndarray | torch.Tensor,
+    image: np.ndarray,
+    dpi: Optional[int],
     image_path: Path,
     identifier: str,
     model_name: str,
@@ -165,7 +167,15 @@ def predict_image(
         if not output_path.parent.is_dir():
             output_path.parent.mkdir()
 
-        outputs = predict_gen_page_wrapper.predictor(image)
+        data = AugInput(
+            image=image,
+            dpi=dpi,
+            auto_dpi=predict_gen_page_wrapper.predictor.cfg.INPUT.DPI.AUTO_DETECT_TEST,
+            default_dpi=predict_gen_page_wrapper.predictor.cfg.INPUT.DPI.DEFAULT_DPI_TEST,
+            manual_dpi=predict_gen_page_wrapper.predictor.cfg.INPUT.DPI.MANUAL_DPI_TEST,
+        )
+
+        outputs = predict_gen_page_wrapper.predictor(data)
 
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
@@ -291,12 +301,12 @@ def predict() -> tuple[Response, int]:
         abort_with_info(429, "Exceeding queue size", response_info)
 
     img_bytes = post_file.read()
-    image = load_image_array_from_bytes(img_bytes, image_path=image_name)
+    data = load_image_array_from_bytes(img_bytes, image_path=image_name)
 
-    if image is None:
+    if data is None:
         abort_with_info(500, "Image could not be loaded correctly", response_info)
 
-    future = executor.submit(predict_image, image, image_name, identifier, model_name, whitelist)
+    future = executor.submit(predict_image, data["image"], data["dpi"], image_name, identifier, model_name, whitelist)
     future.add_done_callback(check_exception_callback)
 
     response_info["status_code"] = 202

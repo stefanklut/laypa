@@ -977,11 +977,11 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
         NotImplementedError: If the resize mode specified in the configuration is not recognized.
     """
     assert mode in ["preprocess", "train", "val", "test"], f"Unknown mode: {mode}"
-    augmentation: list[T.Augmentation | T.Transform] = []
+    augmentation: list[T.Augmentation] = []
 
     if mode == "preprocess":
         if cfg.PREPROCESS.RESIZE.RESIZE_MODE == "none":
-            augmentation.append(ResizeScaling(scale=1.0))
+            augmentation.append(ResizeScaling(scale=1.0, target_dpi=cfg.PREPROCESS.DPI.TARGET_DPI))
         elif cfg.PREPROCESS.RESIZE.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
             min_size = cfg.PREPROCESS.RESIZE.MIN_SIZE
             max_size = cfg.PREPROCESS.RESIZE.MAX_SIZE
@@ -993,12 +993,13 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
         elif cfg.PREPROCESS.RESIZE.RESIZE_MODE == "scaling":
             scaling = cfg.PREPROCESS.RESIZE.SCALING
             max_size = cfg.PREPROCESS.RESIZE.MAX_SIZE
-            augmentation.append(ResizeScaling(scaling, max_size))
+            target_dpi = cfg.PREPROCESS.DPI.TARGET_DPI
+            augmentation.append(ResizeScaling(scaling, max_size, target_dpi=target_dpi))
         else:
             raise NotImplementedError(f"{cfg.PREPROCESS.RESIZE.RESIZE_MODE} is not a known resize mode")
     else:
         if cfg.INPUT.RESIZE_MODE == "none":
-            augmentation.append(ResizeScaling(scale=1.0))
+            augmentation.append(ResizeScaling(scale=1.0, target_dpi=cfg.INPUT.DPI.TARGET_DPI))
         elif cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
             if mode == "train":
                 min_size = cfg.INPUT.MIN_SIZE_TRAIN
@@ -1022,15 +1023,18 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
             if mode == "train":
                 max_size = cfg.INPUT.MAX_SIZE_TRAIN
                 scaling = cfg.INPUT.SCALING_TRAIN
+                target_dpi = cfg.INPUT.DPI.TARGET_DPI_TRAIN
             elif mode == "val":
                 max_size = cfg.INPUT.MAX_SIZE_TRAIN
                 scaling = cfg.INPUT.SCALING_TRAIN
+                target_dpi = cfg.INPUT.DPI.TARGET_DPI_TRAIN
             elif mode == "test":
                 max_size = cfg.INPUT.MAX_SIZE_TEST
                 scaling = cfg.INPUT.SCALING_TEST
+                target_dpi = cfg.INPUT.DPI.TARGET_DPI_TEST
             else:
                 raise NotImplementedError(f"Unknown mode: {mode}")
-            augmentation.append(ResizeScaling(scaling, max_size))
+            augmentation.append(ResizeScaling(scaling, max_size, target_dpi=target_dpi))
         else:
             raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 

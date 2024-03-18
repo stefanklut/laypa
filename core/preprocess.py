@@ -62,6 +62,9 @@ def preprocess_datasets(
         xml_converter=xml_converter,
         disable_check=cfg.PREPROCESS.DISABLE_CHECK,
         overwrite=cfg.PREPROCESS.OVERWRITE,
+        auto_dpi=cfg.PREPROCESS.DPI.AUTO_DETECT,
+        default_dpi=cfg.PREPROCESS.DPI.DEFAULT_DPI,
+        manual_dpi=cfg.PREPROCESS.DPI.MANUAL_DPI,
     )
 
     train_output_dir = None

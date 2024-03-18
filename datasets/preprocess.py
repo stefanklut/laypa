@@ -64,6 +64,9 @@ class Preprocess:
         xml_converter=None,
         disable_check=False,
         overwrite=False,
+        auto_dpi=True,
+        default_dpi=None,
+        manual_dpi=None,
     ) -> None:
         """
         Used for almost all preprocessing steps to prepare datasets to be used by the training loop
@@ -105,6 +108,10 @@ class Preprocess:
         self.overwrite = overwrite
 
         self.augmentations = augmentations
+
+        self.auto_dpi = auto_dpi
+        self.default_dpi = default_dpi
+        self.manual_dpi = manual_dpi
 
     @classmethod
     def get_parser(cls) -> argparse.ArgumentParser:
@@ -265,7 +272,13 @@ class Preprocess:
             data = load_image_array_from_path(image_path)
             if data is None:
                 raise TypeError(f"Image {image_path} is None, loading failed")
-            aug_input = AugInput(data["image"], sem_seg=None, dpi=data["dpi"])
+            aug_input = AugInput(
+                data["image"],
+                dpi=data["dpi"],
+                auto_dpi=self.auto_dpi,
+                default_dpi=self.default_dpi,
+                manual_dpi=self.manual_dpi,
+            )
             transforms = T.AugmentationList(self.augmentations)(aug_input)
             save_image_array_to_path(out_image_path, aug_input.image.astype(np.uint8))
 

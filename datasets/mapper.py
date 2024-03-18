@@ -52,13 +52,22 @@ class AugInput(T.AugInput):
         boxes: Optional[np.ndarray] = None,
         sem_seg: Optional[np.ndarray] = None,
         dpi: Optional[int] = None,
+        auto_dpi: Optional[bool] = False,
+        default_dpi: Optional[int] = None,
+        manual_dpi: Optional[int] = None,
     ):
 
         _check_img_dtype(image)
         self.image = image
         self.boxes = boxes
         self.sem_seg = sem_seg
-        self.dpi = dpi
+        if auto_dpi:
+            if dpi is None:
+                self.dpi = default_dpi
+            else:
+                self.dpi = dpi
+        else:
+            self.dpi = manual_dpi
 
     def transform(self, tfm: T.Transform) -> None:
         """
@@ -94,6 +103,9 @@ class Mapper(DatasetMapper):
         keypoint_hflip_indices: Optional[np.ndarray] = None,
         precomputed_proposal_topk: Optional[int] = None,
         recompute_boxes: bool = False,
+        auto_dpi: Optional[bool] = True,
+        default_dpi: Optional[int] = None,
+        manual_dpi: Optional[int] = None,
     ):
         assert mode in ["train", "val", "test"], f"Unknown mode: {mode}"
         is_train = True if mode == "train" else False
@@ -110,6 +122,9 @@ class Mapper(DatasetMapper):
         self.keypoint_hflip_indices = keypoint_hflip_indices
         self.proposal_topk          = precomputed_proposal_topk
         self.recompute_boxes        = recompute_boxes
+        self.auto_dpi               = auto_dpi
+        self.default_dpi            = default_dpi
+        self.manual_dpi             = manual_dpi
         # fmt: on
         logger = logging.getLogger(get_logger_name())
         mode = "training" if is_train else "inference"
@@ -133,6 +148,9 @@ class Mapper(DatasetMapper):
             "instance_mask_format": cfg.INPUT.MASK_FORMAT,
             "use_keypoint": cfg.MODEL.KEYPOINT_ON,
             "recompute_boxes": recompute_boxes,
+            "auto_dpi": cfg.INPUT.DPI.AUTO_DETECT_TRAIN,
+            "default_dpi": cfg.INPUT.DPI.DEFAULT_DPI_TRAIN,
+            "manual_dpi": cfg.INPUT.DPI.MANUAL_DPI_TRAIN,
         }
 
         if cfg.MODEL.KEYPOINT_ON:
@@ -167,7 +185,14 @@ class Mapper(DatasetMapper):
         else:
             sem_seg_gt = {"image": None}
 
-        aug_input = AugInput(image["image"], sem_seg=sem_seg_gt["image"], dpi=image["dpi"])
+        aug_input = AugInput(
+            image["image"],
+            sem_seg=sem_seg_gt["image"],
+            dpi=image["dpi"],
+            auto_dpi=self.auto_dpi,
+            default_dpi=self.default_dpi,
+            manual_dpi=self.manual_dpi,
+        )
         transforms = self.augmentations(aug_input)
         image, sem_seg_gt = aug_input.image, aug_input.sem_seg
 

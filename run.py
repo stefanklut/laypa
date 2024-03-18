@@ -150,6 +150,7 @@ class Predictor(DefaultPredictor):
         """
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
+
             height, width, channels = data.image.shape
             assert channels == 3, f"Must be a RBG image, found {channels} channels"
             transform = self.aug(data)
@@ -318,7 +319,13 @@ class SavePredictor(Predictor):
             self.logger.warning(f"Image at {input_path} has not loaded correctly, ignoring for now")
             return
 
-        data = AugInput(image, dpi=dpi)
+        data = AugInput(
+            image,
+            dpi=dpi,
+            auto_dpi=self.cfg.INPUT.DPI.AUTO_DETECT,
+            default_dpi=self.cfg.INPUT.DPI.DEFAULT_DPI,
+            manual_dpi=self.cfg.INPUT.DPI.MANUAL_DPI,
+        )
 
         outputs = self.__call__(data)
 
