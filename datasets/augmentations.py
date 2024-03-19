@@ -232,6 +232,8 @@ class ResizeShortestEdge(ResizeEdge):
         # If max size is 0 or smaller assume no maxsize
         if self.max_size is None or self.max_size <= 0:
             max_size = sys.maxsize
+        else:
+            max_size = self.max_size
         if max(height, width) > max_size:
             scale = max_size * 1.0 / max(height, width)
             height = height * scale
@@ -268,6 +270,8 @@ class ResizeLongestEdge(ResizeShortestEdge):
         # If max size is 0 or smaller assume no maxsize
         if self.max_size is None or self.max_size <= 0:
             max_size = sys.maxsize
+        else:
+            max_size = self.max_size
         if max(height, width) > max_size:
             scale = max_size * 1.0 / max(height, width)
             height = height * scale

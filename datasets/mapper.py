@@ -112,20 +112,20 @@ class Mapper(DatasetMapper):
 
         if recompute_boxes:
             assert use_instance_mask, "recompute_boxes requires instance masks"
-        # fmt: off
-        self.is_train               = is_train
-        self.augmentations          = T.AugmentationList(augmentations)
-        self.image_format           = image_format
-        self.use_instance_mask      = use_instance_mask
-        self.instance_mask_format   = instance_mask_format
-        self.use_keypoint           = use_keypoint
+
+        self.is_train = is_train
+        self.augmentations = T.AugmentationList(augmentations)
+        self.image_format = image_format
+        self.use_instance_mask = use_instance_mask
+        self.instance_mask_format = instance_mask_format
+        self.use_keypoint = use_keypoint
         self.keypoint_hflip_indices = keypoint_hflip_indices
-        self.proposal_topk          = precomputed_proposal_topk
-        self.recompute_boxes        = recompute_boxes
-        self.auto_dpi               = auto_dpi
-        self.default_dpi            = default_dpi
-        self.manual_dpi             = manual_dpi
-        # fmt: on
+        self.proposal_topk = precomputed_proposal_topk
+        self.recompute_boxes = recompute_boxes
+        self.auto_dpi = auto_dpi
+        self.default_dpi = default_dpi
+        self.manual_dpi = manual_dpi
+
         logger = logging.getLogger(get_logger_name())
         mode = "training" if is_train else "inference"
         logger.info(f"[DatasetMapper] Augmentations used in {mode}: {augmentations}")
