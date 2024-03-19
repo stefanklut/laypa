@@ -17,11 +17,14 @@ from tqdm import tqdm
 # from multiprocessing.pool import ThreadPool as Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from detectron2.config import CfgNode, configurable
+
 from datasets.augmentations import (
     Augmentation,
     ResizeLongestEdge,
     ResizeScaling,
     ResizeShortestEdge,
+    build_augmentation,
 )
 from datasets.mapper import AugInput
 from datasets.transforms import ResizeTransform
@@ -56,17 +59,19 @@ class Preprocess:
     Used for almost all preprocessing steps to prepare datasets to be used by the training loop
     """
 
+    @configurable
     def __init__(
         self,
         augmentations: list[Augmentation],
-        input_paths=None,
-        output_dir=None,
-        xml_converter=None,
-        disable_check=False,
-        overwrite=False,
-        auto_dpi=True,
-        default_dpi=None,
-        manual_dpi=None,
+        input_paths: Optional[Sequence[Path]] = None,
+        output_dir: Optional[Path] = None,
+        xml_converter: Optional[XMLConverter] = None,
+        n_classes: Optional[int] = None,
+        disable_check: bool = False,
+        overwrite: bool = False,
+        auto_dpi: bool = True,
+        default_dpi: Optional[int] = None,
+        manual_dpi: Optional[int] = None,
     ) -> None:
         """
         Used for almost all preprocessing steps to prepare datasets to be used by the training loop
@@ -105,6 +110,11 @@ class Preprocess:
 
         self.xml_converter = xml_converter
 
+        if n_classes is not None:
+            assert (n_regions := len(xml_converter.xml_regions.regions)) == (
+                n_classes
+            ), f"Number of specified regions ({n_regions}) does not match the number of specified classes ({n_classes})"
+
         self.overwrite = overwrite
 
         self.augmentations = augmentations
@@ -112,6 +122,27 @@ class Preprocess:
         self.auto_dpi = auto_dpi
         self.default_dpi = default_dpi
         self.manual_dpi = manual_dpi
+
+    @classmethod
+    def from_config(
+        cls,
+        cfg: CfgNode,
+        input_paths: Optional[Sequence[Path]] = None,
+        output_dir: Optional[Path] = None,
+    ) -> dict[str, Any]:
+        ret = {
+            "augmentations": build_augmentation(cfg, "preprocess"),
+            "input_paths": input_paths,
+            "output_dir": output_dir,
+            "xml_converter": XMLConverter(cfg),
+            "n_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
+            "disable_check": cfg.PREPROCESS.DISABLE_CHECK,
+            "overwrite": cfg.PREPROCESS.OVERWRITE,
+            "auto_dpi": cfg.PREPROCESS.DPI.AUTO_DETECT,
+            "default_dpi": cfg.PREPROCESS.DPI.DEFAULT_DPI,
+            "manual_dpi": cfg.PREPROCESS.DPI.MANUAL_DPI,
+        }
+        return ret
 
     @classmethod
     def get_parser(cls) -> argparse.ArgumentParser:

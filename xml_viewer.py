@@ -188,14 +188,7 @@ def main(args) -> None:
 
     xml_list = get_file_paths(args.input, formats=[".xml"])
 
-    xml_regions = XMLRegions(
-        mode=cfg.MODEL.MODE,
-        line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
-        regions=cfg.PREPROCESS.REGION.REGIONS,
-        merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
-        region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
-    )
-    xml_converter = XMLConverter(xml_regions, cfg.PREPROCESS.BASELINE.SQUARE_LINES)
+    xml_converter = XMLConverter(cfg)
 
     viewer = Viewer(xml_converter=xml_converter, output_dir=args.output, output_type=args.output_type)
     viewer.run(xml_list)

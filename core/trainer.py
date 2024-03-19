@@ -8,7 +8,6 @@ import torch
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import CfgNode
 from detectron2.data import (
-    DatasetMapper,
     MetadataCatalog,
     build_detection_test_loader,
     build_detection_train_loader,
@@ -26,7 +25,6 @@ from detectron2.projects.deeplab import build_lr_scheduler
 from detectron2.solver.build import maybe_add_gradient_clipping, reduce_param_groups
 from detectron2.utils import comm
 
-from datasets.augmentations import build_augmentation
 from datasets.mapper import Mapper
 
 

@@ -98,15 +98,8 @@ def main(args) -> None:
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not args.keep_tmp_dir) as tmp_dir:
         # preprocess_datasets(cfg, None, args.input, tmp_dir, save_image_locations=False)
 
-        xml_regions = XMLRegions(
-            mode=cfg.MODEL.MODE,
-            line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
-            regions=cfg.PREPROCESS.REGION.REGIONS,
-            merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
-            region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
-        )
-        xml_converter = XMLConverter(xml_regions, cfg.PREPROCESS.BASELINE.SQUARE_LINES)
-        metadata = metadata_from_classes(xml_regions.regions)
+        xml_converter = XMLConverter(cfg)
+        metadata = metadata_from_classes(xml_converter.xml_regions.regions)
 
         image_paths = get_file_paths(args.input, supported_image_formats, cfg.PREPROCESS.DISABLE_CHECK)
 

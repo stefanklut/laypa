@@ -2,13 +2,16 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import Any, Optional, TypedDict
 
 import cv2
 import numpy as np
 from detectron2 import structures
+from detectron2.config import configurable
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from detectron2.config import CfgNode
+
 from page_xml.xml_regions import XMLRegions
 from page_xml.xmlPAGE import PageData
 from utils.logging_utils import get_logger_name
@@ -60,6 +63,7 @@ class XMLConverter:
     Class for turning a pageXML into ground truth with classes (for segmentation)
     """
 
+    @configurable
     def __init__(
         self,
         xml_regions: XMLRegions,
@@ -74,6 +78,14 @@ class XMLConverter:
         self.logger = logging.getLogger(get_logger_name())
         self.xml_regions = xml_regions
         self.square_lines = square_lines
+
+    @classmethod
+    def from_config(cls, cfg: CfgNode) -> dict[str, Any]:
+        ret = {
+            "xml_regions": XMLRegions(cfg),
+            "square_lines": cfg.PREPROCESS.BASELINE.SQUARE_LINES,
+        }
+        return ret
 
     @staticmethod
     def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]) -> np.ndarray:

@@ -1,11 +1,11 @@
 import copy
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import detectron2.data.transforms as T
 import numpy as np
 import torch
-from detectron2.config import configurable
+from detectron2.config import CfgNode, configurable
 from detectron2.data.dataset_mapper import DatasetMapper
 from detectron2.data.detection_utils import (
     check_image_size,
@@ -131,7 +131,7 @@ class Mapper(DatasetMapper):
         logger.info(f"[DatasetMapper] Augmentations used in {mode}: {augmentations}")
 
     @classmethod
-    def from_config(cls, cfg, mode: str = "train"):
+    def from_config(cls, cfg: CfgNode, mode: str = "train") -> dict[str, Any]:
 
         augs = build_augmentation(cfg, mode)
 
