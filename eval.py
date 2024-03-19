@@ -139,7 +139,6 @@ def main(args) -> None:
             if image is None:
                 raise ValueError("image can not be None")
             sem_seg_gt = xml_converter.to_sem_seg(xml_path, image_shape=(data.image.shape[0], data.image.shape[1]))
-            print(sem_seg_gt)
             vis_im_gt = Visualizer(data.image.copy(), metadata=metadata, scale=1)
             vis_im_gt = vis_im_gt.draw_sem_seg(sem_seg_gt, alpha=0.4)
             return vis_im_gt.get_image()
