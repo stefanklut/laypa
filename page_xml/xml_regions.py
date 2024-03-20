@@ -54,6 +54,15 @@ class XMLRegions:
 
     @classmethod
     def from_config(cls, cfg: CfgNode) -> dict[str, Any]:
+        """
+        Converts a configuration object to a dictionary to be used as keyword arguments.
+
+        Args:
+            cfg (CfgNode): The configuration object.
+
+        Returns:
+            dict[str, Any]: A dictionary containing the converted configuration values.
+        """
         ret = {
             "mode": cfg.MODEL.MODE,
             "line_width": cfg.PREPROCESS.BASELINE.LINE_WIDTH,

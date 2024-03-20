@@ -132,7 +132,15 @@ class Mapper(DatasetMapper):
 
     @classmethod
     def from_config(cls, cfg: CfgNode, mode: str = "train") -> dict[str, Any]:
+        """
+        Converts a configuration object to a dictionary to be used as keyword arguments.
 
+        Args:
+            cfg (CfgNode): The configuration object.
+
+        Returns:
+            dict[str, Any]: A dictionary containing the converted configuration values.
+        """
         augs = build_augmentation(cfg, mode)
 
         if cfg.INPUT.CROP.ENABLED and mode == "train":

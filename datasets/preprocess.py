@@ -27,7 +27,6 @@ from datasets.augmentations import (
     build_augmentation,
 )
 from datasets.mapper import AugInput
-from datasets.transforms import ResizeTransform
 from page_xml.xml_converter import XMLConverter
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
@@ -74,26 +73,25 @@ class Preprocess:
         manual_dpi: Optional[int] = None,
     ) -> None:
         """
-        Used for almost all preprocessing steps to prepare datasets to be used by the training loop
+        Initializes the Preprocessor object.
 
         Args:
-            input_paths (Sequence[Path], optional): the used input dir/files to generate the dataset. Defaults to None.
-            output_dir (Path, optional): the destination dir of the generated dataset. Defaults to None.
-            resize_mode (str, optional): resize images before saving. Defaults to none.
-            resize_sampling (str, optional): sample type used when resizing. Defaults to "choice".
-            min_size (list, optional): when resizing, the length the shortest edge is resized to. Defaults to [1024].
-            max_size (int, optional): when resizing, the max length a side may have. Defaults to 2048.
-            xml_converter (XMLConverter, optional): converter to convert xml to image. Defaults to None.
-            disable_check (bool, optional): flag to turn of filesystem checks, useful if run was already successful once. Defaults to False.
-            overwrite (bool, optional): flag to force overwrite of images. Defaults to False.
+            augmentations (list[Augmentation]): List of augmentations to be applied during preprocessing.
+            input_paths (Sequence[Path], optional): The input directory or files used to generate the dataset. Defaults to None.
+            output_dir (Path, optional): The destination directory of the generated dataset. Defaults to None.
+            xml_converter (XMLConverter, optional): The converter used to convert XML to image. Defaults to None.
+            n_classes (int, optional): The number of classes in the dataset. Defaults to None.
+            disable_check (bool, optional): Flag to turn off filesystem checks. Defaults to False.
+            overwrite (bool, optional): Flag to force overwrite of images. Defaults to False.
+            auto_dpi (bool, optional): Flag to automatically determine the DPI of the images. Defaults to True.
+            default_dpi (int, optional): The default DPI to be used for resizing images. Defaults to None.
+            manual_dpi (int, optional): The manually specified DPI to be used for resizing images. Defaults to None.
 
         Raises:
-            TypeError: Did not provide a XMLImage object to convert from XML to image
-            ValueError: If resize mode is choice must provide the min size with 2 or more values
-            ValueError: If resize mode is range must provide the min size with 2 values
-            NotImplementedError: resize mode given is not
-        """
+            TypeError: If xml_converter is not an instance of XMLConverter.
+            AssertionError: If the number of specified regions does not match the number of specified classes.
 
+        """
         self.logger = logging.getLogger(get_logger_name())
 
         self.input_paths: Optional[Sequence[Path]] = None
@@ -130,6 +128,17 @@ class Preprocess:
         input_paths: Optional[Sequence[Path]] = None,
         output_dir: Optional[Path] = None,
     ) -> dict[str, Any]:
+        """
+        Converts a configuration object to a dictionary to be used as keyword arguments.
+
+        Args:
+            cfg (CfgNode): The configuration object.
+            input_paths (Optional[Sequence[Path]], optional): The input directory or files used to generate the dataset. Defaults to None.
+            output_dir (Optional[Path], optional): The destination directory of the generated dataset. Defaults to None.
+
+        Returns:
+            dict[str, Any]: A dictionary containing the converted configuration values.
+        """
         ret = {
             "augmentations": build_augmentation(cfg, "preprocess"),
             "input_paths": input_paths,
@@ -187,12 +196,17 @@ class Preprocess:
 
         return parser
 
-    def set_input_paths(self, input_paths: str | Path | Sequence[str | Path], ignore_duplicates=False) -> None:
+    def set_input_paths(
+        self,
+        input_paths: str | Path | Sequence[str | Path],
+        ignore_duplicates: bool = False,
+    ) -> None:
         """
         Setter of the input paths, turn string to path. And resolve full path
 
         Args:
             input_paths (str | Path | Sequence[str  |  Path]): path(s) from which to extract the images
+            ignore_duplicates (bool, optional): Ignore duplicate names in the input paths. Defaults to False.
         """
         input_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
         if not ignore_duplicates:
@@ -200,7 +214,19 @@ class Preprocess:
 
         self.input_paths = input_paths
 
-    def check_duplicates(self, input_paths: Sequence[Path]) -> None:
+    def check_duplicates(
+        self,
+        input_paths: Sequence[Path],
+    ) -> None:
+        """
+        Check for duplicate names in a list of input paths.
+
+        Args:
+            input_paths (Sequence[Path]): A sequence of Path objects representing the input paths.
+
+        Raises:
+            ValueError: If duplicate names are found in the input paths.
+        """
         count_duplicates_names = Counter([path.name for path in input_paths])
         duplicates = defaultdict(list)
         for path in input_paths:
@@ -281,6 +307,23 @@ class Preprocess:
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
+        """
+        Save an image to the output directory.
+
+        Args:
+            image_path (Path): The path to the original image file.
+            image_stem (str): The stem of the image file name.
+            original_image_shape (tuple[int, int]): The original shape of the image.
+            image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            str: The relative path of the saved image file.
+
+        Raises:
+            TypeError: If the output directory is None.
+            TypeError: If the image loading fails.
+        """
+
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
 
@@ -293,7 +336,7 @@ class Preprocess:
         else:
             out_image_path = image_dir.joinpath(image_stem + ".png")
 
-        # Check if image already exist and if it doesn't need resizing
+        # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_image_path.exists():
             out_image_shape = imagesize.get(out_image_path)[::-1]
             if out_image_shape == image_shape:
@@ -320,14 +363,34 @@ class Preprocess:
         return str(out_image_path.relative_to(self.output_dir))
 
     def save_sem_seg(
-        self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]
+        self,
+        xml_path: Path,
+        image_stem: str,
+        original_image_shape: tuple[int, int],
+        image_shape: tuple[int, int],
     ):
+        """
+        Save the semantic segmentation mask for an image.
+
+        Args:
+            xml_path (Path): The path to the XML file containing the semantic segmentation annotations.
+            image_stem (str): The stem of the image file name.
+            original_image_shape (tuple[int, int]): The original shape of the image.
+            image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            str: The relative path to the saved semantic segmentation mask.
+
+        Raises:
+            TypeError: If the output directory is None.
+
+        """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         sem_seg_dir = self.output_dir.joinpath("sem_seg")
         out_sem_seg_path = sem_seg_dir.joinpath(image_stem + ".png")
 
-        # Check if image already exist and if it doesn't need resizing
+        # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_sem_seg_path.exists():
             out_sem_seg_shape = imagesize.get(out_sem_seg_path)[::-1]
             if out_sem_seg_shape == image_shape:
@@ -344,15 +407,35 @@ class Preprocess:
         return str(out_sem_seg_path.relative_to(self.output_dir))
 
     def save_instances(
-        self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]
+        self,
+        xml_path: Path,
+        image_stem: str,
+        original_image_shape: tuple[int, int],
+        image_shape: tuple[int, int],
     ):
+        """
+        Save instances to JSON file.
+
+        Args:
+            xml_path (Path): The path to the XML file containing instance annotations.
+            image_stem (str): The stem of the image file name.
+            original_image_shape (tuple[int, int]): The original shape of the image.
+            image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            str: The relative path to the saved instances JSON file.
+
+        Raises:
+            ValueError: If the output directory is not set.
+
+        """
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         instances_dir = self.output_dir.joinpath("instances")
         out_instances_path = instances_dir.joinpath(image_stem + ".json")
         out_instances_size_path = instances_dir.joinpath(image_stem + ".txt")
 
-        # Check if image already exist and if it doesn't need resizing
+        # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_instances_path.exists() and out_instances_size_path.exists():
             with out_instances_size_path.open(mode="r") as f:
                 out_intstances_shape = tuple(int(x) for x in f.read().strip().split(","))
@@ -382,6 +465,22 @@ class Preprocess:
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
+        """
+        Save panoramic image and segments information to the output directory.
+
+        Args:
+            xml_path (Path): The path to the XML file.
+            image_stem (str): The stem of the image file name.
+            original_image_shape (tuple[int, int]): The original shape of the image.
+            image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            Tuple[str, str]: A tuple containing the relative paths of the saved panoramic image and segments information.
+
+        Raises:
+            TypeError: If the output directory is None.
+
+        """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         panos_dir = self.output_dir.joinpath("panos")
@@ -389,7 +488,7 @@ class Preprocess:
         out_pano_path = panos_dir.joinpath(image_stem + ".png")
         out_segments_info_path = panos_dir.joinpath(image_stem + ".json")
 
-        # Check if image already exist and if it doesn't need resizing
+        # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_pano_path.exists():
             out_pano_shape = imagesize.get(out_pano_path)[::-1]
             if out_pano_shape == image_shape:

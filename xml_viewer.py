@@ -13,7 +13,6 @@ from tqdm import tqdm
 from core.setup import setup_cfg
 from datasets.dataset import metadata_from_classes
 from page_xml.xml_converter import XMLConverter
-from page_xml.xml_regions import XMLRegions
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import get_file_paths
 from utils.logging_utils import get_logger_name
@@ -137,9 +136,11 @@ class Viewer:
 
         image_path_i = xml_path_to_image_path(xml_path_i)
 
-        image = load_image_array_from_path(str(image_path_i))["image"]
-        if image is None:
+        data = load_image_array_from_path(str(image_path_i))
+        if data is None:
             return
+
+        image = data["image"]
 
         vis_im = Visualizer(image.copy(), metadata=self.metadata, scale=1)
         vis_im = vis_im.draw_sem_seg(gray_image, alpha=0.4)

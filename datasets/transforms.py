@@ -221,6 +221,7 @@ class WarpFieldTransform(T.Transform):
 
         Args:
             warpfield (np.ndarray): flow of pixels in the image
+            ignore_value (int, optional): value to ignore in the segmentation. Defaults to 255.
         """
         super().__init__()
         self.warpfield = warpfield
@@ -322,6 +323,7 @@ class AffineTransform(T.Transform):
 
         Args:
             matrix (np.ndarray): affine matrix applied to the pixels in image
+            ignore_value (int, optional): value to ignore in the segmentation. Defaults to 255.
         """
         super().__init__()
         self.matrix = matrix

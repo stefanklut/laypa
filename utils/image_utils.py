@@ -24,19 +24,25 @@ def load_image_array_from_path(
     Load image from a given path, return None if loading failed due to corruption
 
     Args:
-        image_path (Path | str): path to an image on current filesystem
-        mode (str): color mode, either "color" or "grayscale"
+        image_path (Path | str): Path to an image on the current filesystem.
+        mode (str, optional): Color mode, either "color" or "grayscale". Defaults to "color".
+        ignore_exif (bool, optional): Ignore exif orientation. Defaults to False.
 
     Returns:
-        Optional[np.ndarray]: the loaded image or None
-    """
-    # Supported: https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html
+        Optional[dict]: A dictionary containing the loaded image and dpi, or None if loading failed.
 
+    Raises:
+        AssertionError: If the mode is not supported.
+        AssertionError: If the DPI is invalid or non-square.
+
+    Notes:
+        - Supported image file formats: https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html
+        - The loaded image is converted to a numpy array.
+
+    """
     assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
 
     try:
-        # image = cv2.imread(str(image_path), cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if mode == "color" else image
         image = Image.open(image_path)
         if not ignore_exif:
             image = ImageOps.exif_transpose(image)
@@ -89,23 +95,26 @@ def load_image_array_from_bytes(
     ignore_exif: bool = False,
 ) -> Optional[dict]:
     """
-    Load image based on given bytes, return None if loading failed due to corruption
+    Load an image from bytes and convert it to a numpy array.
 
     Args:
-        image_bytes (bytes): transfer bytes of data that represent an image
-        image_path (Optional[Path], optional): image_path for logging. Defaults to None.
-        mode (str, optional): color mode, either "color" or "grayscale". Defaults to "color"
+        image_bytes (bytes): The image bytes to load.
+        image_path (Optional[Path], optional): The path to the image file. Defaults to None.
+        mode (str, optional): The color mode of the image. Supported values are "color" and "grayscale". Defaults to "color".
+        ignore_exif (bool, optional): Whether to ignore the EXIF data of the image. Defaults to False.
 
     Returns:
-        Optional[np.ndarray]: the loaded image or None
-    """
+        Optional[dict]: A dictionary containing the loaded image as a numpy array and the DPI (dots per inch) of the image.
+            If the image cannot be loaded, None is returned.
 
+    Raises:
+        AssertionError: If the specified mode is not supported.
+        AssertionError: If the DPI is invalid or non-square.
+
+    """
     assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
 
     try:
-        # bytes_array = np.frombuffer(image_bytes, np.uint8)
-        # image = cv2.imdecode(bytes_array, cv2.IMREAD_COLOR if mode == "color" else cv2.IMREAD_GRAYSCALE)
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) if mode == "color" else image
         image = Image.open(BytesIO(image_bytes))
         if not ignore_exif:
             image = ImageOps.exif_transpose(image)
@@ -165,8 +174,9 @@ def save_image_array_to_path(
     Save image to a given path, log error in case of an error
 
     Args:
-        image_path (Path | str): save path location
-        array (np.ndarray): image in array form (RGB between 0 and 255)
+        image_path (Path | str): The path where the image will be saved.
+        array (np.ndarray): The image in array form (RGB between 0 and 255).
+        dpi (Optional[int]): The DPI (dots per inch) of the saved image. Defaults to None.
     """
     try:
         # cv2.imwrite(str(image_path), array)

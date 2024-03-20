@@ -10,7 +10,6 @@ from typing import Optional, Sequence, override
 import detectron2.data.transforms as T
 import numpy as np
 from detectron2.config import CfgNode
-from detectron2.data.transforms import AugInput
 from detectron2.data.transforms.augmentation import _get_aug_input_args
 from scipy.ndimage import gaussian_filter
 
@@ -80,22 +79,43 @@ class RandomApply(T.RandomApply):
 
 class Augmentation(T.Augmentation):
     def get_transform_aug_input(self, aug_input: T.AugInput) -> T.Transform:
+        """
+        Get the transform from the input
+
+        Args:
+            aug_input (T.AugInput): input to the augmentation
+
+        Returns:
+            T.Transform: transform
+        """
         args = _get_aug_input_args(self, aug_input)
         transform = self.get_transform(*args)
         return transform
 
     def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
+        """
+        Get the output shape of the image
+
+        Args:
+            old_height (int): height of the image
+            old_width (int): width of the image
+            dpi (Optional[int], optional): dpi of the image. Defaults to None.
+
+        Returns:
+            tuple[int, int]: The output height and width of the image after applying the augmentation.
+        """
         return (old_height, old_width)
 
 
 class ResizeScaling(Augmentation):
     def __init__(self, scale: float, max_size: Optional[int] = None, target_dpi: Optional[int] = None) -> None:
         """
-        Resize image based on scaling
+        Resize the image by a given scale
 
         Args:
-            scale (float): scaling percentage
-            max_size (int, optional): max length of largest edge. Defaults to sys.maxsize.
+            scale (float): scale percentage
+            max_size (Optional[int], optional): max size of the image. Defaults to None.
+            target_dpi (Optional[int], optional): target dpi of the image. Defaults to None.
         """
         super().__init__()
         self.scale = scale
@@ -106,16 +126,15 @@ class ResizeScaling(Augmentation):
     @override
     def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
         """
-        Compute the output size given input size and target scale
+        Calculates the output shape of the image after applying the augmentation.
 
         Args:
-            old_height (int): original height of image
-            old_width (int): original width of image
-            scale (float): desired scale
-            max_size (int): max length of largest edge
+            old_height (int): The original height of the image.
+            old_width (int): The original width of the image.
+            dpi (Optional[int]): The dots per inch of the image. Defaults to None.
 
         Returns:
-            tuple[int, int]: new height and width
+            tuple[int, int]: The output height and width of the image after applying the augmentation.
         """
         scale = self.scale
         if self.target_dpi is not None and dpi is not None:
@@ -158,9 +177,12 @@ class ResizeEdge(Augmentation):
         Resize image alternative using cv2 instead of PIL or Pytorch
 
         Args:
-            min_size (int | Sequence[int]): edge length
-            max_size (int, optional): max other length. Defaults to sys.maxsize.
-            sample_style (str, optional): type of sampling used to get the output shape. Defaults to "choice".
+            min_size (int | Sequence[int]): The minimum length of the side.
+            max_size (int, optional): The maximum length of the other side. Defaults to None.
+            sample_style (str, optional): The type of sampling used to get the output shape.
+                Can be either "range" or "choice". Defaults to "choice".
+            edge_length (int, optional): The edge length to be used if min_size is not a single value.
+                Defaults to None.
         """
         super().__init__()
         assert sample_style in ["range", "choice"], sample_style
@@ -177,6 +199,21 @@ class ResizeEdge(Augmentation):
 
     @override
     def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
+        """
+        Calculates the output shape of the image after applying the augmentation.
+
+        Args:
+            old_height (int): The height of the original image.
+            old_width (int): The width of the original image.
+            dpi (Optional[int]): The DPI (dots per inch) of the image. Defaults to None.
+
+        Returns:
+            tuple[int, int]: The output shape of the image after applying the augmentation.
+
+        Raises:
+            ValueError: If the edge length is not set.
+            NotImplementedError: If the method is not implemented in the subclass.
+        """
         if self.edge_length is None:
             raise ValueError("Edge length is not set")
         # If edge length is 0 or smaller assume no resize
@@ -210,16 +247,15 @@ class ResizeShortestEdge(ResizeEdge):
     @override
     def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
         """
-        Compute the output size given input size and target short edge length.
+        Calculates the output shape of an image after applying the augmentation.
 
         Args:
-            old_height (int): original height of image
-            old_width (int): original width of image
-            edge_length (int): desired shortest edge length
-            max_size (int): max length of other edge
+            old_height (int): The original height of the image.
+            old_width (int): The original width of the image.
+            dpi (Optional[int]): The dots per inch of the image. Defaults to None.
 
         Returns:
-            tuple[int, int]: new height and width
+            tuple[int, int]: The output height and width of the image after applying the augmentation.
         """
         if self.edge_length is None:
             raise ValueError("Edge length is not set")
@@ -248,17 +284,17 @@ class ResizeLongestEdge(ResizeShortestEdge):
     @override
     def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
         """
-        Compute the output size given input size and target short edge length.
+        Calculates the output shape of an image after applying the augmentation.
 
         Args:
-            old_height (int): original height of image
-            old_width (int): original width of image
-            edge_length (int): desired longest edge length
-            max_size (int): max length of other edge
+            old_height (int): The original height of the image.
+            old_width (int): The original width of the image.
+            dpi (Optional[int]): The dots per inch of the image. Defaults to None.
 
         Returns:
-            tuple[int, int]: new height and width
+            tuple[int, int]: The output height and width of the image after applying the augmentation.
         """
+
         if self.edge_length is None:
             raise ValueError("Edge length is not set")
         scale = float(self.edge_length) / max(old_height, old_width)
@@ -320,13 +356,19 @@ class RandomElastic(Augmentation):
     Apply a random elastic transformation to the image, made using random warpfield and gaussian filters
     """
 
-    def __init__(self, alpha: float = 0.1, sigma: float = 0.01, ignore_value=255) -> None:
+    def __init__(
+        self,
+        alpha: float = 0.1,
+        sigma: float = 0.01,
+        ignore_value: int = 255,
+    ) -> None:
         """
         Apply a random elastic transformation to the image, made using random warpfield and gaussian filters
 
         Args:
             alpha (int, optional): scale factor of the warpfield (sets max value). Defaults to 0.045.
             stdv (int, optional): strength of the gaussian filter. Defaults to 0.01.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.alpha = alpha
@@ -370,6 +412,7 @@ class RandomAffine(Augmentation):
             sh_kappa (float, optional): kappa value used for sampling the shear.. Defaults to 20.
             sc_stdv (float, optional): standard deviation used for the scale. Defaults to 0.12.
             probabilities (Optional[Sequence[float]], optional): individual probabilities for each sub category of an affine transformation. When None is given default to all 1.0 Defaults to None.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.t_stdv = t_stdv
@@ -449,12 +492,13 @@ class RandomTranslation(Augmentation):
     Apply a random translation to the image
     """
 
-    def __init__(self, t_stdv: float = 0.02, ignore_value=255) -> None:
+    def __init__(self, t_stdv: float = 0.02, ignore_value: int = 255) -> None:
         """
         Apply a random affine transformation to the image
 
         Args:
             t_stdv (float, optional): standard deviation used for the translation. Defaults to 0.02.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.t_stdv = t_stdv
@@ -478,12 +522,13 @@ class RandomRotation(Augmentation):
     Apply a random rotation to the image
     """
 
-    def __init__(self, r_kappa: float = 30, ignore_value=255) -> None:
+    def __init__(self, r_kappa: float = 30, ignore_value: int = 255) -> None:
         """
         Apply a random rotation to the image
 
         Args:
             r_kappa (float, optional): kappa value used for sampling the rotation. Defaults to 30.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.r_kappa = r_kappa
@@ -524,12 +569,13 @@ class RandomShear(Augmentation):
     Apply a random shearing to the image
     """
 
-    def __init__(self, sh_kappa: float = 20, ignore_value=255) -> None:
+    def __init__(self, sh_kappa: float = 20, ignore_value: int = 255) -> None:
         """
         Apply a random shearing to the image
 
         Args:
             sh_kappa (float, optional): kappa value used for sampling the shear.. Defaults to 20.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.sh_kappa = sh_kappa
@@ -574,12 +620,13 @@ class RandomScale(Augmentation):
     Apply a random shearing to the image
     """
 
-    def __init__(self, sc_stdv: float = 0.12, ignore_value=255) -> None:
+    def __init__(self, sc_stdv: float = 0.12, ignore_value: int = 255) -> None:
         """
         Apply a random shearing to the image
 
         Args:
             sc_stdv (float, optional): standard deviation used for the scale. Defaults to 0.12.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.sc_stdv = sc_stdv

@@ -70,10 +70,11 @@ class XMLConverter:
         square_lines: bool = True,
     ) -> None:
         """
-        Class for turning a pageXML into an image with classes
+        Initializes an instance of the XMLConverter class.
 
         Args:
-            xml_regions (XMLRegions): helps to convert page xml regions to images
+            xml_regions (XMLRegions): An instance of the XMLRegions class that helps to convert page xml regions to images.
+            square_lines (bool, optional): A boolean value indicating whether to square the lines in the image. Defaults to True.
         """
         self.logger = logging.getLogger(get_logger_name())
         self.xml_regions = xml_regions
@@ -81,6 +82,15 @@ class XMLConverter:
 
     @classmethod
     def from_config(cls, cfg: CfgNode) -> dict[str, Any]:
+        """
+        Converts a configuration object to a dictionary to be used as keyword arguments.
+
+        Args:
+            cfg (CfgNode): The configuration object.
+
+        Returns:
+            dict[str, Any]: A dictionary containing the converted configuration values.
+        """
         ret = {
             "xml_regions": XMLRegions(cfg),
             "square_lines": cfg.PREPROCESS.BASELINE.SQUARE_LINES,
@@ -159,6 +169,9 @@ class XMLConverter:
     ## REGIONS
 
     def build_region_instances(self, page: PageData, out_size: tuple[int, int], elements, class_dict) -> list[Instance]:
+        """
+        Create the instance version of the regions
+        """
         size = page.get_size()
         instances = []
         for element in elements:

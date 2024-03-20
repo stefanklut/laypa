@@ -194,9 +194,9 @@ def main(args):
             raise ValueError(f"{args.save} is not a valid check mode")
         temp_image_paths = []
         for image_path in all_image_paths:
-            image = load_image_array_from_path(image_path)["image"]
+            data = load_image_array_from_path(image_path)
             if args.check in ["all", "image"]:
-                if image is None:
+                if data is None:
                     continue
             if args.check in ["all", "page"]:
                 xml_path = image_path_to_xml_path(image_path)

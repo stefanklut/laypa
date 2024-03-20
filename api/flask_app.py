@@ -142,15 +142,18 @@ def predict_image(
 
     Args:
         image (np.ndarray): Image array send to model prediction
-        image_path (Path): Image name used to save image to location
-        identifier (str): Unique identifier
+        dpi (Optional[int]): DPI (dots per inch) of the image
+        image_path (Path): Path to the image file
+        identifier (str): Unique identifier for the image
+        model_name (str): Name of the model to use for prediction
+        whitelist (list[str]): List of characters to whitelist during prediction
 
     Raises:
-        TypeError: The current GenPageXML in not initialized
-        TypeError: The current Predictor is not initialized
+        TypeError: If the current GenPageXML is not initialized
+        TypeError: If the current Predictor is not initialized
 
     Returns:
-        dict[str, Any]: Information about what image was processed
+        dict[str, Any]: Information about the processed image
     """
     input_args = locals()
     try:
@@ -158,7 +161,7 @@ def predict_image(
 
         output_path = output_base_path.joinpath(identifier, image_path)
         if predict_gen_page_wrapper.gen_page is None:
-            raise TypeError("The current GenPageXML in not initialized")
+            raise TypeError("The current GenPageXML is not initialized")
         if predict_gen_page_wrapper.predictor is None:
             raise TypeError("The current Predictor is not initialized")
 

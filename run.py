@@ -10,25 +10,20 @@ import detectron2.data.transforms as T
 import numpy as np
 import torch
 from detectron2.checkpoint import DetectionCheckpointer
+from detectron2.config import CfgNode
 from detectron2.data import MetadataCatalog
 from detectron2.engine import DefaultPredictor
 from detectron2.modeling import build_model
-from torch.profiler import ProfilerActivity, profile, record_function
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from tqdm import tqdm
 
 from core.setup import setup_cfg, setup_logging
-from datasets.augmentations import (
-    ResizeLongestEdge,
-    ResizeScaling,
-    ResizeShortestEdge,
-    build_augmentation,
-)
+from datasets.augmentations import build_augmentation
 from datasets.mapper import AugInput
 from page_xml.output_pageXML import OutputPageXML
 from page_xml.xml_regions import XMLRegions
-from utils.image_utils import load_image_array_from_path, load_image_tensor_from_path
+from utils.image_utils import load_image_array_from_path
 from utils.input_utils import get_file_paths, supported_image_formats
 from utils.logging_utils import get_logger_name
 
@@ -65,7 +60,7 @@ class Predictor(DefaultPredictor):
     Predictor runs the model specified in the config, on call the image is processed and the results dict is output
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg: CfgNode):
         """
         Predictor runs the model specified in the config, on call the image is processed and the results dict is output
 
@@ -99,51 +94,51 @@ class Predictor(DefaultPredictor):
 
         self.aug = T.AugmentationList(build_augmentation(cfg, "test"))
 
-    def gpu_call(self, original_image: torch.Tensor):
-        """
-        Run the model on the image with preprocessing on the gpu
+    # def gpu_call(self, original_image: torch.Tensor) -> tuple[dict, int, int]:
+    #     """
+    #     Run the model on the image with preprocessing on the gpu
 
-        Args:
-            original_image (torch.Tensor): image to run the model on
+    #     Args:
+    #         original_image (torch.Tensor): image to run the model on
 
-        Returns:
-            tuple[dict, int, int]: predictions, height, width
-        """
-        with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
-            # Apply pre-processing to image.
-            channels, height, width = original_image.shape
-            assert channels == 3, f"Must be a BGR image, found {channels} channels"
-            image = torch.as_tensor(original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE)
+    #     Returns:
+    #         tuple[dict, int, int]: predictions, height, width
+    #     """
+    #     with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
+    #         # Apply pre-processing to image.
+    #         channels, height, width = original_image.shape
+    #         assert channels == 3, f"Must be a BGR image, found {channels} channels"
+    #         image = torch.as_tensor(original_image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE)
 
-            if self.cfg.INPUT.FORMAT == "BGR":
-                # whether the model expects BGR inputs or RGB
-                image = image[[2, 1, 0], :, :]
+    #         if self.cfg.INPUT.FORMAT == "BGR":
+    #             # whether the model expects BGR inputs or RGB
+    #             image = image[[2, 1, 0], :, :]
 
-            new_height, new_width = self.get_image_size(height, width)
+    #         new_height, new_width = self.get_image_size(height, width)
 
-            if self.cfg.INPUT.RESIZE_MODE != "none":
-                image = torch.nn.functional.interpolate(image[None], mode="bilinear", size=(new_height, new_width))[0]
+    #         if self.cfg.INPUT.RESIZE_MODE != "none":
+    #             image = torch.nn.functional.interpolate(image[None], mode="bilinear", size=(new_height, new_width))[0]
 
-            inputs = {"image": image, "height": new_height, "width": new_width}
+    #         inputs = {"image": image, "height": new_height, "width": new_width}
 
-            with torch.autocast(
-                device_type=self.cfg.MODEL.DEVICE,
-                enabled=self.cfg.MODEL.AMP_TEST.ENABLED,
-                dtype=self.precision,
-            ):
-                predictions = self.model([inputs])[0]
+    #         with torch.autocast(
+    #             device_type=self.cfg.MODEL.DEVICE,
+    #             enabled=self.cfg.MODEL.AMP_TEST.ENABLED,
+    #             dtype=self.precision,
+    #         ):
+    #             predictions = self.model([inputs])[0]
 
-            # if torch.isnan(predictions["sem_seg"]).any():
-            #     raise ValueError("NaN in predictions")
+    #         # if torch.isnan(predictions["sem_seg"]).any():
+    #         #     raise ValueError("NaN in predictions")
 
-            return predictions, height, width
+    #         return predictions, height, width
 
-    def cpu_call(self, data: AugInput):
+    def cpu_call(self, data: AugInput) -> tuple[dict, int, int]:
         """
         Run the model on the image with preprocessing on the cpu
 
         Args:
-            original_image (np.ndarray): image to run the model on
+            data (AugInput): image to run the model on
 
         Returns:
             tuple[dict, int, int]: predictions, height, width
@@ -179,11 +174,7 @@ class Predictor(DefaultPredictor):
         Run the model on the image with preprocessing
 
         Args:
-            original_image (torch.Tensor | np.ndarray): image to run the model on
-
-        Raises:
-            TypeError: image is not a torch.Tensor or np.ndarray
-
+            data (AugInput): image to run the model on
         Returns:
             tuple[dict, int, int]: predictions, height, width
         """
@@ -237,8 +228,8 @@ class SavePredictor(Predictor):
 
     def __init__(
         self,
-        cfg,
-        input_paths: str | Path,
+        cfg: CfgNode,
+        input_paths: str | Path | Sequence[str | Path],
         output_dir: str | Path,
         output_page: OutputPageXML,
     ):
@@ -247,7 +238,7 @@ class SavePredictor(Predictor):
 
         Args:
             cfg (CfgNode): config
-            input_dir (str | Path): path to input dir
+            input_paths (str | Path | Sequence[str | Path]): path(s) from which to extract the images
             output_dir (str | Path): path to output dir
             gen_page (GenPageXML): class to convert from predictions to pageXML
         """
@@ -303,15 +294,17 @@ class SavePredictor(Predictor):
         self.output_dir = output_dir.resolve()
 
     # def save_prediction(self, input_path: Path | str):
-    def save_prediction(self, image, dpi, input_path):
+    def save_prediction(self, image: np.ndarray, dpi: int, input_path: Path):
         """
-        Run the model and get the prediction, and save pageXML or a mask image depending on the mode
+        Run the model on the image and save the results as pageXML
 
         Args:
-            input_path (Path | str): path to single image
+            image (np.ndarray): image to run the model on
+            dpi (int): dpi of the image
+            input_path (Path): path to the image
 
         Raises:
-            TypeError: no output dir is specified
+            TypeError: no input dir is specified
         """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
