@@ -8,7 +8,6 @@ import torch
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import CfgNode
 from detectron2.data import (
-    DatasetMapper,
     MetadataCatalog,
     build_detection_test_loader,
     build_detection_train_loader,
@@ -26,7 +25,7 @@ from detectron2.projects.deeplab import build_lr_scheduler
 from detectron2.solver.build import maybe_add_gradient_clipping, reduce_param_groups
 from detectron2.utils import comm
 
-from datasets.augmentations import build_augmentation
+from datasets.mapper import Mapper
 
 
 def get_default_optimizer_params(
@@ -298,36 +297,20 @@ class Trainer(DefaultTrainer):
     @classmethod
     def build_train_loader(cls, cfg):
         if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
-            mapper = DatasetMapper(
-                is_train=True,
-                recompute_boxes=cfg.MODEL.MASK_ON,
-                augmentations=build_augmentation(cfg, mode="train"),
-                image_format=cfg.INPUT.FORMAT,
-                use_instance_mask=cfg.MODEL.MASK_ON,
-                instance_mask_format=cfg.INPUT.MASK_FORMAT,
-                use_keypoint=cfg.MODEL.KEYPOINT_ON,
-            )
+            mapper = Mapper(cfg, mode="train")  # type: ignore
         else:
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
 
-        return build_detection_train_loader(cfg=cfg, mapper=mapper)
+        return build_detection_train_loader(cfg=cfg, mapper=mapper)  # type: ignore
 
     @classmethod
     def build_test_loader(cls, cfg, dataset_name):
         if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
-            mapper = DatasetMapper(
-                is_train=False,
-                recompute_boxes=cfg.MODEL.MASK_ON,
-                augmentations=build_augmentation(cfg, mode="val"),
-                image_format=cfg.INPUT.FORMAT,
-                use_instance_mask=cfg.MODEL.MASK_ON,
-                instance_mask_format=cfg.INPUT.MASK_FORMAT,
-                use_keypoint=cfg.MODEL.KEYPOINT_ON,
-            )
+            mapper = Mapper(cfg, mode="test")  # type: ignore
         else:
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
 
-        return build_detection_test_loader(cfg=cfg, mapper=mapper, dataset_name=dataset_name)
+        return build_detection_test_loader(cfg=cfg, mapper=mapper, dataset_name=dataset_name)  # type: ignore
 
     @classmethod
     def build_optimizer(cls, cfg, model):

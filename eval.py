@@ -17,6 +17,7 @@ from tqdm import tqdm
 from core.preprocess import preprocess_datasets
 from core.setup import setup_cfg
 from datasets.dataset import metadata_from_classes
+from datasets.mapper import AugInput
 from page_xml.xml_converter import XMLConverter
 from page_xml.xml_regions import XMLRegions
 from run import Predictor
@@ -97,15 +98,8 @@ def main(args) -> None:
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not args.keep_tmp_dir) as tmp_dir:
         # preprocess_datasets(cfg, None, args.input, tmp_dir, save_image_locations=False)
 
-        xml_regions = XMLRegions(
-            mode=cfg.MODEL.MODE,
-            line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
-            regions=cfg.PREPROCESS.REGION.REGIONS,
-            merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
-            region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
-        )
-        xml_converter = XMLConverter(xml_regions, cfg.PREPROCESS.BASELINE.SQUARE_LINES)
-        metadata = metadata_from_classes(xml_regions.regions)
+        xml_converter = XMLConverter(cfg)
+        metadata = metadata_from_classes(xml_converter.xml_regions.regions)
 
         image_paths = get_file_paths(args.input, supported_image_formats, cfg.PREPROCESS.DISABLE_CHECK)
 
@@ -113,30 +107,47 @@ def main(args) -> None:
 
         @lru_cache(maxsize=10)
         def load_image(path):
-            image = load_image_array_from_path(path, mode="color")
-            if image is None:
+            data = load_image_array_from_path(path, mode="color")
+            if data is None:
                 raise TypeError(f"Image {path} is None, loading failed")
-            return image
+
+            image = data["image"]
+            dpi = data["dpi"]
+            return image, dpi
 
         @lru_cache(maxsize=10)
         def create_gt_visualization(image_path):
             xml_path = image_path_to_xml_path(image_path, check=False)
             if not xml_path.is_file():
                 return None
-            image = load_image(image_path)
-            image = predictor.aug.get_transform(image).apply_image(image)
+            image, dpi = load_image(image_path)
+            data = AugInput(
+                image,
+                dpi=dpi,
+                auto_dpi=cfg.INPUT.DPI.AUTO_DETECT_TEST,
+                default_dpi=cfg.INPUT.DPI.DEFAULT_DPI_TEST,
+                manual_dpi=cfg.INPUT.DPI.MANUAL_DPI_TEST,
+            )
+            transforms = predictor.aug(data)
             if image is None:
                 raise ValueError("image can not be None")
-            sem_seg_gt = xml_converter.to_sem_seg(xml_path, image_shape=(image.shape[0], image.shape[1]))
-            vis_im_gt = Visualizer(image.copy(), metadata=metadata, scale=1)
+            sem_seg_gt = xml_converter.to_sem_seg(xml_path, image_shape=(data.image.shape[0], data.image.shape[1]))
+            vis_im_gt = Visualizer(data.image.copy(), metadata=metadata, scale=1)
             vis_im_gt = vis_im_gt.draw_sem_seg(sem_seg_gt, alpha=0.4)
             return vis_im_gt.get_image()
 
         @lru_cache(maxsize=10)
         def create_pred_visualization(image_path):
-            image = load_image(image_path)
+            image, dpi = load_image(image_path)
+            data = AugInput(
+                image,
+                dpi=dpi,
+                auto_dpi=cfg.INPUT.DPI.AUTO_DETECT_TEST,
+                default_dpi=cfg.INPUT.DPI.DEFAULT_DPI_TEST,
+                manual_dpi=cfg.INPUT.DPI.MANUAL_DPI_TEST,
+            )
             logger.info(f"Predict: {image_path}")
-            outputs = predictor(image)
+            outputs = predictor(data)
             sem_seg = outputs[0]["sem_seg"]
             sem_seg = torch.nn.functional.interpolate(
                 sem_seg[None], size=(image.shape[0], image.shape[1]), mode="bilinear", align_corners=False

@@ -131,7 +131,7 @@ def get_file_paths(
                         raise FileNotFoundError(f"Missing file ({path}) from the txt file: {input_path}")
 
         else:
-            raise ValueError(f"Invalid file type: {input_path.suffix}")
+            raise ValueError(f"Invalid file type {input_path}: {input_path.suffix}")
 
         output_paths.extend(sub_output_paths)
 

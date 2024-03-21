@@ -6,9 +6,7 @@ from detectron2.config import CfgNode
 
 from datasets import dataset
 from datasets.preprocess import Preprocess
-from page_xml.xml_converter import XMLConverter
-from page_xml.xml_regions import XMLRegions
-from utils.input_utils import clean_input_paths, get_file_paths, supported_image_formats
+from utils.input_utils import clean_input_paths
 
 
 def preprocess_datasets(
@@ -39,31 +37,7 @@ def preprocess_datasets(
     if not output_dir.is_dir():
         raise FileNotFoundError(f"Output Folder not found: {output_dir} does not exist")
 
-    xml_regions = XMLRegions(
-        mode=cfg.MODEL.MODE,
-        line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
-        regions=cfg.PREPROCESS.REGION.REGIONS,
-        merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
-        region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
-    )
-    xml_converter = XMLConverter(xml_regions, cfg.PREPROCESS.BASELINE.SQUARE_LINES)
-
-    assert (n_regions := len(xml_converter.xml_regions.regions)) == (
-        n_classes := cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES
-    ), f"Number of specified regions ({n_regions}) does not match the number of specified classes ({n_classes})"
-
-    process = Preprocess(
-        input_paths=None,
-        output_dir=None,
-        resize_mode=cfg.PREPROCESS.RESIZE.RESIZE_MODE,
-        resize_sampling=cfg.PREPROCESS.RESIZE.RESIZE_SAMPLING,
-        scaling=cfg.PREPROCESS.RESIZE.SCALING,
-        min_size=cfg.PREPROCESS.RESIZE.MIN_SIZE,
-        max_size=cfg.PREPROCESS.RESIZE.MAX_SIZE,
-        xml_converter=xml_converter,
-        disable_check=cfg.PREPROCESS.DISABLE_CHECK,
-        overwrite=cfg.PREPROCESS.OVERWRITE,
-    )
+    process = Preprocess(cfg)
 
     train_output_dir = None
     if train is not None:

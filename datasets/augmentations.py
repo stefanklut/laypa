@@ -5,11 +5,12 @@ import inspect
 import pprint
 import sys
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Optional, Sequence, override
 
 import detectron2.data.transforms as T
 import numpy as np
 from detectron2.config import CfgNode
+from detectron2.data.transforms.augmentation import _get_aug_input_args
 from scipy.ndimage import gaussian_filter
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
@@ -76,39 +77,75 @@ class RandomApply(T.RandomApply):
     __str__ = __repr__
 
 
-class ResizeScaling(T.Augmentation):
-    def __init__(self, scale: float, max_size: int = sys.maxsize) -> None:
+class Augmentation(T.Augmentation):
+    def get_transform_aug_input(self, aug_input: T.AugInput) -> T.Transform:
         """
-        Resize image based on scaling
+        Get the transform from the input
 
         Args:
-            scale (float): scaling percentage
-            max_size (int, optional): max length of largest edge. Defaults to sys.maxsize.
+            aug_input (T.AugInput): input to the augmentation
+
+        Returns:
+            T.Transform: transform
+        """
+        args = _get_aug_input_args(self, aug_input)
+        transform = self.get_transform(*args)
+        return transform
+
+    def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
+        """
+        Get the output shape of the image
+
+        Args:
+            old_height (int): height of the image
+            old_width (int): width of the image
+            dpi (Optional[int], optional): dpi of the image. Defaults to None.
+
+        Returns:
+            tuple[int, int]: The output height and width of the image after applying the augmentation.
+        """
+        return (old_height, old_width)
+
+
+class ResizeScaling(Augmentation):
+    def __init__(self, scale: float, max_size: Optional[int] = None, target_dpi: Optional[int] = None) -> None:
+        """
+        Resize the image by a given scale
+
+        Args:
+            scale (float): scale percentage
+            max_size (Optional[int], optional): max size of the image. Defaults to None.
+            target_dpi (Optional[int], optional): target dpi of the image. Defaults to None.
         """
         super().__init__()
         self.scale = scale
         self.max_size = max_size
+        self.target_dpi = target_dpi
         assert 0 < self.scale <= 1, "Scale percentage must be in range (0,1]"
 
-    @staticmethod
-    def get_output_shape(old_height: int, old_width: int, scale: float, max_size: int = sys.maxsize) -> tuple[int, int]:
+    @override
+    def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
         """
-        Compute the output size given input size and target scale
+        Calculates the output shape of the image after applying the augmentation.
 
         Args:
-            old_height (int): original height of image
-            old_width (int): original width of image
-            scale (float): desired scale
-            max_size (int): max length of largest edge
+            old_height (int): The original height of the image.
+            old_width (int): The original width of the image.
+            dpi (Optional[int]): The dots per inch of the image. Defaults to None.
 
         Returns:
-            tuple[int, int]: new height and width
+            tuple[int, int]: The output height and width of the image after applying the augmentation.
         """
+        scale = self.scale
+        if self.target_dpi is not None and dpi is not None:
+            scale = scale * self.target_dpi / dpi
         height, width = scale * old_height, scale * old_width
 
         # If max size is 0 or smaller assume no maxsize
-        if max_size <= 0:
+        if self.max_size is None or self.max_size <= 0:
             max_size = sys.maxsize
+        else:
+            max_size = self.max_size
         if max(height, width) > max_size:
             scale = max_size * 1.0 / max(height, width)
             height = height * scale
@@ -118,29 +155,34 @@ class ResizeScaling(T.Augmentation):
         width = int(width + 0.5)
         return (height, width)
 
-    def get_transform(self, image: np.ndarray) -> T.Transform:
+    def get_transform(self, image: np.ndarray, dpi: Optional[int]) -> T.Transform:
         old_height, old_width, channels = image.shape
 
-        height, width = self.get_output_shape(old_height, old_width, self.scale, self.max_size)
+        height, width = self.get_output_shape(old_height, old_width, dpi=dpi)
         if (old_height, old_width) == (height, width):
             return T.NoOpTransform()
 
         return ResizeTransform(old_height, old_width, height, width)
 
 
-class ResizeShortestEdge(T.Augmentation):
-    """
-    Resize image alternative using cv2 instead of PIL or Pytorch
-    """
-
-    def __init__(self, min_size: int | Sequence[int], max_size: int = sys.maxsize, sample_style: str = "choice") -> None:
+class ResizeEdge(Augmentation):
+    def __init__(
+        self,
+        min_size: int | Sequence[int],
+        max_size: Optional[int] = None,
+        sample_style: str = "choice",
+        edge_length: Optional[int] = None,
+    ) -> None:
         """
         Resize image alternative using cv2 instead of PIL or Pytorch
 
         Args:
-            min_size (int | Sequence[int]): edge length
-            max_size (int, optional): max other length. Defaults to sys.maxsize.
-            sample_style (str, optional): type of sampling used to get the output shape. Defaults to "choice".
+            min_size (int | Sequence[int]): The minimum length of the side.
+            max_size (int, optional): The maximum length of the other side. Defaults to None.
+            sample_style (str, optional): The type of sampling used to get the output shape.
+                Can be either "range" or "choice". Defaults to "choice".
+            edge_length (int, optional): The edge length to be used if min_size is not a single value.
+                Defaults to None.
         """
         super().__init__()
         assert sample_style in ["range", "choice"], sample_style
@@ -151,53 +193,49 @@ class ResizeShortestEdge(T.Augmentation):
         self.sample_style = sample_style
         self.min_size = min_size
         self.max_size = max_size
+        self.edge_length = edge_length
+        if len(min_size) == 2 and min_size[0] == min_size[1]:
+            self.edge_length = min_size[0]
 
-    @staticmethod
-    def get_output_shape(old_height: int, old_width: int, edge_length: int, max_size: int) -> tuple[int, int]:
+    @override
+    def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
         """
-        Compute the output size given input size and target short edge length.
+        Calculates the output shape of the image after applying the augmentation.
 
         Args:
-            old_height (int): original height of image
-            old_width (int): original width of image
-            edge_length (int): desired shortest edge length
-            max_size (int): max length of other edge
+            old_height (int): The height of the original image.
+            old_width (int): The width of the original image.
+            dpi (Optional[int]): The DPI (dots per inch) of the image. Defaults to None.
 
         Returns:
-            tuple[int, int]: new height and width
+            tuple[int, int]: The output shape of the image after applying the augmentation.
+
+        Raises:
+            ValueError: If the edge length is not set.
+            NotImplementedError: If the method is not implemented in the subclass.
         """
-        scale = float(edge_length) / min(old_height, old_width)
-        if old_height < old_width:
-            height, width = edge_length, scale * old_width
-        else:
-            height, width = scale * old_height, edge_length
-
-        # If max size is 0 or smaller assume no maxsize
-        if max_size <= 0:
-            max_size = sys.maxsize
-        if max(height, width) > max_size:
-            scale = max_size * 1.0 / max(height, width)
-            height = height * scale
-            width = width * scale
-
-        height = int(height + 0.5)
-        width = int(width + 0.5)
-        return (height, width)
+        if self.edge_length is None:
+            raise ValueError("Edge length is not set")
+        # If edge length is 0 or smaller assume no resize
+        if self.edge_length <= 0:
+            return (old_height, old_width)
+        raise NotImplementedError("This method should be implemented in the subclass")
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         old_height, old_width, channels = image.shape
 
         if self.sample_style == "range":
-            edge_length = np.random.randint(self.min_size[0], self.min_size[1] + 1)
+            self.edge_length = np.random.randint(self.min_size[0], self.min_size[1] + 1)
         elif self.sample_style == "choice":
-            edge_length = np.random.choice(self.min_size)
+            self.edge_length = np.random.choice(self.min_size)
         else:
-            raise NotImplementedError('Only "choice" and "range" are accepted values')
+            raise ValueError('Only "choice" and "range" are accepted values')
 
-        if edge_length == 0:
+        # If edge length is 0 or smaller assume no resize
+        if self.edge_length <= 0:
             return T.NoOpTransform()
 
-        height, width = self.get_output_shape(old_height, old_width, edge_length, self.max_size)
+        height, width = self.get_output_shape(old_height, old_width)
 
         if (old_height, old_width) == (height, width):
             return T.NoOpTransform()
@@ -205,30 +243,33 @@ class ResizeShortestEdge(T.Augmentation):
         return ResizeTransform(old_height, old_width, height, width)
 
 
-class ResizeLongestEdge(ResizeShortestEdge):
-    @staticmethod
-    def get_output_shape(old_height: int, old_width: int, edge_length: int, max_size: int) -> tuple[int, int]:
+class ResizeShortestEdge(ResizeEdge):
+    @override
+    def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
         """
-        Compute the output size given input size and target short edge length.
+        Calculates the output shape of an image after applying the augmentation.
 
         Args:
-            old_height (int): original height of image
-            old_width (int): original width of image
-            edge_length (int): desired longest edge length
-            max_size (int): max length of other edge
+            old_height (int): The original height of the image.
+            old_width (int): The original width of the image.
+            dpi (Optional[int]): The dots per inch of the image. Defaults to None.
 
         Returns:
-            tuple[int, int]: new height and width
+            tuple[int, int]: The output height and width of the image after applying the augmentation.
         """
-        scale = float(edge_length) / max(old_height, old_width)
+        if self.edge_length is None:
+            raise ValueError("Edge length is not set")
+        scale = float(self.edge_length) / min(old_height, old_width)
         if old_height < old_width:
-            height, width = edge_length, scale * old_width
+            height, width = self.edge_length, scale * old_width
         else:
-            height, width = scale * old_height, edge_length
+            height, width = scale * old_height, self.edge_length
 
         # If max size is 0 or smaller assume no maxsize
-        if max_size <= 0:
+        if self.max_size is None or self.max_size <= 0:
             max_size = sys.maxsize
+        else:
+            max_size = self.max_size
         if max(height, width) > max_size:
             scale = max_size * 1.0 / max(height, width)
             height = height * scale
@@ -239,7 +280,45 @@ class ResizeLongestEdge(ResizeShortestEdge):
         return (height, width)
 
 
-class Flip(T.Augmentation):
+class ResizeLongestEdge(ResizeShortestEdge):
+    @override
+    def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
+        """
+        Calculates the output shape of an image after applying the augmentation.
+
+        Args:
+            old_height (int): The original height of the image.
+            old_width (int): The original width of the image.
+            dpi (Optional[int]): The dots per inch of the image. Defaults to None.
+
+        Returns:
+            tuple[int, int]: The output height and width of the image after applying the augmentation.
+        """
+
+        if self.edge_length is None:
+            raise ValueError("Edge length is not set")
+        scale = float(self.edge_length) / max(old_height, old_width)
+        if old_height < old_width:
+            height, width = self.edge_length, scale * old_width
+        else:
+            height, width = scale * old_height, self.edge_length
+
+        # If max size is 0 or smaller assume no maxsize
+        if self.max_size is None or self.max_size <= 0:
+            max_size = sys.maxsize
+        else:
+            max_size = self.max_size
+        if max(height, width) > max_size:
+            scale = max_size * 1.0 / max(height, width)
+            height = height * scale
+            width = width * scale
+
+        height = int(height + 0.5)
+        width = int(width + 0.5)
+        return (height, width)
+
+
+class Flip(Augmentation):
     """
     Flip the image horizontally or vertically with the given probability.
     """
@@ -272,22 +351,29 @@ class Flip(T.Augmentation):
             raise ValueError("At least one of horizontal or vertical has to be True!")
 
 
-class RandomElastic(T.Augmentation):
+class RandomElastic(Augmentation):
     """
     Apply a random elastic transformation to the image, made using random warpfield and gaussian filters
     """
 
-    def __init__(self, alpha: float = 0.1, sigma: float = 0.01) -> None:
+    def __init__(
+        self,
+        alpha: float = 0.1,
+        sigma: float = 0.01,
+        ignore_value: int = 255,
+    ) -> None:
         """
         Apply a random elastic transformation to the image, made using random warpfield and gaussian filters
 
         Args:
             alpha (int, optional): scale factor of the warpfield (sets max value). Defaults to 0.045.
             stdv (int, optional): strength of the gaussian filter. Defaults to 0.01.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.alpha = alpha
         self.sigma = sigma
+        self.ignore_value = ignore_value
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
@@ -300,10 +386,10 @@ class RandomElastic(T.Augmentation):
         warpfield[..., 0] = dx * min_length * self.alpha
         warpfield[..., 1] = dy * min_length * self.alpha
 
-        return WarpFieldTransform(warpfield)
+        return WarpFieldTransform(warpfield, ignore_value=self.ignore_value)
 
 
-class RandomAffine(T.Augmentation):
+class RandomAffine(Augmentation):
     """
     Apply a random affine transformation to the image
     """
@@ -315,6 +401,7 @@ class RandomAffine(T.Augmentation):
         sh_kappa: float = 20,
         sc_stdv: float = 0.12,
         probabilities: Optional[Sequence[float]] = None,
+        ignore_value: int = 255,
     ) -> None:
         """
         Apply a random affine transformation to the image
@@ -325,12 +412,14 @@ class RandomAffine(T.Augmentation):
             sh_kappa (float, optional): kappa value used for sampling the shear.. Defaults to 20.
             sc_stdv (float, optional): standard deviation used for the scale. Defaults to 0.12.
             probabilities (Optional[Sequence[float]], optional): individual probabilities for each sub category of an affine transformation. When None is given default to all 1.0 Defaults to None.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.t_stdv = t_stdv
         self.r_kappa = r_kappa
         self.sh_kappa = sh_kappa
         self.sc_stdv = sc_stdv
+        self.ignore_value = ignore_value
 
         if probabilities is not None:
             assert len(probabilities) == 4, f"{len(probabilities)}: {probabilities}"
@@ -395,23 +484,25 @@ class RandomAffine(T.Augmentation):
 
             matrix = matrix @ center @ scale @ uncenter
 
-        return AffineTransform(matrix)
+        return AffineTransform(matrix, ignore_value=self.ignore_value)
 
 
-class RandomTranslation(T.Augmentation):
+class RandomTranslation(Augmentation):
     """
     Apply a random translation to the image
     """
 
-    def __init__(self, t_stdv: float = 0.02) -> None:
+    def __init__(self, t_stdv: float = 0.02, ignore_value: int = 255) -> None:
         """
         Apply a random affine transformation to the image
 
         Args:
             t_stdv (float, optional): standard deviation used for the translation. Defaults to 0.02.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.t_stdv = t_stdv
+        self.ignore_value = ignore_value
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
@@ -423,23 +514,25 @@ class RandomTranslation(T.Augmentation):
 
         # print(matrix)
 
-        return AffineTransform(matrix)
+        return AffineTransform(matrix, ignore_value=self.ignore_value)
 
 
-class RandomRotation(T.Augmentation):
+class RandomRotation(Augmentation):
     """
     Apply a random rotation to the image
     """
 
-    def __init__(self, r_kappa: float = 30) -> None:
+    def __init__(self, r_kappa: float = 30, ignore_value: int = 255) -> None:
         """
         Apply a random rotation to the image
 
         Args:
             r_kappa (float, optional): kappa value used for sampling the rotation. Defaults to 30.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.r_kappa = r_kappa
+        self.ignore_value = ignore_value
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
@@ -468,23 +561,25 @@ class RandomRotation(T.Augmentation):
 
         # print(matrix)
 
-        return AffineTransform(matrix)
+        return AffineTransform(matrix, ignore_value=self.ignore_value)
 
 
-class RandomShear(T.Augmentation):
+class RandomShear(Augmentation):
     """
     Apply a random shearing to the image
     """
 
-    def __init__(self, sh_kappa: float = 20) -> None:
+    def __init__(self, sh_kappa: float = 20, ignore_value: int = 255) -> None:
         """
         Apply a random shearing to the image
 
         Args:
             sh_kappa (float, optional): kappa value used for sampling the shear.. Defaults to 20.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.sh_kappa = sh_kappa
+        self.ignore_value = ignore_value
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
@@ -517,23 +612,25 @@ class RandomShear(T.Augmentation):
 
         matrix = matrix @ center @ shear2 @ uncenter
 
-        return AffineTransform(matrix)
+        return AffineTransform(matrix, ignore_value=self.ignore_value)
 
 
-class RandomScale(T.Augmentation):
+class RandomScale(Augmentation):
     """
     Apply a random shearing to the image
     """
 
-    def __init__(self, sc_stdv: float = 0.12) -> None:
+    def __init__(self, sc_stdv: float = 0.12, ignore_value: int = 255) -> None:
         """
         Apply a random shearing to the image
 
         Args:
             sc_stdv (float, optional): standard deviation used for the scale. Defaults to 0.12.
+            ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
         self.sc_stdv = sc_stdv
+        self.ignore_value = ignore_value
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         h, w = image.shape[:2]
@@ -554,10 +651,10 @@ class RandomScale(T.Augmentation):
 
         matrix = matrix @ center @ scale @ uncenter
 
-        return AffineTransform(matrix)
+        return AffineTransform(matrix, ignore_value=self.ignore_value)
 
 
-class Grayscale(T.Augmentation):
+class Grayscale(Augmentation):
     """
     Randomly convert the image to grayscale
     """
@@ -576,7 +673,7 @@ class Grayscale(T.Augmentation):
         return GrayscaleTransform(image_format=self.image_format)
 
 
-class RandomGaussianFilter(T.Augmentation):
+class RandomGaussianFilter(Augmentation):
     """
     Apply random gaussian kernels
     """
@@ -602,7 +699,7 @@ class RandomGaussianFilter(T.Augmentation):
         return GaussianFilterTransform(sigma=sigma, order=self.order, iterations=self.iterations)
 
 
-class RandomSaturation(T.Augmentation):
+class RandomSaturation(Augmentation):
     """
     Change the saturation of an image
 
@@ -643,7 +740,7 @@ class RandomSaturation(T.Augmentation):
         return BlendTransform(grayscale, src_weight=1 - w, dst_weight=w)
 
 
-class RandomContrast(T.Augmentation):
+class RandomContrast(Augmentation):
     """
     Randomly transforms image contrast
 
@@ -673,7 +770,7 @@ class RandomContrast(T.Augmentation):
         return BlendTransform(src_image=image.mean().astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
-class RandomBrightness(T.Augmentation):
+class RandomBrightness(Augmentation):
     """
     Randomly transforms image brightness
 
@@ -703,7 +800,7 @@ class RandomBrightness(T.Augmentation):
         return BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
-class RandomOrientation(T.Augmentation):
+class RandomOrientation(Augmentation):
     """
     Apply a random orientation to the image
     """
@@ -727,6 +824,8 @@ class RandomOrientation(T.Augmentation):
 
     def get_transform(self, image) -> T.Transform:
         times_90_degrees = np.random.choice(4, p=self.normalized_percentages)
+        if times_90_degrees == 0:
+            return T.NoOpTransform()
         return OrientationTransform(times_90_degrees, image.shape[0], image.shape[1])
 
 
@@ -742,7 +841,7 @@ class FixedSizeCrop(T.Augmentation):
         self,
         crop_size: tuple[int, int],
         pad: bool = True,
-        pad_value: float = 128.0,
+        pad_value: float = 0,
         seg_pad_value: int = 255,
     ):
         """
@@ -912,14 +1011,14 @@ class RandomCrop_CategoryAreaConstraint(T.Augmentation):
             return crop_tfm
 
 
-def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation | T.Transform]:
+def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation]:
     """
     Function to generate all the augmentations used in the inference and training process
 
     Args:
         cfg (CfgNode): The configuration node containing the parameters for the augmentations.
         mode (str): flag if the augmentation are used for inference or training
-            - Possible values are "train", "val", or "test".
+            - Possible values are "preprocess", "train", "val", or "test".
 
     Returns:
         list[T.Augmentation | T.Transform]: list of augmentations to apply to an image
@@ -928,50 +1027,82 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
         NotImplementedError: If the mode is not one of "train", "val", or "test".
         NotImplementedError: If the resize mode specified in the configuration is not recognized.
     """
-    augmentation: list[T.Augmentation | T.Transform] = []
+    assert mode in ["preprocess", "train", "val", "test"], f"Unknown mode: {mode}"
+    augmentation: list[T.Augmentation] = []
 
-    if cfg.INPUT.RESIZE_MODE == "none":
-        pass
-    elif cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
-        if mode == "train":
-            min_size = cfg.INPUT.MIN_SIZE_TRAIN
-            max_size = cfg.INPUT.MAX_SIZE_TRAIN
-            sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
-        elif mode == "val":
-            min_size = cfg.INPUT.MIN_SIZE_TRAIN
-            max_size = cfg.INPUT.MAX_SIZE_TRAIN
-            sample_style = "choice"
-        elif mode == "test":
-            min_size = cfg.INPUT.MIN_SIZE_TEST
-            max_size = cfg.INPUT.MAX_SIZE_TEST
-            sample_style = "choice"
+    if mode == "preprocess":
+        if cfg.PREPROCESS.RESIZE.RESIZE_MODE == "none":
+            augmentation.append(ResizeScaling(scale=1.0, target_dpi=cfg.PREPROCESS.DPI.TARGET_DPI))
+        elif cfg.PREPROCESS.RESIZE.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
+            min_size = cfg.PREPROCESS.RESIZE.MIN_SIZE
+            max_size = cfg.PREPROCESS.RESIZE.MAX_SIZE
+            sample_style = cfg.PREPROCESS.RESIZE.MIN_SIZE_SAMPLING
+            if cfg.PREPROCESS.RESIZE.RESIZE_MODE == "shortest_edge":
+                augmentation.append(ResizeShortestEdge(min_size, max_size, sample_style))
+            elif cfg.PREPROCESS.RESIZE.RESIZE_MODE == "longest_edge":
+                augmentation.append(ResizeLongestEdge(min_size, max_size, sample_style))
+        elif cfg.PREPROCESS.RESIZE.RESIZE_MODE == "scaling":
+            scaling = cfg.PREPROCESS.RESIZE.SCALING
+            max_size = cfg.PREPROCESS.RESIZE.MAX_SIZE
+            target_dpi = cfg.PREPROCESS.DPI.TARGET_DPI
+            augmentation.append(ResizeScaling(scaling, max_size, target_dpi=target_dpi))
         else:
-            raise NotImplementedError(f"Unknown mode: {mode}")
-        if cfg.INPUT.RESIZE_MODE == "shortest_edge":
-            augmentation.append(ResizeShortestEdge(min_size, max_size, sample_style))
-        elif cfg.INPUT.RESIZE_MODE == "longest_edge":
-            augmentation.append(ResizeLongestEdge(min_size, max_size, sample_style))
-    elif cfg.INPUT.RESIZE_MODE == "scaling":
-        if mode == "train":
-            max_size = cfg.INPUT.MAX_SIZE_TRAIN
-            scaling = cfg.INPUT.SCALING_TRAIN
-        elif mode == "val":
-            max_size = cfg.INPUT.MAX_SIZE_TRAIN
-            scaling = cfg.INPUT.SCALING_TRAIN
-        elif mode == "test":
-            max_size = cfg.INPUT.MAX_SIZE_TEST
-            scaling = cfg.INPUT.SCALING_TEST
-        else:
-            raise NotImplementedError(f"Unknown mode: {mode}")
-        augmentation.append(ResizeScaling(scaling, max_size))
+            raise NotImplementedError(f"{cfg.PREPROCESS.RESIZE.RESIZE_MODE} is not a known resize mode")
     else:
-        raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
+        if cfg.INPUT.RESIZE_MODE == "none":
+            augmentation.append(ResizeScaling(scale=1.0, target_dpi=cfg.INPUT.DPI.TARGET_DPI))
+        elif cfg.INPUT.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
+            if mode == "train":
+                min_size = cfg.INPUT.MIN_SIZE_TRAIN
+                max_size = cfg.INPUT.MAX_SIZE_TRAIN
+                sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
+            elif mode == "val":
+                min_size = cfg.INPUT.MIN_SIZE_TRAIN
+                max_size = cfg.INPUT.MAX_SIZE_TRAIN
+                sample_style = "choice"
+            elif mode == "test":
+                min_size = cfg.INPUT.MIN_SIZE_TEST
+                max_size = cfg.INPUT.MAX_SIZE_TEST
+                sample_style = "choice"
+            else:
+                raise NotImplementedError(f"Unknown mode: {mode}")
+            if cfg.INPUT.RESIZE_MODE == "shortest_edge":
+                augmentation.append(ResizeShortestEdge(min_size, max_size, sample_style))
+            elif cfg.INPUT.RESIZE_MODE == "longest_edge":
+                augmentation.append(ResizeLongestEdge(min_size, max_size, sample_style))
+        elif cfg.INPUT.RESIZE_MODE == "scaling":
+            if mode == "train":
+                max_size = cfg.INPUT.MAX_SIZE_TRAIN
+                scaling = cfg.INPUT.SCALING_TRAIN
+                target_dpi = cfg.INPUT.DPI.TARGET_DPI_TRAIN
+            elif mode == "val":
+                max_size = cfg.INPUT.MAX_SIZE_TRAIN
+                scaling = cfg.INPUT.SCALING_TRAIN
+                target_dpi = cfg.INPUT.DPI.TARGET_DPI_TRAIN
+            elif mode == "test":
+                max_size = cfg.INPUT.MAX_SIZE_TEST
+                scaling = cfg.INPUT.SCALING_TEST
+                target_dpi = cfg.INPUT.DPI.TARGET_DPI_TEST
+            else:
+                raise NotImplementedError(f"Unknown mode: {mode}")
+            augmentation.append(ResizeScaling(scaling, max_size, target_dpi=target_dpi))
+        else:
+            raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 
     if not mode == "train":
         return augmentation
 
-    # Moving pixels
+    # Crop
+    if cfg.INPUT.CROP.ENABLED:
+        augmentation.append(
+            RandomCrop_CategoryAreaConstraint(
+                crop_type=cfg.INPUT.CROP.TYPE,
+                crop_size=cfg.INPUT.CROP.SIZE,
+                single_category_max_area=cfg.INPUT.CROP.SINGLE_CATEGORY_MAX_AREA,
+            )
+        )
 
+    # Moving pixels
     augmentation.append(
         RandomApply(
             RandomAffine(
@@ -985,6 +1116,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
                     cfg.INPUT.AFFINE.SHEAR.PROBABILITY,
                     cfg.INPUT.AFFINE.SCALE.PROBABILITY,
                 ),
+                ignore_value=cfg.MODEL.SEM_SEG_HEAD.IGNORE_VALUE,
             ),
             prob=cfg.INPUT.AFFINE.PROBABILITY,
         )
@@ -995,6 +1127,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
             RandomElastic(
                 alpha=cfg.INPUT.ELASTIC_DEFORMATION.ALPHA,
                 sigma=cfg.INPUT.ELASTIC_DEFORMATION.SIGMA,
+                ignore_value=cfg.MODEL.SEM_SEG_HEAD.IGNORE_VALUE,
             ),
             prob=cfg.INPUT.ELASTIC_DEFORMATION.PROBABILITY,
         )
@@ -1076,16 +1209,6 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
             prob=cfg.INPUT.SATURATION.PROBABILITY,
         )
     )
-
-    # Crop
-    if cfg.INPUT.CROP.ENABLED:
-        augmentation.append(
-            RandomCrop_CategoryAreaConstraint(
-                crop_type=cfg.INPUT.CROP.TYPE,
-                crop_size=cfg.INPUT.CROP.SIZE,
-                single_category_max_area=cfg.INPUT.CROP.SINGLE_CATEGORY_MAX_AREA,
-            )
-        )
 
     return augmentation
 
