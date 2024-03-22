@@ -102,13 +102,7 @@ class PredictorGenPageWrapper:
         args.opts = ["TEST.WEIGHTS", str(weights_paths[0])]
 
         cfg = setup_cfg(args)
-        xml_regions = XMLRegions(
-            mode=cfg.MODEL.MODE,
-            line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
-            regions=cfg.PREPROCESS.REGION.REGIONS,
-            merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
-            region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
-        )
+        xml_regions = XMLRegions(cfg)
         self.gen_page = OutputPageXML(xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={})
 
         self.predictor = Predictor(cfg=cfg)
