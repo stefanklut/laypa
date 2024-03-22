@@ -357,13 +357,7 @@ class SavePredictor(Predictor):
 def main(args: argparse.Namespace) -> None:
     cfg = setup_cfg(args)
     setup_logging(cfg, save_log=False)
-    xml_regions = XMLRegions(
-        mode=cfg.MODEL.MODE,
-        line_width=cfg.PREPROCESS.BASELINE.LINE_WIDTH,
-        regions=cfg.PREPROCESS.REGION.REGIONS,
-        merge_regions=cfg.PREPROCESS.REGION.MERGE_REGIONS,
-        region_type=cfg.PREPROCESS.REGION.REGION_TYPE,
-    )
+    xml_regions = XMLRegions(cfg)
     output_page = OutputPageXML(
         xml_regions=xml_regions,
         output_dir=args.output,
