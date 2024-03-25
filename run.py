@@ -139,6 +139,7 @@ class Predictor(DefaultPredictor):
 
         Args:
             data (AugInput): image to run the model on
+            device (str): device to run the model on
 
         Returns:
             tuple[dict, int, int]: predictions, height, width
@@ -182,12 +183,13 @@ class Predictor(DefaultPredictor):
 
         return predictions, height, width
 
-    def __call__(self, data: AugInput, device: str = None):
+    def __call__(self, data: AugInput, device: str = None) -> tuple[dict, int, int]:
         """
         Run the model on the image with preprocessing
 
         Args:
             data (AugInput): image to run the model on
+            device (str): device to run the model on
         Returns:
             tuple[dict, int, int]: predictions, height, width
         """

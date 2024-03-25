@@ -125,7 +125,14 @@ exception_predict_counter = Counter("exception_predict", "Exception thrown in pr
 
 def safe_predict(data, device):
     """
-    Attempt to predict on the specified device, falling back to CPU on OOM.
+    Attempt to predict on the speci
+
+    Args:
+        data: Data to predict on
+        device: Device to predict on
+
+    Returns:
+        Prediction output
     """
 
     try:
