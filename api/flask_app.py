@@ -12,7 +12,7 @@ import torch
 from flask import Flask, Response, abort, jsonify, request
 from prometheus_client import Counter, Gauge, generate_latest
 
-sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))  # noqa: E402
 from datasets.mapper import AugInput
 from main import setup_cfg, setup_logging
 from page_xml.output_pageXML import OutputPageXML
@@ -123,6 +123,24 @@ images_processed_counter = Counter("images_processed", "Total number of images p
 exception_predict_counter = Counter("exception_predict", "Exception thrown in predict() function")
 
 
+def safe_predict(data, device):
+    """
+    Attempt to predict on the specified device, falling back to CPU on OOM.
+    """
+
+    try:
+        return predict_gen_page_wrapper.predictor(data, device)
+    except Exception as exception:
+        # Catch CUDA out of memory errors
+        if isinstance(exception, torch.cuda.OutOfMemoryError) or (
+            isinstance(exception, RuntimeError) and "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(exception)
+        ):
+            logger.warning("CUDA OOM encountered, falling back to CPU.")
+            torch.cuda.empty_cache()
+            torch.cuda.reset_peak_memory_stats()
+            return predict_gen_page_wrapper.predictor(data, "cpu")
+
+
 def predict_image(
     image: np.ndarray,
     dpi: Optional[int],
@@ -172,7 +190,7 @@ def predict_image(
             manual_dpi=predict_gen_page_wrapper.predictor.cfg.INPUT.DPI.MANUAL_DPI_TEST,
         )
 
-        outputs = predict_gen_page_wrapper.predictor(data)
+        outputs = safe_predict(data, device=predict_gen_page_wrapper.predictor.cfg.MODEL.DEVICE)
 
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()

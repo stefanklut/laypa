@@ -133,7 +133,7 @@ class Predictor(DefaultPredictor):
 
     #         return predictions, height, width
 
-    def cpu_call(self, data: AugInput) -> tuple[dict, int, int]:
+    def cpu_call(self, data: AugInput, device: str = None) -> tuple[dict, int, int]:
         """
         Run the model on the image with preprocessing on the cpu
 
@@ -143,13 +143,19 @@ class Predictor(DefaultPredictor):
         Returns:
             tuple[dict, int, int]: predictions, height, width
         """
+        logger = logging.getLogger(get_logger_name())
+
+        # Default value of device should be the one in the config
+        if device is None:
+            device = self.cfg.MODEL.DEVICE
+
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
 
             height, width, channels = data.image.shape
             assert channels == 3, f"Must be a RBG image, found {channels} channels"
             transform = self.aug(data)
-            image = torch.as_tensor(data.image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
+            image = torch.as_tensor(data.image, dtype=torch.float32, device=device).permute(2, 0, 1)
 
             if self.cfg.INPUT.FORMAT == "BGR":
                 # whether the model expects BGR inputs or RGB
@@ -157,11 +163,18 @@ class Predictor(DefaultPredictor):
 
             inputs = {"image": image, "height": image.shape[1], "width": image.shape[2]}
 
+            # If we predict on CPU, use full precision
+            precision = self.precision if device != "cpu" else torch.float32
+
             with torch.autocast(
-                device_type=self.cfg.MODEL.DEVICE,
+                device_type=device,
                 enabled=self.cfg.MODEL.AMP_TEST.ENABLED,
-                dtype=self.precision,
+                dtype=precision,
             ):
+                if next(self.model.parameters()).device != device:
+                    logger.info(f"Moving model to {device} device")
+                    self.model.to(device)
+
                 predictions = self.model([inputs])[0]
 
             # if torch.isnan(predictions["sem_seg"]).any():
@@ -169,7 +182,7 @@ class Predictor(DefaultPredictor):
 
         return predictions, height, width
 
-    def __call__(self, data: AugInput):
+    def __call__(self, data: AugInput, device: str = None):
         """
         Run the model on the image with preprocessing
 
@@ -185,7 +198,7 @@ class Predictor(DefaultPredictor):
         #     return self.gpu_call(original_image)
         # else:
         #     raise TypeError(f"Unknown image type: {type(original_image)}")
-        return self.cpu_call(data)
+        return self.cpu_call(data, device)
 
 
 class LoadingDataset(Dataset):
