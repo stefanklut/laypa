@@ -53,7 +53,7 @@ def get_git_hash() -> str:
 
     if version_path.is_file():
         with version_path.open(mode="r") as file:
-            git_hash = file.read()
+            git_hash = file.read().strip()
     else:
         git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent).strip().decode()
     return git_hash

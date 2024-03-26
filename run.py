@@ -148,6 +148,7 @@ class Predictor(DefaultPredictor):
 
             height, width, channels = data.image.shape
             assert channels == 3, f"Must be a RBG image, found {channels} channels"
+            # In place augmentation
             transform = self.aug(data)
             image = torch.as_tensor(data.image, dtype=torch.float32, device=self.cfg.MODEL.DEVICE).permute(2, 0, 1)
 
