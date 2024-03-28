@@ -136,10 +136,13 @@
 **/.idea/
 
 # GIT
-#**/.git/
+**/.git/
 
 # Output
 **/output/
 
 # Tutorial
 **/tutorial/
+
+# Pretrained models
+**/pretrained_models/

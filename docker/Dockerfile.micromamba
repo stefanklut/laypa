@@ -7,9 +7,9 @@ RUN apt-get update -y && \
     apt-get dist-upgrade -y && \
     apt-get clean -y && \
     apt-get install -y \
-        apt-utils git wget \
-        ninja-build gcc g++ \
-        ffmpeg libsm6 libxext6 && \
+    apt-utils git wget \
+    ninja-build gcc g++ \
+    ffmpeg libsm6 libxext6 libegl1 libopengl0 && \
     apt-get clean -y && \
     apt-get autoremove -y
 
@@ -20,10 +20,11 @@ COPY laypa.micromamba/ laypa/
 # RUN git clone https://github.com/stefanklut/laypa.git
 
 WORKDIR /src/laypa
-# RUN micromamba update -y --all
-# RUN micromamba init bash
+# Removing the nsight-compute folder as it is not needed for runtime
 RUN micromamba create -y -n laypa -f environment.yml && \
-    micromamba clean -y --all --force-pkgs-dirs
+    micromamba clean -y --all --force-pkgs-dirs && \
+    rm -r /opt/conda/envs/laypa/nsight*
+
 
 ARG MAMBA_DOCKERFILE_ACTIVATE=1
 ENV ENV_NAME=laypa
@@ -31,7 +32,7 @@ ENV ENV_NAME=laypa
 # Fix cuda permissions with the docker
 # RUN chmod go+rx /opt/conda/envs/laypa/pkgs/cuda-toolkit/
 # Fix git permissions with the docker
-RUN git config --system --add safe.directory /src/laypa
+# RUN git config --system --add safe.directory /src/laypa
 
 # RUN conda install -y mamba -n base -c conda-forge
 # RUN mamba update -y --all

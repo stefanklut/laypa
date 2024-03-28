@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Created by argbash-init v2.10.0
 # ARG_POSITIONAL_SINGLE([laypa_dir],[Directory of the Laypa code],[])
