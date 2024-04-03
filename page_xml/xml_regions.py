@@ -1,5 +1,7 @@
 import argparse
-from typing import Optional
+from typing import Any, Optional
+
+from detectron2.config import CfgNode, configurable
 
 
 class XMLRegions:
@@ -7,6 +9,7 @@ class XMLRegions:
     Base for Methods that need to load XML regions
     """
 
+    @configurable
     def __init__(
         self,
         mode: str,
@@ -50,6 +53,26 @@ class XMLRegions:
 
             self._regions = self._build_regions()
             self.line_width = line_width
+
+    @classmethod
+    def from_config(cls, cfg: CfgNode) -> dict[str, Any]:
+        """
+        Converts a configuration object to a dictionary to be used as keyword arguments.
+
+        Args:
+            cfg (CfgNode): The configuration object.
+
+        Returns:
+            dict[str, Any]: A dictionary containing the converted configuration values.
+        """
+        ret = {
+            "mode": cfg.MODEL.MODE,
+            "line_width": cfg.PREPROCESS.BASELINE.LINE_WIDTH,
+            "regions": cfg.PREPROCESS.REGION.REGIONS,
+            "merge_regions": cfg.PREPROCESS.REGION.MERGE_REGIONS,
+            "region_type": cfg.PREPROCESS.REGION.REGION_TYPE,
+        }
+        return ret
 
     # REVIEW is this the best place for this
     @classmethod

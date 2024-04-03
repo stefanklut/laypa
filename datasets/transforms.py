@@ -215,15 +215,17 @@ class WarpFieldTransform(T.Transform):
     Apply a warp field (optical flow) to an image
     """
 
-    def __init__(self, warpfield: np.ndarray) -> None:
+    def __init__(self, warpfield: np.ndarray, ignore_value=255) -> None:
         """
         Apply a warp field (optical flow) to an image
 
         Args:
             warpfield (np.ndarray): flow of pixels in the image
+            ignore_value (int, optional): value to ignore in the segmentation. Defaults to 255.
         """
         super().__init__()
         self.warpfield = warpfield
+        self.ignore_value = ignore_value
 
     @staticmethod
     def generate_grid(img: np.ndarray, warpfield: np.ndarray) -> np.ndarray:
@@ -293,9 +295,13 @@ class WarpFieldTransform(T.Transform):
         """
         indices = self.generate_grid(segmentation, self.warpfield)
         # cval=0 means background cval=255 means ignored
-        sampled_segmentation = map_coordinates(segmentation, indices, order=0, mode="constant", cval=0).reshape(
-            segmentation.shape
-        )
+        sampled_segmentation = map_coordinates(
+            segmentation,
+            indices,
+            order=0,
+            mode="constant",
+            cval=self.ignore_value,
+        ).reshape(segmentation.shape)
 
         return sampled_segmentation
 
@@ -311,15 +317,17 @@ class AffineTransform(T.Transform):
     Apply an affine transformation to an image
     """
 
-    def __init__(self, matrix: np.ndarray) -> None:
+    def __init__(self, matrix: np.ndarray, ignore_value=255) -> None:
         """
         Apply an affine transformation to an image
 
         Args:
             matrix (np.ndarray): affine matrix applied to the pixels in image
+            ignore_value (int, optional): value to ignore in the segmentation. Defaults to 255.
         """
         super().__init__()
         self.matrix = matrix
+        self.ignore_value = ignore_value
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
         """
@@ -361,9 +369,13 @@ class AffineTransform(T.Transform):
         Returns:
             np.ndarray: transformed segmentation
         """
-        # cval=0 means background cval=255 means ignored
+        # borderValue=0 means background, borderValue=255 means ignored
         return cv2.warpAffine(
-            segmentation, self.matrix[:2, :], (segmentation.shape[1], segmentation.shape[0]), flags=cv2.INTER_NEAREST
+            segmentation,
+            self.matrix[:2, :],
+            (segmentation.shape[1], segmentation.shape[0]),
+            flags=cv2.INTER_NEAREST,
+            borderValue=self.ignore_value,
         )
 
     def inverse(self) -> T.Transform:

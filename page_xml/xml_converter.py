@@ -2,13 +2,16 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Optional, TypedDict
+from typing import Any, Optional, TypedDict
 
 import cv2
 import numpy as np
 from detectron2 import structures
+from detectron2.config import configurable
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from detectron2.config import CfgNode
+
 from page_xml.pageXML_parser import PageXMLParser
 from page_xml.xml_regions import XMLRegions
 from utils.logging_utils import get_logger_name
@@ -60,20 +63,39 @@ class XMLConverter:
     Class for turning a pageXML into ground truth with classes (for segmentation)
     """
 
+    @configurable
     def __init__(
         self,
         xml_regions: XMLRegions,
         square_lines: bool = True,
     ) -> None:
         """
-        Class for turning a pageXML into an image with classes
+        Initializes an instance of the XMLConverter class.
 
         Args:
-            xml_regions (XMLRegions): helps to convert page xml regions to images
+            xml_regions (XMLRegions): An instance of the XMLRegions class that helps to convert page xml regions to images.
+            square_lines (bool, optional): A boolean value indicating whether to square the lines in the image. Defaults to True.
         """
         self.logger = logging.getLogger(get_logger_name())
         self.xml_regions = xml_regions
         self.square_lines = square_lines
+
+    @classmethod
+    def from_config(cls, cfg: CfgNode) -> dict[str, Any]:
+        """
+        Converts a configuration object to a dictionary to be used as keyword arguments.
+
+        Args:
+            cfg (CfgNode): The configuration object.
+
+        Returns:
+            dict[str, Any]: A dictionary containing the converted configuration values.
+        """
+        ret = {
+            "xml_regions": XMLRegions(cfg),
+            "square_lines": cfg.PREPROCESS.BASELINE.SQUARE_LINES,
+        }
+        return ret
 
     @staticmethod
     def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]) -> np.ndarray:
@@ -147,6 +169,9 @@ class XMLConverter:
     ## REGIONS
 
     def build_region_instances(self, page: PageXMLParser, out_size: tuple[int, int], elements, class_dict) -> list[Instance]:
+        """
+        Create the instance version of the regions
+        """
         size = page.get_size()
         instances = []
         for element in elements:

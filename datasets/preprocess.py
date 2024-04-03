@@ -3,11 +3,13 @@ import json
 import logging
 import os
 import sys
+from collections import Counter, defaultdict
 from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
 import cv2
+import detectron2.data.transforms as T
 import imagesize
 import numpy as np
 from tqdm import tqdm
@@ -15,7 +17,16 @@ from tqdm import tqdm
 # from multiprocessing.pool import ThreadPool as Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from datasets.augmentations import ResizeLongestEdge, ResizeScaling, ResizeShortestEdge
+from detectron2.config import CfgNode, configurable
+
+from datasets.augmentations import (
+    Augmentation,
+    ResizeLongestEdge,
+    ResizeScaling,
+    ResizeShortestEdge,
+    build_augmentation,
+)
+from datasets.mapper import AugInput
 from page_xml.xml_converter import XMLConverter
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
@@ -47,40 +58,40 @@ class Preprocess:
     Used for almost all preprocessing steps to prepare datasets to be used by the training loop
     """
 
+    @configurable
     def __init__(
         self,
-        input_paths=None,
-        output_dir=None,
-        resize_mode="none",
-        resize_sampling="choice",
-        scaling=0.5,
-        min_size=[1024],
-        max_size=2048,
-        xml_converter=None,
-        disable_check=False,
-        overwrite=False,
+        augmentations: list[Augmentation],
+        input_paths: Optional[Sequence[Path]] = None,
+        output_dir: Optional[Path] = None,
+        xml_converter: Optional[XMLConverter] = None,
+        n_classes: Optional[int] = None,
+        disable_check: bool = False,
+        overwrite: bool = False,
+        auto_dpi: bool = True,
+        default_dpi: Optional[int] = None,
+        manual_dpi: Optional[int] = None,
     ) -> None:
         """
-        Used for almost all preprocessing steps to prepare datasets to be used by the training loop
+        Initializes the Preprocessor object.
 
         Args:
-            input_paths (Sequence[Path], optional): the used input dir/files to generate the dataset. Defaults to None.
-            output_dir (Path, optional): the destination dir of the generated dataset. Defaults to None.
-            resize_mode (str, optional): resize images before saving. Defaults to none.
-            resize_sampling (str, optional): sample type used when resizing. Defaults to "choice".
-            min_size (list, optional): when resizing, the length the shortest edge is resized to. Defaults to [1024].
-            max_size (int, optional): when resizing, the max length a side may have. Defaults to 2048.
-            xml_converter (XMLConverter, optional): converter to convert xml to image. Defaults to None.
-            disable_check (bool, optional): flag to turn of filesystem checks, useful if run was already successful once. Defaults to False.
-            overwrite (bool, optional): flag to force overwrite of images. Defaults to False.
+            augmentations (list[Augmentation]): List of augmentations to be applied during preprocessing.
+            input_paths (Sequence[Path], optional): The input directory or files used to generate the dataset. Defaults to None.
+            output_dir (Path, optional): The destination directory of the generated dataset. Defaults to None.
+            xml_converter (XMLConverter, optional): The converter used to convert XML to image. Defaults to None.
+            n_classes (int, optional): The number of classes in the dataset. Defaults to None.
+            disable_check (bool, optional): Flag to turn off filesystem checks. Defaults to False.
+            overwrite (bool, optional): Flag to force overwrite of images. Defaults to False.
+            auto_dpi (bool, optional): Flag to automatically determine the DPI of the images. Defaults to True.
+            default_dpi (int, optional): The default DPI to be used for resizing images. Defaults to None.
+            manual_dpi (int, optional): The manually specified DPI to be used for resizing images. Defaults to None.
 
         Raises:
-            TypeError: Did not provide a XMLImage object to convert from XML to image
-            ValueError: If resize mode is choice must provide the min size with 2 or more values
-            ValueError: If resize mode is range must provide the min size with 2 values
-            NotImplementedError: resize mode given is not
-        """
+            TypeError: If xml_converter is not an instance of XMLConverter.
+            AssertionError: If the number of specified regions does not match the number of specified classes.
 
+        """
         self.logger = logging.getLogger(get_logger_name())
 
         self.input_paths: Optional[Sequence[Path]] = None
@@ -97,22 +108,50 @@ class Preprocess:
 
         self.xml_converter = xml_converter
 
+        if n_classes is not None:
+            assert (n_regions := len(xml_converter.xml_regions.regions)) == (
+                n_classes
+            ), f"Number of specified regions ({n_regions}) does not match the number of specified classes ({n_classes})"
+
         self.overwrite = overwrite
 
-        self.resize_mode = resize_mode
-        self.scaling = scaling
-        self.resize_sampling = resize_sampling
-        self.min_size = min_size
-        self.max_size = max_size
+        self.augmentations = augmentations
 
-        if self.resize_sampling == "choice":
-            if len(self.min_size) < 1:
-                raise ValueError("Must specify at least one choice when using the choice option.")
-        elif self.resize_sampling == "range":
-            if len(self.min_size) != 2:
-                raise ValueError("Must have two int to set the range")
-        else:
-            raise NotImplementedError('Only "choice" and "range" are accepted values')
+        self.auto_dpi = auto_dpi
+        self.default_dpi = default_dpi
+        self.manual_dpi = manual_dpi
+
+    @classmethod
+    def from_config(
+        cls,
+        cfg: CfgNode,
+        input_paths: Optional[Sequence[Path]] = None,
+        output_dir: Optional[Path] = None,
+    ) -> dict[str, Any]:
+        """
+        Converts a configuration object to a dictionary to be used as keyword arguments.
+
+        Args:
+            cfg (CfgNode): The configuration object.
+            input_paths (Optional[Sequence[Path]], optional): The input directory or files used to generate the dataset. Defaults to None.
+            output_dir (Optional[Path], optional): The destination directory of the generated dataset. Defaults to None.
+
+        Returns:
+            dict[str, Any]: A dictionary containing the converted configuration values.
+        """
+        ret = {
+            "augmentations": build_augmentation(cfg, "preprocess"),
+            "input_paths": input_paths,
+            "output_dir": output_dir,
+            "xml_converter": XMLConverter(cfg),
+            "n_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
+            "disable_check": cfg.PREPROCESS.DISABLE_CHECK,
+            "overwrite": cfg.PREPROCESS.OVERWRITE,
+            "auto_dpi": cfg.PREPROCESS.DPI.AUTO_DETECT,
+            "default_dpi": cfg.PREPROCESS.DPI.DEFAULT_DPI,
+            "manual_dpi": cfg.PREPROCESS.DPI.MANUAL_DPI,
+        }
+        return ret
 
     @classmethod
     def get_parser(cls) -> argparse.ArgumentParser:
@@ -151,32 +190,71 @@ class Preprocess:
 
         pre_process_args.add_argument("--overwrite", action="store_true", help="Overwrite the images and label masks")
 
+        pre_process_args.add_argument("--auto_dpi", action="store_true", help="Automatically detect DPI")
+        pre_process_args.add_argument("--default_dpi", type=int, help="Default DPI")
+        pre_process_args.add_argument("--manual_dpi", type=int, help="Manually set DPI")
+
         return parser
 
-    def set_input_paths(self, input_paths: str | Path | Sequence[str | Path]) -> None:
+    def set_input_paths(
+        self,
+        input_paths: str | Path | Sequence[str | Path],
+        ignore_duplicates: bool = False,
+    ) -> None:
         """
         Setter of the input paths, turn string to path. And resolve full path
 
         Args:
             input_paths (str | Path | Sequence[str  |  Path]): path(s) from which to extract the images
+            ignore_duplicates (bool, optional): Ignore duplicate names in the input paths. Defaults to False.
         """
         input_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
-        names = set(path.name for path in input_paths)
-        duplicates = {}
-        for path in input_paths:
-            if path.name in names:
-                if path.name in duplicates:
-                    duplicates[path.name].append(path)
-                else:
-                    duplicates[path.name] = [path]
-        if duplicates:
-            number_of_duplicates = {name: len(paths) for name, paths in duplicates.items()}
-            total_duplicates = sum(number_of_duplicates.values())
-            raise ValueError(
-                f"Found duplicate names in input paths: {duplicates} \n Duplicates {total_duplicates}/{len(input_paths)} images"
-            )
+        if not ignore_duplicates:
+            self.check_duplicates(input_paths)
 
         self.input_paths = input_paths
+
+    def check_duplicates(
+        self,
+        input_paths: Sequence[Path],
+    ) -> None:
+        """
+        Check for duplicate names in a list of input paths.
+
+        Args:
+            input_paths (Sequence[Path]): A sequence of Path objects representing the input paths.
+
+        Raises:
+            ValueError: If duplicate names are found in the input paths.
+        """
+        count_duplicates_names = Counter([path.name for path in input_paths])
+        duplicates = defaultdict(list)
+        for path in input_paths:
+            if count_duplicates_names[path.name] > 1:
+                duplicates[path.name].append(path)
+        if duplicates:
+            total_duplicates = sum(count_duplicates_names[name] for name in duplicates.keys())
+            count_per_dir = Counter([path.parent for path in input_paths])
+            duplicates_in_dir = defaultdict(int)
+            duplicates_makeup = defaultdict(lambda: defaultdict(int))
+            for name, paths in duplicates.items():
+                for path in paths:
+                    duplicates_in_dir[path.parent] += 1
+                    for other_path in duplicates[name]:
+                        if other_path.parent != path.parent:
+                            duplicates_makeup[path.parent][other_path.parent] += 1
+            duplicate_warning = "Duplicates found in the following directories:\n"
+            for dir_path, count in count_per_dir.items():
+                duplicate_warning += f"Directory: {dir_path} Count: {duplicates_in_dir.get(dir_path, 0)}/{count}\n"
+                if dir_path in duplicates_makeup:
+                    duplicate_warning += "Shared Duplicates:"
+                    for other_dir, makeup_count in duplicates_makeup[dir_path].items():
+                        duplicate_warning += f"\n\t{other_dir} Count: {makeup_count}/{count}"
+                    duplicate_warning += "\n"
+            self.logger.warning(duplicate_warning.strip())
+            raise ValueError(
+                f"Found duplicate names in input paths. \n\tDuplicates: {total_duplicates}/{len(input_paths)} \n\tTotal unique names: {len(count_duplicates_names)}"
+            )
 
     def get_input_paths(self) -> Optional[Sequence[Path]]:
         """
@@ -222,83 +300,43 @@ class Preprocess:
         """
         all(check_path_accessible(path) for path in paths)
 
-    def sample_edge_length(self):
-        """
-        Samples the shortest edge for resizing
-
-        Raises:
-            NotImplementedError: not choice or sample for resize mode
-
-        Returns:
-            int: shortest edge length
-        """
-        if self.resize_sampling == "range":
-            short_edge_length = np.random.randint(self.min_size[0], self.min_size[1] + 1)
-        elif self.resize_sampling == "choice":
-            short_edge_length = np.random.choice(self.min_size)
-        else:
-            raise NotImplementedError('Only "choice" and "range" are accepted values')
-
-        return short_edge_length
-
-    def get_output_shape(self, old_height, old_width) -> tuple[int, int]:
-        """
-        Compute the output size given input size and target short edge length.
-
-        Returns:
-            tuple[int, int]: height and width
-        """
-        if self.resize_mode == "none":
-            return old_height, old_width
-        elif self.resize_mode in ["shortest_edge", "longest_edge"]:
-            edge_length = self.sample_edge_length()
-            if edge_length == 0:
-                return old_height, old_width
-            if self.resize_mode == "shortest_edge":
-                return ResizeShortestEdge.get_output_shape(old_height, old_width, edge_length, self.max_size)
-            else:
-                return ResizeLongestEdge.get_output_shape(old_height, old_width, edge_length, self.max_size)
-        elif self.resize_mode == "scaling":
-            return ResizeScaling.get_output_shape(old_height, old_width, self.scaling, self.max_size)
-        else:
-            raise NotImplementedError(f"{self.resize_mode} is not a known resize mode")
-
-    def resize_image(self, image: np.ndarray, image_shape: Optional[tuple[int, int]] = None) -> np.ndarray:
-        """
-        Resize image. If image size is given resize to given value. Otherwise sample the shortest edge and resize to the calculated output shape
-
-        Args:
-            image (np.ndarray): image array HxWxC
-            image_shape (Optional[tuple[int, int]], optional): desired output shape. Defaults to None.
-
-        Returns:
-            np.ndarray: resized image
-        """
-        old_height, old_width, channels = image.shape
-
-        if image_shape is not None:
-            height, width = image_shape
-        else:
-            height, width = self.get_output_shape(old_height, old_width)
-
-        resized_image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)
-
-        return resized_image
-
     def save_image(
         self,
         image_path: Path,
         image_stem: str,
+        original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
+        """
+        Save an image to the output directory.
+
+        Args:
+            image_path (Path): The path to the original image file.
+            image_stem (str): The stem of the image file name.
+            original_image_shape (tuple[int, int]): The original shape of the image.
+            image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            str: The relative path of the saved image file.
+
+        Raises:
+            TypeError: If the output directory is None.
+            TypeError: If the image loading fails.
+        """
+
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
+
         image_dir = self.output_dir.joinpath("original")
-        if self.resize_mode == "none":
+
+        copy_image = True if original_image_shape == image_shape else False
+
+        if copy_image:
             out_image_path = image_dir.joinpath(image_path.name)
         else:
             out_image_path = image_dir.joinpath(image_stem + ".png")
-        # Check if image already exist and if it doesn't need resizing
+
+        # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_image_path.exists():
             out_image_shape = imagesize.get(out_image_path)[::-1]
             if out_image_shape == image_shape:
@@ -306,27 +344,53 @@ class Preprocess:
 
         image_dir.mkdir(parents=True, exist_ok=True)
 
-        if self.resize_mode == "none":
+        if copy_image:
             copy_mode(image_path, out_image_path, mode="link")
         else:
-            image = load_image_array_from_path(image_path)
-
-            if image is None:
+            data = load_image_array_from_path(image_path)
+            if data is None:
                 raise TypeError(f"Image {image_path} is None, loading failed")
-            image = self.resize_image(image, image_shape=image_shape)
-            save_image_array_to_path(out_image_path, image)
+            aug_input = AugInput(
+                data["image"],
+                dpi=data["dpi"],
+                auto_dpi=self.auto_dpi,
+                default_dpi=self.default_dpi,
+                manual_dpi=self.manual_dpi,
+            )
+            transforms = T.AugmentationList(self.augmentations)(aug_input)
+            save_image_array_to_path(out_image_path, aug_input.image.astype(np.uint8))
 
         return str(out_image_path.relative_to(self.output_dir))
 
     def save_sem_seg(
-        self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]
+        self,
+        xml_path: Path,
+        image_stem: str,
+        original_image_shape: tuple[int, int],
+        image_shape: tuple[int, int],
     ):
+        """
+        Save the semantic segmentation mask for an image.
+
+        Args:
+            xml_path (Path): The path to the XML file containing the semantic segmentation annotations.
+            image_stem (str): The stem of the image file name.
+            original_image_shape (tuple[int, int]): The original shape of the image.
+            image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            str: The relative path to the saved semantic segmentation mask.
+
+        Raises:
+            TypeError: If the output directory is None.
+
+        """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         sem_seg_dir = self.output_dir.joinpath("sem_seg")
         out_sem_seg_path = sem_seg_dir.joinpath(image_stem + ".png")
 
-        # Check if image already exist and if it doesn't need resizing
+        # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_sem_seg_path.exists():
             out_sem_seg_shape = imagesize.get(out_sem_seg_path)[::-1]
             if out_sem_seg_shape == image_shape:
@@ -343,15 +407,35 @@ class Preprocess:
         return str(out_sem_seg_path.relative_to(self.output_dir))
 
     def save_instances(
-        self, xml_path: Path, image_stem: str, original_image_shape: tuple[int, int], image_shape: tuple[int, int]
+        self,
+        xml_path: Path,
+        image_stem: str,
+        original_image_shape: tuple[int, int],
+        image_shape: tuple[int, int],
     ):
+        """
+        Save instances to JSON file.
+
+        Args:
+            xml_path (Path): The path to the XML file containing instance annotations.
+            image_stem (str): The stem of the image file name.
+            original_image_shape (tuple[int, int]): The original shape of the image.
+            image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            str: The relative path to the saved instances JSON file.
+
+        Raises:
+            ValueError: If the output directory is not set.
+
+        """
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         instances_dir = self.output_dir.joinpath("instances")
         out_instances_path = instances_dir.joinpath(image_stem + ".json")
         out_instances_size_path = instances_dir.joinpath(image_stem + ".txt")
 
-        # Check if image already exist and if it doesn't need resizing
+        # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_instances_path.exists() and out_instances_size_path.exists():
             with out_instances_size_path.open(mode="r") as f:
                 out_intstances_shape = tuple(int(x) for x in f.read().strip().split(","))
@@ -381,6 +465,22 @@ class Preprocess:
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
+        """
+        Save panoramic image and segments information to the output directory.
+
+        Args:
+            xml_path (Path): The path to the XML file.
+            image_stem (str): The stem of the image file name.
+            original_image_shape (tuple[int, int]): The original shape of the image.
+            image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            Tuple[str, str]: A tuple containing the relative paths of the saved panoramic image and segments information.
+
+        Raises:
+            TypeError: If the output directory is None.
+
+        """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         panos_dir = self.output_dir.joinpath("panos")
@@ -388,7 +488,7 @@ class Preprocess:
         out_pano_path = panos_dir.joinpath(image_stem + ".png")
         out_segments_info_path = panos_dir.joinpath(image_stem + ".json")
 
-        # Check if image already exist and if it doesn't need resizing
+        # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_pano_path.exists():
             out_pano_shape = imagesize.get(out_pano_path)[::-1]
             if out_pano_shape == image_shape:
@@ -429,16 +529,22 @@ class Preprocess:
         xml_path = image_path_to_xml_path(image_path, self.disable_check)
         # xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
 
-        original_image_shape = tuple(int(value) for value in imagesize.get(image_path)[::-1])
-        if self.resize_mode != "none":
-            image_shape = self.get_output_shape(old_height=original_image_shape[0], old_width=original_image_shape[1])
-        else:
-            image_shape = original_image_shape
+        _original_image_shape = imagesize.get(image_path)
+        original_image_shape = int(_original_image_shape[1]), int(_original_image_shape[0])
+        original_image_dpi = imagesize.getDPI(image_path)
+        original_image_dpi = None if original_image_dpi == (-1, -1) else original_image_dpi
+        if original_image_dpi is not None:
+            assert len(original_image_dpi) == 2, f"Invalid DPI: {original_image_dpi}"
+            assert original_image_dpi[0] == original_image_dpi[1], f"Non-square DPI: {original_image_dpi}"
+            original_image_dpi = original_image_dpi[0]
+        image_shape = self.augmentations[0].get_output_shape(
+            original_image_shape[0], original_image_shape[1], dpi=original_image_dpi
+        )
 
         results = {}
         results["original_image_paths"] = str(image_path)
 
-        out_image_path = self.save_image(image_path, image_stem, image_shape)
+        out_image_path = self.save_image(image_path, image_stem, original_image_shape, image_shape)
         if out_image_path is not None:
             results["image_paths"] = out_image_path
 
@@ -546,16 +652,35 @@ def main(args) -> None:
         region_type=args.region_type,
     )
     xml_converter = XMLConverter(xml_regions, args.square_lines)
+
+    resize_mode = args.resize_mode
+    resize_sampling = args.resize_sampling
+    min_size = args.min_size
+    max_size = args.max_size
+    scaling = args.scaling
+
+    augmentations = []
+    if resize_mode == "none":
+        augmentations.append(ResizeScaling(scale=1))
+    elif resize_mode == "shortest_edge":
+        augmentations.append(ResizeShortestEdge(min_size=min_size, max_size=max_size, sample_style=resize_sampling))
+    elif resize_mode == "longest_edge":
+        augmentations.append(ResizeLongestEdge(min_size=min_size, max_size=max_size, sample_style=resize_sampling))
+    elif resize_mode == "scaling":
+        augmentations.append(ResizeScaling(scale=scaling, max_size=max_size))
+    else:
+        raise NotImplementedError(f"Resize mode {resize_mode} not implemented")
+
     process = Preprocess(
+        augmentations=augmentations,
         input_paths=args.input,
         output_dir=args.output,
-        resize_mode=args.resize_mode,
-        resize_sampling=args.resize_sampling,
-        min_size=args.min_size,
-        max_size=args.max_size,
         xml_converter=xml_converter,
         disable_check=args.disable_check,
         overwrite=args.overwrite,
+        auto_dpi=args.auto_dpi,
+        default_dpi=args.default_dpi,
+        manual_dpi=args.manual_dpi,
     )
     process.run()
 
