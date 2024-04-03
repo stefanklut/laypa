@@ -29,28 +29,27 @@ class XMLRegions:
             region_types (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
         self.mode = mode
-        if self.mode == "region":
-            assert regions is not None
+        assert regions is not None
 
-            self._regions = []
-            self._merge_regions: dict[str, str] = {}
-            self._region_type: dict[str, str] = {}
+        self._regions = []
+        self._merge_regions: dict[str, str] = {}
+        self._region_type: dict[str, str] = {}
 
-            self._regions_internal = []
-            self._merge_regions_internal = None
-            self._region_type_internal = None
+        self._regions_internal = []
+        self._merge_regions_internal = None
+        self._region_type_internal = None
 
-            # regions: list of type names (required for lookup)
-            # merge_regions: regions to be merged. r1:r2,r3  -> r2 and r3 become region r1
-            # region_type: type per_region. t1:r1,r2  -> r1 and r2 become type t1
-            self.regions = regions
-            self.region_types = region_type
-            self.merged_regions = merge_regions
-        else:
-            assert line_width is not None
+        # regions: list of type names (required for lookup)
+        # merge_regions: regions to be merged. r1:r2,r3  -> r2 and r3 become region r1
+        # region_type: type per_region. t1:r1,r2  -> r1 and r2 become type t1
+        self.regions = regions
+        self.region_types = region_type
+        self.merged_regions = merge_regions
 
-            self._regions = self._build_regions()
-            self.line_width = line_width
+        assert line_width is not None
+
+        self._regions = self._build_regions()
+        self.line_width = line_width
 
     @classmethod
     def from_config(cls, cfg: CfgNode) -> dict[str, Any]:
@@ -105,7 +104,6 @@ class XMLRegions:
             "-m",
             "--mode",
             default="region",
-            choices=["baseline", "region", "start", "end", "separator", "baseline_separator"],
             type=str,
             help="Output mode",
         )
@@ -227,7 +225,7 @@ class XMLRegions:
             list[str]: the names of all the classes currently used
         """
         remaining_regions = ["background"]
-        if self.mode == "region":
+        if self.mode == "region" or self.mode == "class_baseline":
             removed_regions = set()
             if self.merged_regions is not None:
                 for values in self.merged_regions.values():

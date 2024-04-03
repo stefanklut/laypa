@@ -182,9 +182,28 @@ class PageData:
             if len(split_str_coords) == 0:
                 continue
             if len(split_str_coords) == 1:
-                split_str_coords = split_str_coords * 2  # double for polyline
+                split_str_coords = split_str_coords * 2  # double for cv2.polyline
             coords = np.array([i.split(",") for i in split_str_coords]).astype(np.int32)
             yield coords
+
+    def iter_class_baseline_coords(self, element, class_dict):
+        for class_node in self._iter_element(element):
+            element_type = self.get_region_type(class_node)
+            if element_type is None or element_type not in class_dict:
+                self.logger.warning(f'Element type "{element_type}" undefined in class dict {self.filepath}')
+                continue
+            element_class = class_dict[element_type]
+            for baseline_node in class_node.iterfind("".join([".//", self.base, "Baseline"])):
+                str_coords = baseline_node.attrib.get("points")
+                if str_coords is None:
+                    continue
+                split_str_coords = str_coords.split()
+                if len(split_str_coords) == 0:
+                    continue
+                if len(split_str_coords) == 1:
+                    split_str_coords = split_str_coords * 2  # double for cv2.polyline
+                coords = np.array([i.split(",") for i in split_str_coords]).astype(np.int32)
+                yield element_class, coords
 
     def iter_text_line_coords(self):
         for node in self._iter_element("TextLine"):
