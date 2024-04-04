@@ -173,9 +173,7 @@ class Predictor(DefaultPredictor):
                 enabled=self.cfg.MODEL.AMP_TEST.ENABLED,
                 dtype=precision,
             ):
-                if next(self.model.parameters()).device != device:
-                    logger.info(f"Moving model to {device} device")
-                    self.model.to(device)
+                self.model.to(device)
 
                 predictions = self.model([inputs])[0]
 
