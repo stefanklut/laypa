@@ -29,27 +29,28 @@ class XMLRegions:
             region_types (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
         self.mode = mode
-        assert regions is not None
+        if mode == "region" or mode == "class_baseline":
+            assert regions is not None
 
-        self._regions = []
-        self._merge_regions: dict[str, str] = {}
-        self._region_type: dict[str, str] = {}
+            self._regions = []
+            self._merge_regions: dict[str, str] = {}
+            self._region_type: dict[str, str] = {}
 
-        self._regions_internal = []
-        self._merge_regions_internal = None
-        self._region_type_internal = None
+            self._regions_internal = []
+            self._merge_regions_internal = None
+            self._region_type_internal = None
 
-        # regions: list of type names (required for lookup)
-        # merge_regions: regions to be merged. r1:r2,r3  -> r2 and r3 become region r1
-        # region_type: type per_region. t1:r1,r2  -> r1 and r2 become type t1
-        self.regions = regions
-        self.region_types = region_type
-        self.merged_regions = merge_regions
+            # regions: list of type names (required for lookup)
+            # merge_regions: regions to be merged. r1:r2,r3  -> r2 and r3 become region r1
+            # region_type: type per_region. t1:r1,r2  -> r1 and r2 become type t1
+            self.regions = regions
+            self.region_types = region_type
+            self.merged_regions = merge_regions
+        if mode != "region":
+            assert line_width is not None
 
-        assert line_width is not None
-
-        self._regions = self._build_regions()
-        self.line_width = line_width
+            self._regions = self._build_regions()
+            self.line_width = line_width
 
     @classmethod
     def from_config(cls, cfg: CfgNode) -> dict[str, Any]:
