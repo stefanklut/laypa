@@ -7,13 +7,13 @@ from typing import Any, Optional, TypedDict
 import cv2
 import numpy as np
 from detectron2 import structures
-from detectron2.config import configurable
+from detectron2.config import CfgNode, configurable
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from detectron2.config import CfgNode
 
 from page_xml.xml_regions import XMLRegions
 from page_xml.xmlPAGE import PageData
+from utils.image_utils import save_image_array_to_path
 from utils.logging_utils import get_logger_name
 from utils.vector_utils import (
     point_at_start_or_end_assignment,
@@ -394,6 +394,24 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains baseline sem_seg")
         return sem_seg
 
+    # CLASS BASELINES
+
+    def build_class_baseline_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int, elements, class_dict):
+        size = page.get_size()
+        sem_seg = np.zeros(out_size, np.uint8)
+        total_overlap = False
+        for element in elements:
+            for element_class, baseline_coords in page.iter_class_baseline_coords(element, class_dict):
+                coords = self._scale_coords(baseline_coords, out_size, size)
+                sem_seg, overlap = self.draw_line(sem_seg, coords, element_class, thickness=line_width)
+                total_overlap = total_overlap or overlap
+
+        if total_overlap:
+            self.logger.warning(f"File {page.filepath} contains overlapping class baseline sem_seg")
+        if not sem_seg.any():
+            self.logger.warning(f"File {page.filepath} does not contains class baseline sem_seg")
+        return sem_seg
+
     # TOP BOTTOM
 
     def build_top_bottom_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
@@ -552,6 +570,15 @@ class XMLConverter:
                 gt_data,
                 image_shape,
                 line_width=self.xml_regions.line_width,
+            )
+            return sem_seg
+        elif self.xml_regions.mode == "class_baseline":
+            sem_seg = self.build_class_baseline_sem_seg(
+                gt_data,
+                image_shape,
+                line_width=self.xml_regions.line_width,
+                elements=set(self.xml_regions.region_types.values()),
+                class_dict=self.xml_regions.region_classes,
             )
             return sem_seg
         elif self.xml_regions.mode == "top_bottom":
@@ -714,7 +741,16 @@ if __name__ == "__main__":
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
-    XMLConverter(xml_regions, args.square_lines)
+    xml_converter = XMLConverter(xml_regions, args.square_lines)
 
     input_path = Path(args.input)
     output_path = Path(args.output)
+
+    sem_seg = xml_converter.to_sem_seg(
+        input_path,
+        original_image_shape=None,
+        image_shape=None,
+    )
+
+    # save image
+    save_image_array_to_path(output_path, sem_seg)
