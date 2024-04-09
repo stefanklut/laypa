@@ -108,7 +108,7 @@ def setup_training(args: argparse.Namespace):
 
         trainer = Trainer(cfg=cfg)
         if not cfg.TRAIN.WEIGHTS:
-            if cfg.MODEL.RESUME and trainer.checkpointer.has_checkpoint():
+            if cfg.MODEL.RESUME and not trainer.checkpointer.has_checkpoint():
                 raise FileNotFoundError(f"No checkpoint found in {cfg.OUTPUT_DIR}")
             trainer.resume_or_load(resume=cfg.MODEL.RESUME)
         else:
