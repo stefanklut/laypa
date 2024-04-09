@@ -1036,7 +1036,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
         elif cfg.PREPROCESS.RESIZE.RESIZE_MODE in ["shortest_edge", "longest_edge"]:
             min_size = cfg.PREPROCESS.RESIZE.MIN_SIZE
             max_size = cfg.PREPROCESS.RESIZE.MAX_SIZE
-            sample_style = cfg.PREPROCESS.RESIZE.MIN_SIZE_SAMPLING
+            sample_style = cfg.PREPROCESS.RESIZE.RESIZE_SAMPLING
             if cfg.PREPROCESS.RESIZE.RESIZE_MODE == "shortest_edge":
                 augmentation.append(ResizeShortestEdge(min_size, max_size, sample_style))
             elif cfg.PREPROCESS.RESIZE.RESIZE_MODE == "longest_edge":
