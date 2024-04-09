@@ -1,8 +1,8 @@
 _BASE_: ../segmentation_base.yaml
 
-OUTPUT_DIR: /encrypted/baseline
+OUTPUT_DIR: ./output/region
 
-NAME: ovdr_scaling_test
+NAME: region_baseline_test
 
 PREPROCESS:
   OVERWRITE: False
@@ -13,12 +13,26 @@ PREPROCESS:
     SCALING: 0.5
     MAX_SIZE: -1
 
+  REGION:
+    REGIONS:
+      [
+        "marginalia",
+        "page-number",
+        "resolution",
+        "date",
+        "index",
+        "attendance",
+        "Resumption",
+        "resumption",
+        "Insertion",
+        "insertion",
+      ]
+    MERGE_REGIONS: ["resolution:Resumption,resumption,Insertion,insertion"]
+    REGION_TYPE: []
   BASELINE:
     LINE_WIDTH: 10
 
 INPUT:
-  FORMAT: RGB
-
   RESIZE_MODE: "scaling"
   SCALING_TRAIN: 1.0
   MAX_SIZE_TRAIN: -1
@@ -29,6 +43,8 @@ INPUT:
     ENABLED: True
     SIZE: [1024, 1024]
     TYPE: absolute
+
+  FORMAT: RGB
 
   GRAYSCALE:
     PROBABILITY: 0.1
@@ -82,6 +98,10 @@ INPUT:
     SCALE:
       PROBABILITY: 0.9
       STANDARD_DEVIATION: 0.12
+
+  ORIENTATION:
+    PROBABILITY: 1.0
+    PERCENTAGES: (0.25, 0.25, 0.25, 0.25)
 
 SOLVER:
   IMS_PER_BATCH: 2
