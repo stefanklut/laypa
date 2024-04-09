@@ -509,6 +509,28 @@ class Preprocess:
 
         return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
 
+    def get_dpi(self, image_path: Path) -> Optional[int]:
+        """
+        Get the DPI of an image.
+
+        Args:
+            image_path (Path): The path to the image file.
+
+        Returns:
+            int: The DPI of the image.
+
+        """
+        if self.auto_dpi:
+            original_image_dpi = imagesize.getDPI(image_path)
+            if original_image_dpi == (-1, -1):
+                return self.default_dpi
+
+            assert len(original_image_dpi) == 2, f"Invalid DPI: {original_image_dpi}"
+            assert original_image_dpi[0] == original_image_dpi[1], f"Non-square DPI: {original_image_dpi}"
+            original_image_dpi = original_image_dpi[0]
+        else:
+            original_image_dpi = self.manual_dpi
+
     def process_single_file(self, image_path: Path) -> dict:
         """
         Process a single image and pageXML to be used during training
@@ -531,12 +553,7 @@ class Preprocess:
 
         _original_image_shape = imagesize.get(image_path)
         original_image_shape = int(_original_image_shape[1]), int(_original_image_shape[0])
-        original_image_dpi = imagesize.getDPI(image_path)
-        original_image_dpi = None if original_image_dpi == (-1, -1) else original_image_dpi
-        if original_image_dpi is not None:
-            assert len(original_image_dpi) == 2, f"Invalid DPI: {original_image_dpi}"
-            assert original_image_dpi[0] == original_image_dpi[1], f"Non-square DPI: {original_image_dpi}"
-            original_image_dpi = original_image_dpi[0]
+        original_image_dpi = self.get_dpi(image_path)
         image_shape = self.augmentations[0].get_output_shape(
             original_image_shape[0], original_image_shape[1], dpi=original_image_dpi
         )
