@@ -318,7 +318,7 @@ class XMLConverter:
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             mask.fill(0)
-            # HACK Currenty the most simple quickest solution used can probably be optimized
+            # HACK Currently the most simple quickest solution used can probably be optimized
             mask, _ = self.draw_line(mask, coords, 255, thickness=line_width)
             contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             if len(contours) == 0:

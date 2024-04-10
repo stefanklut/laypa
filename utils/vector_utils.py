@@ -63,8 +63,8 @@ def point_at_start_or_end_assignment(line_segments: np.ndarray, points: np.ndarr
     # Remove zero length lines
     non_zero = line_norm != 0
 
-    # HACK If baseline has lenght 0, Do not remove any points
-    if not np.any(non_zero):
+    # If the total length of the line is less than 2, do not remove any points
+    if np.sum(line_norm) < 2:
         return np.zeros(len(points))
     else:
         line_vector = line_vector[non_zero]
