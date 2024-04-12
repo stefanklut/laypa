@@ -1,6 +1,6 @@
 _BASE_: ../segmentation_base.yaml
 
-OUTPUT_DIR: /encrypted/baseline
+OUTPUT_DIR: ./output/baseline
 
 NAME: ovdr_scaling_test
 
