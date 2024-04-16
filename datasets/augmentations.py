@@ -1218,7 +1218,15 @@ def get_arguments() -> argparse.Namespace:
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input file", required=True, type=str)
 
+    tmp_args = parser.add_argument_group("tmp files")
+    tmp_args.add_argument("--tmp_dir", help="Temp files folder", type=str, default=None)
+    tmp_args.add_argument("--keep_tmp_dir", action="store_true", help="Don't remove tmp dir after execution")
+
+    detectron2_args = parser.add_argument_group("detectron2")
+    detectron2_args.add_argument("-c", "--config", help="config file", required=True)
+    detectron2_args.add_argument("--opts", nargs="+", action="extend", help="optional args to change", default=[])
     args = parser.parse_args()
+
     return args
 
 
@@ -1228,73 +1236,41 @@ def test(args) -> None:
     import cv2
     from PIL import Image
 
+    from core.setup import setup_cfg
+    from datasets import preprocess
+    from datasets.mapper import AugInput
+    from utils.image_utils import load_image_array_from_path
+    from utils.tempdir import OptionalTemporaryDirectory
+
     input_path = Path(args.input)
 
     if not input_path.is_file():
         raise FileNotFoundError(f"Image {input_path} not found")
 
-    print(f"Loading image {input_path}")
-    image = cv2.imread(str(input_path))[..., ::-1]
+    cfg = setup_cfg(args)
+    with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not (args.keep_tmp_dir)) as tmp_dir:
+        preprocesser = preprocess.Preprocess(cfg)
+        preprocesser.set_output_dir(tmp_dir)
+        output = preprocesser.process_single_file(input_path)
 
-    resize = ResizeShortestEdge(min_size=(1024,), max_size=2048, sample_style="choice")
-    elastic = RandomElastic()
+        image = load_image_array_from_path(Path(tmp_dir).joinpath(output["image_paths"]))["image"]
+        sem_seg = load_image_array_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale")["image"]
 
-    affine = RandomAffine()
-    translation = RandomTranslation()
-    rotation = RandomRotation()
-    shear = RandomShear()
-    scale = RandomScale()
-    grayscale = Grayscale()
+    augs = build_augmentation(cfg, mode="train")
+    aug = T.AugmentationList(augs)
 
-    gaussian = RandomGaussianFilter()
-    contrast = RandomContrast()
-    brightness = RandomBrightness()
-    saturation = RandomSaturation()
-    orientation = RandomOrientation(orientation_percentages=[0, 0, 0, 1])
-
-    augs = []
-
-    # augs = T.AugmentationList([resize, elastic, affine])
-
-    # augs.append(resize)
-    # augs.append(elastic)
-    # augs.append(grayscale)
-    # augs.append(contrast)
-    # augs.append(brightness)
-    # augs.append(saturation)
-    # augs.append(gaussian)
-    augs.append(affine)
-    # augs.append(translation)
-    # augs.append(rotation)
-    # augs.append(shear)
-    # augs.append(scale)
-    # augs.append(orientation)
-
-    augs_list = T.AugmentationList(augs=augs)
-
-    print(augs)
-
-    input_augs = T.AugInput(image)
-
-    transforms = augs_list(input_augs)
-
-    output_image = input_augs.image
-
-    input_coords = np.asarray([[1000, 2000], [4000, 4000]])
-
-    output_coords = transforms.apply_coords(input_coords)
-
-    for coord in input_coords:
-        image = cv2.circle(image.copy(), coord.astype(np.int32), 10, (255, 0, 0), -1)
-
-    for coord in output_coords:
-        output_image = cv2.circle(output_image.copy(), coord.astype(np.int32), 10, (255, 0, 0), -1)
+    output_image = image.copy()
+    output = AugInput(image=output_image, sem_seg=sem_seg)
+    transforms = aug(output)
 
     im = Image.fromarray(image)
     im.show("Original")
 
-    im = Image.fromarray(output_image.round().clip(0, 255).astype(np.uint8))
+    im = Image.fromarray(output.image.round().clip(0, 255).astype(np.uint8))
     im.show("Transformed")
+
+    im = Image.fromarray(output.sem_seg.round().clip(0, 255).astype(np.uint8))
+    im.show("Sem_Seg")
 
 
 if __name__ == "__main__":
