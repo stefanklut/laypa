@@ -371,9 +371,8 @@ The first tool is a visual comparison between the predictions of the model and t
 Required arguments:
 ```sh
 python eval.py \
-    -c/--config <CONFIG> \
-    -t/--train <TRAIN [TRAIN ...]> \ 
-    -v/--val <VAL [VAL ...]>
+    -c/--config CONFIG \
+    -i/--input INPUT [INPUT ...] \
 ```
 
 <details>
@@ -383,17 +382,16 @@ Optional arguments:
 ```sh
 python eval.py \
     -c/--config CONFIG \
-    -t/--train TRAIN [TRAIN ...] \
-    -v/--val VAL [VAL ...] \
+    -i/--input INPUT [INPUT ...] \
+    [-o/--output OUTPUT] \
     [--tmp_dir TMP_DIR] \
     [--keep_tmp_dir]
     [--opts OPTS [OPTS ...]] \
-    [--eval_path EVAL_PATH] \
     [--sorted] \
     [--save SAVE]
 ```
 
-The optional arguments are shown using square brackets. The `--tmp_dir` parameter specifies a folder in which to store temporary files. While the `--keep_tmp_dir` parameter prevents the temporary files from being deleted after a run (mostly for debugging). The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8.
+The optional arguments are shown using square brackets. The `-o/output` parameter specifies the output directory for the visualization masks. The `--tmp_dir` parameter specifies a folder in which to store temporary files. While the `--keep_tmp_dir` parameter prevents the temporary files from being deleted after a run (mostly for debugging). The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8. The `--sorted` parameter sorts the images based on the order in the operating system. The `--save` parameter specifies what type of file the visualization should be saved as. The options are "pred" for the prediction, "gt" for the ground truth, "both" for both the prediction and the ground truth and "all" for all of the previous. If just `--save` is given the default is "all".
 </details>
 
 Example of running [`eval.py`][eval_link]:
