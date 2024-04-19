@@ -307,7 +307,7 @@ class WarpFieldTransform(T.Transform):
 
     def inverse(self) -> T.Transform:
         """
-        No inverse for a warp is possible since information is lost
+        No inverse for a warp is possible since information is lost when moving out the visible window
         """
         raise NotImplementedError
 
@@ -350,8 +350,7 @@ class AffineTransform(T.Transform):
         Apply affine transformation to coordinates
 
         Args:
-            coords (np.ndarray): floating point array of shape Nx2. Each row is
-                (x, y).
+            coords (np.ndarray): floating point array of shape Nx2. Each row is (x, y).
 
         Returns:
             np.ndarray: transformed coordinates
@@ -380,7 +379,7 @@ class AffineTransform(T.Transform):
 
     def inverse(self) -> T.Transform:
         """
-        Inverse not always possible, since information may be lost
+        Inverse not always possible, since information may be lost when moving out the visible window.
         """
         raise NotImplementedError
 
@@ -547,32 +546,40 @@ class BlendTransform(T.Transform):
         Apply blend transform on the image(s).
 
         Args:
-            img (ndarray): of shape NxHxWxC, or HxWxC or HxW. The array can be
-                of type uint8 in range [0, 255], or floating point in range
-                [0, 1] or [0, 255].
-            interp (str): keep this option for consistency, perform blend would not
-                require interpolation.
+            img (ndarray): of shape NxHxWxC, or HxWxC or HxW. Assume the array is in range [0, 255].
         Returns:
             ndarray: blended image(s).
         """
         img = img.astype(np.float32)
-        return self.src_weight * self.src_image + self.dst_weight * img
+        return np.clip(self.src_weight * self.src_image + self.dst_weight * img, 0, 255)
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
         Apply no transform on the coordinates.
+
+        Args:
+            coords (np.ndarray): floating point array of shape Nx2. Each row is (x, y).
+
+        Returns:
+            np.ndarray: original coords
         """
         return coords
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
         """
         Apply no transform on the full-image segmentation.
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: original segmentation
         """
         return segmentation
 
     def inverse(self) -> T.Transform:
         """
-        The inverse is a no-op.
+        The inverse is not possible. The blend is not reversible.
         """
         raise NotImplementedError
 
@@ -646,7 +653,7 @@ class OrientationTransform(T.Transform):
 
     def inverse(self) -> T.Transform:
         """
-        Compute the inverse of the transformation.
+        Compute the inverse of the transformation. The inverse of a 90-degree rotation is a 270-degree rotation to get the original image.
 
         Returns:
             Transform: Inverse transformation.
@@ -656,6 +663,60 @@ class OrientationTransform(T.Transform):
         else:
             width, height = self.width, self.height
         return OrientationTransform(4 - self.times_90_degrees, height, width)
+
+
+class JPEGCompressionTransform(T.Transform):
+    def __init__(self, quality: int):
+        """
+        Args:
+            quality (int): JPEG compression quality. A number between 0 and 100.
+        """
+        super().__init__()
+        self.quality = quality
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply JPEG compression to the image(s).
+
+        Args:
+            img (np.ndarray): image array assume the array is in range [0, 255].
+        Returns:
+            ndarray: JPEG compressed image(s).
+        """
+        img = img.astype(np.uint8)
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), self.quality]
+        _, encoded_img = cv2.imencode(".jpg", img, encode_param)
+        return cv2.imdecode(encoded_img, cv2.IMREAD_COLOR)
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the coordinates.
+
+        Args:
+            coords (np.ndarray): floating point array of shape Nx2. Each row is (x, y).
+
+        Returns:
+            np.ndarray: original coords
+        """
+        return coords
+
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the full-image segmentation.
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: original segmentation
+        """
+        return segmentation
+
+    def inverse(self) -> T.Transform:
+        """
+        The inverse is not possible. Information is lost during JPEG compression.
+        """
+        raise NotImplementedError
 
 
 class CropTransform(T.Transform):
