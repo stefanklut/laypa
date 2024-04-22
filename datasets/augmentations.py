@@ -22,6 +22,7 @@ from datasets.transforms import (
     GaussianFilterTransform,
     GrayscaleTransform,
     HFlipTransform,
+    HueTransform,
     JPEGCompressionTransform,
     OrientationTransform,
     PadTransform,
@@ -865,6 +866,31 @@ class RandomBrightness(Augmentation):
         return BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
+class RandomHue(Augmentation):
+    """
+    Randomly transforms image hue
+    """
+
+    def __init__(self, hue_delta_min: float = -0.5, hue_delta_max: float = 0.5, image_format="RGB") -> None:
+        """
+        Initialize the RandomHue class.
+
+        Args:
+            hue_delta_min (float, optional): lowest hue change. Defaults to -0.5.
+            hue_delta_max (float, optional): highest hue change. Defaults to 0.5.
+            image_format (str, optional): Color formatting. Defaults to "RGB".
+        """
+        super().__init__()
+        self.hue_delta_min = hue_delta_min
+        self.hue_delta_max = hue_delta_max
+
+        self.image_format = image_format
+
+    def get_transform(self, image: np.ndarray) -> T.Transform:
+        hue_delta = np.random.uniform(self.hue_delta_min, self.hue_delta_max)
+        return HueTransform(hue_delta, self.image_format)
+
+
 class RandomOrientation(Augmentation):
     """
     Apply a random orientation to the image
@@ -872,7 +898,7 @@ class RandomOrientation(Augmentation):
 
     def __init__(self, orientation_percentages: Optional[list[float | int]] = None) -> None:
         """
-        Initialize the Augmentations class.
+        Initialize the RandomOrientation class.
 
         Args:
             orientation_percentages (Optional[list[float | int]]): A list of orientation percentages.
@@ -1239,14 +1265,6 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
     )
 
     # Color augments
-    augmentation.append(
-        RandomApply(
-            Grayscale(
-                image_format=cfg.INPUT.FORMAT,
-            ),
-            prob=cfg.INPUT.GRAYSCALE.PROBABILITY,
-        )
-    )
 
     augmentation.append(
         RandomApply(
@@ -1275,6 +1293,15 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
             prob=cfg.INPUT.SATURATION.PROBABILITY,
         )
     )
+    augmentation.append(
+        RandomApply(
+            RandomHue(
+                hue_delta_min=cfg.INPUT.HUE.MIN_DELTA,
+                hue_delta_max=cfg.INPUT.HUE.MAX_DELTA,
+            ),
+            prob=cfg.INPUT.HUE.PROBABILITY,
+        )
+    )
 
     augmentation.append(
         RandomApply(
@@ -1288,20 +1315,29 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
 
     augmentation.append(
         RandomApply(
-            Invert(
-                max_value=cfg.INPUT.INVERT.MAX_VALUE,
-            ),
-            prob=cfg.INPUT.INVERT.PROBABILITY,
-        )
-    )
-
-    augmentation.append(
-        RandomApply(
             RandomJPEGCompression(
                 min_quality=cfg.INPUT.JPEG_COMPRESSION.MIN_QUALITY,
                 max_quality=cfg.INPUT.JPEG_COMPRESSION.MAX_QUALITY,
             ),
             prob=cfg.INPUT.JPEG_COMPRESSION.PROBABILITY,
+        )
+    )
+
+    augmentation.append(
+        RandomApply(
+            Grayscale(
+                image_format=cfg.INPUT.FORMAT,
+            ),
+            prob=cfg.INPUT.GRAYSCALE.PROBABILITY,
+        )
+    )
+
+    augmentation.append(
+        RandomApply(
+            Invert(
+                max_value=cfg.INPUT.INVERT.MAX_VALUE,
+            ),
+            prob=cfg.INPUT.INVERT.PROBABILITY,
         )
     )
 

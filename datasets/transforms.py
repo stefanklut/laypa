@@ -584,6 +584,71 @@ class BlendTransform(T.Transform):
         raise NotImplementedError
 
 
+class HueTransform(T.Transform):
+    def __init__(self, hue_delta: float, color_space: str = "RGB"):
+        """
+        Args:
+            delta (float): the amount to shift the hue channel. The hue channel is
+                shifted in degrees within the range [-180, 180].
+        """
+        super().__init__()
+        self.hue_delta = hue_delta * 180
+        self.color_space = color_space
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply hue transform to the image(s).
+
+        Args:
+            img (np.ndarray): image array assume the array is in range [0, 255].
+        Returns:
+            ndarray: hue transformed image(s).
+        """
+        img = img.astype(np.uint8)
+        if self.color_space == "RGB":
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+            img[:, :, 0] = (img[:, :, 0] + self.hue_delta) % 180
+            img = cv2.cvtColor(img, cv2.COLOR_HSV2RGB)
+        else:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            img[:, :, 0] = (img[:, :, 0] + self.hue_delta) % 180
+            img = cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+        return img
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the coordinates.
+
+        Args:
+            coords (np.ndarray): floating point array of shape Nx2. Each row is (x, y).
+
+        Returns:
+            np.ndarray: original coords
+        """
+        return coords
+
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the full-image segmentation.
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: original segmentation
+        """
+        return segmentation
+
+    def inverse(self) -> T.Transform:
+        """
+        Compute the inverse of the transformation. The inverse of a hue change is a negative hue change.
+
+        Returns:
+            Transform: Inverse transformation.
+        """
+        return HueTransform(-self.hue_delta, self.color_space)
+
+
 class OrientationTransform(T.Transform):
     """
     Transform that applies 90 degrees rotation to an image and its corresponding coordinates.
