@@ -1393,6 +1393,9 @@ def test(args) -> None:
     output_image = image.copy()
     output = AugInput(image=output_image, sem_seg=sem_seg)
     transforms = aug(output)
+    transforms = [t for t in transforms.transforms if not isinstance(t, T.NoOpTransform)]
+
+    print(transforms)
 
     im = Image.fromarray(image)
     im.show("Original")
