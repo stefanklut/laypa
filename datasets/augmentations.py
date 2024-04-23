@@ -16,6 +16,7 @@ from scipy.ndimage import gaussian_filter
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 
 from datasets.transforms import (
+    AdaptiveThresholdTransform,
     AffineTransform,
     BlendTransform,
     CropTransform,
@@ -891,6 +892,25 @@ class RandomHue(Augmentation):
         return HueTransform(hue_delta, self.image_format)
 
 
+class AdaptiveThresholding(Augmentation):
+    """
+    Apply Adaptive thresholding to the image
+    """
+
+    def __init__(self, image_format="RGB") -> None:
+        """
+        Apply Adaptive thresholding to the image
+
+        Args:
+            image_format (str, optional): Color formatting. Defaults to "RGB".
+        """
+        super().__init__()
+        self.image_format = image_format
+
+    def get_transform(self, image: np.ndarray) -> T.Transform:
+        return AdaptiveThresholdTransform(self.image_format)
+
+
 class RandomOrientation(Augmentation):
     """
     Apply a random orientation to the image
@@ -1329,6 +1349,15 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
                 image_format=cfg.INPUT.FORMAT,
             ),
             prob=cfg.INPUT.GRAYSCALE.PROBABILITY,
+        )
+    )
+
+    augmentation.append(
+        RandomApply(
+            AdaptiveThresholding(
+                image_format=cfg.INPUT.FORMAT,
+            ),
+            prob=cfg.INPUT.OTSU_THRESHOLDING.PROBABILITY,
         )
     )
 

@@ -415,10 +415,12 @@ class GrayscaleTransform(T.Transform):
         """
         img = img.astype(np.uint8)
         if self.image_format == "BGR":
-            grayscale = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2RGB)
+            grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         else:
-            grayscale = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), cv2.COLOR_GRAY2RGB)
-        return grayscale
+            grayscale = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+        output = np.tile(grayscale[..., None], (1, 1, 3))
+        return output
 
     def apply_coords(self, coords: np.ndarray):
         """
@@ -647,6 +649,70 @@ class HueTransform(T.Transform):
             Transform: Inverse transformation.
         """
         return HueTransform(-self.hue_delta, self.color_space)
+
+
+class AdaptiveThresholdTransform(T.Transform):
+    def __init__(self, image_format: str = "RGB") -> None:
+        """
+        Apply Adaptive thresholding to an image.
+
+        Args:
+            image_format (str, optional): type of image format. Defaults to "RGB".
+        """
+        super().__init__()
+        self.image_format = image_format
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply Adaptive thresholding to the image.
+
+        Args:
+            img (np.ndarray): image array assume the array is in range [0, 255].
+        Returns:
+            ndarray: Adaptive thresholded image(s).
+        """
+        img = img.astype(np.uint8)
+
+        # Convert to grayscale
+        if self.image_format == "BGR":
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        else:
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+        thresh = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+        output = np.tile(thresh[..., None], (1, 1, 3))
+        return output
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the coordinates.
+
+        Args:
+            coords (np.ndarray): floating point array of shape Nx2. Each row is (x, y).
+
+        Returns:
+            np.ndarray: original coords
+        """
+        return coords
+
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the full-image segmentation.
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: original segmentation
+        """
+        return segmentation
+
+    def inverse(self) -> T.Transform:
+        """
+        The inverse is not possible. Information is lost during Adaptive thresholding.
+        """
+        raise NotImplementedError
 
 
 class OrientationTransform(T.Transform):
