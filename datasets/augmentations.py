@@ -1357,7 +1357,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
             AdaptiveThresholding(
                 image_format=cfg.INPUT.FORMAT,
             ),
-            prob=cfg.INPUT.OTSU_THRESHOLDING.PROBABILITY,
+            prob=cfg.INPUT.ADAPTIVE_THRESHOLDING.PROBABILITY,
         )
     )
 
