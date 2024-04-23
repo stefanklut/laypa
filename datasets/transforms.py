@@ -45,7 +45,7 @@ class ResizeTransform(T.Transform):
         Returns:
             np.ndarray: resized images
         """
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         old_height, old_width, channels = img.shape
         assert (old_height, old_width) == (self.height, self.width), "Input dims do not match specified dims"
 
@@ -120,7 +120,7 @@ class HFlipTransform(T.Transform):
         """
         # NOTE: opencv would be faster:
         # https://github.com/pytorch/pytorch/issues/16424#issuecomment-580695672
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         if img.ndim <= 3:  # HxW, HxWxC
             return np.flip(img, axis=1)
         else:
@@ -179,7 +179,7 @@ class VFlipTransform(T.Transform):
         """
         # NOTE: opencv would be faster:
         # https://github.com/pytorch/pytorch/issues/16424#issuecomment-580695672
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         if img.ndim <= 3:  # HxW, HxWxC
             return np.flip(img, axis=0)
         else:
@@ -267,7 +267,7 @@ class WarpFieldTransform(T.Transform):
         Returns:
             np.ndarray: warped image
         """
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         indices = self.generate_grid(img, self.warpfield)
         sampled_img = map_coordinates(img, indices, order=1, mode="constant", cval=0).reshape(img.shape)
 
@@ -294,7 +294,7 @@ class WarpFieldTransform(T.Transform):
             np.ndarray: warped segmentation
         """
         indices = self.generate_grid(segmentation, self.warpfield)
-        # cval=0 means background cval=255 means ignored
+        # cval=0 means background cval=self.ignore_value means ignored
         sampled_segmentation = map_coordinates(
             segmentation,
             indices,
@@ -342,7 +342,7 @@ class AffineTransform(T.Transform):
         Returns:
             np.ndarray: transformed image
         """
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         return cv2.warpAffine(img, self.matrix[:2, :], (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR)
 
     def apply_coords(self, coords: np.ndarray):
@@ -399,7 +399,7 @@ class GrayscaleTransform(T.Transform):
         super().__init__()
 
         # Previously used to get the grayscale value
-        self.rgb_weights = np.asarray([0.299, 0.587, 0.114]).astype(np.float32)
+        # self.rgb_weights = np.asarray([0.299, 0.587, 0.114]).astype(np.float32)
 
         self.image_format = image_format
 
@@ -413,7 +413,7 @@ class GrayscaleTransform(T.Transform):
         Returns:
             np.ndarray: grayscale version of image
         """
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         if self.image_format == "BGR":
             grayscale = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2RGB)
         else:
@@ -485,7 +485,7 @@ class GaussianFilterTransform(T.Transform):
         for _ in range(self.iterations):
             for i in range(img.shape[-1]):  # HxWxC
                 transformed_img[..., i] = gaussian_filter(transformed_img[..., i], sigma=self.sigma, order=self.order)
-        return transformed_img
+        return transformed_img.astype(np.uint8)
 
     def apply_coords(self, coords: np.ndarray):
         """
@@ -551,7 +551,7 @@ class BlendTransform(T.Transform):
             ndarray: blended image(s).
         """
         img = img.astype(np.float32)
-        return np.clip(self.src_weight * self.src_image + self.dst_weight * img, 0, 255)
+        return np.clip(self.src_weight * self.src_image + self.dst_weight * img, 0, 255).astype(np.uint8)
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
