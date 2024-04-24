@@ -197,7 +197,7 @@ class ResizeEdge(Augmentation):
         self.min_size = min_size
         self.max_size = max_size
         self.edge_length = edge_length
-        if set(min_size) == 1:
+        if len(set(min_size)) == 1:
             self.edge_length = min_size[0]
 
     @override
