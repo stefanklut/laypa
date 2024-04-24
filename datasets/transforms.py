@@ -45,7 +45,7 @@ class ResizeTransform(T.Transform):
         Returns:
             np.ndarray: resized images
         """
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         old_height, old_width, channels = img.shape
         assert (old_height, old_width) == (self.height, self.width), "Input dims do not match specified dims"
 
@@ -120,7 +120,7 @@ class HFlipTransform(T.Transform):
         """
         # NOTE: opencv would be faster:
         # https://github.com/pytorch/pytorch/issues/16424#issuecomment-580695672
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         if img.ndim <= 3:  # HxW, HxWxC
             return np.flip(img, axis=1)
         else:
@@ -179,7 +179,7 @@ class VFlipTransform(T.Transform):
         """
         # NOTE: opencv would be faster:
         # https://github.com/pytorch/pytorch/issues/16424#issuecomment-580695672
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         if img.ndim <= 3:  # HxW, HxWxC
             return np.flip(img, axis=0)
         else:
@@ -267,7 +267,7 @@ class WarpFieldTransform(T.Transform):
         Returns:
             np.ndarray: warped image
         """
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         indices = self.generate_grid(img, self.warpfield)
         sampled_img = map_coordinates(img, indices, order=1, mode="constant", cval=0).reshape(img.shape)
 
@@ -294,7 +294,7 @@ class WarpFieldTransform(T.Transform):
             np.ndarray: warped segmentation
         """
         indices = self.generate_grid(segmentation, self.warpfield)
-        # cval=0 means background cval=255 means ignored
+        # cval=0 means background cval=self.ignore_value means ignored
         sampled_segmentation = map_coordinates(
             segmentation,
             indices,
@@ -307,7 +307,7 @@ class WarpFieldTransform(T.Transform):
 
     def inverse(self) -> T.Transform:
         """
-        No inverse for a warp is possible since information is lost
+        No inverse for a warp is possible since information is lost when moving out the visible window
         """
         raise NotImplementedError
 
@@ -342,7 +342,7 @@ class AffineTransform(T.Transform):
         Returns:
             np.ndarray: transformed image
         """
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         return cv2.warpAffine(img, self.matrix[:2, :], (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR)
 
     def apply_coords(self, coords: np.ndarray):
@@ -350,8 +350,7 @@ class AffineTransform(T.Transform):
         Apply affine transformation to coordinates
 
         Args:
-            coords (np.ndarray): floating point array of shape Nx2. Each row is
-                (x, y).
+            coords (np.ndarray): floating point array of shape Nx2. Each row is (x, y).
 
         Returns:
             np.ndarray: transformed coordinates
@@ -380,7 +379,7 @@ class AffineTransform(T.Transform):
 
     def inverse(self) -> T.Transform:
         """
-        Inverse not always possible, since information may be lost
+        Inverse not always possible, since information may be lost when moving out the visible window.
         """
         raise NotImplementedError
 
@@ -400,7 +399,7 @@ class GrayscaleTransform(T.Transform):
         super().__init__()
 
         # Previously used to get the grayscale value
-        self.rgb_weights = np.asarray([0.299, 0.587, 0.114]).astype(np.float32)
+        # self.rgb_weights = np.asarray([0.299, 0.587, 0.114]).astype(np.float32)
 
         self.image_format = image_format
 
@@ -414,12 +413,14 @@ class GrayscaleTransform(T.Transform):
         Returns:
             np.ndarray: grayscale version of image
         """
-        img = img.astype(np.float32)
+        img = img.astype(np.uint8)
         if self.image_format == "BGR":
-            grayscale = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.COLOR_GRAY2RGB)
+            grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         else:
-            grayscale = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), cv2.COLOR_GRAY2RGB)
-        return grayscale
+            grayscale = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+        output = np.tile(grayscale[..., None], (1, 1, 3))
+        return output
 
     def apply_coords(self, coords: np.ndarray):
         """
@@ -486,7 +487,7 @@ class GaussianFilterTransform(T.Transform):
         for _ in range(self.iterations):
             for i in range(img.shape[-1]):  # HxWxC
                 transformed_img[..., i] = gaussian_filter(transformed_img[..., i], sigma=self.sigma, order=self.order)
-        return transformed_img
+        return transformed_img.astype(np.uint8)
 
     def apply_coords(self, coords: np.ndarray):
         """
@@ -547,32 +548,169 @@ class BlendTransform(T.Transform):
         Apply blend transform on the image(s).
 
         Args:
-            img (ndarray): of shape NxHxWxC, or HxWxC or HxW. The array can be
-                of type uint8 in range [0, 255], or floating point in range
-                [0, 1] or [0, 255].
-            interp (str): keep this option for consistency, perform blend would not
-                require interpolation.
+            img (ndarray): of shape NxHxWxC, or HxWxC or HxW. Assume the array is in range [0, 255].
         Returns:
             ndarray: blended image(s).
         """
         img = img.astype(np.float32)
-        return self.src_weight * self.src_image + self.dst_weight * img
+        return np.clip(self.src_weight * self.src_image + self.dst_weight * img, 0, 255).astype(np.uint8)
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
         Apply no transform on the coordinates.
+
+        Args:
+            coords (np.ndarray): floating point array of shape Nx2. Each row is (x, y).
+
+        Returns:
+            np.ndarray: original coords
         """
         return coords
 
     def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
         """
         Apply no transform on the full-image segmentation.
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: original segmentation
         """
         return segmentation
 
     def inverse(self) -> T.Transform:
         """
-        The inverse is a no-op.
+        The inverse is not possible. The blend is not reversible.
+        """
+        raise NotImplementedError
+
+
+class HueTransform(T.Transform):
+    def __init__(self, hue_delta: float, color_space: str = "RGB"):
+        """
+        Args:
+            delta (float): the amount to shift the hue channel. The hue channel is
+                shifted in degrees within the range [-180, 180].
+        """
+        super().__init__()
+        self.hue_delta = hue_delta * 180
+        self.color_space = color_space
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply hue transform to the image(s).
+
+        Args:
+            img (np.ndarray): image array assume the array is in range [0, 255].
+        Returns:
+            ndarray: hue transformed image(s).
+        """
+        img = img.astype(np.uint8)
+        if self.color_space == "RGB":
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
+            img[:, :, 0] = (img[:, :, 0] + self.hue_delta) % 180
+            img = cv2.cvtColor(img, cv2.COLOR_HSV2RGB)
+        else:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            img[:, :, 0] = (img[:, :, 0] + self.hue_delta) % 180
+            img = cv2.cvtColor(img, cv2.COLOR_HSV2BGR)
+        return img
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the coordinates.
+
+        Args:
+            coords (np.ndarray): floating point array of shape Nx2. Each row is (x, y).
+
+        Returns:
+            np.ndarray: original coords
+        """
+        return coords
+
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the full-image segmentation.
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: original segmentation
+        """
+        return segmentation
+
+    def inverse(self) -> T.Transform:
+        """
+        Compute the inverse of the transformation. The inverse of a hue change is a negative hue change.
+
+        Returns:
+            Transform: Inverse transformation.
+        """
+        return HueTransform(-self.hue_delta, self.color_space)
+
+
+class AdaptiveThresholdTransform(T.Transform):
+    def __init__(self, image_format: str = "RGB") -> None:
+        """
+        Apply Adaptive thresholding to an image.
+
+        Args:
+            image_format (str, optional): type of image format. Defaults to "RGB".
+        """
+        super().__init__()
+        self.image_format = image_format
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply Adaptive thresholding to the image.
+
+        Args:
+            img (np.ndarray): image array assume the array is in range [0, 255].
+        Returns:
+            ndarray: Adaptive thresholded image(s).
+        """
+        img = img.astype(np.uint8)
+
+        # Convert to grayscale
+        if self.image_format == "BGR":
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        else:
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+        thresh = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+
+        output = np.tile(thresh[..., None], (1, 1, 3))
+        return output
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the coordinates.
+
+        Args:
+            coords (np.ndarray): floating point array of shape Nx2. Each row is (x, y).
+
+        Returns:
+            np.ndarray: original coords
+        """
+        return coords
+
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the full-image segmentation.
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: original segmentation
+        """
+        return segmentation
+
+    def inverse(self) -> T.Transform:
+        """
+        The inverse is not possible. Information is lost during Adaptive thresholding.
         """
         raise NotImplementedError
 
@@ -646,7 +784,7 @@ class OrientationTransform(T.Transform):
 
     def inverse(self) -> T.Transform:
         """
-        Compute the inverse of the transformation.
+        Compute the inverse of the transformation. The inverse of a 90-degree rotation is a 270-degree rotation to get the original image.
 
         Returns:
             Transform: Inverse transformation.
@@ -656,6 +794,60 @@ class OrientationTransform(T.Transform):
         else:
             width, height = self.width, self.height
         return OrientationTransform(4 - self.times_90_degrees, height, width)
+
+
+class JPEGCompressionTransform(T.Transform):
+    def __init__(self, quality: int):
+        """
+        Args:
+            quality (int): JPEG compression quality. A number between 0 and 100.
+        """
+        super().__init__()
+        self.quality = quality
+
+    def apply_image(self, img: np.ndarray) -> np.ndarray:
+        """
+        Apply JPEG compression to the image(s).
+
+        Args:
+            img (np.ndarray): image array assume the array is in range [0, 255].
+        Returns:
+            ndarray: JPEG compressed image(s).
+        """
+        img = img.astype(np.uint8)
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), self.quality]
+        _, encoded_img = cv2.imencode(".jpg", img, encode_param)
+        return cv2.imdecode(encoded_img, cv2.IMREAD_COLOR)
+
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the coordinates.
+
+        Args:
+            coords (np.ndarray): floating point array of shape Nx2. Each row is (x, y).
+
+        Returns:
+            np.ndarray: original coords
+        """
+        return coords
+
+    def apply_segmentation(self, segmentation: np.ndarray) -> np.ndarray:
+        """
+        Apply no transform on the full-image segmentation.
+
+        Args:
+            segmentation (np.ndarray): labels of shape HxW
+
+        Returns:
+            np.ndarray: original segmentation
+        """
+        return segmentation
+
+    def inverse(self) -> T.Transform:
+        """
+        The inverse is not possible. Information is lost during JPEG compression.
+        """
+        raise NotImplementedError
 
 
 class CropTransform(T.Transform):

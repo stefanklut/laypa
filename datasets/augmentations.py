@@ -16,12 +16,15 @@ from scipy.ndimage import gaussian_filter
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 
 from datasets.transforms import (
+    AdaptiveThresholdTransform,
     AffineTransform,
     BlendTransform,
     CropTransform,
     GaussianFilterTransform,
     GrayscaleTransform,
     HFlipTransform,
+    HueTransform,
+    JPEGCompressionTransform,
     OrientationTransform,
     PadTransform,
     ResizeTransform,
@@ -194,7 +197,7 @@ class ResizeEdge(Augmentation):
         self.min_size = min_size
         self.max_size = max_size
         self.edge_length = edge_length
-        if set(min_size) == 1:
+        if len(set(min_size)) == 1:
             self.edge_length = min_size[0]
 
     @override
@@ -574,7 +577,7 @@ class RandomShear(Augmentation):
         Apply a random shearing to the image
 
         Args:
-            sh_kappa (float, optional): kappa value used for sampling the shear.. Defaults to 20.
+            sh_kappa (float, optional): kappa value used for sampling the shear. Defaults to 20.
             ignore_value (int, optional): value that will be ignored during training. Defaults to 255.
         """
         super().__init__()
@@ -617,12 +620,12 @@ class RandomShear(Augmentation):
 
 class RandomScale(Augmentation):
     """
-    Apply a random shearing to the image
+    Apply a random scaling to the image
     """
 
     def __init__(self, sc_stdv: float = 0.12, ignore_value: int = 255) -> None:
         """
-        Apply a random shearing to the image
+        Apply a random scaling to the image
 
         Args:
             sc_stdv (float, optional): standard deviation used for the scale. Defaults to 0.12.
@@ -673,6 +676,47 @@ class Grayscale(Augmentation):
         return GrayscaleTransform(image_format=self.image_format)
 
 
+class Invert(Augmentation):
+    """
+    Invert the image
+    """
+
+    def __init__(self, max_value=255) -> None:
+        """
+        Invert the image
+        """
+        super().__init__()
+        self.max_value = np.asarray(max_value)
+
+    def get_transform(self, image: np.ndarray) -> T.Transform:
+        return BlendTransform(src_image=self.max_value, src_weight=1, dst_weight=-1)
+
+
+class RandomJPEGCompression(Augmentation):
+    """
+    Apply JPEG compression to the image
+    """
+
+    def __init__(self, min_quality: int = 40, max_quality: int = 100) -> None:
+        """
+        Apply JPEG compression to the image
+
+        Args:
+            quality_range (tuple[int, int], optional): range of the quality of the image. Defaults to (40, 100).
+        """
+        super().__init__()
+        assert 0 <= min_quality <= 100, "Min quality must be in range [0, 100]"
+        assert 0 <= max_quality <= 100, "Max quality must be in range [0, 100]"
+        assert min_quality <= max_quality, "Min quality must be less than or equal to max quality"
+
+        self.min_quality = min_quality
+        self.max_quality = max_quality
+
+    def get_transform(self, image: np.ndarray) -> T.Transform:
+        quality = np.random.randint(self.min_quality, self.max_quality + 1)
+        return JPEGCompressionTransform(quality=quality)
+
+
 class RandomGaussianFilter(Augmentation):
     """
     Apply random gaussian kernels
@@ -697,6 +741,29 @@ class RandomGaussianFilter(Augmentation):
     def get_transform(self, image: np.ndarray) -> T.Transform:
         sigma = np.random.uniform(self.min_sigma, self.max_sigma)
         return GaussianFilterTransform(sigma=sigma, order=self.order, iterations=self.iterations)
+
+
+class RandomNoise(Augmentation):
+    """
+    Apply random noise to the image
+    """
+
+    def __init__(self, min_noise_std: float = 10, max_noise_std: float = 32) -> None:
+        """
+        Apply random noise to the image
+
+        Args:
+            min_noise_std (float, optional): min noise standard deviation. Defaults to 10.
+            max_noise_std (float, optional): max noise standard deviation. Defaults to 32.
+        """
+        super().__init__()
+        self.max_noise_std = max_noise_std
+        self.min_noise_std = min_noise_std
+
+    def get_transform(self, image: np.ndarray) -> T.Transform:
+        std = np.random.uniform(self.min_noise_std, self.max_noise_std)
+        noise = np.random.normal(0, std, image.shape)
+        return BlendTransform(src_image=noise, src_weight=1, dst_weight=1)
 
 
 class RandomSaturation(Augmentation):
@@ -800,6 +867,50 @@ class RandomBrightness(Augmentation):
         return BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
+class RandomHue(Augmentation):
+    """
+    Randomly transforms image hue
+    """
+
+    def __init__(self, hue_delta_min: float = -0.5, hue_delta_max: float = 0.5, image_format="RGB") -> None:
+        """
+        Initialize the RandomHue class.
+
+        Args:
+            hue_delta_min (float, optional): lowest hue change. Defaults to -0.5.
+            hue_delta_max (float, optional): highest hue change. Defaults to 0.5.
+            image_format (str, optional): Color formatting. Defaults to "RGB".
+        """
+        super().__init__()
+        self.hue_delta_min = hue_delta_min
+        self.hue_delta_max = hue_delta_max
+
+        self.image_format = image_format
+
+    def get_transform(self, image: np.ndarray) -> T.Transform:
+        hue_delta = np.random.uniform(self.hue_delta_min, self.hue_delta_max)
+        return HueTransform(hue_delta, self.image_format)
+
+
+class AdaptiveThresholding(Augmentation):
+    """
+    Apply Adaptive thresholding to the image
+    """
+
+    def __init__(self, image_format="RGB") -> None:
+        """
+        Apply Adaptive thresholding to the image
+
+        Args:
+            image_format (str, optional): Color formatting. Defaults to "RGB".
+        """
+        super().__init__()
+        self.image_format = image_format
+
+    def get_transform(self, image: np.ndarray) -> T.Transform:
+        return AdaptiveThresholdTransform(self.image_format)
+
+
 class RandomOrientation(Augmentation):
     """
     Apply a random orientation to the image
@@ -807,7 +918,7 @@ class RandomOrientation(Augmentation):
 
     def __init__(self, orientation_percentages: Optional[list[float | int]] = None) -> None:
         """
-        Initialize the Augmentations class.
+        Initialize the RandomOrientation class.
 
         Args:
             orientation_percentages (Optional[list[float | int]]): A list of orientation percentages.
@@ -1174,14 +1285,7 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
     )
 
     # Color augments
-    augmentation.append(
-        RandomApply(
-            Grayscale(
-                image_format=cfg.INPUT.FORMAT,
-            ),
-            prob=cfg.INPUT.GRAYSCALE.PROBABILITY,
-        )
-    )
+
     augmentation.append(
         RandomApply(
             RandomBrightness(
@@ -1207,6 +1311,62 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
                 intensity_max=cfg.INPUT.SATURATION.MAX_INTENSITY,
             ),
             prob=cfg.INPUT.SATURATION.PROBABILITY,
+        )
+    )
+    augmentation.append(
+        RandomApply(
+            RandomHue(
+                hue_delta_min=cfg.INPUT.HUE.MIN_DELTA,
+                hue_delta_max=cfg.INPUT.HUE.MAX_DELTA,
+            ),
+            prob=cfg.INPUT.HUE.PROBABILITY,
+        )
+    )
+
+    augmentation.append(
+        RandomApply(
+            RandomNoise(
+                min_noise_std=cfg.INPUT.NOISE.MIN_STD,
+                max_noise_std=cfg.INPUT.NOISE.MAX_STD,
+            ),
+            prob=cfg.INPUT.NOISE.PROBABILITY,
+        )
+    )
+
+    augmentation.append(
+        RandomApply(
+            RandomJPEGCompression(
+                min_quality=cfg.INPUT.JPEG_COMPRESSION.MIN_QUALITY,
+                max_quality=cfg.INPUT.JPEG_COMPRESSION.MAX_QUALITY,
+            ),
+            prob=cfg.INPUT.JPEG_COMPRESSION.PROBABILITY,
+        )
+    )
+
+    augmentation.append(
+        RandomApply(
+            Grayscale(
+                image_format=cfg.INPUT.FORMAT,
+            ),
+            prob=cfg.INPUT.GRAYSCALE.PROBABILITY,
+        )
+    )
+
+    augmentation.append(
+        RandomApply(
+            AdaptiveThresholding(
+                image_format=cfg.INPUT.FORMAT,
+            ),
+            prob=cfg.INPUT.ADAPTIVE_THRESHOLDING.PROBABILITY,
+        )
+    )
+
+    augmentation.append(
+        RandomApply(
+            Invert(
+                max_value=cfg.INPUT.INVERT.MAX_VALUE,
+            ),
+            prob=cfg.INPUT.INVERT.PROBABILITY,
         )
     )
 
@@ -1262,6 +1422,9 @@ def test(args) -> None:
     output_image = image.copy()
     output = AugInput(image=output_image, sem_seg=sem_seg)
     transforms = aug(output)
+    transforms = [t for t in transforms.transforms if not isinstance(t, T.NoOpTransform)]
+
+    print(transforms)
 
     im = Image.fromarray(image)
     im.show("Original")
