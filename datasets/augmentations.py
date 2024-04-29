@@ -1168,8 +1168,8 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
                 max_size = cfg.INPUT.MAX_SIZE_TRAIN
                 sample_style = cfg.INPUT.MIN_SIZE_TRAIN_SAMPLING
             elif mode == "val":
-                min_size = cfg.INPUT.MIN_SIZE_TRAIN
-                max_size = cfg.INPUT.MAX_SIZE_TRAIN
+                min_size = cfg.INPUT.MIN_SIZE_TEST
+                max_size = cfg.INPUT.MAX_SIZE_TEST
                 sample_style = "choice"
             elif mode == "test":
                 min_size = cfg.INPUT.MIN_SIZE_TEST
