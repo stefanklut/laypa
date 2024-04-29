@@ -127,7 +127,6 @@ class Mapper(DatasetMapper):
         self.manual_dpi = manual_dpi
 
         logger = logging.getLogger(get_logger_name())
-        mode = "training" if is_train else "inference"
         logger.info(f"[DatasetMapper] Augmentations used in {mode}: {augmentations}")
 
     @classmethod
