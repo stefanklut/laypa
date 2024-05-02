@@ -50,6 +50,9 @@ def main(args):
         preprocess_datasets(cfg, None, args.input, tmp_dir)
 
         trainer = Trainer(cfg, validation=True)
+
+        if not cfg.MODEL.WEIGHTS:
+            logger.warning("No weights found in config or command line (MODEL.WEIGHTS), The model will be initialized randomly")
         trainer.resume_or_load(resume=False)
 
         trainer.validate()

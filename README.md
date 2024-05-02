@@ -402,7 +402,27 @@ python visualization.py -c config.yml -i input_dir
 
 The [`visualization.py`][eval_link] will then open a window with both the prediction and the ground truth side by side (if the ground truth exists). Allowing for easier comparison. The visualization masks are created in the same way the preprocessing converts pageXML to masks.
 
-The second tool is a program to compare the similarity of two sets of pageXML. This can mean either comparing ground truth to predicted pageXML, or determining the similarity of two annotations by different people. This tool is the [`xml_comparison.py`][xml_comparison_link] file. The comparison allows you to specify how regions and baseline should be drawn in when creating the pixel masks. The pixel masks are then compared based on their Intersection over Union (IoU) and Accuracy (Acc) scores. For the sake of the Accuracy metric one of the two sets needs to be specified as the ground truth set. So one set is the ground truth directory (`--gt`) argument and the other is the input directory (`--input`) argument.
+The second tool `validation.py` is used to get the validation scores of a model. This is done by comparing the prediction of the model to the ground truth. The validation scores are the Intersection over Union (IoU) and Accuracy (Acc) scores. The tool requires the input directory (`--input`) where there is also a page folder inside the input folder. The page folder should contain the xmls with the ground truth baselines/regions. To run the validation tool use the following command:
+
+Required arguments:
+```sh
+python validation.py \ 
+    -c/--config CONFIG \
+    -i/--input INPUT
+```
+
+<details>
+<summary> Click to see all arguments </summary>
+```sh
+python validation.py \ 
+    -c/--config CONFIG \
+    -i/--input INPUT \
+    [--opts OPTS [OPTS ...]]
+```
+
+The optional arguments are shown using square brackets. The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>` sets the path to the weights file. This needs to be done if the weights are not in the config file. Without `MODEL.WEIGHTS` the weights are taken from the config file. If the weights are not in the config file and not specified with `MODEL.WEIGHTS` the program will return results for an untrained model.
+
+The third tool is a program to compare the similarity of two sets of pageXML. This can mean either comparing ground truth to predicted pageXML, or determining the similarity of two annotations by different people. This tool is the [`xml_comparison.py`][xml_comparison_link] file. The comparison allows you to specify how regions and baseline should be drawn in when creating the pixel masks. The pixel masks are then compared based on their Intersection over Union (IoU) and Accuracy (Acc) scores. For the sake of the Accuracy metric one of the two sets needs to be specified as the ground truth set. So one set is the ground truth directory (`--gt`) argument and the other is the input directory (`--input`) argument.
 
 Required arguments:
 ```sh
