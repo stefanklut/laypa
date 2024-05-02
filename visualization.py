@@ -9,17 +9,14 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from detectron2.data import DatasetCatalog, MetadataCatalog
 from detectron2.utils.visualizer import Visualizer
 from natsort import os_sorted
 from tqdm import tqdm
 
-from core.preprocess import preprocess_datasets
 from core.setup import setup_cfg
 from datasets.dataset import metadata_from_classes
 from datasets.mapper import AugInput
 from page_xml.xml_converter import XMLConverter
-from page_xml.xml_regions import XMLRegions
 from run import Predictor
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import get_file_paths, supported_image_formats
@@ -31,7 +28,7 @@ logger = logging.getLogger(get_logger_name())
 
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Eval of prediction of model using visualizer")
+    parser = argparse.ArgumentParser(description="Visualization of prediction/GT of model")
 
     detectron2_args = parser.add_argument_group("detectron2")
 
