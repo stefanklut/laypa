@@ -42,7 +42,7 @@ Developed using the following software and hardware:
 <!-- TODO Change to recent information, maybe write small script te generate this information -->
 | Operating System                                                  | Python | PyTorch | Cudatoolkit | GPU                                   | CPU                                  | Success            |
 | ----------------------------------------------------------------- | ------ | ------- | ----------- | ------------------------------------- | ------------------------------------ | ------------------ |
-| Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1   | 11.7        | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark: |
+| Ubuntu 22.04.4 LTS (Linux-6.5.0-28-generic-x86_64-with-glibc2.35) | 3.12.3 | 2.3.0   | 12.1        | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark: |
 
 <details>
 <summary> Click here to show all tested environments </summary>
@@ -54,7 +54,7 @@ Run [`utils/collect_env_info.py`][collect_env_info_link] to retrieve your enviro
 
 | Operating System                                                  | Python | PyTorch | Cudatoolkit | GPU                                   | CPU                                  | Success            |
 | ----------------------------------------------------------------- | ------ | ------- | ----------- | ------------------------------------- | ------------------------------------ | ------------------ |
-| Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1   | 11.7        | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark: |
+| Ubuntu 22.04.4 LTS (Linux-6.5.0-28-generic-x86_64-with-glibc2.35) | 3.12.3 | 2.3.0   | 12.1        | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark: |
 
 </details>
 
