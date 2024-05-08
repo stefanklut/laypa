@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Container, Sequence
 
+from natsort import natsorted
 from PIL import Image
 
 Image.init()
@@ -135,4 +136,4 @@ def get_file_paths(
 
         output_paths.extend(sub_output_paths)
 
-    return output_paths
+    return natsorted(output_paths)
