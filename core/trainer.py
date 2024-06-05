@@ -208,7 +208,7 @@ class Trainer(DefaultTrainer):
     Trainer class
     """
 
-    def __init__(self, cfg: CfgNode):
+    def __init__(self, cfg: CfgNode, validation: bool = False):
         TrainerBase.__init__(self)
 
         # logger = logging.getLogger("detectron2")
@@ -219,7 +219,7 @@ class Trainer(DefaultTrainer):
         # Assume these objects must be constructed in this order.
         model = self.build_model(cfg)
         optimizer = self.build_optimizer(cfg, model)
-        data_loader = self.build_train_loader(cfg)
+        data_loader = self.build_train_loader(cfg) if not validation else None
 
         model = create_ddp_model(model, broadcast_buffers=False)
         self._trainer = (AMPTrainer if cfg.MODEL.AMP_TRAIN.ENABLED else SimpleTrainer)(model, data_loader, optimizer)
@@ -319,3 +319,6 @@ class Trainer(DefaultTrainer):
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
         return build_lr_scheduler(cfg, optimizer)
+
+    def validate(self):
+        results = self.test(self.cfg, self.model)

@@ -1,5 +1,6 @@
 # Based on detectron2.utils.logger.py
 
+import atexit
 import functools
 import logging
 import os
@@ -8,8 +9,11 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
-from detectron2.utils.logger import _cached_log_stream
 from termcolor import colored
+
+LOGGER_BASE_NAME: str = "laypa"
+DEFAULT_LOG_BUFFER_SIZE: int = 1024 * 1024  # 1MB
+LOG_BUFFER_SIZE_KEY: str = "LOG_BUFFER_SIZE"
 
 
 def get_logger_name():
@@ -19,9 +23,9 @@ def get_logger_name():
         if os.path.join("utils", "logging_utils.") not in code.co_filename:
             mod_name = frame.f_globals["__name__"]
             if mod_name == "__main__":
-                mod_name = "laypa"
+                mod_name = LOGGER_BASE_NAME
             else:
-                mod_name = "laypa." + mod_name
+                mod_name = f"{LOGGER_BASE_NAME}." + mod_name
             # return mod_name, (code.co_filename, frame.f_lineno, code.co_name)
             return mod_name
         frame = frame.f_back
@@ -65,6 +69,23 @@ class _PlainFormatter(logging.Formatter):
         message = super().formatMessage(record)
         message = self.remove_ansi(message)
         return message
+
+
+def _get_log_stream_buffer_size(filename: str) -> int:
+    if "://" not in filename:
+        # Local file, no extra caching is necessary
+        return -1
+    # Remote file requires a larger cache to avoid many small writes.
+    if LOG_BUFFER_SIZE_KEY in os.environ:
+        return int(os.environ[LOG_BUFFER_SIZE_KEY])
+    return DEFAULT_LOG_BUFFER_SIZE
+
+
+@functools.lru_cache(maxsize=None)
+def _cached_log_stream(filename: str):
+    io = open(filename, "a", buffering=_get_log_stream_buffer_size(filename))
+    atexit.register(io.close)
+    return io
 
 
 @functools.lru_cache()  # so that calling setup_logger multiple times won't add many handlers
