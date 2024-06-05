@@ -480,7 +480,7 @@ If you discover a bug or missing feature that you would like to help with please
 
 [cbad_link]: https://doi.org/10.5281/zenodo.2567397
 [voc_link]: https://doi.org/10.5281/zenodo.3517776
-[ohg_link]: https://doi.org/10.5281/zenodo.3517776
+[ohg_link]: https://doi.org/10.5281/zenodo.1322665
 [bozen_link]: https://doi.org/10.5281/zenodo.218236
 
 [pull_request_link]: https://github.com/stefanklut/laypa/pulls
