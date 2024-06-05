@@ -1,10 +1,13 @@
 # import argparse
 import random
+import sys
 from multiprocessing import Pool
+from pathlib import Path
 
 from detectron2.utils.file_io import PathManager
 from tqdm import tqdm
 
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.timing_utils import ContextTimer
 
 # from multiprocessing.pool import ThreadPool as Pool
@@ -27,14 +30,14 @@ from utils.timing_utils import ContextTimer
 
 # from detectron2.config import CfgNode
 
-# from datasets import dataset
-# from datasets.preprocess import Preprocess
+# from data import dataset
+# from data.preprocess import Preprocess
 # from utils.input_utils import clean_input_paths, get_file_paths
 # from page_xml.xml_converter import XMLConverter
 
 # from core.preprocess import preprocess_datasets
 # from core.setup import setup_cfg
-# from datasets.augmentations import build_augmentation
+# from data.augmentations import build_augmentation
 # from utils.tempdir import OptionalTemporaryDirectory
 # from detectron2.data import DatasetMapper, build_detection_train_loader
 

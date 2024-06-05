@@ -1,11 +1,8 @@
 import argparse
 import logging
-import os
-from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import Callable, Dict, Optional, Sequence, Tuple, Type, Union
 
-import cv2
 import detectron2.data.transforms as T
 import numpy as np
 import torch
@@ -19,8 +16,8 @@ from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from tqdm import tqdm
 
 from core.setup import setup_cfg, setup_logging
-from datasets.augmentations import build_augmentation
-from datasets.mapper import AugInput
+from data.augmentations import build_augmentation
+from data.mapper import AugInput
 from page_xml.output_pageXML import OutputPageXML
 from page_xml.xml_regions import XMLRegions
 from utils.image_utils import load_image_array_from_path
@@ -133,7 +130,7 @@ class Predictor(DefaultPredictor):
 
     #         return predictions, height, width
 
-    def cpu_call(self, data: AugInput, device: str = None) -> tuple[dict, int, int]:
+    def cpu_call(self, data: AugInput, device: Optional[str] = None) -> tuple[dict, int, int]:
         """
         Run the model on the image with preprocessing on the cpu
 
@@ -182,7 +179,7 @@ class Predictor(DefaultPredictor):
 
         return predictions, height, width
 
-    def __call__(self, data: AugInput, device: str = None) -> tuple[dict, int, int]:
+    def __call__(self, data: AugInput, device: Optional[str] = None) -> tuple[dict, int, int]:
         """
         Run the model on the image with preprocessing
 

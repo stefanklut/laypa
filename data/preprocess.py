@@ -19,14 +19,14 @@ from tqdm import tqdm
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from detectron2.config import CfgNode, configurable
 
-from datasets.augmentations import (
+from data.augmentations import (
     Augmentation,
     ResizeLongestEdge,
     ResizeScaling,
     ResizeShortestEdge,
     build_augmentation,
 )
-from datasets.mapper import AugInput
+from data.mapper import AugInput
 from page_xml.xml_converter import XMLConverter
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode

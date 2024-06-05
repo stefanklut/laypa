@@ -15,7 +15,7 @@ from scipy.ndimage import gaussian_filter
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 
-from datasets.transforms import (
+from data.transforms import (
     AdaptiveThresholdTransform,
     AffineTransform,
     BlendTransform,
@@ -1397,8 +1397,8 @@ def test(args) -> None:
     from PIL import Image
 
     from core.setup import setup_cfg
-    from datasets import preprocess
-    from datasets.mapper import AugInput
+    from data import preprocess
+    from data.mapper import AugInput
     from utils.image_utils import load_image_array_from_path
     from utils.tempdir import OptionalTemporaryDirectory
 

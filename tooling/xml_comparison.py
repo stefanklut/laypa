@@ -4,6 +4,7 @@ import argparse
 
 # from multiprocessing.pool import ThreadPool as Pool
 import os
+import sys
 from collections import OrderedDict
 from multiprocessing.pool import Pool
 from pathlib import Path
@@ -14,6 +15,7 @@ import numpy as np
 from detectron2.data import Metadata
 from tqdm import tqdm
 
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xml_converter import XMLConverter
 from page_xml.xml_regions import XMLRegions
 from utils.input_utils import get_file_paths

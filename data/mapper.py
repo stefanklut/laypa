@@ -14,7 +14,7 @@ from detectron2.data.detection_utils import (
 )
 from detectron2.data.transforms.augmentation import _check_img_dtype
 
-from datasets.augmentations import build_augmentation
+from data.augmentations import build_augmentation
 from utils.image_utils import load_image_array_from_path
 from utils.logging_utils import get_logger_name
 

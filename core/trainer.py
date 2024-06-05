@@ -25,7 +25,7 @@ from detectron2.projects.deeplab import build_lr_scheduler
 from detectron2.solver.build import maybe_add_gradient_clipping, reduce_param_groups
 from detectron2.utils import comm
 
-from datasets.mapper import Mapper
+from data.mapper import Mapper
 
 
 def get_default_optimizer_params(
