@@ -370,7 +370,7 @@ The first tool is a visual comparison between the predictions of the model and t
 
 Required arguments:
 ```sh
-python visualization.py \
+python tooling/visualization.py \
     -c/--config CONFIG \
     -i/--input INPUT [INPUT ...] \
 ```
@@ -380,7 +380,7 @@ python visualization.py \
 
 Optional arguments:
 ```sh
-python visualization.py \
+python tooling/visualization.py \
     -c/--config CONFIG \
     -i/--input INPUT [INPUT ...] \
     [-o/--output OUTPUT] \
@@ -397,16 +397,16 @@ The optional arguments are shown using square brackets. The `-o/output` paramete
 Example of running [`visualization.py`][eval_link]:
 
 ```sh
-python visualization.py -c config.yml -i input_dir
+python tooling/visualization.py -c config.yml -i input_dir
 ```
 
 The [`visualization.py`][eval_link] will then open a window with both the prediction and the ground truth side by side (if the ground truth exists). Allowing for easier comparison. The visualization masks are created in the same way the preprocessing converts pageXML to masks.
 
-The second tool `validation.py` is used to get the validation scores of a model. This is done by comparing the prediction of the model to the ground truth. The validation scores are the Intersection over Union (IoU) and Accuracy (Acc) scores. The tool requires the input directory (`--input`) where there is also a page folder inside the input folder. The page folder should contain the xmls with the ground truth baselines/regions. To run the validation tool use the following command:
+The second tool [`validation.py`][validation_link] is used to get the validation scores of a model. This is done by comparing the prediction of the model to the ground truth. The validation scores are the Intersection over Union (IoU) and Accuracy (Acc) scores. The tool requires the input directory (`--input`) where there is also a page folder inside the input folder. The page folder should contain the xmls with the ground truth baselines/regions. To run the validation tool use the following command:
 
 Required arguments:
 ```sh
-python validation.py \ 
+python tooling/validation.py \ 
     -c/--config CONFIG \
     -i/--input INPUT
 ```
@@ -426,7 +426,7 @@ The third tool is a program to compare the similarity of two sets of pageXML. Th
 
 Required arguments:
 ```sh
-python xml_comparison.py \ 
+python tooling/xml_comparison.py \ 
     -g/--gt GT [GT ...] \
     -i/--input INPUT [INPUT ...]
 ```
@@ -436,7 +436,7 @@ python xml_comparison.py \
 
 Optional arguments:
 ```sh
-python xml_comparison.py \ 
+python tooling/xml_comparison.py \ 
     -g/--gt GT [GT ...] \
     -i/--input INPUT [INPUT ...] \
     [-m/--mode {baseline,region,start,end,separator,baseline_separator}] \
@@ -455,7 +455,7 @@ The final tool is a program for showing the pageXML as mask images. This can hel
 
 Required arguments:
 ```sh
-python xml_viewer.py \ 
+python tooling/xml_viewer.py \ 
     -c/--config CONFIG \
     -i/--input INPUT [INPUT ...] \
     -o/--output OUTPUT [OUTPUT ...] 
@@ -466,7 +466,7 @@ python xml_viewer.py \
 
 Optional arguments:
 ```sh
-python xml_viewer.py \ 
+python tooling/xml_viewer.py \ 
     -c/--config CONFIG \
     -i/--input INPUT [INPUT ...] \
     -o/--output OUTPUT [OUTPUT ...] \
@@ -507,15 +507,16 @@ If you discover a bug or missing feature that you would like to help with please
 [issues_link]: https://github.com/stefanklut/laypa/issues
 [environment_link]: environment.yml
 [license_link]: LICENSE
-[collect_env_info_link]: utils/collect_env_info.py
+[collect_env_info_link]: tooling/collect_env_info.py
 [configs_link]: configs/segmentation/
 [scripts_link]: scripts/
 [tutorial_link]: tutorial/
 [main_link]: main.py
 [run_link]: run.py
-[eval_link]: visualization.py
-[xml_comparison_link]: xml_comparison.py
-[xml_viewer_link]: xml_viewer.py
+[eval_link]: tooling/visualization.py
+[validation_link]: tooling/validation.py
+[xml_comparison_link]: tooling/xml_comparison.py
+[xml_viewer_link]: tooling/xml_viewer.py
 [start_flask_link]: /api/start_flask.sh
 [start_flask_local_link]: /api/start_flask_local.sh
 

@@ -1,8 +1,11 @@
 import argparse
 import logging
+import sys
+from pathlib import Path
 
 from detectron2.evaluation import SemSegEvaluator
 
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.preprocess import preprocess_datasets
 from core.setup import setup_cfg, setup_logging, setup_saving, setup_seed
 from core.trainer import Trainer

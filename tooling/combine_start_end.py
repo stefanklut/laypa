@@ -2,6 +2,7 @@ import argparse
 
 # from multiprocessing.pool import ThreadPool as Pool
 import os
+import sys
 from multiprocessing.pool import Pool
 from pathlib import Path
 
@@ -9,6 +10,7 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import clean_input_paths, get_file_paths
 
@@ -42,15 +44,20 @@ class CombineStartEnd:
 
     def combine(self, baseline_image_path, start_image_path, end_image_path):
         baseline_image = load_image_array_from_path(baseline_image_path, mode="grayscale")
+        if baseline_image is not None:
+            baseline_image = baseline_image["image"]
+        else:
+            raise ValueError(f"Could not load image from {baseline_image_path}")
         start_image = load_image_array_from_path(start_image_path, mode="grayscale")
+        if start_image is not None:
+            start_image = start_image["image"]
+        else:
+            raise ValueError(f"Could not load image from {start_image_path}")
         end_image = load_image_array_from_path(end_image_path, mode="grayscale")
-
-        if baseline_image is None:
-            raise TypeError
-        if start_image is None:
-            raise TypeError
-        if end_image is None:
-            raise TypeError
+        if end_image is not None:
+            end_image = end_image["image"]
+        else:
+            raise ValueError(f"Could not load image from {end_image_path}")
 
         image = np.stack([end_image, start_image, baseline_image], axis=-1)
         # image = image[..., ::-1] #Flip for BGR

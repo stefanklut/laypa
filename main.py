@@ -16,7 +16,6 @@ from detectron2.engine.defaults import _highlight
 from detectron2.utils import comm
 from detectron2.utils.collect_env import collect_env_info
 
-import models
 from core.trainer import Trainer
 from utils.logging_utils import get_logger_name
 from utils.tempdir import OptionalTemporaryDirectory

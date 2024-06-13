@@ -13,7 +13,7 @@ from flask import Flask, Response, abort, jsonify, request
 from prometheus_client import Counter, Gauge, generate_latest
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))  # noqa: E402
-from datasets.mapper import AugInput
+from data.mapper import AugInput
 from main import setup_cfg, setup_logging
 from page_xml.output_pageXML import OutputPageXML
 from page_xml.xml_regions import XMLRegions

@@ -9,11 +9,11 @@ import numpy as np
 from natsort import os_sorted
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from tooling.regions_from_dataset import count_regions_single_page
 from utils.copy_utils import copy_mode
 from utils.image_utils import load_image_array_from_path
 from utils.logging_utils import get_logger_name
 from utils.path_utils import image_path_to_xml_path, xml_path_to_image_path
-from utils.regions_from_dataset import count_regions_single_page
 
 logger = logging.getLogger(get_logger_name())
 

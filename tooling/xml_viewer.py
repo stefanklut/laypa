@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import sys
 from multiprocessing.pool import Pool
 from pathlib import Path
 
@@ -10,8 +11,9 @@ from detectron2.utils.visualizer import Visualizer
 # from multiprocessing.pool import ThreadPool as Pool
 from tqdm import tqdm
 
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.setup import setup_cfg
-from datasets.dataset import metadata_from_classes
+from data.dataset import metadata_from_classes
 from page_xml.xml_converter import XMLConverter
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import get_file_paths

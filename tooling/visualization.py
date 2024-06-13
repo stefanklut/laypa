@@ -13,9 +13,10 @@ from detectron2.utils.visualizer import Visualizer
 from natsort import os_sorted
 from tqdm import tqdm
 
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.setup import setup_cfg
-from datasets.dataset import metadata_from_classes
-from datasets.mapper import AugInput
+from data.dataset import metadata_from_classes
+from data.mapper import AugInput
 from page_xml.xml_converter import XMLConverter
 from run import Predictor
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
@@ -205,6 +206,8 @@ def main(args) -> None:
             axes[0].axis("off")
             axes[1].axis("off")
             fig_manager = plt.get_current_fig_manager()
+            if fig_manager is None:
+                raise ValueError("Could not find figure manager")
             fig_manager.window.showMaximized()
 
             i = 0
