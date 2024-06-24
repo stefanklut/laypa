@@ -253,7 +253,9 @@ class SavePredictor(Predictor):
             cfg (CfgNode): config
             input_paths (str | Path | Sequence[str | Path]): path(s) from which to extract the images
             output_dir (str | Path): path to output dir
-            gen_page (GenPageXML): class to convert from predictions to pageXML
+            output_page (OutputPageXML): output pageXML object
+            num_workers (int): number of workers to use
+
         """
         super().__init__(cfg)
 
