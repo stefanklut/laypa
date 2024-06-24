@@ -46,6 +46,7 @@ def get_arguments() -> argparse.Namespace:
     io_args.add_argument("-o", "--output", help="Output folder", type=str, required=True)
 
     parser.add_argument("-w", "--whitelist", nargs="+", help="Input folder", type=str, action="extend")
+    parser.add_argument("--num_workers", help="Number of workers to use", type=int, default=16)
 
     args = parser.parse_args()
 
@@ -243,6 +244,7 @@ class SavePredictor(Predictor):
         input_paths: str | Path | Sequence[str | Path],
         output_dir: str | Path,
         output_page: OutputPageXML,
+        num_workers: int = 16,
     ):
         """
         Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
@@ -271,6 +273,8 @@ class SavePredictor(Predictor):
             )
 
         self.output_page = output_page
+
+        self.num_workers = num_workers
 
     def set_input_paths(
         self,
@@ -357,7 +361,7 @@ class SavePredictor(Predictor):
             dataset,
             shuffle=False,
             batch_size=None,
-            num_workers=16,
+            num_workers=self.num_workers,
             pin_memory=False,
             collate_fn=collate_numpy,
         )
@@ -383,6 +387,7 @@ def main(args: argparse.Namespace) -> None:
         input_paths=args.input,
         output_dir=args.output,
         output_page=output_page,
+        num_workers=args.num_workers,
     )
     # with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], with_stack=True, record_shapes=True) as prof:
     predictor.process()
