@@ -46,7 +46,7 @@ def get_arguments() -> argparse.Namespace:
     io_args.add_argument("-o", "--output", help="Output folder", type=str, required=True)
 
     parser.add_argument("-w", "--whitelist", nargs="+", help="Input folder", type=str, action="extend")
-    parser.add_argument("--num_workers", help="Number of workers to use", type=int, default=16)
+    parser.add_argument("--num_workers", help="Number of workers to use", type=int, default=4)
 
     args = parser.parse_args()
 
@@ -244,7 +244,7 @@ class SavePredictor(Predictor):
         input_paths: str | Path | Sequence[str | Path],
         output_dir: str | Path,
         output_page: OutputPageXML,
-        num_workers: int = 16,
+        num_workers: int = 4,
     ):
         """
         Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
