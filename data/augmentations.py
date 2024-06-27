@@ -15,22 +15,7 @@ from scipy.ndimage import gaussian_filter
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 
-from data.transforms import (
-    AdaptiveThresholdTransform,
-    AffineTransform,
-    BlendTransform,
-    CropTransform,
-    GaussianFilterTransform,
-    GrayscaleTransform,
-    HFlipTransform,
-    HueTransform,
-    JPEGCompressionTransform,
-    OrientationTransform,
-    PadTransform,
-    ResizeTransform,
-    VFlipTransform,
-    WarpFieldTransform,
-)
+from data import numpy_transforms as NT
 
 # REVIEW Use the self._init() function
 
@@ -165,7 +150,7 @@ class ResizeScaling(Augmentation):
         if (old_height, old_width) == (height, width):
             return T.NoOpTransform()
 
-        return ResizeTransform(old_height, old_width, height, width)
+        return NT.ResizeTransform(old_height, old_width, height, width)
 
 
 class ResizeEdge(Augmentation):
@@ -243,7 +228,7 @@ class ResizeEdge(Augmentation):
         if (old_height, old_width) == (height, width):
             return T.NoOpTransform()
 
-        return ResizeTransform(old_height, old_width, height, width)
+        return NT.ResizeTransform(old_height, old_width, height, width)
 
 
 class ResizeShortestEdge(ResizeEdge):
@@ -347,9 +332,9 @@ class Flip(Augmentation):
         h, w = image.shape[:2]
 
         if self.horizontal:
-            return HFlipTransform(w)
+            return NT.HFlipTransform(w)
         elif self.vertical:
-            return VFlipTransform(h)
+            return NT.VFlipTransform(h)
         else:
             raise ValueError("At least one of horizontal or vertical has to be True!")
 
@@ -389,7 +374,7 @@ class RandomElastic(Augmentation):
         warpfield[..., 0] = dx * min_length * self.alpha
         warpfield[..., 1] = dy * min_length * self.alpha
 
-        return WarpFieldTransform(warpfield, ignore_value=self.ignore_value)
+        return NT.WarpFieldTransform(warpfield, ignore_value=self.ignore_value)
 
 
 class RandomAffine(Augmentation):
@@ -487,7 +472,7 @@ class RandomAffine(Augmentation):
 
             matrix = matrix @ center @ scale @ uncenter
 
-        return AffineTransform(matrix, ignore_value=self.ignore_value)
+        return NT.AffineTransform(matrix, height=h, width=w, ignore_value=self.ignore_value)
 
 
 class RandomTranslation(Augmentation):
@@ -517,7 +502,7 @@ class RandomTranslation(Augmentation):
 
         # print(matrix)
 
-        return AffineTransform(matrix, ignore_value=self.ignore_value)
+        return NT.AffineTransform(matrix, height=h, width=w, ignore_value=self.ignore_value)
 
 
 class RandomRotation(Augmentation):
@@ -564,7 +549,7 @@ class RandomRotation(Augmentation):
 
         # print(matrix)
 
-        return AffineTransform(matrix, ignore_value=self.ignore_value)
+        return NT.AffineTransform(matrix, height=h,width=w ignore_value=self.ignore_value)
 
 
 class RandomShear(Augmentation):
@@ -615,7 +600,7 @@ class RandomShear(Augmentation):
 
         matrix = matrix @ center @ shear2 @ uncenter
 
-        return AffineTransform(matrix, ignore_value=self.ignore_value)
+        return NT.AffineTransform(matrix, height=h,width=w, ignore_value=self.ignore_value)
 
 
 class RandomScale(Augmentation):
@@ -654,7 +639,7 @@ class RandomScale(Augmentation):
 
         matrix = matrix @ center @ scale @ uncenter
 
-        return AffineTransform(matrix, ignore_value=self.ignore_value)
+        return NT.AffineTransform(matrix, height=h, width=w, ignore_value=self.ignore_value)
 
 
 class Grayscale(Augmentation):
@@ -673,7 +658,7 @@ class Grayscale(Augmentation):
         self.image_format = image_format
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
-        return GrayscaleTransform(image_format=self.image_format)
+        return NT.GrayscaleTransform(image_format=self.image_format)
 
 
 class Invert(Augmentation):
@@ -689,7 +674,7 @@ class Invert(Augmentation):
         self.max_value = np.asarray(max_value)
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
-        return BlendTransform(src_image=self.max_value, src_weight=1, dst_weight=-1)
+        return NT.BlendTransform(src_image=self.max_value, src_weight=1, dst_weight=-1)
 
 
 class RandomJPEGCompression(Augmentation):
@@ -714,7 +699,7 @@ class RandomJPEGCompression(Augmentation):
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         quality = np.random.randint(self.min_quality, self.max_quality + 1)
-        return JPEGCompressionTransform(quality=quality)
+        return NT.JPEGCompressionTransform(quality=quality)
 
 
 class RandomGaussianFilter(Augmentation):
@@ -740,7 +725,7 @@ class RandomGaussianFilter(Augmentation):
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         sigma = np.random.uniform(self.min_sigma, self.max_sigma)
-        return GaussianFilterTransform(sigma=sigma, order=self.order, iterations=self.iterations)
+        return NT.GaussianFilterTransform(sigma=sigma, order=self.order, iterations=self.iterations)
 
 
 class RandomNoise(Augmentation):
@@ -763,7 +748,7 @@ class RandomNoise(Augmentation):
     def get_transform(self, image: np.ndarray) -> T.Transform:
         std = np.random.uniform(self.min_noise_std, self.max_noise_std)
         noise = np.random.normal(0, std, image.shape)
-        return BlendTransform(src_image=noise, src_weight=1, dst_weight=1)
+        return NT.BlendTransform(src_image=noise, src_weight=1, dst_weight=1)
 
 
 class RandomSaturation(Augmentation):
@@ -804,7 +789,7 @@ class RandomSaturation(Augmentation):
 
         w = np.random.uniform(self.intensity_min, self.intensity_max)
 
-        return BlendTransform(grayscale, src_weight=1 - w, dst_weight=w)
+        return NT.BlendTransform(grayscale, src_weight=1 - w, dst_weight=w)
 
 
 class RandomContrast(Augmentation):
@@ -834,7 +819,7 @@ class RandomContrast(Augmentation):
 
     def get_transform(self, image):
         w = np.random.uniform(self.intensity_min, self.intensity_max)
-        return BlendTransform(src_image=image.mean().astype(np.float32), src_weight=1 - w, dst_weight=w)
+        return NT.BlendTransform(src_image=image.mean().astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
 class RandomBrightness(Augmentation):
@@ -864,7 +849,7 @@ class RandomBrightness(Augmentation):
 
     def get_transform(self, image):
         w = np.random.uniform(self.intensity_min, self.intensity_max)
-        return BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
+        return NT.BlendTransform(src_image=np.asarray(0).astype(np.float32), src_weight=1 - w, dst_weight=w)
 
 
 class RandomHue(Augmentation):
@@ -889,7 +874,7 @@ class RandomHue(Augmentation):
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
         hue_delta = np.random.uniform(self.hue_delta_min, self.hue_delta_max)
-        return HueTransform(hue_delta, self.image_format)
+        return NT.HueTransform(hue_delta, self.image_format)
 
 
 class AdaptiveThresholding(Augmentation):
@@ -908,7 +893,7 @@ class AdaptiveThresholding(Augmentation):
         self.image_format = image_format
 
     def get_transform(self, image: np.ndarray) -> T.Transform:
-        return AdaptiveThresholdTransform(self.image_format)
+        return NT.AdaptiveThresholdTransform(self.image_format)
 
 
 class RandomOrientation(Augmentation):
@@ -937,7 +922,7 @@ class RandomOrientation(Augmentation):
         times_90_degrees = np.random.choice(4, p=self.normalized_percentages)
         if times_90_degrees == 0:
             return T.NoOpTransform()
-        return OrientationTransform(times_90_degrees, image.shape[0], image.shape[1])
+        return NT.OrientationTransform(times_90_degrees, image.shape[0], image.shape[1])
 
 
 class FixedSizeCrop(T.Augmentation):
@@ -978,7 +963,7 @@ class FixedSizeCrop(T.Augmentation):
         max_offset = np.maximum(max_offset, 0)
         offset = np.multiply(max_offset, np.random.uniform(0.0, 1.0))
         offset = np.round(offset).astype(int)
-        return CropTransform(offset[1], offset[0], output_size[1], output_size[0], input_size[1], input_size[0])
+        return NT.CropTransform(offset[1], offset[0], output_size[1], output_size[0], input_size[1], input_size[0])
 
     def _get_pad(self, image: np.ndarray) -> T.Transform:
         # Compute the image scale and scaled size.
@@ -989,7 +974,7 @@ class FixedSizeCrop(T.Augmentation):
         pad_size = np.subtract(output_size, input_size)
         pad_size = np.maximum(pad_size, 0)
         original_size = np.minimum(input_size, output_size)
-        return PadTransform(
+        return NT.PadTransform(
             0,
             0,
             pad_size[1],
@@ -1041,7 +1026,7 @@ class RandomCrop(T.Augmentation):
         assert h >= croph and w >= cropw, "Shape computation in {} has bugs.".format(self)
         h0 = np.random.randint(h - croph + 1)
         w0 = np.random.randint(w - cropw + 1)
-        return CropTransform(w0, h0, cropw, croph)
+        return NT.CropTransform(w0, h0, cropw, croph)
 
     def get_crop_size(self, image_size) -> tuple[int, int]:
         """
@@ -1118,7 +1103,7 @@ class RandomCrop_CategoryAreaConstraint(T.Augmentation):
                     cnt = cnt[labels != self.ignored_category]
                 if len(cnt) > 1 and np.max(cnt) < np.sum(cnt) * self.single_category_max_area:
                     break
-            crop_tfm = CropTransform(x0, y0, crop_size[1], crop_size[0])
+            crop_tfm = NT.CropTransform(x0, y0, crop_size[1], crop_size[0])
             return crop_tfm
 
 
@@ -1413,8 +1398,8 @@ def test(args) -> None:
         preprocesser.set_output_dir(tmp_dir)
         output = preprocesser.process_single_file(input_path)
 
-        image = load_image_array_from_path(Path(tmp_dir).joinpath(output["image_paths"]))["image"]
-        sem_seg = load_image_array_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale")["image"]
+        image = load_image_array_from_path(Path(tmp_dir).joinpath(output["image_paths"]))["image"] # type: ignore
+        sem_seg = load_image_array_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale")["image"] # type: ignore
 
     augs = build_augmentation(cfg, mode="train")
     aug = T.AugmentationList(augs)

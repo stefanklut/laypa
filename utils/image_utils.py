@@ -36,12 +36,9 @@ def convert_PIL_to_numpy(image, format):
             conversion_format = "RGB"
         image = image.convert(conversion_format)
     image = np.asarray(image)
-    # PIL squeezes out the channel dimension for "L", so make it HWC
-    if format == "L":
-        image = np.expand_dims(image, -1)
 
     # handle formats not supported by PIL
-    elif format == "BGR":
+    if format == "BGR":
         # flip channels if needed
         image = image[:, :, ::-1]
     elif format == "YUV-BT.601":
@@ -77,8 +74,6 @@ def image_to_array_dpi(image, mode, ignore_exif) -> tuple[np.ndarray, Optional[i
         assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}"
         dpi = dpi[0]
     image = convert_PIL_to_numpy(image, "RGB" if mode == "color" else "L").copy()
-    if mode == "grayscale":
-        image = image.squeeze(axis=2)
     return image, dpi
 
 
