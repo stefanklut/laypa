@@ -549,7 +549,7 @@ class RandomRotation(Augmentation):
 
         # print(matrix)
 
-        return NT.AffineTransform(matrix, height=h,width=w ignore_value=self.ignore_value)
+        return NT.AffineTransform(matrix, height=h, width=w, ignore_value=self.ignore_value)
 
 
 class RandomShear(Augmentation):
@@ -600,7 +600,7 @@ class RandomShear(Augmentation):
 
         matrix = matrix @ center @ shear2 @ uncenter
 
-        return NT.AffineTransform(matrix, height=h,width=w, ignore_value=self.ignore_value)
+        return NT.AffineTransform(matrix, height=h, width=w, ignore_value=self.ignore_value)
 
 
 class RandomScale(Augmentation):
@@ -1398,8 +1398,8 @@ def test(args) -> None:
         preprocesser.set_output_dir(tmp_dir)
         output = preprocesser.process_single_file(input_path)
 
-        image = load_image_array_from_path(Path(tmp_dir).joinpath(output["image_paths"]))["image"] # type: ignore
-        sem_seg = load_image_array_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale")["image"] # type: ignore
+        image = load_image_array_from_path(Path(tmp_dir).joinpath(output["image_paths"]))["image"]  # type: ignore
+        sem_seg = load_image_array_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale")["image"]  # type: ignore
 
     augs = build_augmentation(cfg, mode="train")
     aug = T.AugmentationList(augs)
