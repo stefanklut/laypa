@@ -927,7 +927,7 @@ class CropTransform(T.Transform):
             torch.Tensor: cropped image(s).
         """
         if len(img.shape) <= 3:
-            return img[self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
+            return img[:, self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
         else:
             return img[..., self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
 
