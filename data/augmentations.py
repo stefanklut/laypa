@@ -1718,14 +1718,16 @@ def test(args) -> None:
     im = Image.fromarray(image.permute(1, 2, 0).cpu().numpy())
     im.show("Original")
 
-    im = Image.fromarray(output.image.permute(1, 2, 0).cpu().numpy().round().clip(0, 255).astype(np.uint8))
+    if isinstance(output.image, torch.Tensor):
+        output_image.image = output_image.image.permute(1, 2, 0).cpu().numpy()
+
+    im = Image.fromarray(output.image.round().clip(0, 255).astype(np.uint8))
     im.show("Transformed")
 
-    print(output.sem_seg.shape)
-    print(output.sem_seg.dtype)
-    print(output.sem_seg.min(), output.sem_seg.max())
+    if isinstance(output.sem_seg, torch.Tensor):
+        output.sem_seg = output.sem_seg.permute(1, 2, 0).squeeze(-1).cpu().numpy()
 
-    im = Image.fromarray(output.sem_seg.permute(1, 2, 0).squeeze(-1).cpu().numpy().round().clip(0, 255).astype(np.uint8))
+    im = Image.fromarray(output.sem_seg.round().clip(0, 255).astype(np.uint8))
     im.show("Sem_Seg")
 
 
