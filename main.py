@@ -20,6 +20,8 @@ from core.trainer import Trainer
 from utils.logging_utils import get_logger_name
 from utils.tempdir import OptionalTemporaryDirectory
 
+torch.multiprocessing.set_start_method("spawn", force=True)
+
 # torch.autograd.set_detect_anomaly(True)
 
 

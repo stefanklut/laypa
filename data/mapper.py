@@ -15,6 +15,7 @@ from detectron2.data.detection_utils import (
 from detectron2.data.transforms.augmentation import _check_img_dtype
 
 from data.augmentations import build_augmentation
+from utils.image_torch_utils import load_image_tensor_from_path
 from utils.image_utils import load_image_array_from_path
 from utils.logging_utils import get_logger_name
 
@@ -44,13 +45,24 @@ def _transform_to_aug(tfm_or_aug):
         return _TransformToAug(tfm_or_aug)
 
 
+def _check_img_dtype(img):
+    if isinstance(img, torch.Tensor):
+        assert img.dtype == torch.uint8 or img.dtype == torch.float32, f"[Augmentation] Got image of type {img.dtype}!"
+        assert img.dim() in [2, 3], img.dim()
+    elif isinstance(img, np.ndarray):
+        assert img.dtype == np.uint8 or img.dtype == np.float32, f"[Augmentation] Got image of type {img.dtype}!"
+        assert img.ndim in [2, 3], img.ndim
+    else:
+        raise ValueError("[Augmentation] Needs an numpy array or torch tensor, but got a {}!".format(type(img)))
+
+
 class AugInput(T.AugInput):
     def __init__(
         self,
-        image: np.ndarray,
+        image: np.ndarray | torch.Tensor,
         *,
         boxes: Optional[np.ndarray] = None,
-        sem_seg: Optional[np.ndarray] = None,
+        sem_seg: Optional[np.ndarray | torch.Tensor] = None,
         dpi: Optional[int] = None,
         auto_dpi: Optional[bool] = False,
         default_dpi: Optional[int] = None,
@@ -178,8 +190,8 @@ class Mapper(DatasetMapper):
             dict: a format that builtin models in detectron2 accept
         """
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
-        # USER: Write your own image loading if it's not from a file
         image = load_image_array_from_path(dataset_dict["file_name"], mode="color")
+
         if image is None:
             raise ValueError(f"Image {dataset_dict['file_name']} cannot be loaded")
         check_image_size(dataset_dict, image["image"])

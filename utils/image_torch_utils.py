@@ -12,7 +12,7 @@ from utils.logging_utils import get_logger_name
 
 
 def load_image_tensor_from_path(
-    path: Path,
+    path: str | Path,
     mode: str = "color",
     device: torch.device = torch.device("cpu"),
     ignore_exif: bool = False,
@@ -30,10 +30,10 @@ def load_image_tensor_from_path(
         Optional[dict]: _description_
     """
     assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
+    path = Path(path)
 
     try:
         torchvision_mode = torchvision.io.ImageReadMode.RGB if mode == "color" else torchvision.io.ImageReadMode.GRAY
-
         if path.suffix in [".JPG", ".JPEG", ".jpeg", ".jpg"]:
             image_bytes = torchvision.io.read_file(str(path))
             image = torchvision.io.decode_jpeg(

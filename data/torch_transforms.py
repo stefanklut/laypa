@@ -226,7 +226,7 @@ class WarpFieldTransform(T.Transform):
 
         Args:
             img (torch.Tensor): of shape HxW or CxHxW
-            warpfield (torch.Tensor): HxW warpfield with movement per pixel
+            warpfield (torch.Tensor): 2xHxW warpfield with movement per pixel
 
         Raises             :
         NotImplementedError: Only support for HxW and CxHxW images
@@ -296,13 +296,13 @@ class WarpFieldTransform(T.Transform):
         segmentation = torch.stack([segmentation, torch.ones_like(segmentation)], dim=0)
 
         sampled_segmentation = torch.nn.functional.grid_sample(
-            segmentation[None, ...], self.indices[None, ...], mode="nearest", padding_mode="zeros", align_corners=False
+            segmentation, self.indices[None, ...], mode="nearest", padding_mode="zeros", align_corners=False
         )
-        out_of_bounds = segmentation[0, 1] == 0
+        out_of_bounds = segmentation[:, 1] == 0
         # Set out of bounds to ignore value (remove if you don't want to ignore)
-        sampled_segmentation[0, 0][out_of_bounds] = self.ignore_value
+        sampled_segmentation[:, 0][out_of_bounds] = self.ignore_value
 
-        return sampled_segmentation[0, 0].to(dtype=torch.uint8)
+        return sampled_segmentation[:, 0].to(dtype=torch.uint8)
 
     def inverse(self) -> T.Transform:
         """
@@ -387,18 +387,20 @@ class AffineTransform(T.Transform):
             torch.Tensor: transformed segmentation
         """
         segmentation = segmentation.to(dtype=torch.float32)
+        print(segmentation.shape)
         # Add a channel to see what part of the image is out of bounds
-        segmentation = torch.stack([segmentation, torch.ones_like(segmentation)], dim=0)
+        segmentation = torch.stack([segmentation, torch.ones_like(segmentation)], dim=1)
+        print(segmentation.shape)
         affine_grid = torch.nn.functional.affine_grid(
             self.matrix[None, :2], [1, 2, self.height, self.width], align_corners=False
         ).to(segmentation.device)
         transformed_segmentation = torch.nn.functional.grid_sample(
-            segmentation[None, ...], affine_grid, mode="nearest", padding_mode="zeros", align_corners=False
+            segmentation, affine_grid, mode="nearest", padding_mode="zeros", align_corners=False
         )
-        out_of_bounds = segmentation[0, 1] == 0
+        out_of_bounds = segmentation[:, 1] == 0
         # Set out of bounds to ignore value (remove if you don't want to ignore)
-        transformed_segmentation[0, 0][out_of_bounds] = self.ignore_value
-        return transformed_segmentation[0, 0].to(dtype=torch.uint8)
+        transformed_segmentation[:, 0][out_of_bounds] = self.ignore_value
+        return transformed_segmentation[:, 0].to(dtype=torch.uint8)
 
     def inverse(self) -> T.Transform:
         """
@@ -855,8 +857,8 @@ class JPEGCompressionTransform(T.Transform):
             torch.Tensor: JPEG compressed image(s).
         """
         img = img.to(dtype=torch.uint8)
-        encoded = torchvision.io.encode_jpeg(img, quality=self.quality)
-        return torchvision.io.decode_jpeg(encoded)
+        encoded = torchvision.io.encode_jpeg(img.cpu(), quality=self.quality)
+        return torchvision.io.decode_jpeg(encoded, device=img.device)  # type: ignore
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
@@ -927,7 +929,7 @@ class CropTransform(T.Transform):
         if len(img.shape) <= 3:
             return img[self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
         else:
-            return img[..., self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w, :]
+            return img[..., self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
@@ -1026,29 +1028,13 @@ class PadTransform(T.Transform):
         self.pad_value = pad_value
         self.seg_pad_value = seg_pad_value
 
-    def apply_image(self, img):
-        if img.ndim == 3:
-            padding = ((self.y0, self.y1), (self.x0, self.x1), (0, 0))
-        else:
-            padding = ((self.y0, self.y1), (self.x0, self.x1))
-        return np.pad(
-            img,
-            padding,
-            mode="constant",
-            constant_values=self.pad_value,
-        )
+    def apply_image(self, img: torch.Tensor) -> torch.Tensor:
+        padding = [self.x0, self.y0, self.x1, self.y1]
+        return F.pad(img, padding, fill=self.pad_value)
 
     def apply_segmentation(self, img):
-        if img.ndim == 3:
-            padding = ((self.y0, self.y1), (self.x0, self.x1), (0, 0))
-        else:
-            padding = ((self.y0, self.y1), (self.x0, self.x1))
-        return np.pad(
-            img,
-            padding,
-            mode="constant",
-            constant_values=self.seg_pad_value,
-        )
+        padding = [self.x0, self.y0, self.x1, self.y1]
+        return F.pad(img, padding, fill=self.seg_pad_value)
 
     def apply_coords(self, coords):
         coords[:, 0] += self.x0
