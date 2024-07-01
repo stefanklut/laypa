@@ -1703,11 +1703,14 @@ def test(args) -> None:
         image = load_image_tensor_from_path(Path(tmp_dir).joinpath(output["image_paths"]), device="cuda")["image"]  # type: ignore
         sem_seg = load_image_tensor_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale", device="cuda")["image"]  # type: ignore
 
-    augs = build_augmentation(cfg, mode="train")
+    # augs = build_augmentation(cfg, mode="train")
+    # aug = T.AugmentationList(augs)
+
+    augs = [RandomAffine()]
     aug = T.AugmentationList(augs)
 
-    output_image = image.clone()
-    output = AugInput(image=output_image, sem_seg=sem_seg)
+    input_image = image.clone()
+    output = AugInput(image=input_image, sem_seg=sem_seg)
     transforms = aug(output)
     transforms = [t for t in transforms.transforms if not isinstance(t, T.NoOpTransform)]
 
@@ -1719,7 +1722,7 @@ def test(args) -> None:
     im.show("Original")
 
     if isinstance(output.image, torch.Tensor):
-        output_image.image = output_image.image.permute(1, 2, 0).cpu().numpy()
+        output.image = output.image.permute(1, 2, 0).cpu().numpy()
 
     im = Image.fromarray(output.image.round().clip(0, 255).astype(np.uint8))
     im.show("Transformed")

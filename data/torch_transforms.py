@@ -78,7 +78,7 @@ class ResizeTransform(T.Transform):
         Returns:
             torch.Tensor: resized segmentation
         """
-        old_height, old_width = segmentation.shape
+        channels, old_height, old_width = segmentation.shape
         assert (old_height, old_width) == (self.height, self.width), "Input dims do not match specified dims"
 
         resized_segmentation = F.resize(
@@ -333,11 +333,23 @@ class AffineTransform(T.Transform):
             ignore_value (int, optional): value to ignore in the segmentation. Defaults to 255.
         """
         super().__init__()
-        self.matrix = matrix
+        self.matrix = self.convert_matrix(matrix, height, width)
         self.height = height
         self.width = width
 
         self.ignore_value = ignore_value
+
+    @staticmethod
+    def convert_matrix(matrix: torch.Tensor, height: int, width: int) -> torch.Tensor:
+        param = torch.linalg.inv(matrix)
+        converted_matrix = torch.zeros([3, 3])
+        converted_matrix[0, 0] = param[0, 0]
+        converted_matrix[0, 1] = param[0, 1] * height / width
+        converted_matrix[0, 2] = param[0, 2] * 2 / width + converted_matrix[0, 0] + converted_matrix[0, 1] - 1
+        converted_matrix[1, 0] = param[1, 0] * width / height
+        converted_matrix[1, 1] = param[1, 1]
+        converted_matrix[1, 2] = param[1, 2] * 2 / height + converted_matrix[1, 0] + converted_matrix[1, 1] - 1
+        return converted_matrix
 
     def apply_image(self, img: torch.Tensor) -> torch.Tensor:
         """
@@ -1075,10 +1087,20 @@ def test(args) -> None:
     # output_image = ResizeTransform(image.shape[1], image.shape[2], 256, 256).apply_image(image)
     # output_image = HFlipTransform(image.shape[2]).apply_image(image)
     # output_image = VFlipTransform(image.shape[1]).apply_image(image)
-    output_image = WarpFieldTransform(torch.ones(2, image.shape[1], image.shape[2], device=image.device) * 20).apply_image(
-        image
-    )
-    # output_image = AffineTransform(torch.rand(3, 3), image.shape[1], image.shape[2]).apply_image(image)
+    # output_image = WarpFieldTransform(torch.ones(2, image.shape[1], image.shape[2], device=image.device) * 20).apply_image(
+    #     image
+    # )
+    output_image = AffineTransform(
+        torch.Tensor(
+            [
+                [np.cos(np.pi / 4), -np.sin(np.pi / 4), 0],
+                [np.sin(np.pi / 4), np.cos(np.pi / 4), 0],
+                [0, 0, 1],
+            ]
+        ),
+        image.shape[1],
+        image.shape[2],
+    ).apply_image(image)
     # output_image = GrayscaleTransform().apply_image(image)
     # output_image = GaussianFilterTransform(sigma=2).apply_image(image)
     # output_image = BlendTransform(1.0, 0.5, 0.5).apply_image(image)

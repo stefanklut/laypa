@@ -331,7 +331,7 @@ class AffineTransform(T.Transform):
             ignore_value (int, optional): value to ignore in the segmentation. Defaults to 255.
         """
         super().__init__()
-        self.matrix = matrix
+        self.matrix = matrix.astype(np.float32)
         self.height = height
         self.width = width
         self.ignore_value = ignore_value
@@ -1056,7 +1056,18 @@ def test(args) -> None:
     image = cv2.imread(str(input_path))[..., ::-1]
 
     # output_image = OrientationTransform(1, image.shape[0], image.shape[1]).apply_image(image)
-    output_image = AdaptiveThresholdTransform().apply_image(image)
+    # output_image = AdaptiveThresholdTransform().apply_image(image)
+    output_image = AffineTransform(
+        np.asarray(
+            [
+                [np.cos(np.pi / 4), -np.sin(np.pi / 4), 0],
+                [np.sin(np.pi / 4), np.cos(np.pi / 4), 0],
+                [0, 0, 1],
+            ]
+        ),
+        image.shape[0],
+        image.shape[1],
+    ).apply_image(image)
 
     im = Image.fromarray(image)
     im.show("Original")
