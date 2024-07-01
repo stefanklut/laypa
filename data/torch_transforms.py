@@ -409,7 +409,7 @@ class AffineTransform(T.Transform):
         transformed_segmentation = torch.nn.functional.grid_sample(
             segmentation, affine_grid, mode="nearest", padding_mode="zeros", align_corners=False
         )
-        out_of_bounds = segmentation[:, 1] == 0
+        out_of_bounds = transformed_segmentation[:, 1] == 0
         # Set out of bounds to ignore value (remove if you don't want to ignore)
         transformed_segmentation[:, 0][out_of_bounds] = self.ignore_value
         return transformed_segmentation[:, 0].to(dtype=torch.uint8)
@@ -1100,7 +1100,7 @@ def test(args) -> None:
         ),
         image.shape[1],
         image.shape[2],
-    ).apply_image(image)
+    ).apply_segmentation(torch.zeros([1, 4000, 4000]))
     # output_image = GrayscaleTransform().apply_image(image)
     # output_image = GaussianFilterTransform(sigma=2).apply_image(image)
     # output_image = BlendTransform(1.0, 0.5, 0.5).apply_image(image)
