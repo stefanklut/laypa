@@ -438,18 +438,20 @@ class RandomElastic(Augmentation):
         total_sigma = self.sigma * min_length
         pad = round(truncate * total_sigma)
         kernel_size = 2 * pad + 1
-        random_x = torch.rand((height + 2 * pad, width + 2 * pad), device=image.device) * 2 - 1
-        random_y = torch.rand((height + 2 * pad, width + 2 * pad), device=image.device) * 2 - 1
+        random_x = torch.rand((1, height + 2 * pad, width + 2 * pad), device=image.device) * 2 - 1
+        random_y = torch.rand((1, height + 2 * pad, width + 2 * pad), device=image.device) * 2 - 1
+
         dx = F.gaussian_blur(
             random_x,
             kernel_size=[kernel_size, kernel_size],
             sigma=[total_sigma, total_sigma],
-        )[pad:-pad, pad:-pad]
+        )[..., pad:-pad, pad:-pad]
         dy = F.gaussian_blur(
             random_y,
             kernel_size=[kernel_size, kernel_size],
             sigma=[total_sigma, total_sigma],
-        )[pad:-pad, pad:-pad]
+        )[..., pad:-pad, pad:-pad]
+
         warpfield[0] = dx * min_length * self.alpha
         warpfield[1] = dy * min_length * self.alpha
 
@@ -1706,10 +1708,10 @@ def test(args) -> None:
     # augs = build_augmentation(cfg, mode="train")
     # aug = T.AugmentationList(augs)
 
-    augs = [RandomAffine()]
+    augs = [RandomElastic()]
     aug = T.AugmentationList(augs)
 
-    input_image = image.clone()
+    input_image = image.copy() if isinstance(image, np.ndarray) else image.clone()
     output = AugInput(image=input_image, sem_seg=sem_seg)
     transforms = aug(output)
     transforms = [t for t in transforms.transforms if not isinstance(t, T.NoOpTransform)]
@@ -1718,7 +1720,10 @@ def test(args) -> None:
     print(image.shape)
     print(image.dtype)
     print(image.min(), image.max())
-    im = Image.fromarray(image.permute(1, 2, 0).cpu().numpy())
+
+    if isinstance(image, torch.Tensor):
+        image = image.permute(1, 2, 0).cpu().numpy()
+    im = Image.fromarray(image)
     im.show("Original")
 
     if isinstance(output.image, torch.Tensor):

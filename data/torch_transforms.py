@@ -293,12 +293,12 @@ class WarpFieldTransform(T.Transform):
             torch.Tensor: warped segmentation
         """
         segmentation = segmentation.to(dtype=torch.float32)
-        segmentation = torch.stack([segmentation, torch.ones_like(segmentation)], dim=0)
+        segmentation = torch.stack([segmentation, torch.ones_like(segmentation)], dim=1)
 
         sampled_segmentation = torch.nn.functional.grid_sample(
             segmentation, self.indices[None, ...], mode="nearest", padding_mode="zeros", align_corners=False
         )
-        out_of_bounds = segmentation[:, 1] == 0
+        out_of_bounds = sampled_segmentation[:, 1] == 0
         # Set out of bounds to ignore value (remove if you don't want to ignore)
         sampled_segmentation[:, 0][out_of_bounds] = self.ignore_value
 
