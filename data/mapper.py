@@ -8,6 +8,7 @@ import torch
 from detectron2.config import CfgNode, configurable
 from detectron2.data.dataset_mapper import DatasetMapper
 from detectron2.data.detection_utils import (
+    SizeMismatchError,
     check_image_size,
     create_keypoint_hflip_indices,
     transform_proposals,
@@ -101,6 +102,39 @@ class AugInput(T.AugInput):
         return T.AugmentationList(augmentations)(self)
 
 
+def check_image_size(dataset_dict, image):
+    """
+    Raise an error if the image does not match the size specified in the dict.
+    """
+    if "width" in dataset_dict or "height" in dataset_dict:
+        if isinstance(image, torch.Tensor):
+            image_wh = (image.shape[-1], image.shape[-2])
+        else:
+            image_wh = (image.shape[1], image.shape[0])
+        expected_wh = (dataset_dict["width"], dataset_dict["height"])
+        if not image_wh == expected_wh:
+            raise SizeMismatchError(
+                "Mismatched image shape{}, got {}, expect {}.".format(
+                    (" for image " + dataset_dict["file_name"] if "file_name" in dataset_dict else ""),
+                    image_wh,
+                    expected_wh,
+                )
+                + " Please check the width/height in your annotation."
+            )
+
+    # To ensure bbox always remap to original image size
+    if "width" not in dataset_dict:
+        if isinstance(image, torch.Tensor):
+            dataset_dict["width"] = image.shape[-1]
+        else:
+            dataset_dict["width"] = image.shape[1]
+    if "height" not in dataset_dict:
+        if isinstance(image, torch.Tensor):
+            dataset_dict["height"] = image.shape[-2]
+        else:
+            dataset_dict["height"] = image.shape[0]
+
+
 class Mapper(DatasetMapper):
     @configurable
     def __init__(
@@ -118,6 +152,7 @@ class Mapper(DatasetMapper):
         auto_dpi: Optional[bool] = True,
         default_dpi: Optional[int] = None,
         manual_dpi: Optional[int] = None,
+        on_gpu: Optional[bool] = False,
     ):
         assert mode in ["train", "val", "test"], f"Unknown mode: {mode}"
         is_train = True if mode == "train" else False
@@ -137,6 +172,7 @@ class Mapper(DatasetMapper):
         self.auto_dpi = auto_dpi
         self.default_dpi = default_dpi
         self.manual_dpi = manual_dpi
+        self.on_gpu = on_gpu
 
         logger = logging.getLogger(get_logger_name())
         logger.info(f"[DatasetMapper] Augmentations used in {mode}: {augmentations}")
@@ -170,6 +206,7 @@ class Mapper(DatasetMapper):
             "auto_dpi": cfg.INPUT.DPI.AUTO_DETECT_TRAIN,
             "default_dpi": cfg.INPUT.DPI.DEFAULT_DPI_TRAIN,
             "manual_dpi": cfg.INPUT.DPI.MANUAL_DPI_TRAIN,
+            "on_gpu": cfg.INPUT.ON_GPU,
         }
 
         if cfg.MODEL.KEYPOINT_ON:
@@ -190,7 +227,11 @@ class Mapper(DatasetMapper):
             dict: a format that builtin models in detectron2 accept
         """
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
-        image = load_image_array_from_path(dataset_dict["file_name"], mode="color")
+
+        if self.on_gpu:
+            image = load_image_tensor_from_path(dataset_dict["file_name"], mode="color")
+        else:
+            image = load_image_array_from_path(dataset_dict["file_name"], mode="color")
 
         if image is None:
             raise ValueError(f"Image {dataset_dict['file_name']} cannot be loaded")
@@ -198,7 +239,10 @@ class Mapper(DatasetMapper):
 
         # USER: Remove if you don't do semantic/panoptic segmentation.
         if "sem_seg_file_name" in dataset_dict:
-            sem_seg_gt = load_image_array_from_path(dataset_dict["sem_seg_file_name"], mode="grayscale")
+            if self.on_gpu:
+                sem_seg_gt = load_image_tensor_from_path(dataset_dict["sem_seg_file_name"], mode="grayscale")
+            else:
+                sem_seg_gt = load_image_array_from_path(dataset_dict["sem_seg_file_name"], mode="grayscale")
             if sem_seg_gt is None:
                 raise ValueError(f"Sem-seg {dataset_dict['sem_seg_file_name']} cannot be loaded")
         else:
@@ -212,19 +256,26 @@ class Mapper(DatasetMapper):
             default_dpi=self.default_dpi,
             manual_dpi=self.manual_dpi,
         )
-        transforms = self.augmentations(aug_input)
+        with torch.no_grad():
+            transforms = self.augmentations(aug_input)
         image, sem_seg_gt = aug_input.image, aug_input.sem_seg
 
         if image is None:
             raise ValueError(f"Image {dataset_dict['file_name']} cannot be loaded")
 
-        image_shape = image.shape[:2]  # h, w
         # Pytorch's dataloader is efficient on torch.Tensor due to shared-memory,
         # but not efficient on large generic data structures due to the use of pickle & mp.Queue.
         # Therefore it's important to use torch.Tensor.
-        dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
-        if sem_seg_gt is not None:
-            dataset_dict["sem_seg"] = torch.as_tensor(sem_seg_gt.astype("long"))
+        if self.on_gpu:
+            image_shape = image.shape[-2:]  # h, w
+            dataset_dict["image"] = image.squeeze(0)
+            if sem_seg_gt is not None:
+                dataset_dict["sem_seg"] = sem_seg_gt.squeeze(0).to(dtype=torch.long)
+        else:
+            image_shape = image.shape[:2]
+            dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
+            if sem_seg_gt is not None:
+                dataset_dict["sem_seg"] = torch.as_tensor(sem_seg_gt.astype("long"))
 
         # USER: Remove if you don't use pre-computed proposals.
         # Most users would not need this feature.

@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Sequence, override
 
+import cv2
 import detectron2.data.transforms as T
 import numpy as np
 import torch
@@ -438,8 +439,10 @@ class RandomElastic(Augmentation):
         total_sigma = self.sigma * min_length
         pad = round(truncate * total_sigma)
         kernel_size = 2 * pad + 1
-        random_x = torch.rand((1, height + 2 * pad, width + 2 * pad), device=image.device) * 2 - 1
-        random_y = torch.rand((1, height + 2 * pad, width + 2 * pad), device=image.device) * 2 - 1
+        random_x = (torch.rand((1, height, width), device=image.device) * 2) - 1
+        random_y = (torch.rand((1, height, width), device=image.device) * 2) - 1
+        random_x = F.pad(random_x, [pad, pad, pad, pad], padding_mode="constant", fill=0)
+        random_y = F.pad(random_y, [pad, pad, pad, pad], padding_mode="constant", fill=0)
 
         dx = F.gaussian_blur(
             random_x,
@@ -505,7 +508,17 @@ class RandomAffine(Augmentation):
         else:
             self.probabilities = [1.0] * 4
 
-    def get_random_matrix(self, height: int, width: int):
+    def get_random_matrix(self, height: int, width: int) -> np.ndarray:
+        """
+        Get a random affine transformation matrix
+
+        Args:
+            height (int): image height
+            width (int): image width
+
+        Returns:
+            np.ndarray: random affine transformation matrix
+        """
         center = np.eye(3)
         center[:2, 2:] = np.asarray([width, height])[:, None] / 2
 
@@ -595,7 +608,17 @@ class RandomTranslation(Augmentation):
         self.t_stdv = t_stdv
         self.ignore_value = ignore_value
 
-    def get_random_matrix(self, height: int, width: int):
+    def get_random_matrix(self, height: int, width: int) -> np.ndarray:
+        """
+        Get a random translation matrix
+
+        Args:
+            height (int): image height
+            width (int): image width
+
+        Returns:
+            np.ndarray: random translation matrix
+        """
         matrix = np.eye(3)
 
         # Translation
@@ -645,7 +668,18 @@ class RandomRotation(Augmentation):
         self.r_kappa = r_kappa
         self.ignore_value = ignore_value
 
-    def get_random_matrix(self, height: int, width: int):
+    def get_random_matrix(self, height: int, width: int) -> np.ndarray:
+        """
+        Get a random rotation matrix
+
+        Args:
+            height (int): image height
+            width (int): image width
+
+        Returns:
+            np.ndarray: random rotation matrix
+        """
+
         center = np.eye(3)
         center[:2, 2:] = np.asarray([width, height])[:, None] / 2
 
@@ -702,7 +736,17 @@ class RandomShear(Augmentation):
         self.sh_kappa = sh_kappa
         self.ignore_value = ignore_value
 
-    def get_random_matrix(self, height: int, width: int):
+    def get_random_matrix(self, height: int, width: int) -> np.ndarray:
+        """
+        Get a random shearing matrix
+
+        Args:
+            height (int): image height
+            width (int): image width
+
+        Returns:
+            np.ndarray: random shearing matrix
+        """
         center = np.eye(3)
         center[:2, 2:] = np.asarray([width, height])[:, None] / 2
 
@@ -770,7 +814,17 @@ class RandomScale(Augmentation):
         self.sc_stdv = sc_stdv
         self.ignore_value = ignore_value
 
-    def get_random_matrix(self, height: int, width: int):
+    def get_random_matrix(self, height: int, width: int) -> np.ndarray:
+        """
+        Get a random scaling matrix
+
+        Args:
+            height (int): image height
+            width (int): image width
+
+        Returns:
+            np.ndarray: random scaling matrix
+        """
         center = np.eye(3)
         center[:2, 2:] = np.asarray([width, height])[:, None] / 2
 
@@ -990,9 +1044,9 @@ class RandomSaturation(Augmentation):
 
     def numpy_transform(self, image: np.ndarray) -> T.Transform:
         if self.image_format == "RGB":
-            grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+            grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)[..., None]
         elif self.image_format == "BGR":
-            grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)[..., None]
         else:
             raise NotImplementedError(f"Image format {self.image_format} not supported")
 
@@ -1373,36 +1427,49 @@ class RandomCrop_CategoryAreaConstraint(T.Augmentation):
         self.ignored_category = ignored_category
 
     def numpy_transform(self, image: np.ndarray, sem_seg: np.ndarray) -> T.Transform:
-        # TODO: Implement the numpy_transform method
-        pass
+        height, width = sem_seg.shape
+        x0 = 0
+        y0 = 0
+        crop_size = (0, 0)
+        for _ in range(10):
+            crop_size = self.crop_aug.get_crop_size((height, width))
+            y0 = np.random.randint(height - crop_size[0] + 1)
+            x0 = np.random.randint(width - crop_size[1] + 1)
+            sem_seg_temp = sem_seg[y0 : y0 + crop_size[0], x0 : x0 + crop_size[1]]
+            labels, cnt = np.unique(sem_seg_temp, return_counts=True)
+            if self.ignored_category is not None:
+                cnt = cnt[labels != self.ignored_category]
+            if len(cnt) > 1 and np.max(cnt) < np.sum(cnt) * self.single_category_max_area:
+                break
+
+        return NT.CropTransform(x0, y0, crop_size[1], crop_size[0])
 
     def torch_transform(self, image: torch.Tensor, sem_seg: torch.Tensor) -> T.Transform:
-        # TODO: Implement the torch_transform method
-        pass
+        height, width = sem_seg.shape[-2:]
+        x0 = 0
+        y0 = 0
+        crop_size = (0, 0)
+        for _ in range(10):
+            crop_size = self.crop_aug.get_crop_size((height, width))
+            y0 = np.random.randint(height - crop_size[0] + 1)
+            x0 = np.random.randint(width - crop_size[1] + 1)
+            sem_seg_temp = sem_seg[..., y0 : y0 + crop_size[0], x0 : x0 + crop_size[1]]
+            labels, cnt = torch.unique(sem_seg_temp, return_counts=True)
+            if self.ignored_category is not None:
+                cnt = cnt[labels != self.ignored_category]
+            if len(cnt) > 1 and torch.max(cnt).item() < torch.sum(cnt).item() * self.single_category_max_area:
+                break
+
+        return TT.CropTransform(x0, y0, crop_size[1], crop_size[0])
 
     def get_transform(self, image, sem_seg) -> T.Transform:
         if self.single_category_max_area >= 1.0:
             return self.crop_aug.get_transform(image)
         else:
-            h, w = sem_seg.shape
-            x0 = 0
-            y0 = 0
-            crop_size = (0, 0)
-            for _ in range(10):
-                crop_size = self.crop_aug.get_crop_size((h, w))
-                y0 = np.random.randint(h - crop_size[0] + 1)
-                x0 = np.random.randint(w - crop_size[1] + 1)
-                sem_seg_temp = sem_seg[y0 : y0 + crop_size[0], x0 : x0 + crop_size[1]]
-                labels, cnt = np.unique(sem_seg_temp, return_counts=True)
-                if self.ignored_category is not None:
-                    cnt = cnt[labels != self.ignored_category]
-                if len(cnt) > 1 and np.max(cnt) < np.sum(cnt) * self.single_category_max_area:
-                    break
-
             if isinstance(image, np.ndarray):
-                return NT.CropTransform(x0, y0, crop_size[1], crop_size[0])
+                return self.numpy_transform(image, sem_seg)
             elif isinstance(image, torch.Tensor):
-                return TT.CropTransform(x0, y0, crop_size[1], crop_size[0])
+                return self.torch_transform(image, sem_seg)
             else:
                 raise ValueError(f"Image type {type(image)} not supported")
 
@@ -1708,18 +1775,13 @@ def test(args) -> None:
     # augs = build_augmentation(cfg, mode="train")
     # aug = T.AugmentationList(augs)
 
-    augs = [RandomElastic()]
+    augs = [RandomCrop_CategoryAreaConstraint("absolute", (512, 512), 0.5)]
     aug = T.AugmentationList(augs)
 
     input_image = image.copy() if isinstance(image, np.ndarray) else image.clone()
     output = AugInput(image=input_image, sem_seg=sem_seg)
     transforms = aug(output)
     transforms = [t for t in transforms.transforms if not isinstance(t, T.NoOpTransform)]
-
-    print(transforms)
-    print(image.shape)
-    print(image.dtype)
-    print(image.min(), image.max())
 
     if isinstance(image, torch.Tensor):
         image = image.permute(1, 2, 0).cpu().numpy()

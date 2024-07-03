@@ -333,7 +333,8 @@ class AffineTransform(T.Transform):
             ignore_value (int, optional): value to ignore in the segmentation. Defaults to 255.
         """
         super().__init__()
-        self.matrix = self.convert_matrix(matrix, height, width)
+        self.numpy_matrix = matrix.cpu().numpy()
+        self.torch_matrix = self.convert_matrix(matrix, height, width)
         self.height = height
         self.width = width
 
@@ -341,6 +342,17 @@ class AffineTransform(T.Transform):
 
     @staticmethod
     def convert_matrix(matrix: torch.Tensor, height: int, width: int) -> torch.Tensor:
+        """
+        Convert the matrix to the correct format for the affine transformation, between -1 and 1
+
+        Args:
+            matrix (torch.Tensor): affine matrix applied to the pixels in image
+            height (int): height of the image
+            width (int): width of the image
+
+        Returns:
+            torch.Tensor: converted matrix
+        """
         param = torch.linalg.inv(matrix)
         converted_matrix = torch.zeros([3, 3])
         converted_matrix[0, 0] = param[0, 0]
@@ -367,7 +379,7 @@ class AffineTransform(T.Transform):
         img = img.to(dtype=torch.float32)
 
         affine_grid = torch.nn.functional.affine_grid(
-            self.matrix[None, :2], [1, 3, self.height, self.width], align_corners=False
+            self.torch_matrix[None, :2], [1, 3, self.height, self.width], align_corners=False
         ).to(img.device)
 
         transformed_img = torch.nn.functional.grid_sample(
@@ -386,7 +398,7 @@ class AffineTransform(T.Transform):
             np.ndarray: transformed coordinates
         """
         coords = coords.astype(np.float32)
-        return cv2.transform(coords[:, None, :], self.matrix)[:, 0, :2]
+        return cv2.transform(coords[:, None, :], self.numpy_matrix)[:, 0, :2]
 
     def apply_segmentation(self, segmentation: torch.Tensor) -> torch.Tensor:
         """
@@ -399,17 +411,19 @@ class AffineTransform(T.Transform):
             torch.Tensor: transformed segmentation
         """
         segmentation = segmentation.to(dtype=torch.float32)
-        print(segmentation.shape)
+
         # Add a channel to see what part of the image is out of bounds
         segmentation = torch.stack([segmentation, torch.ones_like(segmentation)], dim=1)
-        print(segmentation.shape)
         affine_grid = torch.nn.functional.affine_grid(
-            self.matrix[None, :2], [1, 2, self.height, self.width], align_corners=False
+            self.torch_matrix[None, :2], [1, 2, self.height, self.width], align_corners=False
         ).to(segmentation.device)
+
         transformed_segmentation = torch.nn.functional.grid_sample(
             segmentation, affine_grid, mode="nearest", padding_mode="zeros", align_corners=False
         )
+
         out_of_bounds = transformed_segmentation[:, 1] == 0
+
         # Set out of bounds to ignore value (remove if you don't want to ignore)
         transformed_segmentation[:, 0][out_of_bounds] = self.ignore_value
         return transformed_segmentation[:, 0].to(dtype=torch.uint8)

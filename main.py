@@ -20,8 +20,6 @@ from core.trainer import Trainer
 from utils.logging_utils import get_logger_name
 from utils.tempdir import OptionalTemporaryDirectory
 
-torch.multiprocessing.set_start_method("spawn", force=True)
-
 # torch.autograd.set_detect_anomaly(True)
 
 
@@ -102,6 +100,9 @@ def setup_training(args: argparse.Namespace):
                     _highlight(config_contents, args.config),
                 )
             )
+
+    if cfg.INPUT.ON_GPU:
+        torch.multiprocessing.set_start_method("spawn", force=True)
 
     # Temp dir for preprocessing in case no temporary dir was specified
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not (args.keep_tmp_dir)) as tmp_dir:
