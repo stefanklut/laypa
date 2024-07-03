@@ -301,7 +301,7 @@ class Trainer(DefaultTrainer):
         else:
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
 
-        return build_detection_train_loader(cfg=cfg, mapper=mapper)  # type: ignore
+        return build_detection_train_loader(cfg=cfg, mapper=mapper, pin_memory=cfg.DATALOADER.PIN_MEMORY)  # type: ignore
 
     @classmethod
     def build_test_loader(cls, cfg, dataset_name):
