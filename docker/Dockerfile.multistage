@@ -1,6 +1,6 @@
 FROM condaforge/mambaforge as builder
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -y && \
     apt-get dist-upgrade -y && \
@@ -26,8 +26,8 @@ RUN mamba env create -p /env -f environment.yml && \
     rm -r /env/nsight*
 
 
-ENV PATH /env/bin:$PATH
-ENV CONDA_DEFAULT_ENV /env
+ENV PATH=/env/bin:$PATH
+ENV CONDA_DEFAULT_ENV=/env
 ENV ENV_NAME=/env
 
 

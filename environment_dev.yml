@@ -21,6 +21,7 @@ dependencies:
   - imagesize
   - timm
   - gunicorn
+  - openjpeg
   - pillow
   - shapely
   - natsort
