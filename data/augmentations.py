@@ -878,7 +878,7 @@ class Grayscale(Augmentation):
         super().__init__()
         self.image_format = image_format
 
-    def get_transform(self, image: np.ndarray) -> T.Transform:
+    def get_transform(self, image) -> T.Transform:
         if isinstance(image, np.ndarray):
             return NT.GrayscaleTransform(image_format=self.image_format)
         elif isinstance(image, torch.Tensor):
@@ -905,7 +905,7 @@ class Invert(Augmentation):
     def torch_transform(self, image: torch.Tensor) -> T.Transform:
         return TT.BlendTransform(src_image=torch.tensor(self.max_value, device=image.device), src_weight=1, dst_weight=-1)
 
-    def get_transform(self, image: np.ndarray) -> T.Transform:
+    def get_transform(self, image) -> T.Transform:
         if isinstance(image, np.ndarray):
             return self.numpy_transform(image)
         elif isinstance(image, torch.Tensor):
@@ -942,7 +942,7 @@ class RandomJPEGCompression(Augmentation):
         quality = np.random.randint(self.min_quality, self.max_quality + 1)
         return TT.JPEGCompressionTransform(quality=quality)
 
-    def get_transform(self, image: np.ndarray) -> T.Transform:
+    def get_transform(self, image) -> T.Transform:
         if isinstance(image, np.ndarray):
             return self.numpy_transform(image)
         elif isinstance(image, torch.Tensor):
@@ -972,7 +972,7 @@ class RandomGaussianFilter(Augmentation):
         self.order = order
         self.iterations = iterations
 
-    def get_transform(self, image: np.ndarray) -> T.Transform:
+    def get_transform(self, image) -> T.Transform:
         sigma = np.random.uniform(self.min_sigma, self.max_sigma)
         if isinstance(image, np.ndarray):
             return NT.GaussianFilterTransform(sigma=sigma, order=self.order, iterations=self.iterations)
@@ -1009,7 +1009,7 @@ class RandomNoise(Augmentation):
         noise = torch.randn_like(image, device=image.device, dtype=torch.float32) * std
         return TT.BlendTransform(src_image=noise, src_weight=1, dst_weight=1)
 
-    def get_transform(self, image: np.ndarray) -> T.Transform:
+    def get_transform(self, image) -> T.Transform:
         if isinstance(image, np.ndarray):
             return self.numpy_transform(image)
         elif isinstance(image, torch.Tensor):
@@ -1063,7 +1063,7 @@ class RandomSaturation(Augmentation):
 
         return TT.BlendTransform(grayscale, src_weight=1 - w, dst_weight=w)
 
-    def get_transform(self, image: np.ndarray) -> T.Transform:
+    def get_transform(self, image) -> T.Transform:
         if isinstance(image, np.ndarray):
             return self.numpy_transform(image)
         elif isinstance(image, torch.Tensor):
@@ -1177,7 +1177,7 @@ class RandomHue(Augmentation):
         self.hue_delta_max = hue_delta_max
         self.image_format = image_format
 
-    def get_transform(self, image: np.ndarray) -> T.Transform:
+    def get_transform(self, image) -> T.Transform:
         hue_delta = np.random.uniform(self.hue_delta_min, self.hue_delta_max)
 
         if isinstance(image, np.ndarray):
@@ -1203,7 +1203,7 @@ class AdaptiveThresholding(Augmentation):
         super().__init__()
         self.image_format = image_format
 
-    def get_transform(self, image: np.ndarray) -> T.Transform:
+    def get_transform(self, image) -> T.Transform:
         if isinstance(image, np.ndarray):
             return NT.AdaptiveThresholdTransform(self.image_format)
         elif isinstance(image, torch.Tensor):
@@ -1274,9 +1274,14 @@ class FixedSizeCrop(T.Augmentation):
         self.pad_value = pad_value
         self.seg_pad_value = seg_pad_value
 
-    def _get_crop(self, image: np.ndarray) -> T.Transform:
+    def _get_crop(self, image) -> T.Transform:
         # Compute the image scale and scaled size.
-        input_size = image.shape[:2]
+        if isinstance(image, np.ndarray):
+            input_size = image.shape[:2]
+        elif isinstance(image, torch.Tensor):
+            input_size = image.shape[-2:]
+        else:
+            raise ValueError(f"Image type {type(image)} not supported")
         output_size = self.crop_size
 
         # Add random crop if the image is scaled up.
@@ -1292,9 +1297,14 @@ class FixedSizeCrop(T.Augmentation):
         else:
             raise ValueError(f"Image type {type(image)} not supported")
 
-    def _get_pad(self, image: np.ndarray) -> T.Transform:
+    def _get_pad(self, image) -> T.Transform:
         # Compute the image scale and scaled size.
-        input_size = image.shape[:2]
+        if isinstance(image, np.ndarray):
+            input_size = image.shape[:2]
+        elif isinstance(image, torch.Tensor):
+            input_size = image.shape[-2:]
+        else:
+            raise ValueError(f"Image type {type(image)} not supported")
         output_size = self.crop_size
 
         # Add padding if the image is scaled down.
@@ -1312,7 +1322,7 @@ class FixedSizeCrop(T.Augmentation):
         else:
             raise ValueError(f"Image type {type(image)} not supported")
 
-    def get_transform(self, image: np.ndarray) -> T.TransformList:
+    def get_transform(self, image) -> T.TransformList:
         transforms = [self._get_crop(image)]
         if self.pad:
             transforms.append(self._get_pad(image))
@@ -1379,15 +1389,20 @@ class RandomCrop(T.Augmentation):
         """
         h, w = image_size
         if self.crop_type == "relative":
+            assert 0 < self.crop_size[0] <= 1 and 0 < self.crop_size[1] <= 1
             ch, cw = self.crop_size
             return int(h * ch + 0.5), int(w * cw + 0.5)
         elif self.crop_type == "relative_range":
+            assert self.crop_size[0] <= self.crop_size[1]
+            assert 0 < self.crop_size[0] <= 1 and 0 < self.crop_size[1] <= 1
             crop_size = np.asarray(self.crop_size, dtype=np.float32)
             ch, cw = crop_size + np.random.rand(2) * (1 - crop_size)
             return int(h * ch + 0.5), int(w * cw + 0.5)
         elif self.crop_type == "absolute":
+            assert round(self.crop_size[0]) == self.crop_size[0] and round(self.crop_size[1]) == self.crop_size[1]
             return (min(self.crop_size[0], h), min(self.crop_size[1], w))
         elif self.crop_type == "absolute_range":
+            assert round(self.crop_size[0]) == self.crop_size[0] and round(self.crop_size[1]) == self.crop_size[1]
             assert self.crop_size[0] <= self.crop_size[1]
             ch = np.random.randint(min(h, self.crop_size[0]), min(h, self.crop_size[1]) + 1)
             cw = np.random.randint(min(w, self.crop_size[0]), min(w, self.crop_size[1]) + 1)
@@ -1474,7 +1489,7 @@ class RandomCrop_CategoryAreaConstraint(T.Augmentation):
                 raise ValueError(f"Image type {type(image)} not supported")
 
 
-class CropResize(T.Augmentation):
+class RandomCropResize(T.Augmentation):
     def __init__(
         self,
         crop_type,
@@ -1484,8 +1499,9 @@ class CropResize(T.Augmentation):
         target_dpi=None,
         min_size=None,
         max_size=None,
-        ignore_value=255,
     ):
+        if resize_mode == "none":
+            self.resize = ResizeScaling(scale=1.0, target_dpi=target_dpi)
         if resize_mode == "shortest_edge":
             if min_size is None or max_size is None:
                 raise ValueError("min_size and max_size must be provided for shortest_edge mode")
@@ -1497,14 +1513,10 @@ class CropResize(T.Augmentation):
         elif resize_mode == "scaling":
             if scale is None or max_size is None:
                 raise ValueError("scale and max_size must be provided for scaling mode")
-            self.resize = ResizeScaling(scale, max_size)
-
-        self.target_dpi = target_dpi
+            self.resize = ResizeScaling(scale, max_size, target_dpi=target_dpi)
 
         self.crop_size = crop_size
         self.crop_type = crop_type
-
-        self.ignore_value = ignore_value
 
     def numpy_transform(self, image: np.ndarray, dpi: int) -> T.Transform:
         height, width = image.shape[:2]
@@ -1512,21 +1524,21 @@ class CropResize(T.Augmentation):
         scale_x = width / new_width
         scale_y = height / new_height
 
-        original_crop_size = self.crop_size
-
         scaled_crop_size = (int(self.crop_size[0] * scale_y), int(self.crop_size[1] * scale_x))
 
-        transform = T.TransformList(
-            [
-                RandomCrop(self.crop_type, self.crop_size).numpy_transform(image),
-                NT.ResizeTransform(
-                    height=scaled_crop_size[0],
-                    width=scaled_crop_size[1],
-                    new_height=original_crop_size[0],
-                    new_width=original_crop_size[1],
-                ),
-            ]
+        crop = RandomCrop(self.crop_type, scaled_crop_size)
+        cropped_size = crop.get_crop_size((height, width))
+
+        scaled_cropped_size = (int(cropped_size[0] * 1 / scale_y), int(cropped_size[1] * 1 / scale_x))
+
+        resize = NT.ResizeTransform(
+            height=cropped_size[0],
+            width=cropped_size[1],
+            new_height=scaled_cropped_size[0],
+            new_width=scaled_cropped_size[1],
         )
+
+        transform = T.TransformList([crop.numpy_transform(image), resize])
         return transform
 
     def torch_transform(self, image: torch.Tensor, dpi: int) -> T.Transform:
@@ -1535,21 +1547,20 @@ class CropResize(T.Augmentation):
         scale_x = width / new_width
         scale_y = height / new_height
 
-        original_crop_size = self.crop_size
-
         scaled_crop_size = (int(self.crop_size[0] * scale_y), int(self.crop_size[1] * scale_x))
 
-        transform = T.TransformList(
-            [
-                RandomCrop(self.crop_type, self.crop_size).torch_transform(image),
-                TT.ResizeTransform(
-                    height=scaled_crop_size[0],
-                    width=scaled_crop_size[1],
-                    new_height=original_crop_size[0],
-                    new_width=original_crop_size[1],
-                ),
-            ]
+        crop = RandomCrop(self.crop_type, scaled_crop_size)
+        cropped_size = crop.get_crop_size((height, width))
+
+        scaled_cropped_size = (int(cropped_size[0] * 1 / scale_y), int(cropped_size[1] * 1 / scale_x))
+
+        resize = TT.ResizeTransform(
+            height=cropped_size[0],
+            width=cropped_size[1],
+            new_height=scaled_cropped_size[0],
+            new_width=scaled_cropped_size[1],
         )
+        transform = T.TransformList([crop.torch_transform(image), resize])
         return transform
 
     def get_transform(self, image, dpi):
@@ -1598,6 +1609,19 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
             augmentation.append(ResizeScaling(scaling, max_size, target_dpi=target_dpi))
         else:
             raise NotImplementedError(f"{cfg.PREPROCESS.RESIZE.RESIZE_MODE} is not a known resize mode")
+        return augmentation
+    if mode == "train" and cfg.INPUT.CROP.ENABLED and cfg.INPUT.CROP_RESIZE:
+        augmentation.append(
+            RandomCropResize(
+                crop_type=cfg.INPUT.CROP.TYPE,
+                crop_size=cfg.INPUT.CROP.SIZE,
+                resize_mode=cfg.INPUT.RESIZE_MODE,
+                scale=cfg.INPUT.SCALING_TRAIN,
+                target_dpi=cfg.INPUT.DPI.TARGET_DPI_TRAIN,
+                min_size=cfg.INPUT.MIN_SIZE_TRAIN,
+                max_size=cfg.INPUT.MAX_SIZE_TRAIN,
+            )
+        )
     else:
         if cfg.INPUT.RESIZE_MODE == "none":
             augmentation.append(ResizeScaling(scale=1.0, target_dpi=cfg.INPUT.DPI.TARGET_DPI))
@@ -1639,11 +1663,11 @@ def build_augmentation(cfg: CfgNode, mode: str = "train") -> list[T.Augmentation
         else:
             raise NotImplementedError(f"{cfg.INPUT.RESIZE_MODE} is not a known resize mode")
 
-    if not mode == "train":
+    if mode != "train":
         return augmentation
 
     # Crop
-    if cfg.INPUT.CROP.ENABLED:
+    if cfg.INPUT.CROP.ENABLED and not cfg.INPUT.CROP_RESIZE:
         augmentation.append(
             RandomCrop(
                 crop_type=cfg.INPUT.CROP.TYPE,
@@ -1861,7 +1885,11 @@ def test(args) -> None:
     # augs = build_augmentation(cfg, mode="train")
     # aug = T.AugmentationList(augs)
 
-    augs = [RandomCrop_CategoryAreaConstraint("absolute", (512, 512), 0.5)]
+    augs = [
+        RandomCropResize(
+            crop_type="absolute", crop_size=(1024, 1024), resize_mode="scaling", scale=0.5, target_dpi=300, max_size=-1
+        )
+    ]
     aug = T.AugmentationList(augs)
 
     input_image = image.copy() if isinstance(image, np.ndarray) else image.clone()

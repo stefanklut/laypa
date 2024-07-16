@@ -48,7 +48,10 @@ class ResizeTransform(T.Transform):
         """
         img = img.to(dtype=torch.uint8)
         channels, old_height, old_width = img.shape
-        assert (old_height, old_width) == (self.height, self.width), "Input dims do not match specified dims"
+        assert (old_height, old_width) == (
+            self.height,
+            self.width,
+        ), f"Input dims ({old_height}, {old_width}) do not match specified dims ({self.height}, {self.width})"
 
         resized_image = F.resize(img, [self.new_height, self.new_width])
 
@@ -79,7 +82,10 @@ class ResizeTransform(T.Transform):
             torch.Tensor: resized segmentation
         """
         channels, old_height, old_width = segmentation.shape
-        assert (old_height, old_width) == (self.height, self.width), "Input dims do not match specified dims"
+        assert (old_height, old_width) == (
+            self.height,
+            self.width,
+        ), f"Input dims ({old_height}, {old_width}) do not match specified dims ({self.height}, {self.width})"
 
         resized_segmentation = F.resize(
             segmentation, [self.new_height, self.new_width], interpolation=InterpolationMode.NEAREST
