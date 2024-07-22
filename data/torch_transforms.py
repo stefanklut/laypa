@@ -12,7 +12,9 @@ import torchvision
 import torchvision.transforms.functional as F
 from torchvision.transforms import InterpolationMode
 
-# REVIEW Check if there is a benefit for using scipy instead of the standard torchvision
+from data.numpy_transforms import TimedTransform
+
+T.Transform = TimedTransform
 
 
 class ResizeTransform(T.Transform):
@@ -1120,7 +1122,7 @@ def test(args) -> None:
         ),
         image.shape[1],
         image.shape[2],
-    ).apply_segmentation(torch.zeros([1, 4000, 4000]))
+    ).apply_segmentation(torch.zeros([1, 4000, 4000], dtype=torch.uint8))
     # output_image = GrayscaleTransform().apply_image(image)
     # output_image = GaussianFilterTransform(sigma=2).apply_image(image)
     # output_image = BlendTransform(1.0, 0.5, 0.5).apply_image(image)
@@ -1128,7 +1130,7 @@ def test(args) -> None:
     # output_image = AdaptiveThresholdTransform().apply_image(image)
     # output_image = OrientationTransform(1, image.shape[0], image.shape[1]).apply_image(image)
 
-    output_image = output_image.cpu().numpy().transpose(1, 2, 0)
+    output_image = output_image.cpu().numpy().squeeze(0)
 
     im = Image.fromarray(image.cpu().numpy().transpose(1, 2, 0))
     im.show("Original")

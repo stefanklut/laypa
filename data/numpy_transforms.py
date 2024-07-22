@@ -1,4 +1,5 @@
 import argparse
+import time
 from typing import Optional
 
 import cv2
@@ -7,7 +8,27 @@ import numpy as np
 import shapely.geometry as geometry
 from scipy.ndimage import gaussian_filter, map_coordinates
 
-# REVIEW Check if there is a benefit for using scipy instead of the standard torchvision
+
+class TimedTransform(T.Transform):
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        cls.apply_image = cls._timed(cls.apply_image)
+        cls.apply_segmentation = cls._timed(cls.apply_segmentation)
+        cls.apply_coords = cls._timed(cls.apply_coords)
+        cls.inverse = cls._timed(cls.inverse)
+
+    @classmethod
+    def _timed(cls, func):
+        def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            result = func(*args, **kwargs)
+            print(f"{cls.__name__}:{func.__name__} took {time.perf_counter() - start} seconds")
+            return result
+
+        return wrapper
+
+
+T.Transform = TimedTransform
 
 
 class ResizeTransform(T.Transform):

@@ -4,6 +4,7 @@ import argparse
 import inspect
 import pprint
 import sys
+import time
 from pathlib import Path
 from typing import Optional, Sequence, override
 
@@ -17,11 +18,29 @@ from detectron2.data.transforms.augmentation import _get_aug_input_args
 from scipy.ndimage import gaussian_filter
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-
 from data import numpy_transforms as NT
 from data import torch_transforms as TT
 
 # REVIEW Use the self._init() function
+
+
+class TimedAugmentationList(T.AugmentationList):
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        cls.__call__ = cls._timed(cls.__call__)
+
+    @classmethod
+    def _timed(cls, func):
+        def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            result = func(*args, **kwargs)
+            print(f"{cls.__name__}:{func.__name__} took {time.perf_counter() - start} seconds")
+            return result
+
+        return wrapper
+
+
+T.AugmentationList = TimedAugmentationList
 
 
 class RandomApply(T.RandomApply):
@@ -1879,21 +1898,23 @@ def test(args) -> None:
         # image = load_image_array_from_path(Path(tmp_dir).joinpath(output["image_paths"]))["image"]  # type: ignore
         # sem_seg = load_image_array_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale")["image"]  # type: ignore
 
-        image = load_image_tensor_from_path(Path(tmp_dir).joinpath(output["image_paths"]), device="cuda")["image"]  # type: ignore
-        sem_seg = load_image_tensor_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale", device="cuda")["image"]  # type: ignore
+        image = load_image_tensor_from_path(Path(tmp_dir).joinpath(output["image_paths"]), device="cpu")["image"]  # type: ignore
+        sem_seg = load_image_tensor_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale", device="cpu")["image"]  # type: ignore
 
-    # augs = build_augmentation(cfg, mode="train")
-    # aug = T.AugmentationList(augs)
+    augs = build_augmentation(cfg, mode="train")
+    aug = T.AugmentationList(augs)
 
-    augs = [
-        RandomCropResize(
-            crop_type="absolute", crop_size=(1024, 1024), resize_mode="scaling", scale=0.5, target_dpi=300, max_size=-1
-        )
-    ]
+    # augs = [
+    #     RandomCropResize(
+    #         crop_type="absolute", crop_size=(1024, 1024), resize_mode="scaling", scale=0.5, target_dpi=300, max_size=-1
+    #     )
+    #     # RandomAffine()
+    # ]
     aug = T.AugmentationList(augs)
 
     input_image = image.copy() if isinstance(image, np.ndarray) else image.clone()
     output = AugInput(image=input_image, sem_seg=sem_seg)
+    print("Running Augmentations")
     transforms = aug(output)
     transforms = [t for t in transforms.transforms if not isinstance(t, T.NoOpTransform)]
 
