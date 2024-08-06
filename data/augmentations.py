@@ -1915,25 +1915,29 @@ def test(args) -> None:
     input_image = image.copy() if isinstance(image, np.ndarray) else image.clone()
     output = AugInput(image=input_image, sem_seg=sem_seg)
     print("Running Augmentations")
-    transforms = aug(output)
-    transforms = [t for t in transforms.transforms if not isinstance(t, T.NoOpTransform)]
+    start_time = time.perf_counter()
+    for _ in range(100):
+        transforms = aug(output)
+        # transforms = [t for t in transforms.transforms if not isinstance(t, T.NoOpTransform)]
+    end_time = time.perf_counter()
+    print(f"Time: {end_time - start_time:.2f}")
 
-    if isinstance(image, torch.Tensor):
-        image = image.permute(1, 2, 0).cpu().numpy()
-    im = Image.fromarray(image)
-    im.show("Original")
+    # if isinstance(image, torch.Tensor):
+    #     image = image.permute(1, 2, 0).cpu().numpy()
+    # im = Image.fromarray(image)
+    # im.show("Original")
 
-    if isinstance(output.image, torch.Tensor):
-        output.image = output.image.permute(1, 2, 0).cpu().numpy()
+    # if isinstance(output.image, torch.Tensor):
+    #     output.image = output.image.permute(1, 2, 0).cpu().numpy()
 
-    im = Image.fromarray(output.image.round().clip(0, 255).astype(np.uint8))
-    im.show("Transformed")
+    # im = Image.fromarray(output.image.round().clip(0, 255).astype(np.uint8))
+    # im.show("Transformed")
 
-    if isinstance(output.sem_seg, torch.Tensor):
-        output.sem_seg = output.sem_seg.permute(1, 2, 0).squeeze(-1).cpu().numpy()
+    # if isinstance(output.sem_seg, torch.Tensor):
+    #     output.sem_seg = output.sem_seg.permute(1, 2, 0).squeeze(-1).cpu().numpy()
 
-    im = Image.fromarray(output.sem_seg.round().clip(0, 255).astype(np.uint8))
-    im.show("Sem_Seg")
+    # im = Image.fromarray(output.sem_seg.round().clip(0, 255).astype(np.uint8))
+    # im.show("Sem_Seg")
 
 
 if __name__ == "__main__":

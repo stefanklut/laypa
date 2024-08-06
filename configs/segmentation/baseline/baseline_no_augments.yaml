@@ -27,7 +27,7 @@ INPUT:
   MAX_SIZE_TEST: -1
 
   CROP:
-    ENABLED: True
+    ENABLED: False
     SIZE: [1024, 1024]
     TYPE: absolute
 
