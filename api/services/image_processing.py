@@ -7,9 +7,13 @@ from typing import Any
 # > External Libraries
 import torch
 
+# > Project Libraries
+from utils.logging_utils import get_logger_name
+
+logger = logging.getLogger(get_logger_name())
+
 
 def safe_predict(data, device, predict_gen_page_wrapper) -> Any:
-    logger = logging.getLogger(__name__)
 
     try:
         return predict_gen_page_wrapper.predictor(data, device)

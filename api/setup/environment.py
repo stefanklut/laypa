@@ -1,11 +1,17 @@
 # Imports
 
 # > Standard Libraries
+import logging
 import os
 from pathlib import Path
 
+# > External Libraries
+from utils.logging_utils import get_logger_name
+
 
 def read_environment_variables():
+    logger = logging.getLogger(get_logger_name())
+
     try:
         max_queue_size_string: str = os.environ["LAYPA_MAX_QUEUE_SIZE"]
         model_base_path_string: str = os.environ["LAYPA_MODEL_BASE_PATH"]
@@ -25,5 +31,10 @@ def read_environment_variables():
     if not output_base_path.is_dir():
         raise FileNotFoundError(
             f"LAYPA_OUTPUT_BASE_PATH: {output_base_path} is not found in the current filesystem")
+
+    logger.debug("Running with the following environment variables:")
+    logger.debug(f"LAYPA_MAX_QUEUE_SIZE: {max_queue_size}")
+    logger.debug(f"LAYPA_MODEL_BASE_PATH: {model_base_path}")
+    logger.debug(f"LAYPA_OUTPUT_BASE_PATH: {output_base_path}")
 
     return max_queue_size, model_base_path, output_base_path

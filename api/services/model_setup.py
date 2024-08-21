@@ -11,6 +11,7 @@ from page_xml.output_pageXML import OutputPageXML
 from page_xml.xml_regions import XMLRegions
 from run import Predictor
 from api.setup.initialization import DummyArgs
+from utils.logging_utils import get_logger_name
 
 
 class PredictorGenPageWrapper:
@@ -22,7 +23,7 @@ class PredictorGenPageWrapper:
         self.model_name: Optional[str] = None
         self.predictor: Optional[Predictor] = None
         self.gen_page: Optional[OutputPageXML] = None
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(get_logger_name())
         self.model_base_path = model_base_path
 
     def setup_model(self, model_name: str, args: DummyArgs):
@@ -30,8 +31,10 @@ class PredictorGenPageWrapper:
         Create the model and post-processing code
 
         Args:
-            model_name (str): Model name, used to determine what model to load from models present in base path
-            args (DummyArgs): Dummy version of command line arguments, to set up config
+            model_name (str): Model name, used to determine what model to load
+                from models present in base path
+            args (DummyArgs): Dummy version of command line arguments, to set
+                up config
         """
         if (
             model_name is not None
@@ -41,6 +44,7 @@ class PredictorGenPageWrapper:
         ):
             return
 
+        self.logger.info(f"Setting up model: {model_name}")
         self.model_name = model_name
         model_path = self.model_base_path.joinpath(self.model_name)
         config_path = model_path.joinpath("config.yaml")
@@ -63,3 +67,4 @@ class PredictorGenPageWrapper:
         )
 
         self.predictor = Predictor(cfg=cfg)
+        self.logger.info(f"Model {model_name} loaded successfully")
