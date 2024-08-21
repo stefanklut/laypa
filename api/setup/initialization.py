@@ -24,7 +24,8 @@ def initialize_environment(max_queue_size, output_base_path):
     max_workers = 1
     max_queue_size = max_workers + max_queue_size
 
-    # Run a separate thread on which the GPU runs and processes requests put in the queue
+    # Run a separate thread on which the GPU runs and processes requests put in
+    # the queue
     executor = ThreadPoolExecutor(max_workers=max_workers)
 
     # Prometheus metrics to be returned
@@ -35,4 +36,5 @@ def initialize_environment(max_queue_size, output_base_path):
     exception_predict_counter = Counter(
         "exception_predict", "Exception thrown in predict() function")
 
-    return args, executor, queue_size_gauge, images_processed_counter, exception_predict_counter
+    return (args, executor, queue_size_gauge, images_processed_counter,
+            exception_predict_counter)
