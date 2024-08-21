@@ -17,5 +17,5 @@ export GUNICORN_WORKERS=1
 export GUNICORN_THREADS=1
 export GUNICORN_ACCESSLOG='-'
 
-gunicorn -b $GUNICORN_RUN_HOST -w $GUNICORN_WORKERS -t $GUNICORN_THREADS --access-logfile $GUNICORN_ACCESSLOG 'api.flask_app:create_app()'
+gunicorn -b $GUNICORN_RUN_HOST -w $GUNICORN_WORKERS -t $GUNICORN_THREADS --access-logfile $GUNICORN_ACCESSLOG 'api.app:create_app()'
 

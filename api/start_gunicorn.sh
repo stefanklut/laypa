@@ -6,4 +6,4 @@ if [[ $( builtin cd "$( dirname ${BASH_SOURCE[0]} )/.."; pwd ) != $( pwd ) ]]; t
     cd $DIR_OF_SCRIPT
 fi
 
-python api/gunicorn_app.py
+gunicorn 'api.app:create_app()'

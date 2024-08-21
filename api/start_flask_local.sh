@@ -11,4 +11,4 @@ mkdir -p /tmp/flask
 LAYPA_MAX_QUEUE_SIZE=128 \
 LAYPA_MODEL_BASE_PATH="/home/tim/Documents/laypa-models/" \
 LAYPA_OUTPUT_BASE_PATH="/tmp/flask/" \
-FLASK_DEBUG=true FLASK_APP=api.flask_app.py flask run
+FLASK_DEBUG=true FLASK_APP=api.app.py flask run
