@@ -19,8 +19,7 @@ def safe_predict(data, device, predict_gen_page_wrapper) -> Any:
         return predict_gen_page_wrapper.predictor(data, device)
     except Exception as exception:
         if isinstance(exception, torch.cuda.OutOfMemoryError) or (
-            isinstance(exception, RuntimeError) and "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(
-                exception)
+            isinstance(exception, RuntimeError) and "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(exception)
         ):
             logger.warning("CUDA OOM encountered, falling back to CPU.")
             torch.cuda.empty_cache()

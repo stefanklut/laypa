@@ -10,9 +10,7 @@ from flask import Request
 from api.services.utils import abort_with_info
 
 
-def extract_request_fields(request: Request,
-                           response_info: dict[str, str]) \
-        -> tuple[Request, Path]:
+def extract_request_fields(request: Request, response_info: dict[str, str]) -> tuple[Request, Path]:
     try:
         identifier = request.form["identifier"]
         response_info["identifier"] = identifier

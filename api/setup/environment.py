@@ -26,11 +26,9 @@ def read_environment_variables():
 
     # Check if paths exist
     if not model_base_path.is_dir():
-        raise FileNotFoundError(
-            f"LAYPA_MODEL_BASE_PATH: {model_base_path} is not found in the current filesystem")
+        raise FileNotFoundError(f"LAYPA_MODEL_BASE_PATH: {model_base_path} is not found in the current filesystem")
     if not output_base_path.is_dir():
-        raise FileNotFoundError(
-            f"LAYPA_OUTPUT_BASE_PATH: {output_base_path} is not found in the current filesystem")
+        raise FileNotFoundError(f"LAYPA_OUTPUT_BASE_PATH: {output_base_path} is not found in the current filesystem")
 
     logger.debug("Running with the following environment variables:")
     logger.debug(f"LAYPA_MAX_QUEUE_SIZE: {max_queue_size}")

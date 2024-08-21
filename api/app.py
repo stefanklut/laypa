@@ -25,11 +25,10 @@ def create_app():
 
     # Read environment variables
     logger.info("Initializing environment")
-    max_queue_size, model_base_path, output_base_path = \
-        read_environment_variables()
-    args, executor, queue_size_gauge, images_processed_counter, \
-        exception_predict_counter = initialize_environment(max_queue_size,
-                                                           output_base_path)
+    max_queue_size, model_base_path, output_base_path = read_environment_variables()
+    args, executor, queue_size_gauge, images_processed_counter, exception_predict_counter = initialize_environment(
+        max_queue_size, output_base_path
+    )
     logger.info("Environment initialized successfully")
 
     # Initialize model

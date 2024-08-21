@@ -43,12 +43,10 @@ def process_prediction(request: Request) -> ResponseInfo:
     max_queue_size = current_app.max_queue_size
 
     response_info = ResponseInfo(status_code=500)
-    current_time = time.strftime(
-        "%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+    current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
     response_info["added_time"] = current_time
 
-    post_file, image_name, identifier, model_name, whitelist \
-        = extract_request_fields(request, response_info)
+    post_file, image_name, identifier, model_name, whitelist = extract_request_fields(request, response_info)
 
     queue_size = executor._work_queue.qsize()
     response_info["added_queue_position"] = queue_size
@@ -60,13 +58,20 @@ def process_prediction(request: Request) -> ResponseInfo:
     data = load_image_array_from_bytes(img_bytes, image_path=image_name)
 
     if data is None:
-        abort_with_info(
-            500, "Image could not be loaded correctly", response_info)
+        abort_with_info(500, "Image could not be loaded correctly", response_info)
 
     future = executor.submit(
-        predict_image, data["image"], data["dpi"], image_name, identifier,
-        model_name, whitelist, predict_gen_page_wrapper, output_base_path,
-        images_processed_counter, args
+        predict_image,
+        data["image"],
+        data["dpi"],
+        image_name,
+        identifier,
+        model_name,
+        whitelist,
+        predict_gen_page_wrapper,
+        output_base_path,
+        images_processed_counter,
+        args,
     )
     future.add_done_callback(check_exception_callback)
     response_info["status_code"] = 202
@@ -85,7 +90,7 @@ def predict_image(
     predict_gen_page_wrapper,
     output_base_path: Path,
     images_processed_counter,
-    args: Any
+    args: Any,
 ) -> dict[str, Any]:
     """
     Run the prediction for the given image
@@ -133,14 +138,13 @@ def predict_image(
         )
 
         outputs = safe_predict(
-            data, device=predict_gen_page_wrapper.predictor.cfg.MODEL.DEVICE,
-            predict_gen_page_wrapper=predict_gen_page_wrapper)
+            data, device=predict_gen_page_wrapper.predictor.cfg.MODEL.DEVICE, predict_gen_page_wrapper=predict_gen_page_wrapper
+        )
 
         output_image = outputs[0]["sem_seg"]
 
         predict_gen_page_wrapper.gen_page.generate_single_page(
-            output_image, output_path, old_height=outputs[1],
-            old_width=outputs[2]
+            output_image, output_path, old_height=outputs[1], old_width=outputs[2]
         )
         images_processed_counter.inc()
 
@@ -149,8 +153,7 @@ def predict_image(
     except Exception as exception:
         # Catch CUDA out of memory errors
         if isinstance(exception, torch.cuda.OutOfMemoryError) or (
-            isinstance(exception, RuntimeError)
-            and "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(exception)
+            isinstance(exception, RuntimeError) and "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(exception)
         ):
             torch.cuda.empty_cache()
             torch.cuda.reset_peak_memory_stats()

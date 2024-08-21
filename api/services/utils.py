@@ -12,9 +12,7 @@ from flask import jsonify, abort
 from api.models.response_info import ResponseInfo
 
 
-def abort_with_info(status_code: int,
-                    error_message: str,
-                    info: Optional[ResponseInfo] = None):
+def abort_with_info(status_code: int, error_message: str, info: Optional[ResponseInfo] = None):
     """
     Abort while still providing info about what went wrong
 
