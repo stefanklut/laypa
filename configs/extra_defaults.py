@@ -78,12 +78,22 @@ _C.PREPROCESS.DPI.DEFAULT_DPI = 300
 _C.PREPROCESS.DPI.TARGET_DPI = 300
 _C.PREPROCESS.DPI.MANUAL_DPI = 300
 
-# Input augmentations
+_C.DATALOADER = CN()
+_C.DATALOADER.PIN_MEMORY = True
+
 _C.INPUT = CN()
+
+# Run decoding and augmentation on GPU
+_C.INPUT.ON_GPU = False
+
+# Input augmentation
+
+# Random flip
 _C.INPUT.RANDOM_FLIP = "both"
 
 # Resize options after loading image
 _C.INPUT.RESIZE_MODE = "shortest_edge"
+_C.INPUT.CROP_RESIZE = False
 _C.INPUT.SCALING = 0.0
 _C.INPUT.SCALING_TRAIN = 0.5
 _C.INPUT.SCALING_TEST = 0.0

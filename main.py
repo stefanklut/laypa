@@ -101,6 +101,9 @@ def setup_training(args: argparse.Namespace):
                 )
             )
 
+    if cfg.INPUT.ON_GPU:
+        torch.multiprocessing.set_start_method("spawn", force=True)
+
     # Temp dir for preprocessing in case no temporary dir was specified
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not (args.keep_tmp_dir)) as tmp_dir:
         preprocess_datasets(cfg, args.train, args.val, tmp_dir)
