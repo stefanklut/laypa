@@ -1,27 +1,44 @@
-# Modified from P2PaLA
-
 import argparse
-import sys
-from pathlib import Path
+import time
 from typing import Optional
 
 import cv2
 import detectron2.data.transforms as T
 import numpy as np
 import shapely.geometry as geometry
-from scipy.ndimage import affine_transform, gaussian_filter, map_coordinates
+from scipy.ndimage import gaussian_filter, map_coordinates
 
-# REVIEW Check if there is a benefit for using scipy instead of the standard torchvision
+
+class TimedTransform(T.Transform):
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        cls.apply_image = cls._timed(cls.apply_image)
+        cls.apply_segmentation = cls._timed(cls.apply_segmentation)
+        cls.apply_coords = cls._timed(cls.apply_coords)
+        cls.inverse = cls._timed(cls.inverse)
+
+    @classmethod
+    def _timed(cls, func):
+        def wrapper(*args, **kwargs):
+            start = time.perf_counter()
+            result = func(*args, **kwargs)
+            print(f"{cls.__name__}:{func.__name__} took {time.perf_counter() - start} seconds")
+            return result
+
+        return wrapper
+
+
+T.Transform = TimedTransform
 
 
 class ResizeTransform(T.Transform):
     """
-    Resize image Using cv2
+    Resize image using cv2
     """
 
     def __init__(self, height: int, width: int, new_height: int, new_width: int) -> None:
         """
-        Resize image Using cv2
+        Resize image using cv2
 
         Args:
             height (int): initial height
@@ -49,9 +66,9 @@ class ResizeTransform(T.Transform):
         old_height, old_width, channels = img.shape
         assert (old_height, old_width) == (self.height, self.width), "Input dims do not match specified dims"
 
-        res_image = cv2.resize(img, (self.new_width, self.new_height), interpolation=cv2.INTER_LINEAR)
+        resized_image = cv2.resize(img, (self.new_width, self.new_height), interpolation=cv2.INTER_LINEAR)
 
-        return res_image
+        return resized_image
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
@@ -81,9 +98,9 @@ class ResizeTransform(T.Transform):
         old_height, old_width = segmentation.shape
         assert (old_height, old_width) == (self.height, self.width), "Input dims do not match specified dims"
 
-        res_segmentation = cv2.resize(segmentation, (self.new_width, self.new_height), interpolation=cv2.INTER_NEAREST)
+        resized_segmentation = cv2.resize(segmentation, (self.new_width, self.new_height), interpolation=cv2.INTER_NEAREST)
 
-        return res_segmentation
+        return resized_segmentation
 
     def inverse(self) -> T.Transform:
         """
@@ -112,11 +129,11 @@ class HFlipTransform(T.Transform):
         Flip the image(s).
 
         Args:
-            img (ndarray): of shape HxW, HxWxC, or NxHxWxC. The array can be
+            img (np.ndarray): of shape HxW, HxWxC, or NxHxWxC. The array can be
                 of type uint8 in range [0, 255], or floating point in range
                 [0, 1] or [0, 255].
         Returns:
-            ndarray: the flipped image(s).
+            np.ndarray: the flipped image(s).
         """
         # NOTE: opencv would be faster:
         # https://github.com/pytorch/pytorch/issues/16424#issuecomment-580695672
@@ -131,10 +148,10 @@ class HFlipTransform(T.Transform):
         Flip the coordinates.
 
         Args:
-            coords (ndarray): floating point array of shape Nx2. Each row is
+            coords (np.ndarray): floating point array of shape Nx2. Each row is
                 (x, y).
         Returns:
-            ndarray: the flipped coordinates.
+            np.ndarray: the flipped coordinates.
 
         Note:
             The inputs are floating point coordinates, not pixel indices.
@@ -171,11 +188,11 @@ class VFlipTransform(T.Transform):
         Flip the image(s).
 
         Args:
-            img (ndarray): of shape HxW, HxWxC, or NxHxWxC. The array can be
+            img (np.ndarray): of shape HxW, HxWxC, or NxHxWxC. The array can be
                 of type uint8 in range [0, 255], or floating point in range
                 [0, 1] or [0, 255].
         Returns:
-            ndarray: the flipped image(s).
+            np.ndarray: the flipped image(s).
         """
         # NOTE: opencv would be faster:
         # https://github.com/pytorch/pytorch/issues/16424#issuecomment-580695672
@@ -190,10 +207,10 @@ class VFlipTransform(T.Transform):
         Flip the coordinates.
 
         Args:
-            coords (ndarray): floating point array of shape Nx2. Each row is
+            coords (np.ndarray): floating point array of shape Nx2. Each row is
                 (x, y).
         Returns:
-            ndarray: the flipped coordinates.
+            np.ndarray: the flipped coordinates.
 
         Note:
             The inputs are floating point coordinates, not pixel indices.
@@ -242,12 +259,15 @@ class WarpFieldTransform(T.Transform):
         Returns:
             np.ndarray: new pixel coordinates
         """
+
         if img.ndim == 2:
-            x, y = np.meshgrid(np.arange(img.shape[0]), np.arange(img.shape[1]), indexing="ij")
+            height, width = img.shape
+            x, y = np.meshgrid(np.arange(height), np.arange(width), indexing="ij")
             indices = np.reshape(x + warpfield[..., 0], (-1, 1)), np.reshape(y + warpfield[..., 1], (-1, 1))
             return np.asarray(indices)
         elif img.ndim == 3:
-            x, y, z = np.meshgrid(np.arange(img.shape[0]), np.arange(img.shape[1]), np.arange(img.shape[2]), indexing="ij")
+            height, width, channels = img.shape
+            x, y, z = np.meshgrid(np.arange(height), np.arange(width), np.arange(channels), indexing="ij")
             indices = (
                 np.reshape(x + warpfield[..., 0, None], (-1, 1)),
                 np.reshape(y + warpfield[..., 1, None], (-1, 1)),
@@ -317,7 +337,13 @@ class AffineTransform(T.Transform):
     Apply an affine transformation to an image
     """
 
-    def __init__(self, matrix: np.ndarray, ignore_value=255) -> None:
+    def __init__(
+        self,
+        matrix: np.ndarray,
+        height: int,
+        width: int,
+        ignore_value=255,
+    ) -> None:
         """
         Apply an affine transformation to an image
 
@@ -326,7 +352,9 @@ class AffineTransform(T.Transform):
             ignore_value (int, optional): value to ignore in the segmentation. Defaults to 255.
         """
         super().__init__()
-        self.matrix = matrix
+        self.matrix = matrix.astype(np.float32)
+        self.height = height
+        self.width = width
         self.ignore_value = ignore_value
 
     def apply_image(self, img: np.ndarray) -> np.ndarray:
@@ -345,7 +373,7 @@ class AffineTransform(T.Transform):
         img = img.astype(np.uint8)
         return cv2.warpAffine(img, self.matrix[:2, :], (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR)
 
-    def apply_coords(self, coords: np.ndarray):
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
         Apply affine transformation to coordinates
 
@@ -422,7 +450,7 @@ class GrayscaleTransform(T.Transform):
         output = np.tile(grayscale[..., None], (1, 1, 3))
         return output
 
-    def apply_coords(self, coords: np.ndarray):
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
         Color transform does not affect coords
 
@@ -459,7 +487,7 @@ class GaussianFilterTransform(T.Transform):
     Apply one or more gaussian filters
     """
 
-    def __init__(self, sigma: float = 4, order: int = 0, iterations: int = 1) -> None:
+    def __init__(self, sigma: float = 2, order: int = 0, iterations: int = 1) -> None:
         """
         Apply one or more gaussian filters
 
@@ -489,7 +517,7 @@ class GaussianFilterTransform(T.Transform):
                 transformed_img[..., i] = gaussian_filter(transformed_img[..., i], sigma=self.sigma, order=self.order)
         return transformed_img.astype(np.uint8)
 
-    def apply_coords(self, coords: np.ndarray):
+    def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
         Blurring should not affect the coordinates
 
@@ -532,7 +560,7 @@ class BlendTransform(T.Transform):
         ``src_weight * src_image + dst_weight * dst_image``
 
         Args:
-            src_image (ndarray): Input image is blended with this image.
+            src_image (np.ndarray): Input image is blended with this image.
                 The two images must have the same shape, range, channel order
                 and dtype.
             src_weight (float): Blend weighting of src_image
@@ -548,9 +576,9 @@ class BlendTransform(T.Transform):
         Apply blend transform on the image(s).
 
         Args:
-            img (ndarray): of shape NxHxWxC, or HxWxC or HxW. Assume the array is in range [0, 255].
+            img (np.ndarray): of shape NxHxWxC, or HxWxC or HxW. Assume the array is in range [0, 255].
         Returns:
-            ndarray: blended image(s).
+            np.ndarray: blended image(s).
         """
         img = img.astype(np.float32)
         return np.clip(self.src_weight * self.src_image + self.dst_weight * img, 0, 255).astype(np.uint8)
@@ -604,7 +632,7 @@ class HueTransform(T.Transform):
         Args:
             img (np.ndarray): image array assume the array is in range [0, 255].
         Returns:
-            ndarray: hue transformed image(s).
+            np.ndarray: hue transformed image(s).
         """
         img = img.astype(np.uint8)
         if self.color_space == "RGB":
@@ -669,7 +697,7 @@ class AdaptiveThresholdTransform(T.Transform):
         Args:
             img (np.ndarray): image array assume the array is in range [0, 255].
         Returns:
-            ndarray: Adaptive thresholded image(s).
+            np.ndarray: Adaptive thresholded image(s).
         """
         img = img.astype(np.uint8)
 
@@ -679,9 +707,9 @@ class AdaptiveThresholdTransform(T.Transform):
         else:
             img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-        thresh = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        thresholded = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
 
-        output = np.tile(thresh[..., None], (1, 1, 3))
+        output = np.tile(thresholded[..., None], (1, 1, 3))
         return output
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
@@ -812,7 +840,7 @@ class JPEGCompressionTransform(T.Transform):
         Args:
             img (np.ndarray): image array assume the array is in range [0, 255].
         Returns:
-            ndarray: JPEG compressed image(s).
+            np.ndarray: JPEG compressed image(s).
         """
         img = img.astype(np.uint8)
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), self.quality]
@@ -879,11 +907,11 @@ class CropTransform(T.Transform):
         Crop the image(s).
 
         Args:
-            img (ndarray): of shape NxHxWxC, or HxWxC or HxW. The array can be
+            img (np.ndarray): of shape NxHxWxC, or HxWxC or HxW. The array can be
                 of type uint8 in range [0, 255], or floating point in range
                 [0, 1] or [0, 255].
         Returns:
-            ndarray: cropped image(s).
+            np.ndarray: cropped image(s).
         """
         if len(img.shape) <= 3:
             return img[self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
@@ -895,10 +923,10 @@ class CropTransform(T.Transform):
         Apply crop transform on coordinates.
 
         Args:
-            coords (ndarray): floating point array of shape Nx2. Each row is
+            coords (np.ndarray): floating point array of shape Nx2. Each row is
                 (x, y).
         Returns:
-            ndarray: cropped coordinates.
+            np.ndarray: cropped coordinates.
         """
         coords[:, 0] -= self.x0
         coords[:, 1] -= self.y0
@@ -911,10 +939,10 @@ class CropTransform(T.Transform):
         polygon might change.
 
         Args:
-            polygon (list[ndarray]): each is a Nx2 floating point array of
+            polygon (list[np.ndarray]): each is a Nx2 floating point array of
                 (x, y) format in absolute coordinates.
         Returns:
-            ndarray: cropped polygons.
+            list[np.ndarray]: cropped polygons.
         """
 
         # Create a window that will be used to crop
@@ -1047,9 +1075,20 @@ def test(args) -> None:
 
     print(f"Loading image {input_path}")
     image = cv2.imread(str(input_path))[..., ::-1]
-    print(image.dtype)
 
-    output_image = OrientationTransform(1, image.shape[0], image.shape[1]).apply_image(image)
+    # output_image = OrientationTransform(1, image.shape[0], image.shape[1]).apply_image(image)
+    # output_image = AdaptiveThresholdTransform().apply_image(image)
+    output_image = AffineTransform(
+        np.asarray(
+            [
+                [np.cos(np.pi / 4), -np.sin(np.pi / 4), 0],
+                [np.sin(np.pi / 4), np.cos(np.pi / 4), 0],
+                [0, 0, 1],
+            ]
+        ),
+        image.shape[0],
+        image.shape[1],
+    ).apply_image(image)
 
     im = Image.fromarray(image)
     im.show("Original")

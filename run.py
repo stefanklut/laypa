@@ -185,7 +185,7 @@ class Predictor(DefaultPredictor):
         Run the model on the image with preprocessing
 
         Args:
-            data (AugInput): image to run the model on
+            data (AugInput): image (and possibly dpi) to run the model on
             device (str): device to run the model on
         Returns:
             tuple[dict, int, int]: predictions, height, width
