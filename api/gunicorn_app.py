@@ -1,6 +1,6 @@
 import os
 
-from flask_app import app
+from flask_app import create_app
 from gunicorn.app.base import BaseApplication
 
 
@@ -30,7 +30,8 @@ if __name__ == "__main__":
         threads = os.environ["GUNICORN_THREADS"]
         accesslog = os.environ["GUNICORN_ACCESSLOG"]
     except KeyError as error:
-        raise KeyError(f"Missing Gunicorn Environment variable: {error.args[0]}")
+        raise KeyError(
+            f"Missing Gunicorn Environment variable: {error.args[0]}")
 
     options = {
         "bind": bind,
@@ -38,6 +39,8 @@ if __name__ == "__main__":
         "threads": threads,
         "accesslog": accesslog,
     }
+
+    app = create_app()
 
     gunicorn_app = GunicornApp(app, options)
     gunicorn_app.run()
