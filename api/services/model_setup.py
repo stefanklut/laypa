@@ -52,19 +52,15 @@ class PredictorGenPageWrapper:
             raise FileNotFoundError(f"config.yaml not found in {model_path}")
         weights_paths = list(model_path.glob("*.pth"))
         if len(weights_paths) < 1 or not weights_paths[0].is_file():
-            raise FileNotFoundError(
-                f"No valid .pth files found in {model_path}")
+            raise FileNotFoundError(f"No valid .pth files found in {model_path}")
         if len(weights_paths) > 1:
-            self.logger.warning(
-                f"Found multiple .pth files. Using first {weights_paths[0]}")
+            self.logger.warning(f"Found multiple .pth files. Using first {weights_paths[0]}")
         args.config = str(config_path)
         args.opts = ["TEST.WEIGHTS", str(weights_paths[0])]
 
         cfg = setup_cfg(args)
         xml_regions = XMLRegions(cfg)
-        self.gen_page = OutputPageXML(
-            xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={}
-        )
+        self.gen_page = OutputPageXML(xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={})
 
         self.predictor = Predictor(cfg=cfg)
         self.logger.info(f"Model {model_name} loaded successfully")

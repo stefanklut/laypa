@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, Response
 from api.services.prediction_service import process_prediction
 
-predict_bp = Blueprint('predict', __name__)
+predict_bp = Blueprint("predict", __name__)
 
 
 @predict_bp.route("/predict", methods=["POST"])

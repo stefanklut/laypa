@@ -29,12 +29,8 @@ def initialize_environment(max_queue_size, output_base_path):
     executor = ThreadPoolExecutor(max_workers=max_workers)
 
     # Prometheus metrics to be returned
-    queue_size_gauge = Gauge("queue_size", "Size of worker queue").set_function(
-        lambda: executor._work_queue.qsize())
-    images_processed_counter = Counter(
-        "images_processed", "Total number of images processed")
-    exception_predict_counter = Counter(
-        "exception_predict", "Exception thrown in predict() function")
+    queue_size_gauge = Gauge("queue_size", "Size of worker queue").set_function(lambda: executor._work_queue.qsize())
+    images_processed_counter = Counter("images_processed", "Total number of images processed")
+    exception_predict_counter = Counter("exception_predict", "Exception thrown in predict() function")
 
-    return (args, executor, queue_size_gauge, images_processed_counter,
-            exception_predict_counter)
+    return (args, executor, queue_size_gauge, images_processed_counter, exception_predict_counter)
