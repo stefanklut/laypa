@@ -1,6 +1,6 @@
 name: laypa
 channels:
-  # - default
+  - default
   - pytorch
   - nvidia
   - conda-forge
@@ -20,10 +20,10 @@ dependencies:
   - imagesize
   - timm
   - gunicorn
-  - openjpeg
   - pillow
   - shapely
   - natsort
+  # - jpeg # For loading JPEG2000 images
   # - pygments #Optional for colors
   - pip:
       - distinctipy
