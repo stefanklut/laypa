@@ -40,7 +40,7 @@ class TimedAugmentationList(T.AugmentationList):
         return wrapper
 
 
-T.AugmentationList = TimedAugmentationList
+# T.AugmentationList = TimedAugmentationList
 
 
 class RandomApply(T.RandomApply):
@@ -1880,7 +1880,7 @@ def test(args) -> None:
     from core.setup import setup_cfg
     from data import preprocess
     from data.mapper import AugInput
-    from utils.image_torch_utils import load_image_tensor_from_path
+    from utils.image_torch_utils import load_image_tensor_from_path_gpu_decode
     from utils.image_utils import load_image_array_from_path
     from utils.tempdir import OptionalTemporaryDirectory
 
@@ -1898,8 +1898,8 @@ def test(args) -> None:
         # image = load_image_array_from_path(Path(tmp_dir).joinpath(output["image_paths"]))["image"]  # type: ignore
         # sem_seg = load_image_array_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale")["image"]  # type: ignore
 
-        image = load_image_tensor_from_path(Path(tmp_dir).joinpath(output["image_paths"]), device="cpu")["image"]  # type: ignore
-        sem_seg = load_image_tensor_from_path(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale", device="cpu")["image"]  # type: ignore
+        image = load_image_tensor_from_path_gpu_decode(Path(tmp_dir).joinpath(output["image_paths"]), device="cpu")["image"]  # type: ignore
+        sem_seg = load_image_tensor_from_path_gpu_decode(Path(tmp_dir).joinpath(output["sem_seg_paths"]), mode="grayscale", device="cpu")["image"]  # type: ignore
 
     augs = build_augmentation(cfg, mode="train")
     aug = T.AugmentationList(augs)

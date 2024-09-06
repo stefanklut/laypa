@@ -1,17 +1,19 @@
 import logging
 import sys
+from io import BytesIO
 from pathlib import Path
 from typing import Optional
 
 import imagesize
 import torch
 import torchvision
+from PIL import Image
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
 
 
-def load_image_tensor_from_path(
+def load_image_tensor_from_path_gpu_decode(
     path: str | Path,
     mode: str = "color",
     device: torch.device = torch.device("cpu"),
@@ -64,8 +66,81 @@ def load_image_tensor_from_path(
         return None
 
 
+def load_image_tensor_from_path(
+    image_path: Path | str,
+    mode: str = "color",
+) -> Optional[dict]:
+    """
+    Load image from a given path, return None if loading failed due to corruption
+
+    Args:
+        image_path (Path | str): path to an image on current filesystem
+        mode (str): color mode, either "color" or "grayscale"
+
+    Returns:
+        Optional[np.ndarray]: the loaded image or None
+    """
+    assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
+
+    try:
+        image = torchvision.io.read_image(
+            str(image_path), torchvision.io.ImageReadMode.RGB if mode == "color" else torchvision.io.ImageReadMode.GRAY
+        )
+
+        dpi = imagesize.getDPI(image_path)
+        assert len(dpi) == 2, f"Invalid DPI: {dpi}"
+        assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}"
+        if dpi == (-1, -1):
+            dpi = None
+        else:
+            dpi = dpi[0]
+
+        return {"image": image, "dpi": dpi}
+    except OSError:
+        logger = logging.getLogger(get_logger_name())
+        logger.warning(f"Cannot load image: {image_path} skipping for now")
+        return None
+
+
+def load_image_tensor_from_bytes(
+    image_bytes: bytes,
+    image_path: Optional[Path] = None,
+    mode: str = "color",
+) -> Optional[dict]:
+    """
+    Load image based on given bytes, return None if loading failed due to corruption
+
+    Args:
+        image_bytes (bytes): transfer bytes of data that represent an image
+        image_path (Optional[Path], optional): image_path for logging. Defaults to None.
+        mode (str, optional): color mode, either "color" or "grayscale". Defaults to "color"
+
+    Returns:
+        Optional[np.ndarray]: the loaded image or None
+    """
+    assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
+
+    try:
+        tensor = torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)
+        image = torchvision.io.decode_image(
+            tensor, torchvision.io.ImageReadMode.RGB if mode == "color" else torchvision.io.ImageReadMode.GRAY
+        )
+        image_dpi = Image.open(BytesIO(image_bytes))
+        dpi = image_dpi.info.get("dpi")
+        if dpi is not None:
+            assert len(dpi) == 2, f"Invalid DPI: {dpi}"
+            assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}"
+            dpi = dpi[0]
+        return {"image": image, "dpi": dpi}
+    except OSError:
+        image_path_info = image_path if image_path is not None else "Filename not given"
+        logger = logging.getLogger(get_logger_name())
+        logger.warning(f"Cannot load image: {image_path_info}. skipping for now")
+        return None
+
+
 if __name__ == "__main__":
-    image = load_image_tensor_from_path(
+    image = load_image_tensor_from_path_gpu_decode(
         Path("~/Documents/datasets/mini-republic/train/NL-HaNA_1.01.02_62_0109.jpg").expanduser(),
         mode="color",
         device=torch.device("cuda"),

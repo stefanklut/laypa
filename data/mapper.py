@@ -1,5 +1,6 @@
 import copy
 import logging
+from pathlib import Path
 from typing import Any, Optional
 
 import detectron2.data.transforms as T
@@ -16,7 +17,7 @@ from detectron2.data.detection_utils import (
 from detectron2.data.transforms.augmentation import _check_img_dtype
 
 from data.augmentations import build_augmentation
-from utils.image_torch_utils import load_image_tensor_from_path
+from utils.image_torch_utils import load_image_tensor_from_path_gpu_decode
 from utils.image_utils import load_image_array_from_path
 from utils.logging_utils import get_logger_name
 
@@ -49,7 +50,7 @@ def _transform_to_aug(tfm_or_aug):
 def _check_img_dtype(img):
     if isinstance(img, torch.Tensor):
         assert img.dtype == torch.uint8 or img.dtype == torch.float32, f"[Augmentation] Got image of type {img.dtype}!"
-        assert img.dim() in [2, 3], img.dim()
+        assert img.dim() == 3, img.dim()
     elif isinstance(img, np.ndarray):
         assert img.dtype == np.uint8 or img.dtype == np.float32, f"[Augmentation] Got image of type {img.dtype}!"
         assert img.ndim in [2, 3], img.ndim
@@ -221,6 +222,51 @@ class Mapper(DatasetMapper):
             )
         return ret
 
+    def load_array(self, path: Path | str, mode: str = "color") -> dict[str, Any]:
+        """
+        Load an image from a file path.
+
+        Args:
+            path (str): The path to the image file.
+            mode (str): The mode to use when loading the image.
+
+        Returns:
+            dict: The loaded image and its DPI.
+        """
+        path = Path(path)
+        if path.suffix == ".npy":
+            array = np.load(path)
+            if array is None:
+                raise ValueError(f"Array {path} cannot be loaded")
+            assert array.ndim == 3 or array.ndim == 2, f"Invalid array shape: {array.shape}"
+            if array.ndim == 2:
+                array = array[:, :, None]
+            return {"image": array, "dpi": None}
+        elif path.suffix == ".pt":
+            tensor = torch.load(path, weights_only=True)
+            if tensor is None:
+                raise ValueError(f"Tensor {path} cannot be loaded")
+
+            if tensor.dim() == 2:
+                tensor = tensor.unsqueeze(0)
+            elif tensor.dim() == 3:
+                pass
+            else:
+                raise ValueError(f"Invalid tensor shape: {tensor.shape}")
+
+            return {"image": tensor, "dpi": None}
+        else:
+            if self.on_gpu:
+                data = load_image_tensor_from_path_gpu_decode(path, mode=mode, device=self.device)
+                if data is None:
+                    raise ValueError(f"Image {path} cannot be loaded")
+                return data
+            else:
+                data = load_image_array_from_path(path, mode=mode)
+                if data is None:
+                    raise ValueError(f"Image {path} cannot be loaded")
+                return data
+
     def __call__(self, dataset_dict):
         """
         Args:
@@ -231,27 +277,20 @@ class Mapper(DatasetMapper):
         """
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
 
-        if self.on_gpu:
-            image = load_image_tensor_from_path(dataset_dict["file_name"], mode="color", device=self.device)
-        else:
-            image = load_image_array_from_path(dataset_dict["file_name"], mode="color")
+        # Load image.
+        image = self.load_array(dataset_dict["file_name"], mode="color")
 
-        if image is None:
-            raise ValueError(f"Image {dataset_dict['file_name']} cannot be loaded")
         check_image_size(dataset_dict, image["image"])
 
         # USER: Remove if you don't do semantic/panoptic segmentation.
         if "sem_seg_file_name" in dataset_dict:
-            if self.on_gpu:
-                sem_seg_gt = load_image_tensor_from_path(
-                    dataset_dict["sem_seg_file_name"], mode="grayscale", device=self.device
-                )
-            else:
-                sem_seg_gt = load_image_array_from_path(dataset_dict["sem_seg_file_name"], mode="grayscale")
-            if sem_seg_gt is None:
-                raise ValueError(f"Sem-seg {dataset_dict['sem_seg_file_name']} cannot be loaded")
+            sem_seg_gt = self.load_array(dataset_dict["sem_seg_file_name"], mode="grayscale")
         else:
-            sem_seg_gt = {"image": None}
+            sem_seg_gt = {"image": None, "dpi": None}
+
+        assert type(image["image"]) == type(
+            sem_seg_gt["image"]
+        ), f"Image and sem_seg_gt have different types: {type(image['image'])} and {type(sem_seg_gt['image'])}"
 
         aug_input = AugInput(
             image["image"],
@@ -266,21 +305,27 @@ class Mapper(DatasetMapper):
         image, sem_seg_gt = aug_input.image, aug_input.sem_seg
 
         if image is None:
-            raise ValueError(f"Image {dataset_dict['file_name']} cannot be loaded")
+            raise ValueError(f"Image {dataset_dict['file_name']} has become None after augmentation")
 
         # Pytorch's dataloader is efficient on torch.Tensor due to shared-memory,
         # but not efficient on large generic data structures due to the use of pickle & mp.Queue.
         # Therefore it's important to use torch.Tensor.
-        if self.on_gpu:
+        if isinstance(image, torch.Tensor):
             image_shape = image.shape[-2:]  # h, w
-            dataset_dict["image"] = image.squeeze(0)
-            if sem_seg_gt is not None:
-                dataset_dict["sem_seg"] = sem_seg_gt.squeeze(0).to(dtype=torch.long)
-        else:
+            dataset_dict["image"] = image.clone()
+        elif isinstance(image, np.ndarray):
             image_shape = image.shape[:2]
             dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
-            if sem_seg_gt is not None:
+        else:
+            raise ValueError(f"image is not a numpy array or torch tensor: {type(image)}")
+
+        if sem_seg_gt is not None:
+            if isinstance(sem_seg_gt, torch.Tensor):
+                dataset_dict["sem_seg"] = sem_seg_gt.to(dtype=torch.long).squeeze(0).clone()
+            elif isinstance(sem_seg_gt, np.ndarray):
                 dataset_dict["sem_seg"] = torch.as_tensor(sem_seg_gt.astype("long"))
+            else:
+                raise ValueError(f"sem_seg_gt is not a numpy array or torch tensor: {type(sem_seg_gt)}")
 
         # USER: Remove if you don't use pre-computed proposals.
         # Most users would not need this feature.

@@ -14,7 +14,7 @@ from torchvision.transforms import InterpolationMode
 
 from data.numpy_transforms import TimedTransform
 
-T.Transform = TimedTransform
+# T.Transform = TimedTransform
 
 
 class ResizeTransform(T.Transform):
@@ -300,17 +300,19 @@ class WarpFieldTransform(T.Transform):
         Returns:
             torch.Tensor: warped segmentation
         """
-        segmentation = segmentation.to(dtype=torch.float32)
-        segmentation = torch.stack([segmentation, torch.ones_like(segmentation)], dim=1)
+        segmentation = segmentation.to(dtype=torch.float32)[None, ...]
+        segmentation = torch.concat([segmentation, torch.ones_like(segmentation)], dim=-3)
 
         sampled_segmentation = torch.nn.functional.grid_sample(
             segmentation, self.indices[None, ...], mode="nearest", padding_mode="zeros", align_corners=False
         )
-        out_of_bounds = sampled_segmentation[:, 1] == 0
+        out_of_bounds = sampled_segmentation[..., -2:-1, :, :] == 0
         # Set out of bounds to ignore value (remove if you don't want to ignore)
-        sampled_segmentation[:, 0][out_of_bounds] = self.ignore_value
+        sampled_segmentation[..., 0:-1, :, :][out_of_bounds] = self.ignore_value
 
-        return sampled_segmentation[:, 0].to(dtype=torch.uint8)
+        sampled_segmentation = sampled_segmentation[..., 0:-1, :, :]
+
+        return sampled_segmentation[0].to(dtype=torch.uint8)
 
     def inverse(self) -> T.Transform:
         """
@@ -418,10 +420,10 @@ class AffineTransform(T.Transform):
         Returns:
             torch.Tensor: transformed segmentation
         """
-        segmentation = segmentation.to(dtype=torch.float32)
+        segmentation = segmentation.to(dtype=torch.float32)[None, ...]
 
         # Add a channel to see what part of the image is out of bounds
-        segmentation = torch.stack([segmentation, torch.ones_like(segmentation)], dim=1)
+        segmentation = torch.concat([segmentation, torch.ones_like(segmentation)], dim=-3)
         affine_grid = torch.nn.functional.affine_grid(
             self.torch_matrix[None, :2], [1, 2, self.height, self.width], align_corners=False
         ).to(segmentation.device)
@@ -430,11 +432,12 @@ class AffineTransform(T.Transform):
             segmentation, affine_grid, mode="nearest", padding_mode="zeros", align_corners=False
         )
 
-        out_of_bounds = transformed_segmentation[:, 1] == 0
+        out_of_bounds = transformed_segmentation[..., -2:-1, :, :] == 0
 
         # Set out of bounds to ignore value (remove if you don't want to ignore)
-        transformed_segmentation[:, 0][out_of_bounds] = self.ignore_value
-        return transformed_segmentation[:, 0].to(dtype=torch.uint8)
+        transformed_segmentation[..., 0:-1, :, :][out_of_bounds] = self.ignore_value
+        transformed_segmentation = transformed_segmentation[..., 0:-1, :, :]
+        return transformed_segmentation[0].to(dtype=torch.uint8)
 
     def inverse(self) -> T.Transform:
         """
@@ -960,10 +963,7 @@ class CropTransform(T.Transform):
         Returns:
             torch.Tensor: cropped image(s).
         """
-        if len(img.shape) <= 3:
-            return img[:, self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
-        else:
-            return img[..., self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
+        return img[..., self.y0 : self.y0 + self.h, self.x0 : self.x0 + self.w]
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """

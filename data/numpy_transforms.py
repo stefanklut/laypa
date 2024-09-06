@@ -28,7 +28,7 @@ class TimedTransform(T.Transform):
         return wrapper
 
 
-T.Transform = TimedTransform
+# T.Transform = TimedTransform
 
 
 class ResizeTransform(T.Transform):

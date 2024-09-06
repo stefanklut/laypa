@@ -12,6 +12,7 @@ import cv2
 import detectron2.data.transforms as T
 import imagesize
 import numpy as np
+import torch
 from tqdm import tqdm
 
 # from multiprocessing.pool import ThreadPool as Pool
@@ -71,6 +72,10 @@ class Preprocess:
         auto_dpi: bool = True,
         default_dpi: Optional[int] = None,
         manual_dpi: Optional[int] = None,
+        save_method_image: str = "png",
+        save_method_sem_seg: str = "png",
+        save_method_instances: str = "json",
+        save_method_panos: str = "png",
     ) -> None:
         """
         Initializes the Preprocessor object.
@@ -121,6 +126,11 @@ class Preprocess:
         self.default_dpi = default_dpi
         self.manual_dpi = manual_dpi
 
+        self.save_method_image = save_method_image
+        self.save_method_sem_seg = save_method_sem_seg
+        self.save_method_instances = save_method_instances
+        self.save_method_panos = save_method_panos
+
     @classmethod
     def from_config(
         cls,
@@ -150,6 +160,10 @@ class Preprocess:
             "auto_dpi": cfg.PREPROCESS.DPI.AUTO_DETECT,
             "default_dpi": cfg.PREPROCESS.DPI.DEFAULT_DPI,
             "manual_dpi": cfg.PREPROCESS.DPI.MANUAL_DPI,
+            "save_method_image": cfg.PREPROCESS.SAVE_METHOD_IMAGE,
+            "save_method_sem_seg": cfg.PREPROCESS.SAVE_METHOD_SEM_SEG,
+            "save_method_instances": cfg.PREPROCESS.SAVE_METHOD_INSTANCES,
+            "save_method_panos": cfg.PREPROCESS.SAVE_METHOD_PANOS,
         }
         return ret
 
@@ -300,10 +314,48 @@ class Preprocess:
         """
         all(check_path_accessible(path) for path in paths)
 
+    def save_array_to_path(self, array: np.ndarray | torch.Tensor, path: Path, method: str) -> None:
+        """
+        Save an array to a path with a specific method
+
+        Args:
+            array (np.ndarray): array to be saved
+            path (Path): path to save the array
+            method (str): method to save the array
+        """
+        if method == "png":
+            if isinstance(array, torch.Tensor):
+                array = array.permute(1, 2, 0).cpu().numpy()
+            assert array.dtype == np.uint8, f"Array must be of type uint8 to save as PNG, got {array.dtype}"
+            assert (
+                array.ndim == 2 or array.shape[2] == 3
+            ), f"Array must be 2D or 3D with 3 channels to save as PNG, got {array.shape}"
+            assert np.max(array) <= 255, f"Array must be in range 0-255 to save as PNG, got {np.max(array)}"
+            assert np.min(array) >= 0, f"Array must be in range 0-255 to save as PNG, got {np.min(array)}"
+            assert path.suffix == ".png", f"Path must have suffix .png to save as PNG, got {path.suffix}"
+            save_image_array_to_path(path, array)
+        elif method == "npy":
+            if isinstance(array, torch.Tensor):
+                array = array.permute(1, 2, 0).cpu().numpy()
+            assert array.ndim == 3 or array.ndim == 2, f"Array must be 2D or 3D to save as numpy, got {array.shape}"
+            assert path.suffix == ".npy", f"Path must have suffix .npy to save as numpy, got {path.suffix}"
+            np.save(path, array)
+        elif method == "pt":
+            if isinstance(array, torch.Tensor):
+                tensor = array.cpu()
+            else:
+                tensor = torch.from_numpy(array)
+                if array.ndim == 3:
+                    tensor = tensor.permute(2, 0, 1)
+            assert tensor.dim() == 3 or tensor.dim() == 2, f"Tensor must be 2D or 3D to save as torch, got {tensor.dim()}"
+            assert path.suffix == ".pt", f"Path must have suffix .pt to save as torch, got {path.suffix}"
+            torch.save(tensor, path)
+        else:
+            raise NotImplementedError(f"Method {method} not implemented")
+
     def save_image(
         self,
         image_path: Path,
-        image_stem: str,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
@@ -334,7 +386,7 @@ class Preprocess:
         if copy_image:
             out_image_path = image_dir.joinpath(image_path.name)
         else:
-            out_image_path = image_dir.joinpath(image_stem + ".png")
+            out_image_path = image_dir.joinpath(image_path.name).with_suffix(f".{self.save_method_image}")
 
         # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_image_path.exists():
@@ -358,14 +410,13 @@ class Preprocess:
                 manual_dpi=self.manual_dpi,
             )
             transforms = T.AugmentationList(self.augmentations)(aug_input)
-            save_image_array_to_path(out_image_path, aug_input.image.astype(np.uint8))
+            self.save_array_to_path(aug_input.image, out_image_path, self.save_method_image)
 
         return str(out_image_path.relative_to(self.output_dir))
 
     def save_sem_seg(
         self,
         xml_path: Path,
-        image_stem: str,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
@@ -388,7 +439,7 @@ class Preprocess:
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
         sem_seg_dir = self.output_dir.joinpath("sem_seg")
-        out_sem_seg_path = sem_seg_dir.joinpath(image_stem + ".png")
+        out_sem_seg_path = sem_seg_dir.joinpath(xml_path.name).with_suffix(f".{self.save_method_sem_seg}")
 
         # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_sem_seg_path.exists():
@@ -402,14 +453,13 @@ class Preprocess:
 
         sem_seg_dir.mkdir(parents=True, exist_ok=True)
 
-        save_image_array_to_path(out_sem_seg_path, sem_seg)
+        self.save_array_to_path(sem_seg, out_sem_seg_path, self.save_method_sem_seg)
 
         return str(out_sem_seg_path.relative_to(self.output_dir))
 
     def save_instances(
         self,
         xml_path: Path,
-        image_stem: str,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
@@ -432,8 +482,8 @@ class Preprocess:
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
         instances_dir = self.output_dir.joinpath("instances")
-        out_instances_path = instances_dir.joinpath(image_stem + ".json")
-        out_instances_size_path = instances_dir.joinpath(image_stem + ".txt")
+        out_instances_path = instances_dir.joinpath(xml_path.name).with_suffix(f".{self.save_method_instances}")
+        out_instances_size_path = instances_dir.joinpath(xml_path.name).with_suffix(".txt")
 
         # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_instances_path.exists() and out_instances_size_path.exists():
@@ -461,7 +511,6 @@ class Preprocess:
     def save_panos(
         self,
         xml_path: Path,
-        image_stem: str,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
@@ -485,8 +534,8 @@ class Preprocess:
             raise TypeError("Cannot run when the output dir is None")
         panos_dir = self.output_dir.joinpath("panos")
 
-        out_pano_path = panos_dir.joinpath(image_stem + ".png")
-        out_segments_info_path = panos_dir.joinpath(image_stem + ".json")
+        out_pano_path = panos_dir.joinpath(xml_path.name).with_suffix(f".{self.save_method_panos}")
+        out_segments_info_path = panos_dir.joinpath(xml_path.name).with_suffix(".json")
 
         # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_pano_path.exists():
@@ -501,7 +550,7 @@ class Preprocess:
 
         panos_dir.mkdir(parents=True, exist_ok=True)
 
-        save_image_array_to_path(out_pano_path, pano)
+        self.save_array_to_path(pano, out_pano_path, self.save_method_panos)
 
         json_pano = {"image_size": image_shape, "segments_info": segments_info}
         with out_segments_info_path.open(mode="w") as f:
@@ -561,19 +610,19 @@ class Preprocess:
         results = {}
         results["original_image_paths"] = str(image_path)
 
-        out_image_path = self.save_image(image_path, image_stem, original_image_shape, image_shape)
+        out_image_path = self.save_image(image_path, original_image_shape, image_shape)
         if out_image_path is not None:
             results["image_paths"] = out_image_path
 
-        out_sem_seg_path = self.save_sem_seg(xml_path, image_stem, original_image_shape, image_shape)
+        out_sem_seg_path = self.save_sem_seg(xml_path, original_image_shape, image_shape)
         if out_sem_seg_path is not None:
             results["sem_seg_paths"] = out_sem_seg_path
 
-        out_instances_path = self.save_instances(xml_path, image_stem, original_image_shape, image_shape)
+        out_instances_path = self.save_instances(xml_path, original_image_shape, image_shape)
         if out_instances_path is not None:
             results["instances_paths"] = out_instances_path
 
-        pano_output = self.save_panos(xml_path, image_stem, original_image_shape, image_shape)
+        pano_output = self.save_panos(xml_path, original_image_shape, image_shape)
         if pano_output is not None:
             out_pano_path, out_segments_info_path = pano_output
             results["pano_paths"] = out_pano_path
