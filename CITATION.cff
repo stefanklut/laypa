@@ -34,16 +34,7 @@ identifiers:
     value: "https://github.com/stefanklut/laypa"
     description: Github repo
 repository-code: "https://github.com/stefanklut/laypa"
-abstract: >-
-  We present novel software to process scans of historical
-  documents to extract their layout information. We do this
-  using a ResNet backbone with a feature pyramid head. We
-  extract region information directly into PageXML. For
-  baseline extraction, we use a two stage processing
-  approach. The software has been applied successfully to
-  several projects. The results show the feasibility to
-  automatically label text lines and regions in historical
-  documents.
+abstract: "We present novel software to process scans of historical documents to extract their layout information. We do this using a ResNet backbone with a feature pyramid head. We extract region information directly into PageXML. For baseline extraction, we use a two stage processing approach. The software has been applied successfully to several projects. The results show the feasibility to automatically label text lines and regions in historical documents."
 keywords:
   - Datasets
   - Neural networks
