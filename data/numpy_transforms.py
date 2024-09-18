@@ -371,7 +371,13 @@ class AffineTransform(T.Transform):
             np.ndarray: transformed image
         """
         img = img.astype(np.uint8)
-        return cv2.warpAffine(img, self.matrix[:2, :], (img.shape[1], img.shape[0]), flags=cv2.INTER_LINEAR)
+        return cv2.warpAffine(
+            img,
+            self.matrix[:2, :],
+            (img.shape[1], img.shape[0]),
+            flags=cv2.INTER_LINEAR,
+            borderValue=0,
+        )
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
@@ -762,6 +768,39 @@ class OrientationTransform(T.Transform):
         self.height = height
         self.width = width
 
+    @staticmethod
+    def rotate(image: np.ndarray, times_90_degrees: int) -> np.ndarray:
+        """
+        Rotate the image by 90 degrees.
+
+        Args:
+            image (np.ndarray): Input image.
+            times_90_degrees (int): Number of 90-degree rotations to apply. Should be between 0 and 3.
+
+        Returns:
+            np.ndarray: Rotated image.
+        """
+        if times_90_degrees == 0:
+            return image
+        if times_90_degrees == 1:
+            if image.ndim == 2:
+                return np.flip(np.transpose(image), axis=1)
+            elif image.ndim == 3:
+                return np.flip(np.transpose(image, (1, 0, 2)), axis=1)
+            else:
+                raise ValueError("Image should be either 2D or 3D")
+        elif times_90_degrees == 2:
+            return np.flip(np.flip(image, axis=0), axis=1)
+        elif times_90_degrees == 3:
+            if image.ndim == 2:
+                return np.flip(np.transpose(image), axis=0)
+            elif image.ndim == 3:
+                return np.flip(np.transpose(image, (1, 0, 2)), axis=0)
+            else:
+                raise ValueError("Image should be either 2D or 3D")
+        else:
+            raise ValueError("Times 90 degrees should be between 0 and 3")
+
     def apply_image(self, img: np.ndarray) -> np.ndarray:
         """
         Apply orientation change to the image.
@@ -772,16 +811,8 @@ class OrientationTransform(T.Transform):
         Returns:
             np.ndarray: Rotated image.
         """
-        if self.times_90_degrees == 0:
-            return img
-        elif self.times_90_degrees == 1:
-            return cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
-        elif self.times_90_degrees == 2:
-            return cv2.rotate(img, cv2.ROTATE_180)
-        elif self.times_90_degrees == 3:
-            return cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        else:
-            raise ValueError("Times 90 degrees should be between 0 and 3")
+        rotated_img = self.rotate(img, self.times_90_degrees)
+        return rotated_img
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
         """
