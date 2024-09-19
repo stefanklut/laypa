@@ -168,14 +168,14 @@ class XMLConverter:
 
     ## REGIONS
 
-    def build_region_instances(self, page: PageData, out_size: tuple[int, int], elements, class_dict) -> list[Instance]:
+    def build_instances_region(self, page: PageData, out_size: tuple[int, int]) -> list[Instance]:
         """
         Create the instance version of the regions
         """
         size = page.get_size()
         instances = []
-        for element in elements:
-            for element_class, element_coords in page.iter_class_coords(element, class_dict):
+        for element in set(self.xml_regions.region_types.values()):
+            for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.region_classes):
                 coords = self._scale_coords(element_coords, out_size, size)
                 bbox = self._bounding_box(coords)
                 bbox_mode = structures.BoxMode.XYXY_ABS
@@ -193,7 +193,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains region instances")
         return instances
 
-    def build_region_pano(self, page: PageData, out_size: tuple[int, int], elements, class_dict):
+    def build_pano_region(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the pano version of the regions
         """
@@ -201,8 +201,8 @@ class XMLConverter:
         pano_mask = np.zeros((*out_size, 3), np.uint8)
         segments_info = []
         _id = 1
-        for element in elements:
-            for element_class, element_coords in page.iter_class_coords(element, class_dict):
+        for element in set(self.xml_regions.region_types.values()):
+            for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.region_classes):
                 coords = self._scale_coords(element_coords, out_size, size)
                 rounded_coords = np.round(coords).astype(np.int32)
                 rgb_color = self.id2rgb(_id)
@@ -220,14 +220,14 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains region pano")
         return pano_mask, segments_info
 
-    def build_region_sem_seg(self, page: PageData, out_size: tuple[int, int], elements, class_dict):
+    def build_sem_seg_region(self, page: PageData, out_size: tuple[int, int]):
         """
         Builds a "image" mask of desired elements
         """
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
-        for element in elements:
-            for element_class, element_coords in page.iter_class_coords(element, class_dict):
+        for element in set(self.xml_regions.region_types.values()):
+            for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.region_classes):
                 coords = self._scale_coords(element_coords, out_size, size)
                 rounded_coords = np.round(coords).astype(np.int32)
                 cv2.fillPoly(sem_seg, [rounded_coords], element_class)
@@ -237,7 +237,7 @@ class XMLConverter:
 
     ## TEXT LINE
 
-    def build_text_line_instances(self, page: PageData, out_size: tuple[int, int]) -> list[Instance]:
+    def build_instances_text_line(self, page: PageData, out_size: tuple[int, int]) -> list[Instance]:
         """
         Create the instance version of the text line
         """
@@ -263,7 +263,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains text line instances")
         return instances
 
-    def build_text_line_pano(self, page: PageData, out_size: tuple[int, int]):
+    def build_pano_text_line(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the pano version of the text line
         """
@@ -290,7 +290,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains text line pano")
         return pano_mask, segments_info
 
-    def build_text_line_sem_seg(self, page: PageData, out_size: tuple[int, int]):
+    def build_sem_seg_text_line(self, page: PageData, out_size: tuple[int, int]):
         """
         Builds a "image" mask of the text line
         """
@@ -307,7 +307,7 @@ class XMLConverter:
 
     ## BASELINE
 
-    def build_baseline_instances(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_instances_baseline(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the instance version of the baselines
         """
@@ -319,7 +319,7 @@ class XMLConverter:
             coords = self._scale_coords(baseline_coords, out_size, size)
             mask.fill(0)
             # HACK Currently the most simple quickest solution used can probably be optimized
-            mask, _ = self.draw_line(mask, coords, 255, thickness=line_width)
+            mask, _ = self.draw_line(mask, coords, 255, thickness=self.xml_regions.line_width)
             contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             if len(contours) == 0:
                 raise ValueError(f"{page.filepath} has no contours")
@@ -346,7 +346,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains baseline instances")
         return instances
 
-    def build_baseline_pano(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_pano_baseline(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the pano version of the baselines
         """
@@ -359,7 +359,7 @@ class XMLConverter:
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             rgb_color = self.id2rgb(_id)
-            pano_mask, overlap = self.draw_line(pano_mask, coords, rgb_color, thickness=line_width)
+            pano_mask, overlap = self.draw_line(pano_mask, coords, rgb_color, thickness=self.xml_regions.line_width)
             total_overlap = total_overlap or overlap
             segment: SegmentsInfo = {
                 "id": _id,
@@ -375,7 +375,7 @@ class XMLConverter:
             self.logger.warning(f"File {page.filepath} does not contains baseline pano")
         return pano_mask, segments_info
 
-    def build_baseline_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_sem_seg_baseline(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the baselines
         """
@@ -385,7 +385,7 @@ class XMLConverter:
         total_overlap = False
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
-            sem_seg, overlap = self.draw_line(sem_seg, coords, baseline_color, thickness=line_width)
+            sem_seg, overlap = self.draw_line(sem_seg, coords, baseline_color, thickness=self.xml_regions.line_width)
             total_overlap = total_overlap or overlap
 
         if total_overlap:
@@ -396,14 +396,14 @@ class XMLConverter:
 
     # CLASS BASELINES
 
-    def build_class_baseline_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int, elements, class_dict):
+    def build_sem_seg_class_baseline(self, page: PageData, out_size: tuple[int, int]):
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
         total_overlap = False
-        for element in elements:
-            for element_class, baseline_coords in page.iter_class_baseline_coords(element, class_dict):
+        for element in set(self.xml_regions.region_types.values()):
+            for element_class, baseline_coords in page.iter_class_baseline_coords(element, self.xml_regions.region_classes):
                 coords = self._scale_coords(baseline_coords, out_size, size)
-                sem_seg, overlap = self.draw_line(sem_seg, coords, element_class, thickness=line_width)
+                sem_seg, overlap = self.draw_line(sem_seg, coords, element_class, thickness=self.xml_regions.line_width)
                 total_overlap = total_overlap or overlap
 
         if total_overlap:
@@ -414,7 +414,7 @@ class XMLConverter:
 
     # TOP BOTTOM
 
-    def build_top_bottom_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_sem_seg_top_bottom(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the top bottom
         """
@@ -427,7 +427,7 @@ class XMLConverter:
         total_overlap = False
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
-            binary_mask, overlap = self.draw_line(binary_mask, coords, baseline_color, thickness=line_width)
+            binary_mask, overlap = self.draw_line(binary_mask, coords, baseline_color, thickness=self.xml_regions.line_width)
             total_overlap = total_overlap or overlap
 
             # Add single line to full sem_seg
@@ -447,7 +447,7 @@ class XMLConverter:
 
     ## START
 
-    def build_start_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_sem_seg_start(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the start
         """
@@ -457,14 +457,14 @@ class XMLConverter:
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)[0]
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.circle(sem_seg, rounded_coords, line_width, start_color, -1)
+            cv2.circle(sem_seg, rounded_coords, self.xml_regions.line_width, start_color, -1)
         if not sem_seg.any():
             self.logger.warning(f"File {page.filepath} does not contains start sem_seg")
         return sem_seg
 
     ## END
 
-    def build_end_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_sem_seg_end(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the end
         """
@@ -474,14 +474,14 @@ class XMLConverter:
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)[-1]
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.circle(sem_seg, rounded_coords, line_width, end_color, -1)
+            cv2.circle(sem_seg, rounded_coords, self.xml_regions.line_width, end_color, -1)
         if not sem_seg.any():
             self.logger.warning(f"File {page.filepath} does not contains end sem_seg")
         return sem_seg
 
     ## SEPARATOR
 
-    def build_separator_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_sem_seg_separator(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the separator
         """
@@ -492,16 +492,16 @@ class XMLConverter:
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
             coords_start = rounded_coords[0]
-            cv2.circle(sem_seg, coords_start, line_width, separator_color, -1)
+            cv2.circle(sem_seg, coords_start, self.xml_regions.line_width, separator_color, -1)
             coords_end = rounded_coords[-1]
-            cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
+            cv2.circle(sem_seg, coords_end, self.xml_regions.line_width, separator_color, -1)
         if not sem_seg.any():
             self.logger.warning(f"File {page.filepath} does not contains separator sem_seg")
         return sem_seg
 
     ## BASELINE + SEPARATOR
 
-    def build_baseline_separator_sem_seg(self, page: PageData, out_size: tuple[int, int], line_width: int):
+    def build_sem_seg_baseline_separator(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the baseline separator
         """
@@ -514,13 +514,13 @@ class XMLConverter:
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
-            sem_seg, overlap = self.draw_line(sem_seg, rounded_coords, baseline_color, thickness=line_width)
+            sem_seg, overlap = self.draw_line(sem_seg, rounded_coords, baseline_color, thickness=self.xml_regions.line_width)
             total_overlap = total_overlap or overlap
 
             coords_start = rounded_coords[0]
-            cv2.circle(sem_seg, coords_start, line_width, separator_color, -1)
+            cv2.circle(sem_seg, coords_start, self.xml_regions.line_width, separator_color, -1)
             coords_end = rounded_coords[-1]
-            cv2.circle(sem_seg, coords_end, line_width, separator_color, -1)
+            cv2.circle(sem_seg, coords_end, self.xml_regions.line_width, separator_color, -1)
 
         if total_overlap:
             self.logger.warning(f"File {page.filepath} contains overlapping baseline separator sem_seg")
@@ -557,67 +557,8 @@ class XMLConverter:
         if image_shape is None:
             image_shape = gt_data.get_size()
 
-        if self.xml_regions.mode == "region":
-            sem_seg = self.build_region_sem_seg(
-                gt_data,
-                image_shape,
-                set(self.xml_regions.region_types.values()),
-                self.xml_regions.region_classes,
-            )
-            return sem_seg
-        elif self.xml_regions.mode == "baseline":
-            sem_seg = self.build_baseline_sem_seg(
-                gt_data,
-                image_shape,
-                line_width=self.xml_regions.line_width,
-            )
-            return sem_seg
-        elif self.xml_regions.mode == "class_baseline":
-            sem_seg = self.build_class_baseline_sem_seg(
-                gt_data,
-                image_shape,
-                line_width=self.xml_regions.line_width,
-                elements=set(self.xml_regions.region_types.values()),
-                class_dict=self.xml_regions.region_classes,
-            )
-            return sem_seg
-        elif self.xml_regions.mode == "top_bottom":
-            sem_seg = self.build_top_bottom_sem_seg(
-                gt_data,
-                image_shape,
-                line_width=self.xml_regions.line_width,
-            )
-            return sem_seg
-        elif self.xml_regions.mode == "start":
-            sem_seg = self.build_start_sem_seg(
-                gt_data,
-                image_shape,
-                line_width=self.xml_regions.line_width,
-            )
-            return sem_seg
-        elif self.xml_regions.mode == "end":
-            sem_seg = self.build_end_sem_seg(
-                gt_data,
-                image_shape,
-                line_width=self.xml_regions.line_width,
-            )
-            return sem_seg
-        elif self.xml_regions.mode == "separator":
-            sem_seg = self.build_separator_sem_seg(
-                gt_data,
-                image_shape,
-                line_width=self.xml_regions.line_width,
-            )
-            return sem_seg
-        elif self.xml_regions.mode == "baseline_separator":
-            sem_seg = self.build_baseline_separator_sem_seg(
-                gt_data,
-                image_shape,
-                line_width=self.xml_regions.line_width,
-            )
-            return sem_seg
-        elif self.xml_regions.mode == "text_line":
-            sem_seg = self.build_text_line_sem_seg(
+        if hasattr(self, f"build_sem_seg_{self.xml_regions.mode}"):
+            sem_seg = getattr(self, f"build_sem_seg_{self.xml_regions.mode}")(
                 gt_data,
                 image_shape,
             )
@@ -654,23 +595,8 @@ class XMLConverter:
         if image_shape is None:
             image_shape = gt_data.get_size()
 
-        if self.xml_regions.mode == "region":
-            instances = self.build_region_instances(
-                gt_data,
-                image_shape,
-                set(self.xml_regions.region_types.values()),
-                self.xml_regions.region_classes,
-            )
-            return instances
-        elif self.xml_regions.mode == "baseline":
-            instances = self.build_baseline_instances(
-                gt_data,
-                image_shape,
-                self.xml_regions.line_width,
-            )
-            return instances
-        elif self.xml_regions.mode == "text_line":
-            instances = self.build_text_line_instances(
+        if hasattr(self, f"build_instances_{self.xml_regions.mode}"):
+            instances = getattr(self, f"build_instances_{self.xml_regions.mode}")(
                 gt_data,
                 image_shape,
             )
@@ -707,27 +633,12 @@ class XMLConverter:
         if image_shape is None:
             image_shape = gt_data.get_size()
 
-        if self.xml_regions.mode == "region":
-            pano, segments_info = self.build_region_pano(
-                gt_data,
-                image_shape,
-                set(self.xml_regions.region_types.values()),
-                self.xml_regions.region_classes,
-            )
-            return pano, segments_info
-        elif self.xml_regions.mode == "baseline":
-            pano, segments_info = self.build_baseline_pano(
-                gt_data,
-                image_shape,
-                self.xml_regions.line_width,
-            )
-            return pano, segments_info
-        elif self.xml_regions.mode == "text_line":
-            pano, segments_info = self.build_text_line_pano(
+        if hasattr(self, f"build_pano_{self.xml_regions.mode}"):
+            pano_mask, segments_info = getattr(self, f"build_pano_{self.xml_regions.mode}")(
                 gt_data,
                 image_shape,
             )
-            return pano, segments_info
+            return pano_mask, segments_info
         else:
             return None
 
