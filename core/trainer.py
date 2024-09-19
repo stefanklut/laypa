@@ -31,7 +31,7 @@ from detectron2.projects.deeplab import build_lr_scheduler
 from detectron2.solver.build import maybe_add_gradient_clipping, reduce_param_groups
 from detectron2.utils import comm
 
-from data.mapper import Mapper
+from data.mapper import BinarySegInstancesMapper, SemSegInstancesMapper
 from utils.logging_utils import get_logger_name
 
 
@@ -128,7 +128,6 @@ def get_default_optimizer_params(
                 hyperparams["lr"] = hyperparams["lr"] * backbone_multiplier
 
             if "relative_position_bias_table" in module_param_name or "absolute_pos_embed" in module_param_name:
-                print(module_param_name)
                 hyperparams["weight_decay"] = 0.0
 
             if isinstance(module, torch.nn.Embedding):
@@ -305,7 +304,9 @@ class Trainer(DefaultTrainer):
     @classmethod
     def build_train_loader(cls, cfg, device=torch.device("cpu")):
         if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
-            mapper = Mapper(cfg, mode="train", device=device)  # type: ignore
+            mapper = SemSegInstancesMapper(cfg, mode="train", device=device)
+        elif cfg.MODEL.META_ARCHITECTURE in ["BinarySegmentor"]:
+            mapper = BinarySegInstancesMapper(cfg, mode="train", device=device)
         else:
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
 
@@ -314,7 +315,9 @@ class Trainer(DefaultTrainer):
     @classmethod
     def build_test_loader(cls, cfg, dataset_name, device=torch.device("cpu")):
         if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
-            mapper = Mapper(cfg, mode="val", device=device)  # type: ignore
+            mapper = SemSegInstancesMapper(cfg, mode="val", device=device)  # type: ignore
+        elif cfg.MODEL.META_ARCHITECTURE in ["BinarySegmentor"]:
+            mapper = BinarySegInstancesMapper(cfg, mode="val", device=device)
         else:
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
 
