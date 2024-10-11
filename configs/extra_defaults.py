@@ -43,6 +43,8 @@ _C.TEST.WEIGHTS = ""
 # Preprocessing
 _C.PREPROCESS = CN()
 
+_C.PREPROCESS.OUTPUT = ["image", "sem_seg", "instances", "panos"]
+
 # Preprocessing check if files specified in .txt file exist
 _C.PREPROCESS.DISABLE_CHECK = False
 

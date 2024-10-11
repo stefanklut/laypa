@@ -4,7 +4,7 @@ MODEL:
   MASK_ON: True
   SEM_SEG_HEAD:
     LOSS_WEIGHT: 0.5
-  BACKBONE: 
+  BACKBONE:
     FREEZE_AT: 0
   RESUME: False
 
@@ -19,7 +19,8 @@ DATALOADER:
 PREPROCESS:
   OVERWRITE: False
   DISABLE_CHECK: False
-  
+  OUTPUT: ["image", "instances", "sem_seg", "panos"]
+
   RESIZE:
     USE: True
     RESIZE_MODE: "choice"
@@ -28,9 +29,19 @@ PREPROCESS:
   BASELINE:
     LINE_WIDTH: 5
   REGION:
-    REGIONS: ["marginalia", "page-number", "resolution", "date",
-              "index", "attendance", "Resumption", "resumption", 
-              "Insertion", "insertion"]
+    REGIONS:
+      [
+        "marginalia",
+        "page-number",
+        "resolution",
+        "date",
+        "index",
+        "attendance",
+        "Resumption",
+        "resumption",
+        "Insertion",
+        "insertion",
+      ]
     MERGE_REGIONS: ["resolution:Resumption,resumption,Insertion,insertion"]
     REGION_TYPE: []
 
@@ -57,7 +68,7 @@ INPUT:
     PROBABILITY: 0.
     MIN_INTENSITY: 0.5
     MAX_INTENSITY: 1.5
-  
+
   SATURATION:
     PROBABILITY: 0.
     MIN_INTENSITY: 0.5
@@ -70,7 +81,7 @@ INPUT:
 
   HORIZONTAL_FLIP:
     PROBABILITY: 0.
-  
+
   VERTICAL_FLIP:
     PROBABILITY: 0.
 
@@ -85,7 +96,7 @@ INPUT:
     TRANSLATION:
       PROBABILITY: 0.5
       STANDARD_DEVIATION: 0.02
-    
+
     ROTATION:
       PROBABILITY: 0.5
       KAPPA: 30.
@@ -97,7 +108,7 @@ INPUT:
     SCALE:
       PROBABILITY: 0.5
       STANDARD_DEVIATION: 0.12
-  
+
 TEST:
   EVAL_PERIOD: 10000
 
@@ -108,7 +119,6 @@ SOLVER:
   GAMMA: 0.1
   STEPS: () #(80000, 120000, 160000)
   MAX_ITER: 250000
-  
 
 OUTPUT_DIR: ./output
 

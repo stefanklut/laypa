@@ -414,7 +414,7 @@ class BinarySegInstancesMapper(Mapper):
 
         if sem_seg_gt is not None:
             if isinstance(sem_seg_gt, torch.Tensor):
-                dataset_dict["sem_seg"] = sem_seg_gt.to(dtype=torch.long).squeeze(0).clone()
+                dataset_dict["sem_seg"] = sem_seg_gt.to(dtype=torch.long).clone()
             elif isinstance(sem_seg_gt, np.ndarray):
                 dataset_dict["sem_seg"] = torch.as_tensor(sem_seg_gt.astype("long"))
             else:

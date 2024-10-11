@@ -18,6 +18,7 @@ DATALOADER:
 PREPROCESS:
   OVERWRITE: False
   DISABLE_CHECK: False
+  OUTPUT: ["image", "sem_seg"]
 
   RESIZE:
     RESIZE_MODE: "shortest_edge"

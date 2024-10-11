@@ -69,6 +69,7 @@ class Preprocess:
         n_classes: Optional[int] = None,
         disable_check: bool = False,
         overwrite: bool = False,
+        output: list[str] = [],
         auto_dpi: bool = True,
         default_dpi: Optional[int] = None,
         manual_dpi: Optional[int] = None,
@@ -120,6 +121,8 @@ class Preprocess:
 
         self.overwrite = overwrite
 
+        self.output = output
+
         self.augmentations = augmentations
 
         self.auto_dpi = auto_dpi
@@ -157,6 +160,7 @@ class Preprocess:
             "n_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
             "disable_check": cfg.PREPROCESS.DISABLE_CHECK,
             "overwrite": cfg.PREPROCESS.OVERWRITE,
+            "output": cfg.PREPROCESS.OUTPUT,
             "auto_dpi": cfg.PREPROCESS.DPI.AUTO_DETECT,
             "default_dpi": cfg.PREPROCESS.DPI.DEFAULT_DPI,
             "manual_dpi": cfg.PREPROCESS.DPI.MANUAL_DPI,
@@ -369,7 +373,7 @@ class Preprocess:
             image_shape (tuple[int, int]): The desired shape of the image.
 
         Returns:
-            str: The relative path of the saved image file.
+            dict: The relative path to the saved image.
 
         Raises:
             TypeError: If the output directory is None.
@@ -379,7 +383,7 @@ class Preprocess:
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
 
-        image_dir = self.output_dir.joinpath("original")
+        image_dir = self.output_dir.joinpath("image")
 
         copy_image = True if original_image_shape == image_shape else False
 
@@ -388,9 +392,12 @@ class Preprocess:
         else:
             out_image_path = image_dir.joinpath(image_path.name).with_suffix(f".{self.save_method_image}")
 
+        out_image_size_path = image_dir.joinpath(image_path.name).with_suffix(".size")
+
         # Check if image already exists and if it doesn't need resizing
-        if not self.overwrite and out_image_path.exists():
-            out_image_shape = imagesize.get(out_image_path)[::-1]
+        if not self.overwrite and out_image_path.exists() and out_image_size_path.exists():
+            with out_image_size_path.open(mode="r") as f:
+                out_image_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_image_shape == image_shape:
                 return str(out_image_path.relative_to(self.output_dir))
 
@@ -412,11 +419,16 @@ class Preprocess:
             transforms = T.AugmentationList(self.augmentations)(aug_input)
             self.save_array_to_path(aug_input.image, out_image_path, self.save_method_image)
 
-        return str(out_image_path.relative_to(self.output_dir))
+        with out_image_size_path.open(mode="w") as f:
+            f.write(f"{image_shape[0]},{image_shape[1]}")
+
+        results = {"image_paths": str(out_image_path.relative_to(self.output_dir))}
+
+        return results
 
     def save_sem_seg(
         self,
-        xml_path: Path,
+        image_path: Path,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
@@ -424,13 +436,13 @@ class Preprocess:
         Save the semantic segmentation mask for an image.
 
         Args:
-            xml_path (Path): The path to the XML file containing the semantic segmentation annotations.
+            image_path (Path): The path to the image file.
             image_stem (str): The stem of the image file name.
             original_image_shape (tuple[int, int]): The original shape of the image.
             image_shape (tuple[int, int]): The desired shape of the image.
 
         Returns:
-            str: The relative path to the saved semantic segmentation mask.
+            dict: The relative path to the saved semantic segmentation mask.
 
         Raises:
             TypeError: If the output directory is None.
@@ -438,12 +450,18 @@ class Preprocess:
         """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
+
+        xml_path = image_path_to_xml_path(image_path, self.disable_check)
+
         sem_seg_dir = self.output_dir.joinpath("sem_seg")
+
         out_sem_seg_path = sem_seg_dir.joinpath(xml_path.name).with_suffix(f".{self.save_method_sem_seg}")
+        out_sem_seg_size_path = sem_seg_dir.joinpath(xml_path.name).with_suffix(".size")
 
         # Check if image already exists and if it doesn't need resizing
-        if not self.overwrite and out_sem_seg_path.exists():
-            out_sem_seg_shape = imagesize.get(out_sem_seg_path)[::-1]
+        if not self.overwrite and out_sem_seg_path.exists() and out_sem_seg_size_path.exists():
+            with out_sem_seg_size_path.open(mode="r") as f:
+                out_sem_seg_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_sem_seg_shape == image_shape:
                 return str(out_sem_seg_path.relative_to(self.output_dir))
 
@@ -455,11 +473,16 @@ class Preprocess:
 
         self.save_array_to_path(sem_seg, out_sem_seg_path, self.save_method_sem_seg)
 
-        return str(out_sem_seg_path.relative_to(self.output_dir))
+        with out_sem_seg_size_path.open(mode="w") as f:
+            f.write(f"{image_shape[0]},{image_shape[1]}")
+
+        results = {"sem_seg_paths": str(out_sem_seg_path.relative_to(self.output_dir))}
+
+        return results
 
     def save_instances(
         self,
-        xml_path: Path,
+        image_path: Path,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
@@ -467,13 +490,12 @@ class Preprocess:
         Save instances to JSON file.
 
         Args:
-            xml_path (Path): The path to the XML file containing instance annotations.
-            image_stem (str): The stem of the image file name.
+            image_path (Path): The path to the image file.
             original_image_shape (tuple[int, int]): The original shape of the image.
             image_shape (tuple[int, int]): The desired shape of the image.
 
         Returns:
-            str: The relative path to the saved instances JSON file.
+            dict: The relative path to the saved instances file.
 
         Raises:
             ValueError: If the output directory is not set.
@@ -481,9 +503,13 @@ class Preprocess:
         """
         if self.output_dir is None:
             raise ValueError("Cannot run when the output dir is not set")
+
+        xml_path = image_path_to_xml_path(image_path, self.disable_check)
+
         instances_dir = self.output_dir.joinpath("instances")
+
         out_instances_path = instances_dir.joinpath(xml_path.name).with_suffix(f".{self.save_method_instances}")
-        out_instances_size_path = instances_dir.joinpath(xml_path.name).with_suffix(".txt")
+        out_instances_size_path = instances_dir.joinpath(xml_path.name).with_suffix(".size")
 
         # Check if image already exists and if it doesn't need resizing
         if not self.overwrite and out_instances_path.exists() and out_instances_size_path.exists():
@@ -506,11 +532,13 @@ class Preprocess:
         with out_instances_size_path.open(mode="w") as f:
             f.write(f"{image_shape[0]},{image_shape[1]}")
 
-        return str(out_instances_path.relative_to(self.output_dir))
+        results = {"instances_paths": str(out_instances_path.relative_to(self.output_dir))}
+
+        return results
 
     def save_panos(
         self,
-        xml_path: Path,
+        image_path: Path,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
     ):
@@ -518,13 +546,12 @@ class Preprocess:
         Save panoramic image and segments information to the output directory.
 
         Args:
-            xml_path (Path): The path to the XML file.
-            image_stem (str): The stem of the image file name.
+            image_path (Path): The path to the image file.
             original_image_shape (tuple[int, int]): The original shape of the image.
             image_shape (tuple[int, int]): The desired shape of the image.
 
         Returns:
-            Tuple[str, str]: A tuple containing the relative paths of the saved panoramic image and segments information.
+            dict: The relative paths to the saved panoramic image and segments information.
 
         Raises:
             TypeError: If the output directory is None.
@@ -532,14 +559,19 @@ class Preprocess:
         """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
+
+        xml_path = image_path_to_xml_path(image_path, self.disable_check)
+
         panos_dir = self.output_dir.joinpath("panos")
 
         out_pano_path = panos_dir.joinpath(xml_path.name).with_suffix(f".{self.save_method_panos}")
+        out_pano_size_path = panos_dir.joinpath(xml_path.name).with_suffix(".size")
         out_segments_info_path = panos_dir.joinpath(xml_path.name).with_suffix(".json")
 
         # Check if image already exists and if it doesn't need resizing
-        if not self.overwrite and out_pano_path.exists():
-            out_pano_shape = imagesize.get(out_pano_path)[::-1]
+        if not self.overwrite and out_pano_path.exists() and out_segments_info_path.exists():
+            with out_pano_size_path.open(mode="r") as f:
+                out_pano_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_pano_shape == image_shape:
                 return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
 
@@ -552,11 +584,19 @@ class Preprocess:
 
         self.save_array_to_path(pano, out_pano_path, self.save_method_panos)
 
+        with out_pano_size_path.open(mode="w") as f:
+            f.write(f"{image_shape[0]},{image_shape[1]}")
+
         json_pano = {"image_size": image_shape, "segments_info": segments_info}
         with out_segments_info_path.open(mode="w") as f:
             json.dump(json_pano, f)
 
-        return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
+        results = {
+            "pano_paths": str(out_pano_path.relative_to(self.output_dir)),
+            "segments_info_paths": str(out_segments_info_path.relative_to(self.output_dir)),
+        }
+
+        return results
 
     def get_dpi(self, image_path: Path) -> Optional[int]:
         """
@@ -597,8 +637,6 @@ class Preprocess:
             raise TypeError("Cannot run when the output dir is None")
 
         image_stem = image_path.stem
-        xml_path = image_path_to_xml_path(image_path, self.disable_check)
-        # xml_path = self.input_dir.joinpath("page", image_stem + '.xml')
 
         _original_image_shape = imagesize.get(image_path)
         original_image_shape = int(_original_image_shape[1]), int(_original_image_shape[0])
@@ -610,23 +648,13 @@ class Preprocess:
         results = {}
         results["original_image_paths"] = str(image_path)
 
-        out_image_path = self.save_image(image_path, original_image_shape, image_shape)
-        if out_image_path is not None:
-            results["image_paths"] = out_image_path
-
-        out_sem_seg_path = self.save_sem_seg(xml_path, original_image_shape, image_shape)
-        if out_sem_seg_path is not None:
-            results["sem_seg_paths"] = out_sem_seg_path
-
-        out_instances_path = self.save_instances(xml_path, original_image_shape, image_shape)
-        if out_instances_path is not None:
-            results["instances_paths"] = out_instances_path
-
-        pano_output = self.save_panos(xml_path, original_image_shape, image_shape)
-        if pano_output is not None:
-            out_pano_path, out_segments_info_path = pano_output
-            results["pano_paths"] = out_pano_path
-            results["segments_info_paths"] = out_segments_info_path
+        for output in self.output:
+            if hasattr(self, f"save_{output}"):
+                output_result = getattr(self, f"save_{output}")(image_path, original_image_shape, image_shape)
+                if output_result is not None:
+                    results.update(output_result)
+            else:
+                raise NotImplementedError(f"Output {output} not implemented")
 
         return results
 

@@ -1,9 +1,6 @@
-_BASE_: ../segmentation_base.yaml
+_BASE_:
 
 OUTPUT_DIR: ./output/region
-
-NAME: region_baseline_test
-
 PREPROCESS:
   OVERWRITE: False
   DISABLE_CHECK: False
@@ -116,7 +113,8 @@ SOLVER:
   MAX_ITER: 250000
 
 MODEL:
-  MODE: class_baseline
+  META_ARCHITECTURE: "BinarySegmentor"
+  MODE: region
 
   SEM_SEG_HEAD:
     NUM_CLASSES: 7
