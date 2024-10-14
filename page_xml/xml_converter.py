@@ -566,6 +566,44 @@ class XMLConverter:
         else:
             return None
 
+    def to_binary_seg(
+        self,
+        xml_path: Path,
+        original_image_shape: Optional[tuple[int, int]] = None,
+        image_shape: Optional[tuple[int, int]] = None,
+    ) -> Optional[np.ndarray]:
+        """
+        Turn a single pageXML into a binary mask
+
+        Args:
+            xml_path (Path): path to pageXML
+            original_image_shape (Optional[tuple[int, int]], optional): shape of the original image. Defaults to None.
+            image_shape (Optional[tuple[int, int]], optional): shape of the output image. Defaults to None.
+
+        Raises:
+            NotImplementedError: mode is not known
+
+        Returns:
+            Optional[np.ndarray]: binary mask
+        """
+        gt_data = PageData(xml_path)
+        gt_data.parse()
+
+        if original_image_shape is not None:
+            gt_data.set_size(original_image_shape)
+
+        if image_shape is None:
+            image_shape = gt_data.get_size()
+
+        if hasattr(self, f"build_binary_seg_{self.xml_regions.mode}"):
+            sem_seg = getattr(self, f"build_binary_seg_{self.xml_regions.mode}")(
+                gt_data,
+                image_shape,
+            )
+            return sem_seg
+        else:
+            return None
+
     def to_instances(
         self,
         xml_path: Path,
