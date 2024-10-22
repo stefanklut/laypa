@@ -13,11 +13,12 @@ from detectron2.utils.visualizer import Visualizer
 from natsort import os_sorted
 from tqdm import tqdm
 
+from page_xml.xml_converters.xml_to_sem_seg import XMLToSemSeg
+
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.setup import setup_cfg
 from data.dataset import metadata_from_classes
 from data.mapper import AugInput
-from page_xml.xml_converter import XMLConverter
 from run import Predictor
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import get_file_paths, supported_image_formats
@@ -93,7 +94,7 @@ def main(args) -> None:
     # Setup config
     cfg = setup_cfg(args)
 
-    xml_converter = XMLConverter(cfg)
+    xml_converter = XMLToSemSeg(cfg)
     metadata = metadata_from_classes(xml_converter.xml_regions.regions)
 
     image_paths = get_file_paths(args.input, supported_image_formats, cfg.PREPROCESS.DISABLE_CHECK)
@@ -126,7 +127,7 @@ def main(args) -> None:
         transforms = predictor.aug(data)
         if image is None:
             raise ValueError("image can not be None")
-        sem_seg_gt = xml_converter.to_sem_seg(xml_path, image_shape=(data.image.shape[0], data.image.shape[1]))
+        sem_seg_gt = xml_converter.convert(xml_path, image_shape=(data.image.shape[0], data.image.shape[1]))
         vis_im_gt = Visualizer(data.image.copy(), metadata=metadata, scale=1)
         vis_im_gt = vis_im_gt.draw_sem_seg(sem_seg_gt, alpha=0.4)
         return vis_im_gt.get_image()

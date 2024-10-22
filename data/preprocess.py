@@ -28,7 +28,7 @@ from data.augmentations import (
     build_augmentation,
 )
 from data.mapper import AugInput
-from page_xml.xml_converter import XMLConverter
+from page_xml.xml_converters.xml_converter import XMLConverter
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path

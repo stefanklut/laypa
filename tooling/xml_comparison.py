@@ -15,8 +15,9 @@ import numpy as np
 from detectron2.data import Metadata
 from tqdm import tqdm
 
+from page_xml.xml_converters.xml_to_sem_seg import XMLToSemSeg
+
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.xml_converter import XMLConverter
 from page_xml.xml_regions import XMLRegions
 from utils.input_utils import get_file_paths
 
@@ -272,7 +273,7 @@ class EvalWrapper:
     Wrapper to run the IOUEvaluator with pageXML, requires conversion to mask images first
     """
 
-    def __init__(self, xml_to_image: XMLConverter, evaluator: IOUEvaluator) -> None:
+    def __init__(self, xml_to_image: XMLToSemSeg, evaluator: IOUEvaluator) -> None:
         """
         Wrapper to run the IOUEvaluator with pageXML, requires conversion to mask images first
 
@@ -280,7 +281,7 @@ class EvalWrapper:
             xml_to_image (XMLImage): converter from pageXML to mask image
             evaluator (IOUEvaluator): evaluator for the XML
         """
-        self.xml_to_image: XMLConverter = xml_to_image
+        self.xml_to_image: XMLToSemSeg = xml_to_image
         self.evaluator: IOUEvaluator = evaluator
 
     def compare_xml(self, info: tuple[Path, Path]):
@@ -300,8 +301,8 @@ class EvalWrapper:
         if xml_i_1.stem != xml_i_2.stem:
             raise ValueError(f"XMLs {xml_i_1} & {xml_i_2} do not match")
 
-        image_i_1 = self.xml_to_image.to_sem_seg(xml_i_1)
-        image_i_2 = self.xml_to_image.to_sem_seg(xml_i_2)
+        image_i_1 = self.xml_to_image.convert(xml_i_1)
+        image_i_2 = self.xml_to_image.convert(xml_i_2)
 
         self.evaluator.process([image_i_1], [image_i_2])
 
@@ -327,8 +328,8 @@ class EvalWrapper:
         if xml_i_1.stem != xml_i_2.stem:
             raise ValueError(f"XMLs {xml_i_1} & {xml_i_2} do not match")
 
-        image_i_1 = self.xml_to_image.to_sem_seg(xml_i_1)
-        image_i_2 = self.xml_to_image.to_sem_seg(xml_i_2)
+        image_i_1 = self.xml_to_image.convert(xml_i_1)
+        image_i_2 = self.xml_to_image.convert(xml_i_2)
 
         confusion_matrix = self.evaluator.process_output([image_i_1], [image_i_2])
 
@@ -489,7 +490,7 @@ def main(args):
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
-    xml_to_image = XMLConverter(xml_regions, args.square_lines)
+    xml_to_image = XMLToSemSeg(xml_regions, args.square_lines)
 
     evaluator = IOUEvaluator(ignore_label=255, class_names=xml_regions.regions)
 

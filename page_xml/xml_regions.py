@@ -78,7 +78,7 @@ class XMLRegions:
         """
         Return argparser that has the arguments required for the pageXML regions.
 
-        use like this: parser = argparse.ArgumentParser(parents=[XMLConverter.get_parser()])
+        use like this: parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()])
 
         Returns:
             argparse.ArgumentParser: the argparser for regions
