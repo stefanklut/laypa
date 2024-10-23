@@ -1,12 +1,12 @@
 import cv2
 import numpy as np
 from detectron2.config import configurable
-from xml_converters.xml_converter import XMLConverter
 
+from page_xml.xml_converters.xml_converter import _XMLConverter
 from page_xml.xmlPAGE import PageData
 
 
-class XMLToBinarySeg(XMLConverter):
+class XMLToBinarySeg(_XMLConverter):
     """
     New binary_seg functions must be of the form:
     def build_{mode}(self, page: PageData, out_size: tuple[int, int]) -> np.ndarray:
@@ -23,12 +23,12 @@ class XMLToBinarySeg(XMLConverter):
         """
         baseline_color = 1
         size = page.get_size()
-        sem_seg = np.zeros((1, *out_size), np.uint8)
+        sem_seg = np.zeros((*out_size, 1), np.uint8)
         total_overlap = False
         for baseline_coords in page.iter_baseline_coords():
             coords = self._scale_coords(baseline_coords, out_size, size)
-            sem_seg[0, ...], overlap = self.draw_line(
-                sem_seg[0, ...], coords, baseline_color, thickness=self.xml_regions.line_width
+            sem_seg[..., 0], overlap = self.draw_line(
+                sem_seg[..., 0], coords, baseline_color, thickness=self.xml_regions.line_width
             )
             total_overlap = total_overlap or overlap
 

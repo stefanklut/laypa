@@ -15,6 +15,13 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
+from page_xml.xml_converters import (
+    XMLToBinarySeg,
+    XMLToInstances,
+    XMLToPano,
+    XMLToSemSeg,
+)
+
 # from multiprocessing.pool import ThreadPool as Pool
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
@@ -28,7 +35,7 @@ from data.augmentations import (
     build_augmentation,
 )
 from data.mapper import AugInput
-from page_xml.xml_converters.xml_converter import XMLConverter
+from page_xml.xml_converters.xml_converter import _XMLConverter
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
@@ -65,18 +72,15 @@ class Preprocess:
         augmentations: list[Augmentation],
         input_paths: Optional[Sequence[Path]] = None,
         output_dir: Optional[Path] = None,
-        xml_converter: Optional[XMLConverter] = None,
+        xml_regions: Optional[XMLRegions] = None,
+        square_lines: bool = False,
         n_classes: Optional[int] = None,
         disable_check: bool = False,
         overwrite: bool = False,
-        output: list[str] = [],
+        output: dict[str, str] = {},
         auto_dpi: bool = True,
         default_dpi: Optional[int] = None,
         manual_dpi: Optional[int] = None,
-        save_method_image: str = "png",
-        save_method_sem_seg: str = "png",
-        save_method_instances: str = "json",
-        save_method_panos: str = "png",
     ) -> None:
         """
         Initializes the Preprocessor object.
@@ -109,13 +113,14 @@ class Preprocess:
         if output_dir is not None:
             self.set_output_dir(output_dir)
 
-        if not isinstance(xml_converter, XMLConverter):
-            raise TypeError(f"Must provide conversion from xml to image. Current type is {type(xml_converter)}, not XMLImage")
+        assert isinstance(xml_regions, XMLRegions), f"xml_regions must be an instance of XMLRegions, got {type(xml_regions)}"
 
-        self.xml_converter = xml_converter
+        self.xml_regions = xml_regions
+
+        self.square_lines = square_lines
 
         if n_classes is not None:
-            assert (n_regions := len(xml_converter.xml_regions.regions)) == (
+            assert (n_regions := len(xml_regions.regions)) == (
                 n_classes
             ), f"Number of specified regions ({n_regions}) does not match the number of specified classes ({n_classes})"
 
@@ -128,11 +133,6 @@ class Preprocess:
         self.auto_dpi = auto_dpi
         self.default_dpi = default_dpi
         self.manual_dpi = manual_dpi
-
-        self.save_method_image = save_method_image
-        self.save_method_sem_seg = save_method_sem_seg
-        self.save_method_instances = save_method_instances
-        self.save_method_panos = save_method_panos
 
     @classmethod
     def from_config(
@@ -156,7 +156,8 @@ class Preprocess:
             "augmentations": build_augmentation(cfg, "preprocess"),
             "input_paths": input_paths,
             "output_dir": output_dir,
-            "xml_converter": XMLConverter(cfg),
+            "xml_regions": XMLRegions(cfg),
+            "square_lines": cfg.PREPROCESS.BASELINE.SQUARE_LINES,
             "n_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
             "disable_check": cfg.PREPROCESS.DISABLE_CHECK,
             "overwrite": cfg.PREPROCESS.OVERWRITE,
@@ -164,10 +165,6 @@ class Preprocess:
             "auto_dpi": cfg.PREPROCESS.DPI.AUTO_DETECT,
             "default_dpi": cfg.PREPROCESS.DPI.DEFAULT_DPI,
             "manual_dpi": cfg.PREPROCESS.DPI.MANUAL_DPI,
-            "save_method_image": cfg.PREPROCESS.SAVE_METHOD_IMAGE,
-            "save_method_sem_seg": cfg.PREPROCESS.SAVE_METHOD_SEM_SEG,
-            "save_method_instances": cfg.PREPROCESS.SAVE_METHOD_INSTANCES,
-            "save_method_panos": cfg.PREPROCESS.SAVE_METHOD_PANOS,
         }
         return ret
 
@@ -318,16 +315,18 @@ class Preprocess:
         """
         all(check_path_accessible(path) for path in paths)
 
-    def save_array_to_path(self, array: np.ndarray | torch.Tensor, path: Path, method: str) -> None:
+    def save_array_to_path(self, array: np.ndarray | torch.Tensor, path: Path) -> None:
         """
         Save an array to a path with a specific method
 
         Args:
             array (np.ndarray): array to be saved
             path (Path): path to save the array
-            method (str): method to save the array
         """
-        if method == "png":
+
+        method = path.suffix
+
+        if method == ".png":
             if isinstance(array, torch.Tensor):
                 array = array.permute(1, 2, 0).cpu().numpy()
             assert array.dtype == np.uint8, f"Array must be of type uint8 to save as PNG, got {array.dtype}"
@@ -338,13 +337,13 @@ class Preprocess:
             assert np.min(array) >= 0, f"Array must be in range 0-255 to save as PNG, got {np.min(array)}"
             assert path.suffix == ".png", f"Path must have suffix .png to save as PNG, got {path.suffix}"
             save_image_array_to_path(path, array)
-        elif method == "npy":
+        elif method == ".npy":
             if isinstance(array, torch.Tensor):
                 array = array.permute(1, 2, 0).cpu().numpy()
             assert array.ndim == 3 or array.ndim == 2, f"Array must be 2D or 3D to save as numpy, got {array.shape}"
             assert path.suffix == ".npy", f"Path must have suffix .npy to save as numpy, got {path.suffix}"
             np.save(path, array)
-        elif method == "pt":
+        elif method == ".pt":
             if isinstance(array, torch.Tensor):
                 tensor = array.cpu()
             else:
@@ -384,13 +383,14 @@ class Preprocess:
             raise TypeError("Cannot run when the output dir is None")
 
         image_dir = self.output_dir.joinpath("image")
+        save_method_image = self.output["image"]
 
         copy_image = True if original_image_shape == image_shape else False
 
         if copy_image:
             out_image_path = image_dir.joinpath(image_path.name)
         else:
-            out_image_path = image_dir.joinpath(image_path.name).with_suffix(f".{self.save_method_image}")
+            out_image_path = image_dir.joinpath(image_path.name).with_suffix(f".{save_method_image}")
 
         out_image_size_path = image_dir.joinpath(image_path.name).with_suffix(".size")
 
@@ -417,12 +417,12 @@ class Preprocess:
                 manual_dpi=self.manual_dpi,
             )
             transforms = T.AugmentationList(self.augmentations)(aug_input)
-            self.save_array_to_path(aug_input.image, out_image_path, self.save_method_image)
+            self.save_array_to_path(aug_input.image, out_image_path)
 
         with out_image_size_path.open(mode="w") as f:
             f.write(f"{image_shape[0]},{image_shape[1]}")
 
-        results = {"image_paths": str(out_image_path.relative_to(self.output_dir))}
+        results = {"image_file_name": str(out_image_path.relative_to(self.output_dir))}
 
         return results
 
@@ -454,8 +454,9 @@ class Preprocess:
         xml_path = image_path_to_xml_path(image_path, self.disable_check)
 
         sem_seg_dir = self.output_dir.joinpath("sem_seg")
+        save_method_sem_seg = self.output["sem_seg"]
 
-        out_sem_seg_path = sem_seg_dir.joinpath(xml_path.name).with_suffix(f".{self.save_method_sem_seg}")
+        out_sem_seg_path = sem_seg_dir.joinpath(xml_path.name).with_suffix(f".{save_method_sem_seg}")
         out_sem_seg_size_path = sem_seg_dir.joinpath(xml_path.name).with_suffix(".size")
 
         # Check if image already exists and if it doesn't need resizing
@@ -465,18 +466,20 @@ class Preprocess:
             if out_sem_seg_shape == image_shape:
                 return str(out_sem_seg_path.relative_to(self.output_dir))
 
-        sem_seg = self.xml_converter.to_sem_seg(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        converter = XMLToSemSeg(self.xml_regions, square_lines=self.square_lines)
+
+        sem_seg = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
         if sem_seg is None:
             return None
 
         sem_seg_dir.mkdir(parents=True, exist_ok=True)
 
-        self.save_array_to_path(sem_seg, out_sem_seg_path, self.save_method_sem_seg)
+        self.save_array_to_path(sem_seg, out_sem_seg_path)
 
         with out_sem_seg_size_path.open(mode="w") as f:
             f.write(f"{image_shape[0]},{image_shape[1]}")
 
-        results = {"sem_seg_paths": str(out_sem_seg_path.relative_to(self.output_dir))}
+        results = {"sem_seg_file_name": str(out_sem_seg_path.relative_to(self.output_dir))}
 
         return results
 
@@ -507,8 +510,9 @@ class Preprocess:
         xml_path = image_path_to_xml_path(image_path, self.disable_check)
 
         instances_dir = self.output_dir.joinpath("instances")
+        save_method_instances = self.output["instances"]
 
-        out_instances_path = instances_dir.joinpath(xml_path.name).with_suffix(f".{self.save_method_instances}")
+        out_instances_path = instances_dir.joinpath(xml_path.name).with_suffix(f".{save_method_instances}")
         out_instances_size_path = instances_dir.joinpath(xml_path.name).with_suffix(".size")
 
         # Check if image already exists and if it doesn't need resizing
@@ -518,9 +522,9 @@ class Preprocess:
             if out_intstances_shape == image_shape:
                 return str(out_instances_path.relative_to(self.output_dir))
 
-        instances = self.xml_converter.to_instances(
-            xml_path, original_image_shape=original_image_shape, image_shape=image_shape
-        )
+        converter = XMLToInstances(self.xml_regions, square_lines=self.square_lines)
+
+        instances = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
         if instances is None:
             return None
 
@@ -532,11 +536,11 @@ class Preprocess:
         with out_instances_size_path.open(mode="w") as f:
             f.write(f"{image_shape[0]},{image_shape[1]}")
 
-        results = {"instances_paths": str(out_instances_path.relative_to(self.output_dir))}
+        results = {"instances": str(out_instances_path.relative_to(self.output_dir))}
 
         return results
 
-    def save_panos(
+    def save_pano(
         self,
         image_path: Path,
         original_image_shape: tuple[int, int],
@@ -562,27 +566,30 @@ class Preprocess:
 
         xml_path = image_path_to_xml_path(image_path, self.disable_check)
 
-        panos_dir = self.output_dir.joinpath("panos")
+        pano_dir = self.output_dir.joinpath("pano")
+        save_method_pano = self.output["pano"]
 
-        out_pano_path = panos_dir.joinpath(xml_path.name).with_suffix(f".{self.save_method_panos}")
-        out_pano_size_path = panos_dir.joinpath(xml_path.name).with_suffix(".size")
-        out_segments_info_path = panos_dir.joinpath(xml_path.name).with_suffix(".json")
+        out_pano_path = pano_dir.joinpath(xml_path.name).with_suffix(f".{save_method_pano}")
+        out_pano_size_path = pano_dir.joinpath(xml_path.name).with_suffix(".size")
+        out_segments_info_path = pano_dir.joinpath(xml_path.name).with_suffix(".json")
 
         # Check if image already exists and if it doesn't need resizing
-        if not self.overwrite and out_pano_path.exists() and out_segments_info_path.exists():
+        if not self.overwrite and out_pano_path.exists() and out_segments_info_path.exists() and out_pano_size_path.exists():
             with out_pano_size_path.open(mode="r") as f:
                 out_pano_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_pano_shape == image_shape:
                 return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
 
-        pano_output = self.xml_converter.to_pano(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        converter = XMLToPano(self.xml_regions, square_lines=self.square_lines)
+
+        pano_output = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
         if pano_output is None:
             return None
         pano, segments_info = pano_output
 
-        panos_dir.mkdir(parents=True, exist_ok=True)
+        pano_dir.mkdir(parents=True, exist_ok=True)
 
-        self.save_array_to_path(pano, out_pano_path, self.save_method_panos)
+        self.save_array_to_path(pano, out_pano_path)
 
         with out_pano_size_path.open(mode="w") as f:
             f.write(f"{image_shape[0]},{image_shape[1]}")
@@ -592,8 +599,8 @@ class Preprocess:
             json.dump(json_pano, f)
 
         results = {
-            "pano_paths": str(out_pano_path.relative_to(self.output_dir)),
-            "segments_info_paths": str(out_segments_info_path.relative_to(self.output_dir)),
+            "pano_file_name": str(out_pano_path.relative_to(self.output_dir)),
+            "segments_info": str(out_segments_info_path.relative_to(self.output_dir)),
         }
 
         return results
@@ -646,7 +653,7 @@ class Preprocess:
         )
 
         results = {}
-        results["original_image_paths"] = str(image_path)
+        results["original_file_name"] = str(image_path)
 
         for output in self.output:
             if hasattr(self, f"save_{output}"):
@@ -690,11 +697,11 @@ class Preprocess:
         if mode_path.exists():
             with mode_path.open(mode="r") as f:
                 mode = f.read()
-            if mode != self.xml_converter.xml_regions.mode:
+            if mode != self.xml_regions.mode:
                 self.overwrite = True
 
         with mode_path.open(mode="w") as f:
-            f.write(self.xml_converter.xml_regions.mode)
+            f.write(self.xml_regions.mode)
 
         # Single thread
         # results = []
@@ -714,8 +721,8 @@ class Preprocess:
         # Assuming all key are the same make one dict
         results = {
             "data": list_of_dict_to_dict_of_list(results),
-            "classes": self.xml_converter.xml_regions.regions,
-            "mode": self.xml_converter.xml_regions.mode,
+            "classes": self.xml_regions.regions,
+            "mode": self.xml_regions.mode,
         }
 
         output_path = self.output_dir.joinpath("info.json")
@@ -745,7 +752,6 @@ def main(args) -> None:
         merge_regions=args.merge_regions,
         region_type=args.region_type,
     )
-    xml_converter = XMLConverter(xml_regions, args.square_lines)
 
     resize_mode = args.resize_mode
     resize_sampling = args.resize_sampling
@@ -769,7 +775,8 @@ def main(args) -> None:
         augmentations=augmentations,
         input_paths=args.input,
         output_dir=args.output,
-        xml_converter=xml_converter,
+        xml_regions=xml_regions,
+        square_lines=args.square_lines,
         disable_check=args.disable_check,
         overwrite=args.overwrite,
         auto_dpi=args.auto_dpi,

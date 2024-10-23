@@ -3,8 +3,8 @@ from typing import TypedDict
 import cv2
 import numpy as np
 from detectron2.config import configurable
-from xml_converters.xml_converter import XMLConverter
 
+from page_xml.xml_converters.xml_converter import _XMLConverter
 from page_xml.xmlPAGE import PageData
 
 
@@ -18,7 +18,7 @@ class SegmentsInfo(TypedDict):
     iscrowd: bool
 
 
-class XMLToPano(XMLConverter):
+class XMLToPano(_XMLConverter):
     """
     New pano functions must be of the form:
     def build_{mode}(self, page: PageData, out_size: tuple[int, int]) -> tuple[np.ndarray, list]:

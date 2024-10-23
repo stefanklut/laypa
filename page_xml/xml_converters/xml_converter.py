@@ -9,8 +9,6 @@ import numpy as np
 from detectron2.config import CfgNode, configurable
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-
-from page_xml.xml_converters.xml_to_sem_seg import XMLToSemSeg
 from page_xml.xml_regions import XMLRegions
 from page_xml.xmlPAGE import PageData
 from utils.image_utils import save_image_array_to_path
@@ -32,9 +30,9 @@ def get_arguments() -> argparse.Namespace:
 
 
 # IDEA have fixed ordering of the classes, maybe look at what order is best
-class XMLConverter:
+class _XMLConverter:
     """
-    Class for turning a pageXML into ground truth with classes (for segmentation)
+    Base class for converting xml files to other formats, add new converters by subclassing this class and adding a build_{mode} function
     """
 
     @configurable
@@ -76,7 +74,7 @@ class XMLConverter:
         xml_path: Path,
         original_image_shape: Optional[tuple[int, int]] = None,
         image_shape: Optional[tuple[int, int]] = None,
-    ) -> Optional[list]:
+    ) -> Any:
         """
         Turn a single pageXML into a dict with scaled coordinates
 
@@ -101,11 +99,11 @@ class XMLConverter:
             image_shape = gt_data.get_size()
 
         if hasattr(self, f"build_{self.xml_regions.mode}"):
-            instances = getattr(self, f"build_{self.xml_regions.mode}")(
+            output = getattr(self, f"build_{self.xml_regions.mode}")(
                 gt_data,
                 image_shape,
             )
-            return instances
+            return output
         else:
             return None
 
@@ -164,6 +162,8 @@ class XMLConverter:
 
 
 if __name__ == "__main__":
+    from page_xml.xml_converters.xml_to_sem_seg import XMLToSemSeg
+
     args = get_arguments()
     xml_regions = XMLRegions(
         mode=args.mode,

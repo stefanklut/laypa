@@ -33,58 +33,18 @@ def create_data(input_data: dict) -> dict:
     Returns:
         dict: data used for detectron training
     """
-    image_path = input_data.get("image_paths")
-    original_image_path = input_data.get("original_image_paths")
-    sem_seg_path = input_data.get("sem_seg_paths")
-    instances_path = input_data.get("instances_paths")
-    pano_path = input_data.get("pano_paths")
-    segments_info_path = input_data.get("segments_info_paths")
-
-    if image_path is None:
-        raise ValueError(f"Image has not been given in info.json")
-    if original_image_path is None:
-        raise ValueError(f"Original image has not been given in info.json")
-
     data = {}
 
-    data["file_name"] = str(image_path)
-    data["original_file_name"] = str(original_image_path)
-    data["image_id"] = image_path.stem
-
-    # Data existence check
-    if image_path is not None:
-        if not image_path.is_file():
-            raise FileNotFoundError(f"Image path missing ({image_path})")
-
-    if original_image_path is not None:
-        if not original_image_path.is_file():
-            raise FileNotFoundError(f"Original image path missing ({original_image_path})")
-
-    if sem_seg_path is not None:
-        if not sem_seg_path.is_file():
-            raise FileNotFoundError(f"Sem_seg path missing ({sem_seg_path})")
-        data["sem_seg_file_name"] = str(sem_seg_path)
-
-    if instances_path is not None:
-        if not instances_path.is_file():
-            raise FileNotFoundError(f"Instance path missing ({instances_path})")
-
-        with instances_path.open(mode="r") as f:
-            annotations = json.load(f)["annotations"]
-        data["annotations"] = annotations
-
-    if pano_path is not None:
-        if not pano_path.is_file():
-            raise FileNotFoundError(f"Pano path missing ({pano_path})")
-        data["pan_seg_file_name"] = str(pano_path)
-
-    if segments_info_path is not None:
-        if not segments_info_path.is_file():
-            raise FileNotFoundError(f"Segments info path missing ({segments_info_path})")
-
-        with segments_info_path.open(mode="r") as f:
-            segments_info = json.load(f)["segments_info"]
-        data["segments_info"] = segments_info
+    for key, value in input_data.items():
+        path = Path(value)
+        if path.is_file():
+            if path.suffix == ".json":
+                with path.open(mode="r") as f:
+                    data[key] = json.load(f)
+            else:
+                data[key] = str(path)
+        else:
+            raise FileNotFoundError(f"Path missing ({path})")
 
     return data
 
@@ -137,10 +97,7 @@ def convert_to_paths(dataset_dir: Path, input_data: dict[str, list]) -> list[dic
         list[dict[str, Path | Any]]: list of dicts containing paths where applicable
     """
     converted_data = dict_of_list_to_list_of_dicts(input_data)
-    converted_data = [
-        {key: dataset_dir.joinpath(value) if "paths" in key else value for key, value in item.items()}
-        for item in converted_data
-    ]
+    converted_data = [{key: dataset_dir.joinpath(value) for key, value in item.items()} for item in converted_data]
     return converted_data
 
 

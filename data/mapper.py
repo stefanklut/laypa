@@ -288,7 +288,7 @@ class SemSegInstancesMapper(Mapper):
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
 
         # Load image.
-        image = self.load_array(dataset_dict["file_name"], mode="color")
+        image = self.load_array(dataset_dict["image_file_name"], mode="color")
 
         check_image_size(dataset_dict, image["image"])
 
@@ -315,7 +315,7 @@ class SemSegInstancesMapper(Mapper):
         image, sem_seg_gt = aug_input.image, aug_input.sem_seg
 
         if image is None:
-            raise ValueError(f"Image {dataset_dict['file_name']} has become None after augmentation")
+            raise ValueError(f"Image {dataset_dict['image_file_name']} has become None after augmentation")
 
         # Pytorch's dataloader is efficient on torch.Tensor due to shared-memory,
         # but not efficient on large generic data structures due to the use of pickle & mp.Queue.
@@ -337,19 +337,11 @@ class SemSegInstancesMapper(Mapper):
             else:
                 raise ValueError(f"sem_seg_gt is not a numpy array or torch tensor: {type(sem_seg_gt)}")
 
-        # USER: Remove if you don't use pre-computed proposals.
-        # Most users would not need this feature.
-        if self.proposal_topk is not None:
-            transform_proposals(dataset_dict, image_shape, transforms, proposal_topk=self.proposal_topk)
-
         if not self.is_train:
             # USER: Modify this if you want to keep them for some reason.
-            dataset_dict.pop("annotations", None)
+            dataset_dict.pop("instances", None)
             dataset_dict.pop("sem_seg_file_name", None)
             return dataset_dict
-
-        if "annotations" in dataset_dict:
-            self._transform_annotations(dataset_dict, transforms, image_shape)
 
         return dataset_dict
 
@@ -371,23 +363,23 @@ class BinarySegInstancesMapper(Mapper):
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
 
         # Load image.
-        image = self.load_array(dataset_dict["file_name"], mode="color")
+        image = self.load_array(dataset_dict["image_file_name"], mode="color")
 
         check_image_size(dataset_dict, image["image"])
 
         # USER: Remove if you don't do semantic/panoptic segmentation.
-        if "sem_seg_file_name" in dataset_dict:
-            sem_seg_gt = self.load_array(dataset_dict["sem_seg_file_name"], mode="grayscale")
+        if "binary_seg_file_name" in dataset_dict:
+            binary_seg_gt = self.load_array(dataset_dict["sem_seg_file_name"], mode="grayscale")
         else:
-            sem_seg_gt = {"image": None, "dpi": None}
+            binary_seg_gt = {"image": None, "dpi": None}
 
         assert type(image["image"]) == type(
-            sem_seg_gt["image"]
+            binary_seg_gt["image"]
         ), f"Image and sem_seg_gt have different types: {type(image['image'])} and {type(sem_seg_gt['image'])}"
 
         aug_input = AugInput(
             image["image"],
-            sem_seg=sem_seg_gt["image"],
+            sem_seg=binary_seg_gt["image"],
             dpi=image["dpi"],
             auto_dpi=self.auto_dpi,
             default_dpi=self.default_dpi,
@@ -398,7 +390,7 @@ class BinarySegInstancesMapper(Mapper):
         image, sem_seg_gt = aug_input.image, aug_input.sem_seg
 
         if image is None:
-            raise ValueError(f"Image {dataset_dict['file_name']} has become None after augmentation")
+            raise ValueError(f"Image {dataset_dict['image_file_name']} has become None after augmentation")
 
         # Pytorch's dataloader is efficient on torch.Tensor due to shared-memory,
         # but not efficient on large generic data structures due to the use of pickle & mp.Queue.
@@ -420,18 +412,10 @@ class BinarySegInstancesMapper(Mapper):
             else:
                 raise ValueError(f"sem_seg_gt is not a numpy array or torch tensor: {type(sem_seg_gt)}")
 
-        # USER: Remove if you don't use pre-computed proposals.
-        # Most users would not need this feature.
-        if self.proposal_topk is not None:
-            transform_proposals(dataset_dict, image_shape, transforms, proposal_topk=self.proposal_topk)
-
         if not self.is_train:
             # USER: Modify this if you want to keep them for some reason.
-            dataset_dict.pop("annotations", None)
+            dataset_dict.pop("instances", None)
             dataset_dict.pop("sem_seg_file_name", None)
             return dataset_dict
-
-        if "annotations" in dataset_dict:
-            self._transform_annotations(dataset_dict, transforms, image_shape)
 
         return dataset_dict

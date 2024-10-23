@@ -43,7 +43,12 @@ _C.TEST.WEIGHTS = ""
 # Preprocessing
 _C.PREPROCESS = CN()
 
-_C.PREPROCESS.OUTPUT = ["image", "sem_seg", "instances", "panos"]
+_C.PREPROCESS.OUTPUT = {
+    "image": "png",
+    "sem_seg": "png",
+    "instances": "json",
+    "pano": "png",
+}
 
 # Preprocessing check if files specified in .txt file exist
 _C.PREPROCESS.DISABLE_CHECK = False
@@ -72,11 +77,6 @@ _C.PREPROCESS.RESIZE.SCALING = 1.0
 _C.PREPROCESS.RESIZE.RESIZE_SAMPLING = "choice"
 _C.PREPROCESS.RESIZE.MIN_SIZE = [1024]
 _C.PREPROCESS.RESIZE.MAX_SIZE = 2048
-
-_C.PREPROCESS.SAVE_METHOD_IMAGE = "png"
-_C.PREPROCESS.SAVE_METHOD_SEM_SEG = "png"
-_C.PREPROCESS.SAVE_METHOD_INSTANCES = "json"
-_C.PREPROCESS.SAVE_METHOD_PANOS = "png"
 
 # DPI correction in resizing
 _C.PREPROCESS.DPI = CN()

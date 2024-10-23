@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 from detectron2 import structures
 from detectron2.config import configurable
-from xml_converters.xml_converter import XMLConverter
 
+from page_xml.xml_converters.xml_converter import _XMLConverter
 from page_xml.xmlPAGE import PageData
 
 
@@ -22,7 +22,7 @@ class Instance(TypedDict):
     iscrowd: bool
 
 
-class XMLToInstances(XMLConverter):
+class XMLToInstances(_XMLConverter):
     """
     New instance functions must be of the form:
     def build_{mode}(self, page: PageData, out_size: tuple[int, int]) -> np.ndarray:

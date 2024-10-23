@@ -1,13 +1,13 @@
 import cv2
 import numpy as np
 from detectron2.config import CfgNode, configurable
-from xml_converters.xml_converter import XMLConverter
 
+from page_xml.xml_converters.xml_converter import _XMLConverter
 from page_xml.xmlPAGE import PageData
 from utils.vector_utils import point_top_bottom_assignment
 
 
-class XMLToSemSeg(XMLConverter):
+class XMLToSemSeg(_XMLConverter):
     """
     New sem_seg functions must be of the form:
     def build_{mode}(self, page: PageData, out_size: tuple[int, int]) -> np.ndarray:
