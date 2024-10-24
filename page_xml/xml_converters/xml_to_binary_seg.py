@@ -37,3 +37,19 @@ class XMLToBinarySeg(_XMLConverter):
         if not sem_seg.any():
             self.logger.warning(f"File {page.filepath} does not contains baseline sem_seg")
         return sem_seg
+
+    def build_region(self, page: PageData, out_size: tuple[int, int]):
+        """
+        Builds a "image" mask of desired elements
+        """
+        size = page.get_size()
+        n_classes = len(self.xml_regions.region_classes)
+        sem_seg = np.zeros((*out_size, n_classes), np.uint8)
+        for element in set(self.xml_regions.region_types.values()):
+            for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.region_classes):
+                coords = self._scale_coords(element_coords, out_size, size)
+                rounded_coords = np.round(coords).astype(np.int32)
+                cv2.fillPoly(sem_seg[..., element_class], [rounded_coords], 1)
+        if not sem_seg.any():
+            self.logger.warning(f"File {page.filepath} does not contains region sem_seg")
+        return sem_seg

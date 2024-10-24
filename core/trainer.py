@@ -31,7 +31,7 @@ from detectron2.projects.deeplab import build_lr_scheduler
 from detectron2.solver.build import maybe_add_gradient_clipping, reduce_param_groups
 from detectron2.utils import comm
 
-from data.mapper import BinarySegInstancesMapper, SemSegInstancesMapper
+from data.mapper import BinarySegMapper, SemSegInstancesMapper, SemSegMapper
 from utils.logging_utils import get_logger_name
 
 
@@ -302,24 +302,26 @@ class Trainer(DefaultTrainer):
         return evaluator
 
     @classmethod
-    def build_train_loader(cls, cfg, device=torch.device("cpu")):
-        if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
-            mapper = SemSegInstancesMapper(cfg, mode="train", device=device)
+    def get_mapper(cls, cfg, device=torch.device("cpu")):
+        if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor"]:
+            return SemSegMapper(cfg, mode="train", device=device)
+        elif cfg.MODEL.META_ARCHITECTURE in ["MaskFormer", "PanopticFPN"]:
+            return SemSegInstancesMapper(cfg, mode="train", device=device)
+
         elif cfg.MODEL.META_ARCHITECTURE in ["BinarySegmentor"]:
-            mapper = BinarySegInstancesMapper(cfg, mode="train", device=device)
+            return BinarySegMapper(cfg, mode="train", device=device)
         else:
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
+
+    @classmethod
+    def build_train_loader(cls, cfg, device=torch.device("cpu")):
+        mapper = cls.get_mapper(cfg, device=device)
 
         return build_detection_train_loader(cfg=cfg, mapper=mapper, pin_memory=cfg.DATALOADER.PIN_MEMORY)  # type: ignore
 
     @classmethod
     def build_test_loader(cls, cfg, dataset_name, device=torch.device("cpu")):
-        if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
-            mapper = SemSegInstancesMapper(cfg, mode="val", device=device)  # type: ignore
-        elif cfg.MODEL.META_ARCHITECTURE in ["BinarySegmentor"]:
-            mapper = BinarySegInstancesMapper(cfg, mode="val", device=device)
-        else:
-            raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
+        mapper = cls.get_mapper(cfg, device=device)
 
         return build_detection_test_loader(cfg=cfg, mapper=mapper, dataset_name=dataset_name)  # type: ignore
 

@@ -152,6 +152,7 @@ class Preprocess:
         Returns:
             dict[str, Any]: A dictionary containing the converted configuration values.
         """
+
         ret = {
             "augmentations": build_augmentation(cfg, "preprocess"),
             "input_paths": input_paths,
@@ -161,7 +162,7 @@ class Preprocess:
             "n_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
             "disable_check": cfg.PREPROCESS.DISABLE_CHECK,
             "overwrite": cfg.PREPROCESS.OVERWRITE,
-            "output": cfg.PREPROCESS.OUTPUT,
+            "output": {key: value for key, value in cfg.PREPROCESS.OUTPUT},
             "auto_dpi": cfg.PREPROCESS.DPI.AUTO_DETECT,
             "default_dpi": cfg.PREPROCESS.DPI.DEFAULT_DPI,
             "manual_dpi": cfg.PREPROCESS.DPI.MANUAL_DPI,
@@ -530,13 +531,12 @@ class Preprocess:
 
         instances_dir.mkdir(parents=True, exist_ok=True)
 
-        json_instances = {"image_size": image_shape, "annotations": instances}
         with out_instances_path.open(mode="w") as f:
-            json.dump(json_instances, f)
+            json.dump(instances, f)
         with out_instances_size_path.open(mode="w") as f:
             f.write(f"{image_shape[0]},{image_shape[1]}")
 
-        results = {"instances": str(out_instances_path.relative_to(self.output_dir))}
+        results = {"annotations": str(out_instances_path.relative_to(self.output_dir))}
 
         return results
 
@@ -594,14 +594,65 @@ class Preprocess:
         with out_pano_size_path.open(mode="w") as f:
             f.write(f"{image_shape[0]},{image_shape[1]}")
 
-        json_pano = {"image_size": image_shape, "segments_info": segments_info}
         with out_segments_info_path.open(mode="w") as f:
-            json.dump(json_pano, f)
+            json.dump(segments_info, f)
 
         results = {
             "pano_file_name": str(out_pano_path.relative_to(self.output_dir)),
             "segments_info": str(out_segments_info_path.relative_to(self.output_dir)),
         }
+
+        return results
+
+    def save_binary_seg(self, image_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+        """
+        Save the binary segmentation mask for an image.
+
+        Args:
+            image_path (Path): The path to the image file.
+            image_stem (str): The stem of the image file name.
+            original_image_shape (tuple[int, int]): The original shape of the image.
+            image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            dict: The relative path to the saved binary segmentation mask.
+
+        Raises:
+            TypeError: If the output directory is None.
+
+        """
+        if self.output_dir is None:
+            raise TypeError("Cannot run when the output dir is None")
+
+        xml_path = image_path_to_xml_path(image_path, self.disable_check)
+
+        binary_seg_dir = self.output_dir.joinpath("binary_seg")
+        save_method_binary_seg = self.output["binary_seg"]
+
+        out_binary_seg_path = binary_seg_dir.joinpath(xml_path.name).with_suffix(f".{save_method_binary_seg}")
+        out_binary_seg_size_path = binary_seg_dir.joinpath(xml_path.name).with_suffix(".size")
+
+        # Check if image already exists and if it doesn't need resizing
+        if not self.overwrite and out_binary_seg_path.exists() and out_binary_seg_size_path.exists():
+            with out_binary_seg_size_path.open(mode="r") as f:
+                out_binary_seg_shape = tuple(int(x) for x in f.read().strip().split(","))
+            if out_binary_seg_shape == image_shape:
+                return str(out_binary_seg_path.relative_to(self.output_dir))
+
+        converter = XMLToSemSeg(self.xml_regions, square_lines=self.square_lines)
+
+        binary_seg = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        if binary_seg is None:
+            return None
+
+        binary_seg_dir.mkdir(parents=True, exist_ok=True)
+
+        self.save_array_to_path(binary_seg, out_binary_seg_path)
+
+        with out_binary_seg_size_path.open(mode="w") as f:
+            f.write(f"{image_shape[0]},{image_shape[1]}")
+
+        results = {"binary_seg_file_name": str(out_binary_seg_path.relative_to(self.output_dir))}
 
         return results
 

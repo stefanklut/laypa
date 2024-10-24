@@ -60,7 +60,7 @@ class BinarySegmentor(nn.Module):
     @classmethod
     def from_config(cls, cfg):
         backbone = build_backbone(cfg)
-        sem_seg_head = build_sem_seg_head(cfg, backbone.output_shape())
+        sem_seg_head = build_binary_seg_head(cfg, backbone.output_shape())
         return {
             "backbone": backbone,
             "sem_seg_head": sem_seg_head,
@@ -92,7 +92,7 @@ class BinarySegmentor(nn.Module):
               Each dict is the output for one input image.
               The dict contains one key "sem_seg" whose value is a
               Tensor that represents the
-              per-pixel segmentation prediced by the head.
+              per-pixel segmentation predicted by the head.
               The prediction has shape KxHxW that represents the logits of
               each class for each pixel.
         """
@@ -106,8 +106,8 @@ class BinarySegmentor(nn.Module):
 
         features = self.backbone(images.tensor)
 
-        if "sem_seg" in batched_inputs[0]:
-            targets = [x["sem_seg"].to(self.device) for x in batched_inputs]
+        if "binary_seg" in batched_inputs[0]:
+            targets = [x["binary_seg"].to(self.device) for x in batched_inputs]
             targets = ImageList.from_tensors(
                 targets,
                 self.backbone.size_divisibility,
@@ -126,7 +126,7 @@ class BinarySegmentor(nn.Module):
             height = input_per_image.get("height", image_size[0])
             width = input_per_image.get("width", image_size[1])
             r = sem_seg_postprocess(result, image_size, height, width)
-            processed_results.append({"sem_seg": r})
+            processed_results.append({"binary_seg": r})
         return processed_results
 
 
@@ -205,13 +205,13 @@ class BinarySegFPNHead(nn.Module):
     @classmethod
     def from_config(cls, cfg, input_shape: Dict[str, ShapeSpec]):
         return {
-            "input_shape": {k: v for k, v in input_shape.items() if k in cfg.MODEL.BINARY_SEG_HEAD.IN_FEATURES},
-            "ignore_value": cfg.MODEL.BINARY_SEG_HEAD.IGNORE_VALUE,
-            "num_classes": cfg.MODEL.BINARY_SEG_HEAD.NUM_CLASSES,
-            "conv_dims": cfg.MODEL.BINARY_SEG_HEAD.CONVS_DIM,
-            "common_stride": cfg.MODEL.BINARY_SEG_HEAD.COMMON_STRIDE,
-            "norm": cfg.MODEL.BINARY_SEG_HEAD.NORM,
-            "loss_weight": cfg.MODEL.BINARY_SEG_HEAD.LOSS_WEIGHT,
+            "input_shape": {k: v for k, v in input_shape.items() if k in cfg.MODEL.SEM_SEG_HEAD.IN_FEATURES},
+            "ignore_value": cfg.MODEL.SEM_SEG_HEAD.IGNORE_VALUE,
+            "num_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
+            "conv_dims": cfg.MODEL.SEM_SEG_HEAD.CONVS_DIM,
+            "common_stride": cfg.MODEL.SEM_SEG_HEAD.COMMON_STRIDE,
+            "norm": cfg.MODEL.SEM_SEG_HEAD.NORM,
+            "loss_weight": cfg.MODEL.SEM_SEG_HEAD.LOSS_WEIGHT,
         }
 
     def forward(self, features, targets=None):

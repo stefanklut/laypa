@@ -145,6 +145,10 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
         else:
             cfg.MODEL.DEVICE = "cpu"
 
+    assert all(
+        len(i) == 2 and all(isinstance(i_i, str) for i_i in i) for i in cfg.PREPROCESS.OUTPUT
+    ), "PREPROCESS.OUTPUT must be a list of tuples with two strings"
+
     # Deprecation warnings
     if cfg.PREPROCESS.RESIZE.USE:
         logger.warning(

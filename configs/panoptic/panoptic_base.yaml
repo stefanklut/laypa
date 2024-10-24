@@ -19,7 +19,13 @@ DATALOADER:
 PREPROCESS:
   OVERWRITE: False
   DISABLE_CHECK: False
-  OUTPUT: ["image", "instances", "sem_seg", "panos"]
+  OUTPUT:
+    [
+      ["image", "png"],
+      ["instances", "json"],
+      ["sem_seg", "png"],
+      ["pano", "png"],
+    ]
 
   RESIZE:
     USE: True

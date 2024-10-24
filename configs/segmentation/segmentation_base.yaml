@@ -18,7 +18,7 @@ DATALOADER:
 PREPROCESS:
   OVERWRITE: False
   DISABLE_CHECK: False
-  OUTPUT: { "image": "png", "sem_seg": "png" }
+  OUTPUT: [["image", "png"], ["sem_seg", "png"]]
 
   RESIZE:
     RESIZE_MODE: "shortest_edge"

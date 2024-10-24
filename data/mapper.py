@@ -271,6 +271,81 @@ class Mapper(DatasetMapper):
         raise NotImplementedError("Mapper must be subclassed")
 
 
+class SemSegMapper(Mapper):
+    @configurable
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @override
+    def __call__(self, dataset_dict):
+        """
+        Args:
+            dataset_dict (dict): Metadata of one image, in Detectron2 Dataset format.
+
+        Returns:
+            dict: a format that builtin models in detectron2 accept
+        """
+        dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
+
+        # Load image.
+        image = self.load_array(dataset_dict["image_file_name"], mode="color")
+
+        check_image_size(dataset_dict, image["image"])
+
+        # USER: Remove if you don't do semantic/panoptic segmentation.
+        if "sem_seg_file_name" in dataset_dict:
+            sem_seg_gt = self.load_array(dataset_dict["sem_seg_file_name"], mode="grayscale")
+        else:
+            sem_seg_gt = {"image": None, "dpi": None}
+
+        assert type(image["image"]) == type(
+            sem_seg_gt["image"]
+        ), f"Image and sem_seg_gt have different types: {type(image['image'])} and {type(sem_seg_gt['image'])}"
+
+        aug_input = AugInput(
+            image["image"],
+            sem_seg=sem_seg_gt["image"],
+            dpi=image["dpi"],
+            auto_dpi=self.auto_dpi,
+            default_dpi=self.default_dpi,
+            manual_dpi=self.manual_dpi,
+        )
+        with torch.no_grad():
+            transforms = self.augmentations(aug_input)
+        image, sem_seg_gt = aug_input.image, aug_input.sem_seg
+
+        if image is None:
+            raise ValueError(f"Image {dataset_dict['image_file_name']} has become None after augmentation")
+
+        # Pytorch's dataloader is efficient on torch.Tensor due to shared-memory,
+        # but not efficient on large generic data structures due to the use of pickle & mp.Queue.
+        # Therefore it's important to use torch.Tensor.
+        if isinstance(image, torch.Tensor):
+            image_shape = image.shape[-2:]  # h, w
+            dataset_dict["image"] = image.clone()
+        elif isinstance(image, np.ndarray):
+            image_shape = image.shape[:2]
+            dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
+        else:
+            raise ValueError(f"image is not a numpy array or torch tensor: {type(image)}")
+
+        if sem_seg_gt is not None:
+            if isinstance(sem_seg_gt, torch.Tensor):
+                dataset_dict["sem_seg"] = sem_seg_gt.to(dtype=torch.long).squeeze(0).clone()
+            elif isinstance(sem_seg_gt, np.ndarray):
+                dataset_dict["sem_seg"] = torch.as_tensor(sem_seg_gt.astype("long"))
+            else:
+                raise ValueError(f"sem_seg_gt is not a numpy array or torch tensor: {type(sem_seg_gt)}")
+
+        if not self.is_train:
+            # USER: Modify this if you want to keep them for some reason.
+            dataset_dict.pop("annotations", None)
+            dataset_dict.pop("sem_seg_file_name", None)
+            return dataset_dict
+
+        return dataset_dict
+
+
 class SemSegInstancesMapper(Mapper):
     @configurable
     def __init__(self, *args, **kwargs):
@@ -339,14 +414,17 @@ class SemSegInstancesMapper(Mapper):
 
         if not self.is_train:
             # USER: Modify this if you want to keep them for some reason.
-            dataset_dict.pop("instances", None)
+            dataset_dict.pop("annotations", None)
             dataset_dict.pop("sem_seg_file_name", None)
             return dataset_dict
+
+        if "annotations" in dataset_dict:
+            self._transform_annotations(dataset_dict, transforms, image_shape)
 
         return dataset_dict
 
 
-class BinarySegInstancesMapper(Mapper):
+class BinarySegMapper(Mapper):
     @configurable
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -369,13 +447,13 @@ class BinarySegInstancesMapper(Mapper):
 
         # USER: Remove if you don't do semantic/panoptic segmentation.
         if "binary_seg_file_name" in dataset_dict:
-            binary_seg_gt = self.load_array(dataset_dict["sem_seg_file_name"], mode="grayscale")
+            binary_seg_gt = self.load_array(dataset_dict["binary_seg_file_name"], mode="grayscale")
         else:
             binary_seg_gt = {"image": None, "dpi": None}
 
         assert type(image["image"]) == type(
             binary_seg_gt["image"]
-        ), f"Image and sem_seg_gt have different types: {type(image['image'])} and {type(sem_seg_gt['image'])}"
+        ), f"Image and sem_seg_gt have different types: {type(image['image'])} and {type(binary_seg_gt['image'])}"
 
         aug_input = AugInput(
             image["image"],
@@ -387,7 +465,7 @@ class BinarySegInstancesMapper(Mapper):
         )
         with torch.no_grad():
             transforms = self.augmentations(aug_input)
-        image, sem_seg_gt = aug_input.image, aug_input.sem_seg
+        image, binary_seg_gt = aug_input.image, aug_input.sem_seg
 
         if image is None:
             raise ValueError(f"Image {dataset_dict['image_file_name']} has become None after augmentation")
@@ -396,26 +474,24 @@ class BinarySegInstancesMapper(Mapper):
         # but not efficient on large generic data structures due to the use of pickle & mp.Queue.
         # Therefore it's important to use torch.Tensor.
         if isinstance(image, torch.Tensor):
-            image_shape = image.shape[-2:]  # h, w
             dataset_dict["image"] = image.clone()
         elif isinstance(image, np.ndarray):
-            image_shape = image.shape[:2]
             dataset_dict["image"] = torch.as_tensor(np.ascontiguousarray(image.transpose(2, 0, 1)))
         else:
             raise ValueError(f"image is not a numpy array or torch tensor: {type(image)}")
 
-        if sem_seg_gt is not None:
-            if isinstance(sem_seg_gt, torch.Tensor):
-                dataset_dict["sem_seg"] = sem_seg_gt.to(dtype=torch.long).clone()
-            elif isinstance(sem_seg_gt, np.ndarray):
-                dataset_dict["sem_seg"] = torch.as_tensor(sem_seg_gt.astype("long"))
+        if binary_seg_gt is not None:
+            if isinstance(binary_seg_gt, torch.Tensor):
+                dataset_dict["binary_seg"] = binary_seg_gt.to(dtype=torch.long).clone()
+            elif isinstance(binary_seg_gt, np.ndarray):
+                dataset_dict["binary_seg"] = torch.as_tensor(binary_seg_gt.astype("long"))
             else:
-                raise ValueError(f"sem_seg_gt is not a numpy array or torch tensor: {type(sem_seg_gt)}")
+                raise ValueError(f"sem_seg_gt is not a numpy array or torch tensor: {type(binary_seg_gt)}")
 
         if not self.is_train:
             # USER: Modify this if you want to keep them for some reason.
-            dataset_dict.pop("instances", None)
-            dataset_dict.pop("sem_seg_file_name", None)
+            dataset_dict.pop("annotations", None)
+            dataset_dict.pop("binary_seg_file_name", None)
             return dataset_dict
 
         return dataset_dict
