@@ -121,15 +121,14 @@ def get_file_paths(
             with input_path.open(mode="r") as f:
                 paths_from_file = [Path(line) for line in f.read().splitlines()]
             sub_output_paths = [path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file]
-            sub_output_paths = [path for path in sub_output_paths if is_path_supported_format(path, formats)]
+            for path in sub_output_paths:
+                if not disable_check and not path.is_file():
+                    raise FileNotFoundError(f"File from txt file does not exist: {path}")
+                if not is_path_supported_format(path, formats):
+                    raise ValueError(f"Invalid file type in txt file {input_path}, {path}: {path.suffix}")
 
             if len(sub_output_paths) == 0:
                 raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
-
-            if not disable_check:
-                for path in sub_output_paths:
-                    if not path.is_file():
-                        raise FileNotFoundError(f"Missing file ({path}) from the txt file: {input_path}")
 
         else:
             raise ValueError(f"Invalid file type {input_path}: {input_path.suffix}")
