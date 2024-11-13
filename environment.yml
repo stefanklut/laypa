@@ -23,6 +23,7 @@ dependencies:
   - pillow
   - shapely
   - natsort
+  - ultralytics
   # - pygments #Optional for colors
   - pip:
       - distinctipy
