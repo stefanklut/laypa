@@ -156,7 +156,7 @@ def setup_training(args: argparse.Namespace):
 
         model.train(
             data=str(coco_output_path),
-            epochs=40,
+            epochs=100,
             batch=cfg.SOLVER.IMS_PER_BATCH,
             imgsz=640,
             device=cfg.MODEL.DEVICE,
