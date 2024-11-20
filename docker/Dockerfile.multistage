@@ -1,4 +1,4 @@
-FROM condaforge/miniforge3 as builder
+FROM condaforge/miniforge3 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -34,7 +34,7 @@ ENV ENV_NAME=/env
 # ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "laypa", "/bin/bash", "-c"]
 
 
-FROM condaforge/miniforge3 as runner
+FROM condaforge/miniforge3 AS runner
 
 ENV DEBIAN_FRONTEND noninteractive
 

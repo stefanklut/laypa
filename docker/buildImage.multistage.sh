@@ -117,7 +117,7 @@ tmp_dir=$(mktemp -d)
 
 echo "Copy files for building docker..."
 cp -r -T $LAYPA/ $tmp_dir/laypa.multistage
-cp Dockerfile.multistage $tmp_dir/laypa.multistage/Dockerfile
+cp Dockerfile.multistage $tmp_dir/Dockerfile
 cp _entrypoint.sh $tmp_dir/_entrypoint.sh
 cp .dockerignore $tmp_dir/.dockerignore
 
@@ -135,7 +135,7 @@ cd ..
 
 echo "Building docker image..."
 # docker build --squash --no-cache . -t loghi/docker.laypa
-docker build --no-cache . -t loghi/docker.laypa -f Dockerfile.multistage
+docker build --no-cache . -t loghi/docker.laypa -f Dockerfile
 
 rm -rf laypa.multistage
 docker system prune -f
