@@ -7,7 +7,7 @@ import torch
 from detectron2.config import configurable
 from detectron2.layers import Conv2d, ShapeSpec, get_norm
 from detectron2.modeling.backbone import Backbone, build_backbone
-from detectron2.modeling.meta_arch.build import META_ARCH_REGISTRY
+from detectron2.modeling.meta_arch import META_ARCH_REGISTRY
 from detectron2.modeling.postprocessing import sem_seg_postprocess
 from detectron2.structures import ImageList
 from detectron2.utils.registry import Registry
@@ -205,13 +205,13 @@ class BinarySegFPNHead(nn.Module):
     @classmethod
     def from_config(cls, cfg, input_shape: Dict[str, ShapeSpec]):
         return {
-            "input_shape": {k: v for k, v in input_shape.items() if k in cfg.MODEL.SEM_SEG_HEAD.IN_FEATURES},
-            "ignore_value": cfg.MODEL.SEM_SEG_HEAD.IGNORE_VALUE,
-            "num_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
-            "conv_dims": cfg.MODEL.SEM_SEG_HEAD.CONVS_DIM,
-            "common_stride": cfg.MODEL.SEM_SEG_HEAD.COMMON_STRIDE,
-            "norm": cfg.MODEL.SEM_SEG_HEAD.NORM,
-            "loss_weight": cfg.MODEL.SEM_SEG_HEAD.LOSS_WEIGHT,
+            "input_shape": {k: v for k, v in input_shape.items() if k in cfg.MODEL.BINARY_SEG_HEAD.IN_FEATURES},
+            "ignore_value": cfg.MODEL.BINARY_SEG_HEAD.IGNORE_VALUE,
+            "num_classes": cfg.MODEL.BINARY_SEG_HEAD.NUM_CLASSES,
+            "conv_dims": cfg.MODEL.BINARY_SEG_HEAD.CONVS_DIM,
+            "common_stride": cfg.MODEL.BINARY_SEG_HEAD.COMMON_STRIDE,
+            "norm": cfg.MODEL.BINARY_SEG_HEAD.NORM,
+            "loss_weight": cfg.MODEL.BINARY_SEG_HEAD.LOSS_WEIGHT,
         }
 
     def forward(self, features, targets=None):

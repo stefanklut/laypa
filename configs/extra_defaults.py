@@ -24,6 +24,22 @@ _C.MODEL.MODE = ""
 _C.MODEL.SEM_SEG_HEAD = CN()
 _C.MODEL.SEM_SEG_HEAD.WEIGHT = [1.0]
 
+_C.MODEL.BINARY_SEG_HEAD = CN()
+_C.MODEL.BINARY_SEG_HEAD.NAME = "BinarySegFPNHead"
+_C.MODEL.BINARY_SEG_HEAD.IN_FEATURES = ["p2", "p3", "p4", "p5"]
+# Label in the semantic segmentation ground truth that is ignored, i.e., no loss is calculated for
+# the correposnding pixel.
+_C.MODEL.BINARY_SEG_HEAD.IGNORE_VALUE = 255
+# Number of classes in the semantic segmentation head
+_C.MODEL.BINARY_SEG_HEAD.NUM_CLASSES = 54
+# Number of channels in the 3x3 convs inside semantic-FPN heads.
+_C.MODEL.BINARY_SEG_HEAD.CONVS_DIM = 128
+# Outputs from semantic-FPN heads are up-scaled to the COMMON_STRIDE stride.
+_C.MODEL.BINARY_SEG_HEAD.COMMON_STRIDE = 4
+# Normalization method for the convolution layers. Options: "" (no norm), "GN".
+_C.MODEL.BINARY_SEG_HEAD.NORM = "GN"
+_C.MODEL.BINARY_SEG_HEAD.LOSS_WEIGHT = 1.0
+
 # Automatic mixed precision settings
 _C.MODEL.AMP_TRAIN = CN()
 _C.MODEL.AMP_TRAIN.ENABLED = False

@@ -1,9 +1,10 @@
-_BASE_:
+_BASE_: ../segmentation_base.yaml
 
 OUTPUT_DIR: ./output/region
 PREPROCESS:
   OVERWRITE: False
   DISABLE_CHECK: False
+  OUTPUT: [["image", "png"], ["binary_seg", "npy"]]
 
   RESIZE:
     RESIZE_MODE: "scaling"
@@ -37,7 +38,7 @@ INPUT:
   MAX_SIZE_TEST: -1
 
   CROP:
-    ENABLED: False
+    ENABLED: True
     SIZE: [1024, 1024]
     TYPE: absolute
 
@@ -116,11 +117,8 @@ MODEL:
   META_ARCHITECTURE: "BinarySegmentor"
   MODE: region
 
-  SEM_SEG_HEAD:
+  BINARY_SEG_HEAD:
     NUM_CLASSES: 7
-
-  ROI_HEADS:
-    NUM_CLASSES: 6
 
   WEIGHTS:
 
