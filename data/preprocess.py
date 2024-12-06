@@ -153,13 +153,21 @@ class Preprocess:
             dict[str, Any]: A dictionary containing the converted configuration values.
         """
 
+        n_classes = None
+        if cfg.MODEL.META_ARCHITECTURE == "SemanticSegmentor":
+            n_classes = cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES
+        elif cfg.MODEL.META_ARCHITECTURE == "BinarySegmentor":
+            n_classes = cfg.MODEL.BINARY_SEG_HEAD.NUM_CLASSES
+        else:
+            raise NotImplementedError(f"Meta architecture {cfg.MODEL.META_ARCHITECTURE} not implemented")
+
         ret = {
             "augmentations": build_augmentation(cfg, "preprocess"),
             "input_paths": input_paths,
             "output_dir": output_dir,
             "xml_regions": XMLRegions(cfg),
             "square_lines": cfg.PREPROCESS.BASELINE.SQUARE_LINES,
-            "n_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
+            "n_classes": n_classes,
             "disable_check": cfg.PREPROCESS.DISABLE_CHECK,
             "overwrite": cfg.PREPROCESS.OVERWRITE,
             "output": {key: value for key, value in cfg.PREPROCESS.OUTPUT},
