@@ -245,6 +245,7 @@ class BinarySegFPNHead(nn.Module):
             align_corners=False,
         )
 
+        # TODO BCE cannot handle ignore values, need to implement a custom loss
         loss = F.binary_cross_entropy_with_logits(predictions, targets.float(), reduction="mean")
         losses = {"loss_bce_seg": loss * self.loss_weight}
         return losses
