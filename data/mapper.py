@@ -447,7 +447,7 @@ class BinarySegMapper(Mapper):
 
         # USER: Remove if you don't do semantic/panoptic segmentation.
         if "binary_seg_file_name" in dataset_dict:
-            binary_seg_gt = self.load_array(dataset_dict["binary_seg_file_name"], mode="grayscale")
+            binary_seg_gt = self.load_array(dataset_dict["binary_seg_file_name"], mode="color")
         else:
             binary_seg_gt = {"image": None, "dpi": None}
 
@@ -484,7 +484,7 @@ class BinarySegMapper(Mapper):
             if isinstance(binary_seg_gt, torch.Tensor):
                 dataset_dict["binary_seg"] = binary_seg_gt.to(dtype=torch.long).clone()
             elif isinstance(binary_seg_gt, np.ndarray):
-                dataset_dict["binary_seg"] = torch.as_tensor(binary_seg_gt.astype("long"))
+                dataset_dict["binary_seg"] = torch.as_tensor(binary_seg_gt.astype("long").transpose(2, 0, 1))
             else:
                 raise ValueError(f"sem_seg_gt is not a numpy array or torch tensor: {type(binary_seg_gt)}")
 

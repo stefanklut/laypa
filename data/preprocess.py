@@ -647,7 +647,7 @@ class Preprocess:
             if out_binary_seg_shape == image_shape:
                 return str(out_binary_seg_path.relative_to(self.output_dir))
 
-        converter = XMLToSemSeg(self.xml_regions, square_lines=self.square_lines)
+        converter = XMLToBinarySeg(self.xml_regions, square_lines=self.square_lines)
 
         binary_seg = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
         if binary_seg is None:
