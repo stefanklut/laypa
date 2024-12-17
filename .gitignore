@@ -137,6 +137,7 @@ dmypy.json
 
 # Output
 output/
+runs/
 
 # Pretrained_models
 *.pth
