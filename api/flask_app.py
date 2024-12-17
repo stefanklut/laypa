@@ -252,6 +252,7 @@ def abort_with_info(
     if info is None:
         info = ResponseInfo(status_code=status_code)  # type: ignore
     info["error_message"] = error_message
+    info["status_code"] = status_code
     response = jsonify(info)
     response.status_code = status_code
     abort(response)

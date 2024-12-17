@@ -103,15 +103,6 @@ If not already installed, install the Docker Engine ([install instructions][dock
 Laypa now has a release on dockerhub. Using the docker of `loghi/docker.laypa`, should pull the corresponding laypa docker directly from docker hub. If this fails from some reason it can be pulled manually from [here][dockerhub_link]. If it is outdated or requires differences to the source code, please try the [Manual Installation](#manual-installation).
 
 #### Manual Installation
-Copy the docker install scripts and Dockerfile(s) to a temporary directory. This is necessary due to the script having to copy the directory it is in. This is not allowed and thus a different external directory is used as build context.
-
-```sh
-# Or other location for a temporary directory
-tmpdir=$(mktemp -d)
-cp -r docker $tmpdir
-cd $tmpdir/docker
-```
-
 Building the docker using the provided script:
 ```sh
 ./buildImage.sh <PATH_TO_LAYPA>
@@ -122,38 +113,22 @@ Or the multistage build with some profiler tools taken out (might be smaller):
 ./buildImage.multistage.sh <PATH_TO_LAYPA>
 ```
 
-
-Or the alternative docker using micromamba (might be more unstable, but builds are faster):
-```sh
-./buildImage.micromamba.sh <PATH_TO_LAYPA>
-```
-
-
 <details>
-<summary> Click for manual docker install instructions </summary>
+<summary> Click for manual docker install instructions (not recommended) </summary>
 
 First copy the Laypa directory to the temporary docker directory:
 ```sh
-cp -r <PARENT_DIR>/laypa $tmpdir/docker
+tmp_dir=$(mktemp -d)
+cp -r -T <PATH_TO_LAYPA> $tmp_dir/laypa
+cp Dockerfile $tmp_dir/Dockerfile
+cp _entrypoint.sh $tmp_dir/_entrypoint.sh
+cp .dockerignore $tmp_dir/.dockerignore
 ```
 
-Change the working dir to the docker directory:
+Then build the docker image using the following command:
 ```sh
-cd $tmpdir/docker
+docker build -t loghi/docker.laypa $tmp_dir
 ```
-
-Checkout to make sure you are not on the development branch:
-```sh
-cd laypa
-git checkout main
-cd ..
-```
-
-Build the docker using docker build:
-```sh
-docker build --no-cache . -t loghi/docker.laypa
-```
-
 </details>
 
 

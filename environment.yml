@@ -1,6 +1,6 @@
 name: laypa
 channels:
-  # - default
+  - default
   - pytorch
   - nvidia
   - conda-forge
@@ -9,12 +9,13 @@ dependencies:
   - numpy=1
   - llvm-openmp<16 # For CPU affinity pytorch issues (https://github.com/pytorch/pytorch/issues/102269)
   - pytorch
+  - pytorch-cuda
   - cuda-toolkit
   - torchvision
   - opencv
   - matplotlib
   - scipy
-  - pip
+  - pip=23
   - flask
   - prometheus_client
   - imagesize
@@ -24,9 +25,10 @@ dependencies:
   - shapely
   - natsort
   - ultralytics
+  # - jpeg # For loading JPEG2000 images
   # - pygments #Optional for colors
   - pip:
       - distinctipy
-      - "git+https://github.com/facebookresearch/detectron2.git"
-      - "git+https://github.com/cocodataset/panopticapi.git"
+      - git+https://github.com/facebookresearch/detectron2.git
+      - git+https://github.com/cocodataset/panopticapi.git
       - ./models/pixel_decoder/ops/

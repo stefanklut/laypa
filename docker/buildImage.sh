@@ -113,9 +113,15 @@ echo "Change to directory of script..."
 DIR_OF_SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $DIR_OF_SCRIPT
 
-echo "Copy files for building docker..."
+tmp_dir=$(mktemp -d)
 
-cp -r -T $LAYPA/ laypa
+echo "Copy files for building docker..."
+cp -r -T $LAYPA/ $tmp_dir/laypa
+cp Dockerfile $tmp_dir/Dockerfile
+cp _entrypoint.sh $tmp_dir/_entrypoint.sh
+cp .dockerignore $tmp_dir/.dockerignore
+
+cd $tmp_dir
 # HACK Fix git linking in submodules
 if [[ -f $LAYPA/.git ]]; then
 	GIT_DIR=$( cd $LAYPA && git rev-parse --git-dir )

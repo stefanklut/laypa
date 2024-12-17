@@ -1,0 +1,75 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  Laypa: A Novel Framework for Applying Segmentation
+  Networks to Historical Documents
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Stefan
+    family-names: Klut
+    affiliation: Humanities Cluster KNAW
+    orcid: "https://orcid.org/0000-0002-1957-2442"
+    email: stefanklut@outlook.com
+  - given-names: Rutger
+    name-particle: van
+    family-names: Koert
+    email: r.c.van.koert@gmail.com
+    affiliation: Humanities Cluster KNAW
+    orcid: "https://orcid.org/0000-0001-6535-2849"
+  - given-names: Ronald
+    family-names: Sluijter
+    email: ronald.sluijter@huygens.knaw.nl
+    affiliation: Huygens Institute
+    orcid: "https://orcid.org/0000-0002-2896-9986"
+identifiers:
+  - type: doi
+    value: 10.1145/3604951.3605520
+    description: DOI of the ACM publication
+  - type: url
+    value: "https://github.com/stefanklut/laypa"
+    description: Github repo
+repository-code: "https://github.com/stefanklut/laypa"
+abstract: "We present novel software to process scans of historical documents to extract their layout information. We do this using a ResNet backbone with a feature pyramid head. We extract region information directly into PageXML. For baseline extraction, we use a two stage processing approach. The software has been applied successfully to several projects. The results show the feasibility to automatically label text lines and regions in historical documents."
+keywords:
+  - Datasets
+  - Neural networks
+  - Layout analysis
+  - Historical documents
+license: MIT
+preferred-citation:
+  type: conference-paper
+  title: "Laypa: A Novel Framework for Applying Segmentation Networks to Historical Documents"
+  authors:
+    - given-names: Stefan
+      family-names: Klut
+      affiliation: Humanities Cluster KNAW
+      orcid: "https://orcid.org/0000-0002-1957-2442"
+      email: stefanklut@outlook.com
+    - given-names: Rutger
+      name-particle: van
+      family-names: Koert
+      email: r.c.van.koert@gmail.com
+      affiliation: Humanities Cluster KNAW
+      orcid: "https://orcid.org/0000-0001-6535-2849"
+    - given-names: Ronald
+      family-names: Sluijter
+      email: ronald.sluijter@huygens.knaw.nl
+      affiliation: Huygens Institute
+      orcid: "https://orcid.org/0000-0002-2896-9986"
+  year: 2023
+  doi: 10.1145/3604951.3605520
+  isbn: 9798400708411
+  publisher: Association for Computing Machinery
+  abstract: "We present novel software to process scans of historical documents to extract their layout information. We do this using a ResNet backbone with a feature pyramid head. We extract region information directly into PageXML. For baseline extraction, we use a two stage processing approach. The software has been applied successfully to several projects. The results show the feasibility to automatically label text lines and regions in historical documents."
+  conference:
+    name: "Proceedings of the 7th International Workshop on Historical Document Imaging and Processing"
+    place: "San Jose, CA, USA"
+    series: "HIP '23"
+    pages: "67-72"
+  keywords:
+    ["neural networks", "layout analysis", "historical documents", "datasets"]
