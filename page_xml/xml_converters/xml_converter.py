@@ -109,7 +109,7 @@ class _XMLConverter:
 
     @staticmethod
     def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]) -> np.ndarray:
-        scale_factor = (np.asarray(out_size) -1) / (np.asarray(size) -1)
+        scale_factor = (np.asarray(out_size) - 1) / (np.asarray(size) - 1)
         scaled_coords = (coords * scale_factor[::-1]).astype(np.float32)
         return scaled_coords
 
