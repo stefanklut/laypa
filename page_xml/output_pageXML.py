@@ -12,6 +12,10 @@ from typing import Iterable, Optional
 import cv2
 import numpy as np
 import torch
+import ultralytics
+import ultralytics.engine
+import ultralytics.engine.predictor
+import ultralytics.engine.results
 from detectron2.config import CfgNode
 from tqdm import tqdm
 
@@ -121,6 +125,70 @@ class OutputPageXML:
         image_output_path = self.output_dir.joinpath(image_path.name)
 
         copy_mode(image_path, image_output_path, mode="link")
+
+    def generate_single_page_yolo(
+        self,
+        yolo_output: ultralytics.engine.results.Results,
+        image_path: Path,
+        old_height: Optional[int] = None,
+        old_width: Optional[int] = None,
+    ):
+        """
+        Convert a single prediction into a page
+
+        Args:
+            yolo_output: yolo output
+            image_path (Path): Image path, used for path name
+            old_height (Optional[int], optional): height of the original image. Defaults to None.
+            old_width (Optional[int], optional): width of the original image. Defaults to None.
+        """
+
+        if self.output_dir is None:
+            raise TypeError("Output dir is None")
+        if self.page_dir is None:
+            raise TypeError("Page dir is None")
+
+        xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
+        if old_height is None or old_width is None:
+            old_height, old_width = yolo_output.orig_shape
+
+        page = PageData(xml_output_path)
+        page.new_page(image_path.name, str(old_height), str(old_width))
+
+        if self.cfg is not None:
+            page.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
+
+        if yolo_output.boxes is None:
+            page.save_xml()
+            return
+
+        region_id = 0
+
+        for i in range(yolo_output.boxes.shape[0]):
+            relative_box = yolo_output.boxes.xyxyn[i].cpu().numpy()
+
+            absolute_box = (
+                (relative_box[0] * old_width).round().astype(np.int32),
+                (relative_box[1] * old_height).round().astype(np.int32),
+                (relative_box[2] * old_width).round().astype(np.int32),
+                (relative_box[3] * old_height).round().astype(np.int32),
+            )
+
+            region_coords = f"{absolute_box[0]},{absolute_box[1]} {absolute_box[2]},{absolute_box[1]} {absolute_box[2]},{absolute_box[3]} {absolute_box[0]},{absolute_box[3]}"
+            region_coords = region_coords.strip()
+
+            class_id = int(yolo_output.boxes.cls[i].cpu().numpy())
+            confidence = yolo_output.boxes.conf[i].cpu().numpy()
+
+            region = yolo_output.names[class_id]
+            region_type = self.xml_regions.region_types[region]
+
+            region_id += 1
+
+            _uuid = uuid.uuid4()
+            text_reg = page.add_element(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
+
+        page.save_xml()
 
     def generate_single_page(
         self,
