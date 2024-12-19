@@ -109,12 +109,32 @@ class _XMLConverter:
 
     @staticmethod
     def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]) -> np.ndarray:
+        """
+        Scale coordinates to a new size
+
+        Args:
+            coords (np.ndarray): the coordinates to scale
+            out_size (tuple[int, int]): the size of the output image
+            size (tuple[int, int]): the size of the input image
+
+        Returns:
+            np.ndarray: the scaled coordinates
+        """
         scale_factor = (np.asarray(out_size) - 1) / (np.asarray(size) - 1)
         scaled_coords = (coords * scale_factor[::-1]).astype(np.float32)
         return scaled_coords
 
     @staticmethod
     def _bounding_box(array: np.ndarray) -> list[float]:
+        """
+        Get the bounding box of an array of coordinates
+
+        Args:
+            array (np.ndarray): array of coordinates
+
+        Returns:
+            list[float]: bounding box of the array
+        """
         min_x, min_y = np.min(array, axis=0)
         max_x, max_y = np.max(array, axis=0)
         bbox = np.asarray([min_x, min_y, max_x, max_y]).astype(np.float32).tolist()
