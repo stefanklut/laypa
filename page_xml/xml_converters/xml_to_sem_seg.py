@@ -86,8 +86,6 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains text line sem_seg")
         return sem_seg
 
-    # TOP BOTTOM
-
     def build_top_bottom(self, page: PageData, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the top bottom

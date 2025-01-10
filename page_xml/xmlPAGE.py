@@ -77,6 +77,8 @@ class PageData:
         # --- save "namespace" base
         self.base = "".join([self.root.tag.rsplit("}", 1)[0], "}"])
 
+        ET.register_namespace("", self.XMLNS["xmlns"])
+
     def get_region(self, region_name):
         """
         get all regions in PAGE which match region_name
@@ -156,6 +158,9 @@ class PageData:
 
     def _iter_element(self, element):
         return self.root.iterfind("".join([".//", self.base, element]))
+
+    def _iter_subelement(self, element, subelement):
+        return element.iterfind("".join([".//", self.base, subelement]))
 
     def iter_class_coords(self, element, class_dict):
         for node in self._iter_element(element):
@@ -249,13 +254,13 @@ class PageData:
 
     def new_page(self, name, rows, cols):
         """create a new PAGE xml"""
-        self.xml = ET.Element("PcGts")
-        self.xml.attrib = self.XMLNS
-        self.metadata = ET.SubElement(self.xml, "Metadata")
+        self.root = ET.Element("PcGts")
+        self.root.attrib = self.XMLNS
+        self.metadata = ET.SubElement(self.root, "Metadata")
         ET.SubElement(self.metadata, "Creator").text = self.creator
         ET.SubElement(self.metadata, "Created").text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
         ET.SubElement(self.metadata, "LastChange").text = datetime.datetime.today().strftime("%Y-%m-%dT%X")
-        self.page = ET.SubElement(self.xml, "Page")
+        self.page = ET.SubElement(self.root, "Page")
         self.page.attrib = {
             "imageFilename": name,
             "imageWidth": cols,
@@ -329,8 +334,8 @@ class PageData:
 
     def save_xml(self):
         """write out XML file of current PAGE data"""
-        self._indent(self.xml)
-        tree = ET.ElementTree(self.xml)
+        self._indent(self.root)
+        tree = ET.ElementTree(self.root)
         with AtomicFileName(self.filepath) as path:
             tree.write(path, encoding="UTF-8", xml_declaration=True)
 
