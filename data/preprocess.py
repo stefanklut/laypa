@@ -63,7 +63,7 @@ def get_arguments() -> argparse.Namespace:
 
 class Preprocess:
     """
-    Used for almost all preprocessing steps to prepare datasets to be used by the training loop
+    Used for almost all preprocessing steps to prepare datasets to be used by the training loop.
     """
 
     @configurable
@@ -183,7 +183,7 @@ class Preprocess:
         Return argparser that has the arguments required for the preprocessing.
 
         Returns:
-            argparse.ArgumentParser: the argparser for preprocessing
+            argparse.ArgumentParser: the argparser for preprocessing.
         """
         parser = argparse.ArgumentParser(add_help=False)
         pre_process_args = parser.add_argument_group("preprocessing")
@@ -226,10 +226,10 @@ class Preprocess:
         ignore_duplicates: bool = False,
     ) -> None:
         """
-        Setter of the input paths, turn string to path. And resolve full path
+        Setter of the input paths, turn string to path. And resolve full path.
 
         Args:
-            input_paths (str | Path | Sequence[str  |  Path]): path(s) from which to extract the images
+            input_paths (str | Path | Sequence[str  |  Path]): path(s) from which to extract the images.
             ignore_duplicates (bool, optional): Ignore duplicate names in the input paths. Defaults to False.
         """
         input_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
@@ -282,19 +282,19 @@ class Preprocess:
 
     def get_input_paths(self) -> Optional[Sequence[Path]]:
         """
-        Getter of the input paths
+        Getter of the input paths.
 
         Returns:
-            Optional[Sequence[Path]]: path(s) from which to extract the images
+            Optional[Sequence[Path]]: path(s) from which to extract the images.
         """
         return self.input_paths
 
     def set_output_dir(self, output_dir: str | Path) -> None:
         """
-        Setter of output dir, turn string to path. And resolve full path
+        Setter of output dir, turn string to path. And resolve full path.
 
         Args:
-            output_dir (str | Path): output path of the processed images
+            output_dir (str | Path): output path of the processed images.
         """
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
@@ -317,20 +317,19 @@ class Preprocess:
     @staticmethod
     def check_paths_exists(paths: Sequence[Path]) -> None:
         """
-        Check if all paths given exist and are readable
-
+        Check if all paths given exist and are readable.
         Args:
-            paths (list[Path]): paths to be checked
+            paths (list[Path]): paths to be checked.
         """
         all(check_path_accessible(path) for path in paths)
 
     def save_array_to_path(self, array: np.ndarray | torch.Tensor, path: Path) -> None:
         """
-        Save an array to a path with a specific method
+        Save an array to a path with a specific method.
 
         Args:
-            array (np.ndarray): array to be saved
-            path (Path): path to save the array
+            array (np.ndarray): array to be saved.
+            path (Path): path to save the array.
         """
 
         method = path.suffix

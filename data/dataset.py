@@ -85,16 +85,16 @@ def dict_of_list_to_list_of_dicts(input_dict: dict[str, list[Any]]) -> list[dict
     return output_list
 
 
-def convert_to_paths(dataset_dir: Path, input_data: dict[str, list]) -> list[dict[str, Path | Any]]:
+def convert_to_paths(dataset_dir: Path, input_data: dict[str, list]) -> list[dict[str, Path]]:
     """
-    Turn expected paths into actual Path objects instead of just str, the rest stays the same
+    Turn expected paths into actual Path objects instead of just strings
 
     Args:
         dataset_dir (Path): base dataset dir
-        input_data (dict[str, list]): data dict with some of the lists representing paths
+        input_data (dict[str, list]): data dict with lists of paths
 
     Returns:
-        list[dict[str, Path | Any]]: list of dicts containing paths where applicable
+        list[dict[str, Path]]: list of dicts containing paths
     """
     converted_data = dict_of_list_to_list_of_dicts(input_data)
     converted_data = [{key: dataset_dir.joinpath(value) for key, value in item.items()} for item in converted_data]

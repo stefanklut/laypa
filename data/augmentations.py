@@ -25,12 +25,23 @@ from data import torch_transforms as TT
 
 
 class TimedAugmentationList(T.AugmentationList):
+    """
+    A wrapper class for the AugmentationList class that times the __call__ method.
+    """
+
     def __init_subclass__(cls) -> None:
+        """
+        Initialize the subclass by adding the timed wrapper to the __call__ method.
+        """
         super().__init_subclass__()
         cls.__call__ = cls._timed(cls.__call__)
 
     @classmethod
     def _timed(cls, func):
+        """
+        A decorator that times the function call.
+        """
+
         def wrapper(*args, **kwargs):
             start = time.perf_counter()
             result = func(*args, **kwargs)
@@ -53,7 +64,7 @@ class RandomApply(T.RandomApply):
         Randomly apply an augmentation to an image with a given probability.
 
         Args:
-            tfm_or_aug (Augmentation | Transform): transform or augmentation to apply
+            tfm_or_aug (Augmentation | Transform): transform or augmentation to apply.
             prob (float, optional): probability between 0.0 and 1.0 that
                 the wrapper transformation is applied. Defaults to 0.5.
         """
@@ -91,13 +102,13 @@ class RandomApply(T.RandomApply):
 class Augmentation(T.Augmentation):
     def get_transform_aug_input(self, aug_input: T.AugInput) -> T.Transform:
         """
-        Get the transform from the input
+        Get the transform from the input.
 
         Args:
-            aug_input (T.AugInput): input to the augmentation
+            aug_input (T.AugInput): input to the augmentation.
 
         Returns:
-            T.Transform: transform
+            T.Transform: transform.
         """
         args = _get_aug_input_args(self, aug_input)
         transform = self.get_transform(*args)
@@ -105,11 +116,11 @@ class Augmentation(T.Augmentation):
 
     def get_output_shape(self, old_height: int, old_width: int, dpi: Optional[int] = None) -> tuple[int, int]:
         """
-        Get the output shape of the image
+        Get the output shape of the image.
 
         Args:
-            old_height (int): height of the image
-            old_width (int): width of the image
+            old_height (int): height of the image.
+            old_width (int): width of the image.
             dpi (Optional[int], optional): dpi of the image. Defaults to None.
 
         Returns:
@@ -121,10 +132,10 @@ class Augmentation(T.Augmentation):
 class ResizeScaling(Augmentation):
     def __init__(self, scale: float, max_size: Optional[int] = None, target_dpi: Optional[int] = None) -> None:
         """
-        Resize the image by a given scale
+        Resize the image by a given scale.
 
         Args:
-            scale (float): scale percentage
+            scale (float): scale percentage.
             max_size (Optional[int], optional): max size of the image. Defaults to None.
             target_dpi (Optional[int], optional): target dpi of the image. Defaults to None.
         """
@@ -201,7 +212,7 @@ class ResizeEdge(Augmentation):
         edge_length: Optional[int] = None,
     ) -> None:
         """
-        Resize image alternative using cv2 instead of PIL or Pytorch
+        Resize image alternative using cv2 instead of PIL or Pytorch.
 
         Args:
             min_size (int | Sequence[int]): The minimum length of the side.
@@ -414,7 +425,7 @@ class Flip(Augmentation):
 
 class RandomElastic(Augmentation):
     """
-    Apply a random elastic transformation to the image, made using random warpfield and gaussian filters
+    Apply a random elastic transformation to the image, made using random warpfield and gaussian filters.
     """
 
     def __init__(
@@ -424,7 +435,7 @@ class RandomElastic(Augmentation):
         ignore_value: int = 255,
     ) -> None:
         """
-        Apply a random elastic transformation to the image, made using random warpfield and gaussian filters
+        Apply a random elastic transformation to the image, made using random warpfield and gaussian filters.
 
         Args:
             alpha (int, optional): scale factor of the warpfield (sets max value). Defaults to 0.045.
@@ -491,7 +502,7 @@ class RandomElastic(Augmentation):
 # IDEA Use super class for RandomAffine, RandomTranslation, RandomRotation, RandomShear, RandomScale
 class RandomAffine(Augmentation):
     """
-    Apply a random affine transformation to the image
+    Apply a random affine transformation to the image.
     """
 
     def __init__(
@@ -504,7 +515,7 @@ class RandomAffine(Augmentation):
         ignore_value: int = 255,
     ) -> None:
         """
-        Apply a random affine transformation to the image
+        Apply a random affine transformation to the image.
 
         Args:
             t_stdv (float, optional): standard deviation used for the translation. Defaults to 0.02.
@@ -529,14 +540,14 @@ class RandomAffine(Augmentation):
 
     def get_random_matrix(self, height: int, width: int) -> np.ndarray:
         """
-        Get a random affine transformation matrix
+        Get a random affine transformation matrix.
 
         Args:
             height (int): image height
             width (int): image width
 
         Returns:
-            np.ndarray: random affine transformation matrix
+            np.ndarray: random affine transformation matrix.
         """
         center = np.eye(3)
         center[:2, 2:] = np.asarray([width, height])[:, None] / 2
@@ -612,12 +623,12 @@ class RandomAffine(Augmentation):
 
 class RandomTranslation(Augmentation):
     """
-    Apply a random translation to the image
+    Apply a random translation to the image.
     """
 
     def __init__(self, t_stdv: float = 0.02, ignore_value: int = 255) -> None:
         """
-        Apply a random affine transformation to the image
+        Apply a random affine transformation to the image.
 
         Args:
             t_stdv (float, optional): standard deviation used for the translation. Defaults to 0.02.
@@ -629,14 +640,14 @@ class RandomTranslation(Augmentation):
 
     def get_random_matrix(self, height: int, width: int) -> np.ndarray:
         """
-        Get a random translation matrix
+        Get a random translation matrix.
 
         Args:
-            height (int): image height
-            width (int): image width
+            height (int): image height.
+            width (int): image width.
 
         Returns:
-            np.ndarray: random translation matrix
+            np.ndarray: random translation matrix.
         """
         matrix = np.eye(3)
 
@@ -672,12 +683,12 @@ class RandomTranslation(Augmentation):
 
 class RandomRotation(Augmentation):
     """
-    Apply a random rotation to the image
+    Apply a random rotation to the image.
     """
 
     def __init__(self, r_kappa: float = 30, ignore_value: int = 255) -> None:
         """
-        Apply a random rotation to the image
+        Apply a random rotation to the image.
 
         Args:
             r_kappa (float, optional): kappa value used for sampling the rotation. Defaults to 30.
@@ -689,14 +700,14 @@ class RandomRotation(Augmentation):
 
     def get_random_matrix(self, height: int, width: int) -> np.ndarray:
         """
-        Get a random rotation matrix
+        Get a random rotation matrix.
 
         Args:
-            height (int): image height
-            width (int): image width
+            height (int): image height.
+            width (int): image width.
 
         Returns:
-            np.ndarray: random rotation matrix
+            np.ndarray: random rotation matrix.
         """
 
         center = np.eye(3)
@@ -740,12 +751,12 @@ class RandomRotation(Augmentation):
 
 class RandomShear(Augmentation):
     """
-    Apply a random shearing to the image
+    Apply a random shearing to the image.
     """
 
     def __init__(self, sh_kappa: float = 20, ignore_value: int = 255) -> None:
         """
-        Apply a random shearing to the image
+        Apply a random shearing to the image.
 
         Args:
             sh_kappa (float, optional): kappa value used for sampling the shear. Defaults to 20.
@@ -757,14 +768,14 @@ class RandomShear(Augmentation):
 
     def get_random_matrix(self, height: int, width: int) -> np.ndarray:
         """
-        Get a random shearing matrix
+        Get a random shearing matrix.
 
         Args:
-            height (int): image height
-            width (int): image width
+            height (int): image height.
+            width (int): image width.
 
         Returns:
-            np.ndarray: random shearing matrix
+            np.ndarray: random shearing matrix.
         """
         center = np.eye(3)
         center[:2, 2:] = np.asarray([width, height])[:, None] / 2
@@ -818,12 +829,12 @@ class RandomShear(Augmentation):
 
 class RandomScale(Augmentation):
     """
-    Apply a random scaling to the image
+    Apply a random scaling to the image.
     """
 
     def __init__(self, sc_stdv: float = 0.12, ignore_value: int = 255) -> None:
         """
-        Apply a random scaling to the image
+        Apply a random scaling to the image.
 
         Args:
             sc_stdv (float, optional): standard deviation used for the scale. Defaults to 0.12.
@@ -835,14 +846,14 @@ class RandomScale(Augmentation):
 
     def get_random_matrix(self, height: int, width: int) -> np.ndarray:
         """
-        Get a random scaling matrix
+        Get a random scaling matrix.
 
         Args:
-            height (int): image height
-            width (int): image width
+            height (int): image height.
+            width (int): image width.
 
         Returns:
-            np.ndarray: random scaling matrix
+            np.ndarray: random scaling matrix.
         """
         center = np.eye(3)
         center[:2, 2:] = np.asarray([width, height])[:, None] / 2
@@ -884,12 +895,12 @@ class RandomScale(Augmentation):
 
 class Grayscale(Augmentation):
     """
-    Randomly convert the image to grayscale
+    Randomly convert the image to grayscale.
     """
 
     def __init__(self, image_format="RGB") -> None:
         """
-        Randomly convert the image to grayscale
+        Randomly convert the image to grayscale.
 
         Args:
             image_format (str, optional): Color formatting. Defaults to "RGB".
@@ -908,12 +919,12 @@ class Grayscale(Augmentation):
 
 class Invert(Augmentation):
     """
-    Invert the image
+    Invert the image.
     """
 
     def __init__(self, max_value=255) -> None:
         """
-        Invert the image
+        Invert the image.
         """
         super().__init__()
         self.max_value = max_value
@@ -935,12 +946,12 @@ class Invert(Augmentation):
 
 class RandomJPEGCompression(Augmentation):
     """
-    Apply JPEG compression to the image
+    Apply JPEG compression to the image.
     """
 
     def __init__(self, min_quality: int = 40, max_quality: int = 100) -> None:
         """
-        Apply JPEG compression to the image
+        Apply JPEG compression to the image.
 
         Args:
             quality_range (tuple[int, int], optional): range of the quality of the image. Defaults to (40, 100).
@@ -972,12 +983,12 @@ class RandomJPEGCompression(Augmentation):
 
 class RandomGaussianFilter(Augmentation):
     """
-    Apply random gaussian kernels
+    Apply random gaussian kernels.
     """
 
     def __init__(self, min_sigma: float = 1, max_sigma: float = 3, order: int = 0, iterations: int = 1) -> None:
         """
-        Apply random gaussian kernels
+        Apply random gaussian kernels.
 
         Args:
             min_sigma (float, optional): min Gaussian deviation. Defaults to 1.
@@ -1003,12 +1014,12 @@ class RandomGaussianFilter(Augmentation):
 
 class RandomNoise(Augmentation):
     """
-    Apply random noise to the image
+    Apply random noise to the image.
     """
 
     def __init__(self, min_noise_std: float = 10, max_noise_std: float = 32) -> None:
         """
-        Apply random noise to the image
+        Apply random noise to the image.
 
         Args:
             min_noise_std (float, optional): min noise standard deviation. Defaults to 10.
@@ -1039,7 +1050,7 @@ class RandomNoise(Augmentation):
 
 class RandomSaturation(Augmentation):
     """
-    Change the saturation of an image
+    Change the saturation of an image.
 
     Saturation intensity is uniformly sampled in (intensity_min, intensity_max).
     - intensity < 1 will reduce saturation
@@ -1049,11 +1060,11 @@ class RandomSaturation(Augmentation):
 
     def __init__(self, intensity_min: float = 0.5, intensity_max: float = 1.5, image_format="RGB") -> None:
         """
-        Change the saturation of an image
+        Change the saturation of an image.
 
         Args:
-            intensity_min (float): Minimum augmentation
-            intensity_max (float): Maximum augmentation
+            intensity_min (float): Minimum augmentation.
+            intensity_max (float): Maximum augmentation.
         """
         super().__init__()
 
@@ -1093,7 +1104,7 @@ class RandomSaturation(Augmentation):
 
 class RandomContrast(Augmentation):
     """
-    Randomly transforms image contrast
+    Randomly transforms image contrast.
 
     Contrast intensity is uniformly sampled in (intensity_min, intensity_max).
     - intensity < 1 will reduce contrast
@@ -1105,11 +1116,11 @@ class RandomContrast(Augmentation):
 
     def __init__(self, intensity_min: float = 0.5, intensity_max: float = 1.5):
         """
-        Randomly transforms image contrast
+        Randomly transforms image contrast.
 
         Args:
-            intensity_min (float): Minimum augmentation
-            intensity_max (float): Maximum augmentation
+            intensity_min (float): Minimum augmentation.
+            intensity_max (float): Maximum augmentation.
         """
         super().__init__()
 
@@ -1135,7 +1146,7 @@ class RandomContrast(Augmentation):
 
 class RandomBrightness(Augmentation):
     """
-    Randomly transforms image brightness
+    Randomly transforms image brightness.
 
     Brightness intensity is uniformly sampled in (intensity_min, intensity_max).
     - intensity < 1 will reduce brightness
@@ -1150,8 +1161,8 @@ class RandomBrightness(Augmentation):
         Randomly transforms image brightness.
 
         Args:
-            intensity_min (float): Minimum augmentation
-            intensity_max (float): Maximum augmentation
+            intensity_min (float): Minimum augmentation.
+            intensity_max (float): Maximum augmentation.
         """
         super().__init__()
 
@@ -1179,7 +1190,7 @@ class RandomBrightness(Augmentation):
 
 class RandomHue(Augmentation):
     """
-    Randomly transforms image hue
+    Randomly transforms image hue.
     """
 
     def __init__(self, hue_delta_min: float = -0.5, hue_delta_max: float = 0.5, image_format="RGB") -> None:
@@ -1209,12 +1220,12 @@ class RandomHue(Augmentation):
 
 class AdaptiveThresholding(Augmentation):
     """
-    Apply Adaptive thresholding to the image
+    Apply Adaptive thresholding to the image.
     """
 
     def __init__(self, image_format="RGB") -> None:
         """
-        Apply Adaptive thresholding to the image
+        Apply Adaptive thresholding to the image.
 
         Args:
             image_format (str, optional): Color formatting. Defaults to "RGB".
@@ -1233,7 +1244,7 @@ class AdaptiveThresholding(Augmentation):
 
 class RandomOrientation(Augmentation):
     """
-    Apply a random orientation to the image
+    Apply a random orientation to the image.
     """
 
     def __init__(self, orientation_percentages: Optional[list[float | int]] = None) -> None:
@@ -1353,7 +1364,7 @@ class RandomCrop(T.Augmentation):
     Randomly crop a rectangle region out of an image.
     """
 
-    def __init__(self, crop_type: str, crop_size):
+    def __init__(self, crop_type: str, crop_size: tuple[float, float]):
         """
         Args:
             crop_type (str): one of "relative_range", "relative", "absolute", "absolute_range".
@@ -1400,8 +1411,10 @@ class RandomCrop(T.Augmentation):
 
     def get_crop_size(self, image_size) -> tuple[int, int]:
         """
+        Returns the crop size in absolute pixels.
+
         Args:
-            image_size (tuple): height, width
+            image_size (tuple): height, width.
 
         Returns:
             crop_size (tuple): height, width in absolute pixels
@@ -1441,13 +1454,13 @@ class RandomCrop_CategoryAreaConstraint(T.Augmentation):
     def __init__(
         self,
         crop_type: str,
-        crop_size,
+        crop_size: tuple[float, float],
         single_category_max_area: float = 1.0,
         ignored_category: Optional[int] = None,
     ):
         """
         Args:
-            crop_type, crop_size: same as in :class:`RandomCrop`
+            crop_type (str), crop_size (tuple[float,float]): same as in :class:`RandomCrop`
             single_category_max_area: the maximum allowed area ratio of a
                 category. Set to 1.0 to disable
             ignored_category: allow this category in the semantic segmentation
@@ -1509,16 +1522,36 @@ class RandomCrop_CategoryAreaConstraint(T.Augmentation):
 
 
 class RandomCropResize(T.Augmentation):
+    """
+    Combine a random crop and a resize operation. This is useful to prevent resizing the whole image.
+    """
+
     def __init__(
         self,
-        crop_type,
-        crop_size,
-        resize_mode,
-        scale=None,
-        target_dpi=None,
-        min_size=None,
-        max_size=None,
+        crop_type: str,
+        crop_size: tuple[float, float],
+        resize_mode: str,
+        scale: Optional[float] = None,
+        target_dpi: Optional[int] = None,
+        min_size: Optional[int] = None,
+        max_size: Optional[int] = None,
     ):
+        """
+        Combine a random crop and a resize operation. This is useful to prevent resizing the whole image.
+
+        Args:
+            crop_type (str), crop_size (tuple[float, float]) : same as in :class:`RandomCrop`
+            resize_mode (str): one of "none", "shortest_edge", "longest_edge", "scaling"
+            scale (float): scaling factor, only used when resize_mode == "scaling"
+            target_dpi (int): target dpi, only used when resize_mode == "none" or "scaling"
+            min_size (int): min size, only used when resize_mode == "shortest_edge" or "longest_edge"
+            max_size (int): max size, only used when resize_mode == "shortest_edge" or "longest_edge"
+
+        Raises:
+            ValueError: If the resize mode specified in the configuration is not recognized.
+            ValueError: If the min_size and max_size are not provided for shortest_edge or longest_edge mode.
+            ValueError: If the scale and max_size are not provided for scaling mode.
+        """
         if resize_mode == "none":
             self.resize = ResizeScaling(scale=1.0, target_dpi=target_dpi)
         if resize_mode == "shortest_edge":

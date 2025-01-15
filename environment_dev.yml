@@ -25,6 +25,7 @@ dependencies:
   - pillow
   - shapely
   - natsort
+  - ultralytics
   # - jpeg # For loading JPEG2000 images
   # - pygments #Optional for colors
   - pip:

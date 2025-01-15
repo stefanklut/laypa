@@ -464,7 +464,7 @@ class PreprocessCOCO:
 
         return results
 
-    def run(self) -> Path:
+    def run(self):
         """
         Run preprocessing on all images currently on input paths, save to output dir
 
@@ -516,8 +516,6 @@ class PreprocessCOCO:
                     desc="Preprocessing",
                 )
             )
-
-        return None
 
 
 def list_of_dict_to_dict_of_list(input_list: list[dict[str, Any]]) -> dict[str, list[Any]]:

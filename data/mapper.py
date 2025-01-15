@@ -47,7 +47,16 @@ def _transform_to_aug(tfm_or_aug):
         return _TransformToAug(tfm_or_aug)
 
 
-def _check_img_dtype(img):
+def _check_img_dtype(img: np.ndarray | torch.Tensor) -> None:
+    """
+    Check if the image is a numpy array or torch tensor.
+
+    Args:
+        img: The image to check.
+
+    Raises:
+        ValueError: If the image is not a numpy array or torch tensor.
+    """
     if isinstance(img, torch.Tensor):
         assert img.dtype == torch.uint8 or img.dtype == torch.float32, f"[Augmentation] Got image of type {img.dtype}!"
         assert img.dim() == 3, img.dim()
@@ -59,6 +68,10 @@ def _check_img_dtype(img):
 
 
 class AugInput(T.AugInput):
+    """
+    A class that holds input data for augmentation.
+    """
+
     def __init__(
         self,
         image: np.ndarray | torch.Tensor,
@@ -70,6 +83,18 @@ class AugInput(T.AugInput):
         default_dpi: Optional[int] = None,
         manual_dpi: Optional[int] = None,
     ):
+        """
+        Initialize the AugInput class.
+
+        Args:
+            image (np.ndarray | torch.Tensor): The image to augment.
+            boxes (Optional[np.ndarray], optional): The boxes to augment. Defaults to None.
+            sem_seg (Optional[np.ndarray  |  torch.Tensor], optional): The semantic segmentation to augment. Defaults to None.
+            dpi (Optional[int], optional): The DPI of the image. Defaults to None.
+            auto_dpi (Optional[bool], optional): Whether to automatically detect the DPI. Defaults to False.
+            default_dpi (Optional[int], optional): The default DPI to use. Defaults to None.
+            manual_dpi (Optional[int], optional): The manual DPI to use. Defaults to None.
+        """
 
         _check_img_dtype(image)
         self.image = image
@@ -106,6 +131,8 @@ class AugInput(T.AugInput):
 def check_image_size(dataset_dict, image):
     """
     Raise an error if the image does not match the size specified in the dict.
+
+    If height or width is not specified in the dict, it will be filled with the image's shape.
     """
     if "width" in dataset_dict or "height" in dataset_dict:
         if isinstance(image, torch.Tensor):
@@ -137,6 +164,10 @@ def check_image_size(dataset_dict, image):
 
 
 class Mapper(DatasetMapper):
+    """
+    Base class for mappers that handle data augmentation.
+    """
+
     @configurable
     def __init__(
         self,
@@ -272,6 +303,10 @@ class Mapper(DatasetMapper):
 
 
 class SemSegMapper(Mapper):
+    """
+    Specialized mapper for semantic segmentation tasks.
+    """
+
     @configurable
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -347,6 +382,10 @@ class SemSegMapper(Mapper):
 
 
 class SemSegInstancesMapper(Mapper):
+    """
+    Specialized mapper for semantic segmentation tasks with instance annotations.
+    """
+
     @configurable
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -425,6 +464,10 @@ class SemSegInstancesMapper(Mapper):
 
 
 class BinarySegMapper(Mapper):
+    """
+    Specialized mapper for binary segmentation tasks.
+    """
+
     @configurable
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

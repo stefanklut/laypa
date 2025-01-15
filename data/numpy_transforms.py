@@ -10,7 +10,17 @@ from scipy.ndimage import gaussian_filter, map_coordinates
 
 
 class TimedTransform(T.Transform):
+    """
+    A wrapper class to time the transforms.
+
+    Args:
+        T (T.Transform): Transform class to be timed
+    """
+
     def __init_subclass__(cls) -> None:
+        """
+        Initialize the subclass. Apply the timing to the class methods.
+        """
         super().__init_subclass__()
         cls.apply_image = cls._timed(cls.apply_image)
         cls.apply_segmentation = cls._timed(cls.apply_segmentation)
@@ -19,6 +29,13 @@ class TimedTransform(T.Transform):
 
     @classmethod
     def _timed(cls, func):
+        """
+        Decorator to time the function
+
+        Args:
+            func (function): function to be timed
+        """
+
         def wrapper(*args, **kwargs):
             start = time.perf_counter()
             result = func(*args, **kwargs)
@@ -371,12 +388,13 @@ class AffineTransform(T.Transform):
             np.ndarray: transformed image
         """
         img = img.astype(np.uint8)
+        border_value = [0] if len(img.shape) == 2 else [0] * img.shape[-1]
         return cv2.warpAffine(
             img,
             self.matrix[:2, :],
             (img.shape[1], img.shape[0]),
             flags=cv2.INTER_LINEAR,
-            borderValue=0,
+            borderValue=border_value,
         )
 
     def apply_coords(self, coords: np.ndarray) -> np.ndarray:
@@ -403,12 +421,13 @@ class AffineTransform(T.Transform):
             np.ndarray: transformed segmentation
         """
         # borderValue=0 means background, borderValue=255 means ignored
+        border_value = [255] if len(segmentation.shape) == 2 else [self.ignore_value] * segmentation.shape[-1]
         return cv2.warpAffine(
             segmentation,
             self.matrix[:2, :],
             (segmentation.shape[1], segmentation.shape[0]),
             flags=cv2.INTER_NEAREST,
-            borderValue=self.ignore_value,
+            borderValue=border_value,
         )
 
     def inverse(self) -> T.Transform:
@@ -858,6 +877,8 @@ class OrientationTransform(T.Transform):
 class JPEGCompressionTransform(T.Transform):
     def __init__(self, quality: int):
         """
+        Compress the image using JPEG compression. This is useful for simulating artifacts in low-quality images.
+
         Args:
             quality (int): JPEG compression quality. A number between 0 and 100.
         """
@@ -920,6 +941,8 @@ class CropTransform(T.Transform):
         orig_h: Optional[int] = None,
     ):
         """
+        Crop the image(s) as a transform.
+
         Args:
             x0, y0, w, h (int): crop the image(s) by img[y0:y0+h, x0:x0+w].
             orig_w, orig_h (int): optional, the original width and height
@@ -1028,6 +1051,8 @@ class PadTransform(T.Transform):
         seg_pad_value: int = 0,
     ):
         """
+        Pad the images as a transform.
+
         Args:
             x0, y0: number of padded pixels on the left and top
             x1, y1: number of padded pixels on the right and bottom
