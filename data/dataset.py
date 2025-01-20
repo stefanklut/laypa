@@ -43,6 +43,9 @@ def create_data(input_data: dict) -> dict:
                     data[key] = json.load(f)
             else:
                 data[key] = str(path)
+
+                if key == "image_file_name":
+                    data["file_name"] = str(path)
         else:
             raise FileNotFoundError(f"Path missing ({path})")
 

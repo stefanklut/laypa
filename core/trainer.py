@@ -302,26 +302,26 @@ class Trainer(DefaultTrainer):
         return evaluator
 
     @classmethod
-    def get_mapper(cls, cfg, device=torch.device("cpu")):
+    def get_mapper(cls, cfg, device=torch.device("cpu"), mode="train"):
         if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor"]:
-            return SemSegMapper(cfg, mode="train", device=device)
+            return SemSegMapper(cfg, mode=mode, device=device)
         elif cfg.MODEL.META_ARCHITECTURE in ["MaskFormer", "PanopticFPN"]:
-            return SemSegInstancesMapper(cfg, mode="train", device=device)
+            return SemSegInstancesMapper(cfg, mode=mode, device=device)
 
         elif cfg.MODEL.META_ARCHITECTURE in ["BinarySegmentor"]:
-            return BinarySegMapper(cfg, mode="train", device=device)
+            return BinarySegMapper(cfg, mode=mode, device=device)
         else:
             raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
 
     @classmethod
     def build_train_loader(cls, cfg, device=torch.device("cpu")):
-        mapper = cls.get_mapper(cfg, device=device)
+        mapper = cls.get_mapper(cfg, device=device, mode="train")
 
         return build_detection_train_loader(cfg=cfg, mapper=mapper, pin_memory=cfg.DATALOADER.PIN_MEMORY)  # type: ignore
 
     @classmethod
     def build_test_loader(cls, cfg, dataset_name, device=torch.device("cpu")):
-        mapper = cls.get_mapper(cfg, device=device)
+        mapper = cls.get_mapper(cfg, device=device, mode="val")
 
         return build_detection_test_loader(cfg=cfg, mapper=mapper, dataset_name=dataset_name)  # type: ignore
 
