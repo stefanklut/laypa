@@ -334,7 +334,7 @@ class Preprocess:
 
         method = path.suffix
 
-        if method == ".png":
+        if method in [".png", ".jpg", ".jpeg"]:
             if isinstance(array, torch.Tensor):
                 array = array.permute(1, 2, 0).cpu().numpy()
             assert array.dtype == np.uint8, f"Array must be of type uint8 to save as PNG, got {array.dtype}"
