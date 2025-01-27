@@ -11,7 +11,7 @@ from detectron2.modeling.meta_arch import META_ARCH_REGISTRY
 from detectron2.modeling.postprocessing import sem_seg_postprocess
 from detectron2.structures import ImageList
 from detectron2.utils.registry import Registry
-from torch import nn
+from torch import Tensor, nn
 from torch.nn import functional as F
 
 __all__ = [
@@ -237,7 +237,7 @@ class BinarySegFPNHead(nn.Module):
         return x
 
     @staticmethod
-    def binary_cross_entropy_with_logits(input, target, ignore_value=None, **kwargs):
+    def binary_cross_entropy_with_logits(input: Tensor, target: Tensor, ignore_value: Optional[float] = None, **kwargs):
         """
         Compute binary cross entropy with logits, ignoring specified values.
 
