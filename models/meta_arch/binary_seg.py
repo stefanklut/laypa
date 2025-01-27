@@ -236,6 +236,29 @@ class BinarySegFPNHead(nn.Module):
         x = self.predictor(x)
         return x
 
+    @staticmethod
+    def binary_cross_entropy_with_logits(input, target, ignore_value=None, **kwargs):
+        """
+        Compute binary cross entropy with logits, ignoring specified values.
+
+        Args:
+            input (Tensor): Predicted logits.
+            target (Tensor): Ground truth labels.
+            ignore_value (float, optional): Value to ignore in the target.
+            kwargs: Other arguments passed to `F.binary_cross_entropy_with_logits`. For all available arguments, see:
+                https://pytorch.org/docs/stable/generated/torch.nn.functional.binary_cross_entropy_with_logits.html
+
+        Returns:
+            Tensor: Loss value.
+        """
+        if ignore_value is not None:
+            mask = target != ignore_value
+            input = input[mask]
+            target = target[mask]
+
+        loss = F.binary_cross_entropy_with_logits(input, target, **kwargs)
+        return loss
+
     def losses(self, predictions, targets):
         predictions = predictions.float()  # https://github.com/pytorch/pytorch/issues/48163
         predictions = F.interpolate(
@@ -246,6 +269,11 @@ class BinarySegFPNHead(nn.Module):
         )
 
         # TODO BCE cannot handle ignore values, need to implement a custom loss
-        loss = F.binary_cross_entropy_with_logits(predictions, targets.float(), reduction="mean")
+        loss = self.binary_cross_entropy_with_logits(
+            predictions,
+            targets.float(),
+            ignore_value=self.ignore_value,
+            reduction="mean",
+        )
         losses = {"loss_bce_seg": loss * self.loss_weight}
         return losses

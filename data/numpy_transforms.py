@@ -421,7 +421,7 @@ class AffineTransform(T.Transform):
             np.ndarray: transformed segmentation
         """
         # borderValue=0 means background, borderValue=255 means ignored
-        border_value = [255] if len(segmentation.shape) == 2 else [self.ignore_value] * segmentation.shape[-1]
+        border_value = [255] if len(segmentation.shape) == 2 else [self.ignore_value] * min(segmentation.shape[-1], 4)
         return cv2.warpAffine(
             segmentation,
             self.matrix[:2, :],
