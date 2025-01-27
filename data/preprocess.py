@@ -334,22 +334,20 @@ class Preprocess:
 
         method = path.suffix
 
-        if method == ".png":
+        if method in [".png", ".jpg", ".jpeg", ".webp"]:
             if isinstance(array, torch.Tensor):
                 array = array.permute(1, 2, 0).cpu().numpy()
-            assert array.dtype == np.uint8, f"Array must be of type uint8 to save as PNG, got {array.dtype}"
+            assert array.dtype == np.uint8, f"Array must be of type uint8 to save an image, got {array.dtype}"
             assert (
                 array.ndim == 2 or array.shape[2] == 3
-            ), f"Array must be 2D or 3D with 3 channels to save as PNG, got {array.shape}"
-            assert np.max(array) <= 255, f"Array must be in range 0-255 to save as PNG, got {np.max(array)}"
-            assert np.min(array) >= 0, f"Array must be in range 0-255 to save as PNG, got {np.min(array)}"
-            assert path.suffix == ".png", f"Path must have suffix .png to save as PNG, got {path.suffix}"
+            ), f"Array must be 2D or 3D with 3 channels to save an image, got {array.shape}"
+            assert np.max(array) <= 255, f"Array must be in range 0-255 to save an image, got {np.max(array)}"
+            assert np.min(array) >= 0, f"Array must be in range 0-255 to save an image, got {np.min(array)}"
             save_image_array_to_path(path, array)
         elif method == ".npy":
             if isinstance(array, torch.Tensor):
                 array = array.permute(1, 2, 0).cpu().numpy()
             assert array.ndim == 3 or array.ndim == 2, f"Array must be 2D or 3D to save as numpy, got {array.shape}"
-            assert path.suffix == ".npy", f"Path must have suffix .npy to save as numpy, got {path.suffix}"
             np.save(path, array)
         elif method == ".pt":
             if isinstance(array, torch.Tensor):
@@ -359,7 +357,6 @@ class Preprocess:
                 if array.ndim == 3:
                     tensor = tensor.permute(2, 0, 1)
             assert tensor.dim() == 3 or tensor.dim() == 2, f"Tensor must be 2D or 3D to save as torch, got {tensor.dim()}"
-            assert path.suffix == ".pt", f"Path must have suffix .pt to save as torch, got {path.suffix}"
             torch.save(tensor, path)
         else:
             raise NotImplementedError(f"Method {method} not implemented")
