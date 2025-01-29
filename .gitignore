@@ -141,6 +141,7 @@ runs/
 
 # Pretrained_models
 *.pth
+*.pt
 
 # Tutorial
 tutorial/*results*/
