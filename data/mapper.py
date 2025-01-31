@@ -1,6 +1,5 @@
 import copy
 import logging
-from pathlib import Path
 from typing import Any, Optional, override
 
 import detectron2.data.transforms as T
@@ -17,8 +16,7 @@ from detectron2.data.detection_utils import (
 from detectron2.data.transforms.augmentation import _check_img_dtype
 
 from data.augmentations import build_augmentation
-from utils.image_torch_utils import load_image_tensor_from_path_gpu_decode
-from utils.image_utils import load_image_array_from_path
+from utils.array_utils import load_array
 from utils.logging_utils import get_logger_name
 
 
@@ -253,51 +251,6 @@ class Mapper(DatasetMapper):
             )
         return ret
 
-    def load_array(self, path: Path | str, mode: str = "color") -> dict[str, Any]:
-        """
-        Load an array or image from a file path.
-
-        Args:
-            path (str): The path to the array or image file.
-            mode (str): The mode to use when loading the image.
-
-        Returns:
-            dict: The loaded image and its DPI.
-        """
-        path = Path(path)
-        if path.suffix == ".npy":
-            array = np.load(path)
-            if array is None:
-                raise ValueError(f"Array {path} cannot be loaded")
-            assert array.ndim == 3 or array.ndim == 2, f"Invalid array shape: {array.shape}"
-            if array.ndim == 2:
-                array = array[:, :, None]
-            return {"image": array, "dpi": None}
-        elif path.suffix == ".pt":
-            tensor = torch.load(path, weights_only=True)
-            if tensor is None:
-                raise ValueError(f"Tensor {path} cannot be loaded")
-
-            if tensor.dim() == 2:
-                tensor = tensor.unsqueeze(0)
-            elif tensor.dim() == 3:
-                pass
-            else:
-                raise ValueError(f"Invalid tensor shape: {tensor.shape}")
-
-            return {"image": tensor, "dpi": None}
-        else:
-            if self.on_gpu:
-                data = load_image_tensor_from_path_gpu_decode(path, mode=mode, device=self.device)
-                if data is None:
-                    raise ValueError(f"Image {path} cannot be loaded")
-                return data
-            else:
-                data = load_image_array_from_path(path, mode=mode)
-                if data is None:
-                    raise ValueError(f"Image {path} cannot be loaded")
-                return data
-
     def __call__(self, dataset_dict):
         raise NotImplementedError("Mapper must be subclassed")
 
@@ -323,13 +276,13 @@ class SemSegMapper(Mapper):
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
 
         # Load image.
-        image = self.load_array(dataset_dict["image_file_name"], mode="color")
+        image = load_array(dataset_dict["image_file_name"], mode="color", on_gpu=self.on_gpu, device=self.device)
 
         check_image_size(dataset_dict, image["image"])
 
         # USER: Remove if you don't do semantic/panoptic segmentation.
         if "sem_seg_file_name" in dataset_dict:
-            sem_seg_gt = self.load_array(dataset_dict["sem_seg_file_name"], mode="grayscale")
+            sem_seg_gt = load_array(dataset_dict["sem_seg_file_name"], mode="grayscale", on_gpu=self.on_gpu, device=self.device)
         else:
             sem_seg_gt = {"image": None, "dpi": None}
 
@@ -402,13 +355,13 @@ class SemSegInstancesMapper(Mapper):
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
 
         # Load image.
-        image = self.load_array(dataset_dict["image_file_name"], mode="color")
+        image = load_array(dataset_dict["image_file_name"], mode="color", on_gpu=self.on_gpu, device=self.device)
 
         check_image_size(dataset_dict, image["image"])
 
         # USER: Remove if you don't do semantic/panoptic segmentation.
         if "sem_seg_file_name" in dataset_dict:
-            sem_seg_gt = self.load_array(dataset_dict["sem_seg_file_name"], mode="grayscale")
+            sem_seg_gt = load_array(dataset_dict["sem_seg_file_name"], mode="grayscale", on_gpu=self.on_gpu, device=self.device)
         else:
             sem_seg_gt = {"image": None, "dpi": None}
 
@@ -484,13 +437,15 @@ class BinarySegMapper(Mapper):
         dataset_dict = copy.deepcopy(dataset_dict)  # it will be modified by code below
 
         # Load image.
-        image = self.load_array(dataset_dict["image_file_name"], mode="color")
+        image = load_array(dataset_dict["image_file_name"], mode="color")
 
         check_image_size(dataset_dict, image["image"])
 
         # USER: Remove if you don't do semantic/panoptic segmentation.
         if "binary_seg_file_name" in dataset_dict:
-            binary_seg_gt = self.load_array(dataset_dict["binary_seg_file_name"], mode="color")
+            binary_seg_gt = load_array(
+                dataset_dict["binary_seg_file_name"], mode="color", on_gpu=self.on_gpu, device=self.device
+            )
         else:
             binary_seg_gt = {"image": None, "dpi": None}
 
