@@ -16,6 +16,7 @@ from detectron2.utils.file_io import PathManager
 from PIL import Image
 
 from utils.array_utils import load_array
+from utils.logging_utils import get_logger_name
 
 _CV2_IMPORTED = True
 try:
@@ -49,7 +50,7 @@ class BinarySegEvaluator(DatasetEvaluator):
                 Default provided, but projects can customize.
             num_classes, ignore_label: deprecated argument
         """
-        self._logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(get_logger_name())
         if num_classes is not None:
             self._logger.warning("BinarySegEvaluator(num_classes) is deprecated! It should be obtained from metadata.")
         if ignore_label is not None:

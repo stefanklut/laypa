@@ -43,7 +43,7 @@ class XMLToBinarySeg(_XMLConverter):
         Builds a "image" mask of desired elements
         """
         size = page.get_size()
-        n_classes = len(self.xml_regions.regions)
+        n_classes = len(self.xml_regions.regions) - 1  # -1 because we don't count the background
         sem_seg = []
         for _ in range(n_classes):
             sem_seg.append(np.zeros((*out_size, 1), np.uint8))
@@ -52,7 +52,15 @@ class XMLToBinarySeg(_XMLConverter):
             for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.region_classes):
                 coords = self._scale_coords(element_coords, out_size, size)
                 rounded_coords = np.round(coords).astype(np.int32)
-                cv2.fillPoly(sem_seg[element_class], [rounded_coords], 1)
+                cv2.fillPoly(sem_seg[element_class - 1], [rounded_coords], 1)
+
+        # import matplotlib.pyplot as plt
+
+        # fig, axes = plt.subplots(1, n_classes)
+        # for i, ax in enumerate(axes):
+        #     ax.imshow(sem_seg[i].squeeze())
+        #     ax.set_title(self.xml_regions.regions[i + 1])
+        # plt.show()
 
         sem_seg = np.concatenate(sem_seg, axis=-1)
         if not sem_seg.any():
