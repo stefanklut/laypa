@@ -98,8 +98,8 @@ class BinarySegEvaluator(DatasetEvaluator):
             )
 
     def reset(self):
-        self._conf_matrix = np.zeros((self._num_classes + 2, self._num_classes + 2), dtype=np.int64)
-        self._b_conf_matrix = np.zeros((self._num_classes + 2, self._num_classes + 2), dtype=np.int64)
+        self._conf_matrix = np.zeros((self._num_classes + 1, self._num_classes + 1), dtype=np.int64)
+        self._b_conf_matrix = np.zeros((self._num_classes + 1, self._num_classes + 1), dtype=np.int64)
         self._predictions = []
 
     def process(self, inputs, outputs):
@@ -126,13 +126,13 @@ class BinarySegEvaluator(DatasetEvaluator):
 
             gt[gt == self._ignore_label] = -1
 
-            pred = pred * np.arange(1, self._num_classes + 1).reshape(-1, 1, 1)
-            gt = gt * np.arange(1, self._num_classes + 1).reshape(-1, 1, 1)
+            pred = pred * np.arange(1, self._num_classes).reshape(-1, 1, 1)
+            gt = gt * np.arange(1, self._num_classes).reshape(-1, 1, 1)
 
-            gt[gt < 0] = self._num_classes + 2
+            gt[gt < 0] = self._num_classes + 1
 
             self._conf_matrix += np.bincount(
-                (self._num_classes + 2) * pred.reshape(-1) + gt.reshape(-1),
+                (self._num_classes + 1) * pred.reshape(-1) + gt.reshape(-1),
                 minlength=self._conf_matrix.size,
             ).reshape(self._conf_matrix.shape)
 
@@ -141,7 +141,7 @@ class BinarySegEvaluator(DatasetEvaluator):
                 b_pred = self._mask_to_boundary(pred.astype(np.uint8))
 
                 self._b_conf_matrix += np.bincount(
-                    (self._num_classes + 2) * b_pred.reshape(-1) + b_gt.reshape(-1),
+                    (self._num_classes + 1) * b_pred.reshape(-1) + b_gt.reshape(-1),
                     minlength=self._conf_matrix.size,
                 ).reshape(self._conf_matrix.shape)
 
@@ -171,8 +171,8 @@ class BinarySegEvaluator(DatasetEvaluator):
             for b_conf_matrix in b_conf_matrix_list:
                 self._b_conf_matrix += b_conf_matrix
 
-        acc = np.full(self._num_classes + 1, np.nan, dtype=float)
-        iou = np.full(self._num_classes + 1, np.nan, dtype=float)
+        acc = np.full(self._num_classes, np.nan, dtype=float)
+        iou = np.full(self._num_classes, np.nan, dtype=float)
         tp = self._conf_matrix.diagonal()[:-1].astype(float)
         pos_gt = np.sum(self._conf_matrix[:-1, :-1], axis=0).astype(float)
         class_weights = pos_gt / np.sum(pos_gt)

@@ -118,7 +118,7 @@ MODEL:
   MODE: region
 
   BINARY_SEG_HEAD:
-    NUM_CLASSES: 7
+    NUM_CLASSES: 6
 
   WEIGHTS:
 
