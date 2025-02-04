@@ -366,7 +366,7 @@ class Preprocess:
         image_path: Path,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
-    ):
+    ) -> Optional[dict[str, str]]:
         """
         Save an image to the output directory.
 
@@ -404,7 +404,7 @@ class Preprocess:
             with out_image_size_path.open(mode="r") as f:
                 out_image_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_image_shape == image_shape:
-                return str(out_image_path.relative_to(self.output_dir))
+                return {"image_file_name": str(out_image_path.relative_to(self.output_dir))}
 
         image_dir.mkdir(parents=True, exist_ok=True)
 
@@ -436,7 +436,7 @@ class Preprocess:
         image_path: Path,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
-    ):
+    ) -> Optional[dict[str, str]]:
         """
         Save the semantic segmentation mask for an image.
 
@@ -469,7 +469,7 @@ class Preprocess:
             with out_sem_seg_size_path.open(mode="r") as f:
                 out_sem_seg_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_sem_seg_shape == image_shape:
-                return str(out_sem_seg_path.relative_to(self.output_dir))
+                return {"sem_seg_file_name": str(out_sem_seg_path.relative_to(self.output_dir))}
 
         converter = XMLToSemSeg(self.xml_regions, square_lines=self.square_lines)
 
@@ -493,7 +493,7 @@ class Preprocess:
         image_path: Path,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
-    ):
+    ) -> Optional[dict[str, str]]:
         """
         Save instances to JSON file.
 
@@ -525,7 +525,7 @@ class Preprocess:
             with out_instances_size_path.open(mode="r") as f:
                 out_intstances_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_intstances_shape == image_shape:
-                return str(out_instances_path.relative_to(self.output_dir))
+                return {"annotations": str(out_instances_path.relative_to(self.output_dir))}
 
         converter = XMLToInstances(self.xml_regions, square_lines=self.square_lines)
 
@@ -549,7 +549,7 @@ class Preprocess:
         image_path: Path,
         original_image_shape: tuple[int, int],
         image_shape: tuple[int, int],
-    ):
+    ) -> Optional[dict[str, str]]:
         """
         Save panoramic image and segments information to the output directory.
 
@@ -582,7 +582,10 @@ class Preprocess:
             with out_pano_size_path.open(mode="r") as f:
                 out_pano_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_pano_shape == image_shape:
-                return str(out_pano_path.relative_to(self.output_dir)), str(out_segments_info_path.relative_to(self.output_dir))
+                return {
+                    "pano_file_name": str(out_pano_path.relative_to(self.output_dir)),
+                    "segments_info": str(out_segments_info_path.relative_to(self.output_dir)),
+                }
 
         converter = XMLToPano(self.xml_regions, square_lines=self.square_lines)
 
@@ -608,7 +611,12 @@ class Preprocess:
 
         return results
 
-    def save_binary_seg(self, image_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+    def save_binary_seg(
+        self,
+        image_path: Path,
+        original_image_shape: tuple[int, int],
+        image_shape: tuple[int, int],
+    ) -> Optional[dict[str, str]]:
         """
         Save the binary segmentation mask for an image.
 
@@ -641,8 +649,7 @@ class Preprocess:
             with out_binary_seg_size_path.open(mode="r") as f:
                 out_binary_seg_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_binary_seg_shape == image_shape:
-                return str(out_binary_seg_path.relative_to(self.output_dir))
-
+                return {"binary_seg_file_name": str(out_binary_seg_path.relative_to(self.output_dir))}
         converter = XMLToBinarySeg(self.xml_regions, square_lines=self.square_lines)
 
         binary_seg = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
