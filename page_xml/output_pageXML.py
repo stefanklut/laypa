@@ -158,7 +158,13 @@ class OutputPageXML:
         page.new_page(image_path.name, str(old_height), str(old_width))
 
         if self.cfg is not None:
-            page.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
+            page.add_processing_step(
+                get_git_hash(),
+                self.cfg.LAYPA_UUID,
+                self.cfg,
+                self.whitelist,
+                confidence=None,
+            )
 
         if yolo_output.boxes is None:
             page.save_xml()
@@ -305,9 +311,6 @@ class OutputPageXML:
         page = PageData(xml_output_path)
         page.new_page(image_path.name, str(old_height), str(old_width))
 
-        if self.cfg is not None:
-            page.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
-
         if self.xml_regions.mode == "region":
             confidence_output_path = self.page_dir.joinpath(image_path.stem + "_confidence.png")
             sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg)
@@ -319,7 +322,14 @@ class OutputPageXML:
             sem_seg_classes = sem_seg_classes.cpu().numpy()
             mean_confidence = torch.mean(confidence).cpu().numpy().item()
 
-            page.add_confidence(mean_confidence)
+            if self.cfg is not None:
+                page.add_processing_step(
+                    get_git_hash(),
+                    self.cfg.LAYPA_UUID,
+                    self.cfg,
+                    self.whitelist,
+                    confidence=mean_confidence,
+                )
 
             region_id = 0
 
@@ -376,7 +386,14 @@ class OutputPageXML:
             sem_seg_classes = sem_seg_classes.cpu().numpy()
             mean_confidence = torch.mean(confidence).cpu().numpy().item()
 
-            page.add_confidence(mean_confidence)
+            if self.cfg is not None:
+                page.add_processing_step(
+                    get_git_hash(),
+                    self.cfg.LAYPA_UUID,
+                    self.cfg,
+                    self.whitelist,
+                    confidence=mean_confidence,
+                )
 
             # Save the mask
             with AtomicFileName(file_path=sem_seg_output_path) as path:
@@ -393,7 +410,16 @@ class OutputPageXML:
                 self.save_heatmap(confidence, confidence_output_path)
 
             sem_seg_classes = sem_seg_classes.cpu().numpy()
-            mean_confidence = torch.mean(confidence).cpu().numpy()
+            mean_confidence = torch.mean(confidence).cpu().numpy().item()
+
+            if self.cfg is not None:
+                page.add_processing_step(
+                    get_git_hash(),
+                    self.cfg.LAYPA_UUID,
+                    self.cfg,
+                    self.whitelist,
+                    confidence=mean_confidence,
+                )
 
             # Save the mask
             with AtomicFileName(file_path=sem_seg_output_path) as path:

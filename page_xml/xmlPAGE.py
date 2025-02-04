@@ -8,7 +8,7 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import NoneType
-from typing import Iterable, TypedDict
+from typing import Iterable, Optional, TypedDict
 
 import numpy as np
 from detectron2.config import CfgNode
@@ -267,7 +267,14 @@ class PageData:
             "imageHeight": rows,
         }
 
-    def add_processing_step(self, git_hash: str, uuid: str, cfg: CfgNode, whitelist: Iterable[str]):
+    def add_processing_step(
+        self,
+        git_hash: str,
+        uuid: str,
+        cfg: CfgNode,
+        whitelist: Iterable[str],
+        confidence: Optional[float],
+    ):
         if git_hash is None:
             raise TypeError(f"git_hash is None")
         if uuid is None:
@@ -298,6 +305,13 @@ class PageData:
             "value": uuid,
         }
 
+        if confidence is not None:
+            confidence_element = ET.SubElement(labels, "Label")
+            confidence_element.attrib = {
+                "type": "confidence",
+                "value": str(confidence),
+            }
+
         for key in whitelist:
             sub_node = cfg
             for sub_key in key.split("."):
@@ -311,19 +325,6 @@ class PageData:
                 "type": key,
                 "value": str(convert_to_dict(sub_node)),
             }
-
-    def add_confidence(self, confidence: float):
-        if confidence is None:
-            raise TypeError(f"confidence is None")
-        if self.metadata is None:
-            raise TypeError(f"self.metadata is None")
-
-        confidence_element = ET.SubElement(self.metadata, "MetadataItem")
-        confidence_element.attrib = {
-            "type": "confidence",
-            "name": "layout-analysis",
-            "value": str(confidence),
-        }
 
     def add_element(self, region_class, region_id, region_type, region_coords, parent=None):
         """add element to parent node"""
