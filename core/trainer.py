@@ -324,7 +324,7 @@ class Trainer(DefaultTrainer):
     def get_mapper(cls, cfg, device=torch.device("cpu"), mode="train"):
         mapper = MetaArchitechture_converter[cfg.MODEL.META_ARCHITECTURE]["mapper"](
             cfg,
-            mode="train",
+            mode=mode,
             on_gpu=cfg.INPUT.ON_GPU,
             device=device,
         )
