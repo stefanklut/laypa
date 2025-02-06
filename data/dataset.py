@@ -147,7 +147,6 @@ def metadata_from_classes(classes: list[str], ignore_label: int = 255) -> Metada
         thing_colors=colors[1:],
         stuff_classes=classes,
         stuff_colors=colors,
-        evaluator_type="sem_seg",
         ignore_label=ignore_label,
     )
     return metadata

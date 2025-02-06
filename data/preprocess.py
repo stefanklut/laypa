@@ -157,7 +157,7 @@ class Preprocess:
         if cfg.MODEL.META_ARCHITECTURE == "SemanticSegmentor":
             n_classes = cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES
         elif cfg.MODEL.META_ARCHITECTURE == "BinarySegmentor":
-            n_classes = cfg.MODEL.BINARY_SEG_HEAD.NUM_CLASSES
+            n_classes = cfg.MODEL.BINARY_SEG_HEAD.NUM_CLASSES + 1
         else:
             raise NotImplementedError(f"Meta architecture {cfg.MODEL.META_ARCHITECTURE} not implemented")
 

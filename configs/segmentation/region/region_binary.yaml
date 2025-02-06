@@ -1,6 +1,6 @@
 _BASE_: ../segmentation_base.yaml
 
-OUTPUT_DIR: ./output/region
+OUTPUT_DIR: ./output/binary
 PREPROCESS:
   OVERWRITE: False
   DISABLE_CHECK: False
@@ -39,7 +39,7 @@ INPUT:
 
   CROP:
     ENABLED: True
-    SIZE: [1024, 1024]
+    SIZE: [2048, 2048]
     TYPE: absolute
 
   FORMAT: RGB
@@ -102,11 +102,11 @@ INPUT:
     PERCENTAGES: (0.25, 0.25, 0.25, 0.25)
 
 DATALOADER:
-  NUM_WORKERS: 32
+  NUM_WORKERS: 8
   FILTER_EMPTY_ANNOTATIONS: False
 
 SOLVER:
-  IMS_PER_BATCH: 16
+  IMS_PER_BATCH: 4
   CHECKPOINT_PERIOD: 25000
   BASE_LR: 0.0002
   GAMMA: 0.1
@@ -116,9 +116,11 @@ SOLVER:
 MODEL:
   META_ARCHITECTURE: "BinarySegmentor"
   MODE: region
+  AMP_TRAIN:
+    ENABLED: True
 
   BINARY_SEG_HEAD:
-    NUM_CLASSES: 7
+    NUM_CLASSES: 6
 
   WEIGHTS:
 

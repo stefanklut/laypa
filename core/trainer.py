@@ -23,7 +23,6 @@ from detectron2.engine import (
 )
 from detectron2.evaluation import (
     DatasetEvaluator,
-    SemSegEvaluator,
     inference_on_dataset,
     print_csv_format,
 )
@@ -32,6 +31,8 @@ from detectron2.solver.build import maybe_add_gradient_clipping, reduce_param_gr
 from detectron2.utils import comm
 
 from data.mapper import BinarySegMapper, SemSegInstancesMapper, SemSegMapper
+from evaluation.binary_seg_evaluation import BinarySegEvaluator
+from evaluation.sem_seg_evaluation import SemSegEvaluator
 from utils.logging_utils import get_logger_name
 
 
@@ -209,6 +210,25 @@ def build_optimizer(cfg: CfgNode, model: torch.nn.Module) -> torch.optim.Optimiz
     return optimizer
 
 
+MetaArchitechture_converter: dict[str, dict[str, Any]] = {
+    "SemanticSegmentor": {
+        "mapper": SemSegMapper,
+        "evaluator": SemSegEvaluator,
+        "output": "sem_seg",
+    },
+    "MaskFormer": {
+        "mapper": SemSegInstancesMapper,
+        "evaluator": SemSegEvaluator,
+        "output": "sem_seg",
+    },
+    "BinarySegmentor": {
+        "mapper": BinarySegMapper,
+        "evaluator": BinarySegEvaluator,
+        "output": "binary_seg",
+    },
+}
+
+
 class Trainer(DefaultTrainer):
     """
     Trainer class
@@ -255,10 +275,12 @@ class Trainer(DefaultTrainer):
         self.max_iter = cfg.SOLVER.MAX_ITER
         self.cfg = cfg
 
+        output = MetaArchitechture_converter[cfg.MODEL.META_ARCHITECTURE]["output"]
+
         miou_checkpointer = hooks.BestCheckpointer(
             eval_period=cfg.TEST.EVAL_PERIOD,
             checkpointer=self.checkpointer,
-            val_metric="sem_seg/mIoU",
+            val_metric=f"{output}/mIoU",
             mode="max",
             file_prefix="model_best_mIoU",
         )
@@ -266,7 +288,7 @@ class Trainer(DefaultTrainer):
         fwiou_checkpointer = hooks.BestCheckpointer(
             eval_period=cfg.TEST.EVAL_PERIOD,
             checkpointer=self.checkpointer,
-            val_metric="sem_seg/fwIoU",
+            val_metric=f"{output}/fwIoU",
             mode="max",
             file_prefix="model_best_fwIoU",
         )
@@ -274,7 +296,7 @@ class Trainer(DefaultTrainer):
         macc_checkpointer = hooks.BestCheckpointer(
             eval_period=cfg.TEST.EVAL_PERIOD,
             checkpointer=self.checkpointer,
-            val_metric="sem_seg/mACC",
+            val_metric=f"{output}/mACC",
             mode="max",
             file_prefix="model_best_mACC",
         )
@@ -282,7 +304,7 @@ class Trainer(DefaultTrainer):
         pacc_checkpointer = hooks.BestCheckpointer(
             eval_period=cfg.TEST.EVAL_PERIOD,
             checkpointer=self.checkpointer,
-            val_metric="sem_seg/pACC",
+            val_metric=f"{output}/pACC",
             mode="max",
             file_prefix="model_best_pACC",
         )
@@ -291,27 +313,23 @@ class Trainer(DefaultTrainer):
 
     @classmethod
     def build_evaluator(cls, cfg, dataset_name):
-        sem_seg_output_dir = os.path.join(cfg.OUTPUT_DIR, "semantic_segmentation")
-        evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
-        # TODO Other Evaluator types
-        if evaluator_type == "sem_seg":
-            evaluator = SemSegEvaluator(dataset_name=dataset_name, distributed=True, output_dir=sem_seg_output_dir)
-        else:
-            raise NotImplementedError(f"Current evaluator type {evaluator_type} not supported")
+        evaluator = MetaArchitechture_converter[cfg.MODEL.META_ARCHITECTURE]["evaluator"](
+            dataset_name,
+            distributed=True,
+        )
 
         return evaluator
 
     @classmethod
     def get_mapper(cls, cfg, device=torch.device("cpu"), mode="train"):
-        if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor"]:
-            return SemSegMapper(cfg, mode=mode, device=device)
-        elif cfg.MODEL.META_ARCHITECTURE in ["MaskFormer", "PanopticFPN"]:
-            return SemSegInstancesMapper(cfg, mode=mode, device=device)
+        mapper = MetaArchitechture_converter[cfg.MODEL.META_ARCHITECTURE]["mapper"](
+            cfg,
+            mode=mode,
+            on_gpu=cfg.INPUT.ON_GPU,
+            device=device,
+        )
 
-        elif cfg.MODEL.META_ARCHITECTURE in ["BinarySegmentor"]:
-            return BinarySegMapper(cfg, mode=mode, device=device)
-        else:
-            raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
+        return mapper
 
     @classmethod
     def build_train_loader(cls, cfg, device=torch.device("cpu")):
