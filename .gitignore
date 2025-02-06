@@ -149,5 +149,5 @@ tutorial/*results*/
 # Redis
 *.rdb
 
-# Transcibus
+# Transkribus
 doc.xml
