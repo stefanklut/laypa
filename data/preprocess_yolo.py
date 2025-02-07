@@ -20,7 +20,7 @@ from detectron2.config import CfgNode, configurable
 
 from data.augmentations import Augmentation, build_augmentation
 from data.mapper import AugInput
-from page_xml.xml_converters import XMLToCOCO
+from page_xml.xml_converters import XMLToYOLO
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
@@ -40,7 +40,7 @@ class Image(TypedDict):
     id: Any
 
 
-class PreprocessCOCO:
+class PreprocessYOLO:
     """
     Used for almost all preprocessing steps to prepare datasets to be used by the training loop
     """
@@ -105,7 +105,7 @@ class PreprocessCOCO:
 
         self.overwrite = overwrite
 
-        self.output = {"image": "png", "coco": None}
+        self.output = {"image": "png", "yolo": None}
 
         self.augmentations = augmentations
 
@@ -141,7 +141,7 @@ class PreprocessCOCO:
             "n_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
             "disable_check": cfg.PREPROCESS.DISABLE_CHECK,
             "overwrite": cfg.PREPROCESS.OVERWRITE,
-            "output": {"image": "png", "coco": None},
+            "output": {"image": "png", "yolo": None},
             "auto_dpi": cfg.PREPROCESS.DPI.AUTO_DETECT,
             "default_dpi": cfg.PREPROCESS.DPI.DEFAULT_DPI,
             "manual_dpi": cfg.PREPROCESS.DPI.MANUAL_DPI,
@@ -336,7 +336,7 @@ class PreprocessCOCO:
             with out_image_size_path.open(mode="r") as f:
                 out_image_shape = tuple(int(x) for x in f.read().strip().split(","))
             if out_image_shape == image_shape:
-                return str(out_image_path.relative_to(self.output_dir))
+                return {"image_file_name": str(out_image_path.relative_to(self.output_dir))}
 
         image_dir.mkdir(parents=True, exist_ok=True)
 
@@ -363,9 +363,9 @@ class PreprocessCOCO:
 
         return results
 
-    def save_coco(self, image_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+    def save_yolo(self, image_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
         """
-        Generate the COCO format for an image.
+        Generate the YOLO format for an image.
 
         Args:
             image_path (Path): The path to the image file.
@@ -377,32 +377,32 @@ class PreprocessCOCO:
 
         xml_path = image_path_to_xml_path(image_path, self.disable_check)
 
-        coco_dir = self.output_dir.joinpath("labels")
+        yolo_dir = self.output_dir.joinpath("labels")
 
-        out_coco_path = coco_dir.joinpath(xml_path.name).with_suffix(f".txt")
-        out_coco_size_path = coco_dir.joinpath(xml_path.name).with_suffix(".size")
+        out_yolo_path = yolo_dir.joinpath(xml_path.name).with_suffix(f".txt")
+        out_yolo_size_path = yolo_dir.joinpath(xml_path.name).with_suffix(".size")
 
         # Check if image already exists and if it doesn't need resizing
-        if not self.overwrite and out_coco_path.exists() and out_coco_size_path.exists():
-            with out_coco_size_path.open(mode="r") as f:
-                out_coco_shape = tuple(int(x) for x in f.read().strip().split(","))
-            if out_coco_shape == image_shape:
-                return str(out_coco_path.relative_to(self.output_dir))
+        if not self.overwrite and out_yolo_path.exists() and out_yolo_size_path.exists():
+            with out_yolo_size_path.open(mode="r") as f:
+                out_yolo_shape = tuple(int(x) for x in f.read().strip().split(","))
+            if out_yolo_shape == image_shape:
+                return {"yolo_file_name": str(out_yolo_path.relative_to(self.output_dir))}
 
-        converter = XMLToCOCO(self.xml_regions, square_lines=self.square_lines)
+        converter = XMLToYOLO(self.xml_regions, square_lines=self.square_lines)
 
-        coco = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+        yolo = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
 
-        if not coco["annotations"]:
-            return {"coco_file_name": None}  # Skip empty annotations
+        if not yolo["annotations"]:
+            return {"yolo_file_name": None}  # Skip empty annotations
 
-        coco_dir.mkdir(parents=True, exist_ok=True)
-        with out_coco_path.open(mode="w") as f:
-            for annotation in coco["annotations"]:
+        yolo_dir.mkdir(parents=True, exist_ok=True)
+        with out_yolo_path.open(mode="w") as f:
+            for annotation in yolo["annotations"]:
                 output = [annotation["category_id"]] + annotation["bbox"]
                 f.write(" ".join(map(str, output)) + "\n")
 
-        return {"coco_file_name": str(out_coco_path.relative_to(self.output_dir))}
+        return {"yolo_file_name": str(out_yolo_path.relative_to(self.output_dir))}
 
     def get_dpi(self, image_path: Path) -> Optional[int]:
         """
@@ -441,8 +441,6 @@ class PreprocessCOCO:
         """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
-
-        image_stem = image_path.stem
 
         _original_image_shape = imagesize.get(image_path)
         original_image_shape = int(_original_image_shape[1]), int(_original_image_shape[0])

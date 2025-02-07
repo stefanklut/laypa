@@ -10,7 +10,7 @@ import yaml
 
 from core.preprocess import preprocess_datasets
 from core.setup import setup_cfg, setup_logging, setup_saving, setup_seed
-from data.preprocess_coco import PreprocessCOCO
+from data.preprocess_yolo import PreprocessYOLO
 
 root_logger = logging.getLogger()
 
@@ -106,7 +106,7 @@ def setup_training(args: argparse.Namespace):
 
     # Temp dir for preprocessing in case no temporary dir was specified
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not (args.keep_tmp_dir)) as tmp_dir:
-        process = PreprocessCOCO(cfg)
+        process = PreprocessYOLO(cfg)
 
         tmp_dir = Path(tmp_dir)
 
@@ -141,21 +141,21 @@ def setup_training(args: argparse.Namespace):
 
         names = {i: name for i, name in enumerate(process.xml_regions.regions[1:])}  # 1: to exclude background class
 
-        coco_output_path = tmp_dir.joinpath("coco.yaml")
-        coco_output = {
+        yolo_output_path = tmp_dir.joinpath("yolo.yaml")
+        yolo_output = {
             "path": str(tmp_dir),
             "train": "images/train",
             "val": "images/val",
             "names": names,
         }
 
-        with coco_output_path.open("w") as f:
-            yaml.dump(coco_output, f)
+        with yolo_output_path.open("w") as f:
+            yaml.dump(yolo_output, f)
 
         model = YOLO("yolo11n.pt")
 
         model.train(
-            data=str(coco_output_path),
+            data=str(yolo_output_path),
             epochs=100,
             batch=cfg.SOLVER.IMS_PER_BATCH,
             imgsz=640,

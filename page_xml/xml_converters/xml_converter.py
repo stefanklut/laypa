@@ -105,7 +105,7 @@ class _XMLConverter:
             )
             return output
         else:
-            return None
+            raise NotImplementedError(f"Mode {self.xml_regions.mode} is not known")
 
     @staticmethod
     def _scale_coords(coords: np.ndarray, out_size: tuple[int, int], size: tuple[int, int]) -> np.ndarray:
