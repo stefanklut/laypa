@@ -22,7 +22,7 @@ from data.mapper import AugInput
 from page_xml.output_pageXML import OutputPageXML
 from page_xml.xml_regions import XMLRegions
 from utils.image_utils import load_image_array_from_path
-from utils.input_utils import get_file_paths, supported_image_formats
+from utils.input_utils import SUPPORTED_IMAGE_FORMATS, get_file_paths
 from utils.logging_utils import get_logger_name
 
 
@@ -268,7 +268,7 @@ class SavePredictor(Predictor):
             FileNotFoundError: input path not found on the filesystem
             PermissionError: input path not accessible
         """
-        self.input_paths = get_file_paths(input_paths, supported_image_formats)
+        self.input_paths = get_file_paths(input_paths, SUPPORTED_IMAGE_FORMATS)
 
     def set_output_dir(self, output_dir: str | Path) -> None:
         """

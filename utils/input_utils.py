@@ -6,7 +6,7 @@ from natsort import natsorted
 from PIL import Image
 
 Image.init()
-supported_image_formats = set(Image.EXTENSION.keys())
+SUPPORTED_IMAGE_FORMATS = set(Image.EXTENSION.keys())
 
 
 def is_path_supported_format(path: Path, formats: Container[str]) -> bool:

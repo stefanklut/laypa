@@ -20,10 +20,9 @@ from data.mapper import AugInput
 from page_xml.xml_converters.xml_to_sem_seg import XMLToSemSeg
 from run import Predictor
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
-from utils.input_utils import get_file_paths, supported_image_formats
+from utils.input_utils import SUPPORTED_IMAGE_FORMATS, get_file_paths
 from utils.logging_utils import get_logger_name
 from utils.path_utils import image_path_to_xml_path
-from utils.tempdir import OptionalTemporaryDirectory
 
 logger = logging.getLogger(get_logger_name())
 
@@ -37,14 +36,8 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args.add_argument("--opts", nargs="+", help="optional args to change", action="extend", default=[])
 
     io_args = parser.add_argument_group("IO")
-    # io_args.add_argument("-t", "--train", help="Train input folder/file",
-    #                         nargs="+", action="extend", type=str, default=None)
     io_args.add_argument("-i", "--input", help="Input folder/file", nargs="+", action="extend", type=str, default=None)
     io_args.add_argument("-o", "--output", help="Output folder", type=str)
-
-    tmp_args = parser.add_argument_group("tmp files")
-    tmp_args.add_argument("--tmp_dir", help="Temp files folder", type=str, default=None)
-    tmp_args.add_argument("--keep_tmp_dir", action="store_true", help="Don't remove tmp dir after execution")
 
     parser.add_argument("--sorted", action="store_true", help="Sorted iteration")
     parser.add_argument("--save", nargs="?", const="all", default=None, help="Save images instead of displaying")
@@ -96,7 +89,7 @@ def main(args) -> None:
     xml_converter = XMLToSemSeg(cfg)
     metadata = metadata_from_classes(xml_converter.xml_regions.regions)
 
-    image_paths = get_file_paths(args.input, supported_image_formats, cfg.PREPROCESS.DISABLE_CHECK)
+    image_paths = get_file_paths(args.input, SUPPORTED_IMAGE_FORMATS, cfg.PREPROCESS.DISABLE_CHECK)
 
     predictor = Predictor(cfg=cfg)
 

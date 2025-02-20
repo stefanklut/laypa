@@ -39,7 +39,7 @@ from page_xml.xml_converters.xml_converter import _XMLConverter
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
-from utils.input_utils import get_file_paths, supported_image_formats
+from utils.input_utils import SUPPORTED_IMAGE_FORMATS, get_file_paths
 from utils.logging_utils import get_logger_name
 from utils.path_utils import check_path_accessible, image_path_to_xml_path
 
@@ -232,7 +232,7 @@ class Preprocess:
             input_paths (str | Path | Sequence[str  |  Path]): path(s) from which to extract the images.
             ignore_duplicates (bool, optional): Ignore duplicate names in the input paths. Defaults to False.
         """
-        input_paths = get_file_paths(input_paths, supported_image_formats, self.disable_check)
+        input_paths = get_file_paths(input_paths, SUPPORTED_IMAGE_FORMATS, self.disable_check)
         if not ignore_duplicates:
             self.check_duplicates(input_paths)
 

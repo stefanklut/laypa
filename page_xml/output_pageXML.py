@@ -26,7 +26,7 @@ from page_xml.xml_regions import XMLRegions
 from page_xml.xmlPAGE import PageData
 from utils.copy_utils import copy_mode
 from utils.image_utils import save_image_array_to_path
-from utils.input_utils import get_file_paths, supported_image_formats
+from utils.input_utils import SUPPORTED_IMAGE_FORMATS, get_file_paths
 from utils.logging_utils import get_logger_name
 from utils.tempdir import AtomicFileName
 
@@ -487,7 +487,7 @@ class OutputPageXML:
 
 def main(args):
     sem_seg_paths = get_file_paths(args.sem_seg, formats=[".png"])
-    image_paths = get_file_paths(args.input, formats=supported_image_formats)
+    image_paths = get_file_paths(args.input, formats=SUPPORTED_IMAGE_FORMATS)
 
     xml_regions = XMLRegions(
         mode=args.mode,
