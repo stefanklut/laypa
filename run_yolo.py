@@ -49,8 +49,11 @@ def get_arguments() -> argparse.Namespace:
     )
     io_args.add_argument("-o", "--output", help="Output folder", type=str, required=True)
 
-    parser.add_argument("-w", "--whitelist", nargs="+", help="Input folder", type=str, action="extend")
-    parser.add_argument("--num_workers", help="Number of workers to use", type=int, default=4)
+    page_xml_args = parser.add_argument_group("PageXML")
+    page_xml_args.add_argument("-w", "--whitelist", nargs="+", help="Input folder", type=str, action="extend")
+
+    dataloader_args = parser.add_argument_group("Dataloader")
+    dataloader_args.add_argument("--num_workers", help="Number of workers to use", type=int, default=4)
 
     args = parser.parse_args()
 
