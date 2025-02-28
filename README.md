@@ -50,7 +50,7 @@ Developed using the following software and hardware:
 <!-- TODO Add more with testing -->
 More coming soon
 
-Run [`utils/collect_env_info.py`][collect_env_info_link] to retrieve your environment information, and add them via [pull request][pull_request_link].
+Run [`tooling/collect_env_info.py`][collect_env_info_link] to retrieve your environment information, and add them via [pull request][pull_request_link].
 
 | Operating System                                                  | Python | PyTorch | Cudatoolkit | GPU                                   | CPU                                  | Success            |
 | ----------------------------------------------------------------- | ------ | ------- | ----------- | ------------------------------------- | ------------------------------------ | ------------------ |
@@ -169,7 +169,7 @@ When successful the docker image should be available under the name `loghi/docke
 ```sh
 docker image ls
 ```
-And checking if loghi/docker.laypa is present in the list of built images.
+And checking if `loghi/docker.laypa` is present in the list of built images.
 
 ### Pretrained models
 Some initial pretrained models can be found [here][pretrained_models_link].
@@ -252,6 +252,21 @@ python main.py -c config.yml -t data/training_dir1 -t data/training_dir2 -v data
 # Mix training directory with txt file
 python main.py -c config.yml -t data/training_dir -t data/training_file.txt -v data/validation_set
 ```
+<details>
+<summary> Tips and Tricks </summary>
+
+- When a models output is close to what you want, but not quite there yet, training the model from scratch can be a waste of time. Instead, you can finetune the existing model with ground truth that better matches your use case. This can be done by changing the `MODEL.WEIGHTS` parameter in the config file to the path of the existing model. Or by using the `--opts` parameter to change the weights path (for example `--opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>`).
+- If you notice a specific part of the data the model is failing on you can add more of that data to the training set. This can be done by adding the data to the training set and running the training again.
+- If a training was interrupted and you want to continue training from the last checkpoint, you can use the `--opts` parameter to change the `TRAIN.WEIGHTS` parameter to the path of the last checkpoint (for example `--opts TRAIN.WEIGHTS <PATH_TO_WEIGHTS>`). This can also be done by changing the `TRAIN.WEIGHTS` parameter in the config file. 
+- When a model does not fit on the GPU, the batch size can be reduced using the `--opts` parameter. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8. Or you can turn on the AMP (Automatic Mixed Precision) using the `--opts MODEL.AMP_TRAIN.ENABLED True` parameter.
+- When the model is not learning, the learning rate can be changed using the `--opts` parameter. For example, `--opts SOLVER.BASE_LR 0.0001` sets the learning rate to 0.0001. The learning rate can also be changed using the `--opts` parameter. For example, `--opts SOLVER.BASE_LR 0.0001` sets the learning rate to 0.0001.
+- When the loss during training becomes `nan`, `inf` or `0` there is something wrong with the training. Try changing the learning rate or the batch size.
+- The [configs][configs_link] directory contains some example config files. These can be used as a starting point for your own config file. Also see the [defaults.py][defaults_link] and [extra_defaults.py][extra_defaults_link] files for more information on what can be set in the config file. Config files can inherit from other config files, this can be done by setting the `_BASE_` parameter in the config file.
+- Never include training examples in the validation set. This will cause the validation to not be a good representation of the model's performance. This can lead to overfitting.
+- A good rule of thumb for a validation set is to have 10% of the training set. To turn you dataset into a training and validation set you can use the [tooling/dataset_creation.py](tooling/dataset_creation.py) file. This file will split the dataset into a training and validation set. The split is done by taking the first 80% of the dataset as the training set, 10% as the validation set, and the last 10% as the test set. The test set is not used for training or validation. Or use the `--split` parameter to change these percentages. 
+
+</details>
+
 
 ## Inference
 To run the trained model on images without ground truth, the images need to be in a single directory. The output consists of either pageXML in the case of regions or a mask in the other cases. This mask can then be processed using other tools to turn the pixel predictions into valid pageXML (for example on baselines). As stated, the regions are turned into polygons for the pageXML within the program already.
@@ -286,11 +301,23 @@ The optional arguments are shown using square brackets. The final parameter `--o
 List values have to be overridden by encapsulating the whole list with quotes like `--opts PREPROCESS.REGION.RECTANGLE_REGIONS '["Photo"]'` 
 </details>
 
+To set what weights the model should use, the `MODEL.WEIGHTS` parameter in the config file should be set to the path of the weights file. If the weights are not in the config file, the weights can be set using the `--opts` parameter.
 An example of how to call the `run.py` command is given below:
 ```sh
 python run.py -c config.yml -i data/inference_dir -o results_dir
 ```
+If setting the weights using the `--opts` parameter the command would look as follows:
+```sh
+python run.py -c config.yml -i data/inference_dir -o results_dir --opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>
+```
 
+<details>
+<summary> Tips and Tricks </summary>
+
+- You can run the model with less GPU requirement by using AMP (Automatic Mixed Precision). This can be done by setting the `MODEL.AMP_TEST.ENABLED` parameter to `True` in the config file. Or by using the `--opts` parameter to change the weights path (for example `--opts MODEL.AMP_TEST.ENABLED True`).
+- Specify what GPU the model the model should run on using the environment variable `CUDA_VISIBLE_DEVICES`. This should be in front of the `python run.py` command. For example, `CUDA_VISIBLE_DEVICES=0 python run.py -c config.yml -i data/inference_dir -o results_dir`. This will run the model on GPU 0. To run on CPU use `CUDA_VISIBLE_DEVICES="" python run.py -c config.yml -i data/inference_dir -o results_dir`.
+
+</details>
 
 ### With External Java Processing
 <!-- TODO Remove the need for Java -->
@@ -388,6 +415,8 @@ python tooling/validation.py \
 
 <details>
 <summary> Click to see all arguments </summary>
+
+Optional arguments:
 ```sh
 python validation.py \ 
     -c/--config CONFIG \
@@ -484,6 +513,8 @@ If you discover a bug or missing feature that you would like to help with please
 [license_link]: LICENSE
 [collect_env_info_link]: tooling/collect_env_info.py
 [configs_link]: configs/segmentation/
+[defaults_link]: configs/defaults.py
+[extra_defaults_link]: configs/extra_defaults.py
 [scripts_link]: scripts/
 [tutorial_link]: tutorial/
 [main_link]: main.py
