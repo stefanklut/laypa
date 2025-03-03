@@ -42,7 +42,7 @@ During training you should see the loss go down indicating that the model is lea
 To train the baseline model, we will use the [baseline config][baseline_config_link] found in the tutorial directory. This config inherits most information from the [larger baseline config][baseline_base_link], but overwrites (among other things) the save location of the trained model and the number of iterations.
 
 ```sh
-python main.py --config tutorial/baseline_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation
+python train.py --config tutorial/baseline_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation
 ```
 
 ### Region Models
@@ -50,14 +50,14 @@ python main.py --config tutorial/baseline_tutorial_config.yaml --train tutorial/
 To train the region model, we will use the [region config][region_config_link] found in the tutorial directory. This config inherits most information from the [larger region config][region_base_link], but overwrites (among other things) the save location of the trained model and the number of iterations.
 
 ```sh
-python main.py --config tutorial/region_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation
+python train.py --config tutorial/region_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation
 ```
 
 ### Altering Config
 
 To change the save location, the `--opts` argument can be used with the `OUTPUT_DIR` argument as follows:
 ```sh
-python main.py --config tutorial/region_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation --opts OUTPUT_DIR tutorial/other_results
+python train.py --config tutorial/region_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation --opts OUTPUT_DIR tutorial/other_results
 ```
 
 All other aspects of the training can be changed in either the config file directly or using the `--opts` argument to change them from the command line.
