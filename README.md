@@ -252,6 +252,10 @@ python train.py -c config.yml -t data/training_dir1 -t data/training_dir2 -v dat
 # Mix training directory with txt file
 python train.py -c config.yml -t data/training_dir -t data/training_file.txt -v data/validation_set
 ```
+
+> [!TIP]
+> See the tips and tricks section below for more information on how to train a model.
+
 <details>
 <summary> Tips and Tricks </summary>
 
@@ -310,6 +314,9 @@ If setting the weights using the `--opts` parameter the command would look as fo
 ```sh
 python run.py -c config.yml -i data/inference_dir -o results_dir --opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>
 ```
+
+> [!TIP]
+> See the tips and tricks section below for more information on how to run the model.
 
 <details>
 <summary> Tips and Tricks </summary>
