@@ -278,14 +278,14 @@ To run the trained model on images without ground truth, the images need to be i
 How to run the Laypa inference individually will be explained first, and how to run it with the full scripts that include the conversion from images to pageXML with come after.
 
 ### Without External Processing
-To just run the Laypa inference in [`run.py`][run_link], you need three things:
+To just run the Laypa inference in [`inference.py`][inference_link], you need three things:
 1. A config file, See [`configs/segmentation`][configs_link] for examples of config files and their contents.
 2. The data can be provided by giving either a `.txt` file containing image paths, the image paths themselves, or the path of a directory containing the images.
 3. A location to which the processed files can be written. The directory will be created if it does not exist yet.
 
 Required arguments
 ```sh
-python run.py \
+python inference.py \
     -c/--config CONFIG \ 
     -i/--input INPUT \ 
     -o/--output OUTPUT
@@ -295,7 +295,7 @@ python run.py \
 
 Optional arguments:
 ```sh
-python run.py \
+python inference.py \
     -c/--config CONFIG \ 
     -i/--input INPUT \ 
     -o/--output OUTPUT
@@ -306,13 +306,13 @@ List values have to be overridden by encapsulating the whole list with quotes li
 </details>
 
 To set what weights the model should use, the `MODEL.WEIGHTS` parameter in the config file should be set to the path of the weights file. If the weights are not in the config file, the weights can be set using the `--opts` parameter.
-An example of how to call the `run.py` command is given below:
+An example of how to call the `inference.py` command is given below:
 ```sh
-python run.py -c config.yml -i data/inference_dir -o results_dir
+python inference.py -c config.yml -i data/inference_dir -o results_dir
 ```
 If setting the weights using the `--opts` parameter the command would look as follows:
 ```sh
-python run.py -c config.yml -i data/inference_dir -o results_dir --opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>
+python inference.py -c config.yml -i data/inference_dir -o results_dir --opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>
 ```
 
 > [!TIP]
@@ -322,7 +322,7 @@ python run.py -c config.yml -i data/inference_dir -o results_dir --opts MODEL.WE
 <summary> Tips and Tricks </summary>
 
 - You can run the model with less GPU requirement by using AMP (Automatic Mixed Precision). This can be done by setting the `MODEL.AMP_TEST.ENABLED` parameter to `True` in the config file. Or by using the `--opts` parameter to change the weights path (for example `--opts MODEL.AMP_TEST.ENABLED True`).
-- Specify what GPU the model the model should run on using the environment variable `CUDA_VISIBLE_DEVICES`. This should be in front of the `python run.py` command. For example, `CUDA_VISIBLE_DEVICES=0 python run.py -c config.yml -i data/inference_dir -o results_dir`. This will run the model on GPU 0. To run on CPU use `CUDA_VISIBLE_DEVICES="" python run.py -c config.yml -i data/inference_dir -o results_dir`.
+- Specify what GPU the model the model should run on using the environment variable `CUDA_VISIBLE_DEVICES`. This should be in front of the `python inference.py` command. For example, `CUDA_VISIBLE_DEVICES=0 python inference.py -c config.yml -i data/inference_dir -o results_dir`. This will run the model on GPU 0. To run on CPU use `CUDA_VISIBLE_DEVICES="" python inference.py -c config.yml -i data/inference_dir -o results_dir`.
 
 </details>
 
@@ -525,7 +525,7 @@ If you discover a bug or missing feature that you would like to help with please
 [scripts_link]: scripts/
 [tutorial_link]: tutorial/
 [train_link]: train.py
-[run_link]: run.py
+[inference_link]: inference.py
 [eval_link]: tooling/visualization.py
 [validation_link]: tooling/validation.py
 [xml_comparison_link]: tooling/xml_comparison.py

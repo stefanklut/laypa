@@ -152,13 +152,13 @@ def setup_cfg(args, cfg: Optional[CfgNode] = None) -> CfgNode:
     # Deprecation warnings
     if cfg.PREPROCESS.RESIZE.USE:
         logger.warning(
-            "DeprecationWarning PREPROCESS.RESIZE.USE is losing support; please switch to PREPROCESS.RESIZE.RESIZE_MODE"
+            "DeprecationWarning: PREPROCESS.RESIZE.USE is losing support; please switch to PREPROCESS.RESIZE.RESIZE_MODE"
         )
         cfg.PREPROCESS.RESIZE.RESIZE_MODE = "shortest_edge"
 
     if cfg.INPUT.SCALING:
         logger.warning(
-            "DeprecationWarning INPUT.SCALING is losing support; please switch to INPUT.SCALING_TRAIN and INPUT.SCALING_TEST"
+            "DeprecationWarning: INPUT.SCALING is losing support; please switch to INPUT.SCALING_TRAIN and INPUT.SCALING_TEST"
         )
         cfg.INPUT.SCALING_TRAIN = cfg.INPUT.SCALING
 
