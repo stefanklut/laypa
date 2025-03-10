@@ -47,6 +47,11 @@ def get_arguments() -> argparse.Namespace:
 
     page_xml_args = parser.add_argument_group("PageXML")
     page_xml_args.add_argument("-w", "--whitelist", nargs="+", help="Input folder", type=str, action="extend")
+    page_xml_args.add_argument(
+        "--save_confidence_heatmap",
+        help="Save the confidence heatmap",
+        action="store_true",
+    )
 
     dataloader_args = parser.add_argument_group("Dataloader")
     dataloader_args.add_argument("--num_workers", help="Number of workers to use", type=int, default=4)
@@ -385,6 +390,7 @@ def main(args: argparse.Namespace) -> None:
         whitelist=args.whitelist,
         rectangle_regions=cfg.PREPROCESS.REGION.RECTANGLE_REGIONS,
         min_region_size=cfg.PREPROCESS.REGION.MIN_REGION_SIZE,
+        save_confidence_heatmap=args.save_confidence_heatmap,
     )
 
     predictor = SavePredictor(
