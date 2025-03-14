@@ -8,7 +8,6 @@ from pathlib import Path
 import torch
 import yaml
 
-from core.preprocess import preprocess_datasets
 from core.setup import setup_cfg, setup_logging, setup_saving, setup_seed
 from data.preprocess_yolo import PreprocessYOLO
 
@@ -20,7 +19,6 @@ from detectron2.utils import comm
 from detectron2.utils.collect_env import collect_env_info
 from ultralytics import YOLO
 
-from core.trainer import Trainer
 from utils.logging_utils import get_logger_name
 from utils.tempdir import OptionalTemporaryDirectory
 
