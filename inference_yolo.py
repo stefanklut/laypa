@@ -6,11 +6,9 @@ from typing import Callable, Dict, Optional, Sequence, Tuple, Type, Union
 import detectron2.data.transforms as T
 import numpy as np
 import torch
-from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.config import CfgNode
 from detectron2.data import MetadataCatalog
 from detectron2.engine import DefaultPredictor
-from detectron2.modeling import build_model
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from tqdm import tqdm
