@@ -16,10 +16,10 @@ The script will preprocess the data and start training the model. The results wi
 The rest of the available options are the same as for training a Laypa model. You can find more information in the [Laypa documentation](README.md#training).
 
 ## Using a trained YOLO model
-To use a trained model to detect objects in a document, call the [`run_yolo.py`][run_yolo] script as follows:
+To use a trained model to detect objects in a document, call the [`inference_yolo.py`][inference_yolo] script as follows:
 
 ```bash
-python run_yolo.py --config <path_to_config_file> --yolo <path_to_model> --input <path_to_input_file> --output <path_to_output_file>
+python inference_yolo.py --config <path_to_config_file> --yolo <path_to_model> --input <path_to_input_file> --output <path_to_output_file>
 ```
 
 The path to the model should be the path to the `.pt` file with the trained model.
@@ -29,4 +29,4 @@ The script will preprocess the input file and run the model on it. The detected 
 The rest of the available options are the same as for using a Laypa model. You can find more information in the [Laypa documentation](README.md#inference).
 
 [train_yolo]: train_yolo.py
-[run_yolo]: run_yolo.py
+[inference_yolo]: inference_yolo.py
