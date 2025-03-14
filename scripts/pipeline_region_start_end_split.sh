@@ -162,7 +162,7 @@ if [[ $GPU -gt -1 ]]; then
 fi
 
 docker run $DOCKERGPUPARAMS --shm-size 8G --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_dir:$tmp_dir loghi/docker.laypa:latest \
-    python run.py \
+    python inference.py \
     -c configs/segmentation/baseline/baseline_dataset.yaml \
     -i $input_dir \
     -o $tmp_dir/baseline \
@@ -175,7 +175,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 docker run $DOCKERGPUPARAMS --shm-size 8G --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_dir:$tmp_dir loghi/docker.laypa:latest \
-    python run.py \
+    python inference.py \
     -c configs/segmentation/start/start_dataset.yaml \
     -i $input_dir \
     -o $tmp_dir/start \
@@ -188,7 +188,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 docker run $DOCKERGPUPARAMS --shm-size 8G --rm -it -m 32000m -v $input_dir:$input_dir -v $tmp_dir:$tmp_dir loghi/docker.laypa:latest \
-    python run.py \
+    python inference.py \
     -c configs/segmentation/end/end_dataset.yaml \
     -i $input_dir \
     -o $tmp_dir/end \
@@ -201,7 +201,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 docker run $DOCKERGPUPARAMS --shm-size 8G --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir loghi/docker.laypa:latest \
-    python run.py \
+    python inference.py \
     -c configs/segmentation/region/region_dataset.yaml \
     -i $input_dir \
     -o $output_dir \

@@ -42,7 +42,7 @@ During training you should see the loss go down indicating that the model is lea
 To train the baseline model, we will use the [baseline config][baseline_config_link] found in the tutorial directory. This config inherits most information from the [larger baseline config][baseline_base_link], but overwrites (among other things) the save location of the trained model and the number of iterations.
 
 ```sh
-python main.py --config tutorial/baseline_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation
+python train.py --config tutorial/baseline_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation
 ```
 
 ### Region Models
@@ -50,14 +50,14 @@ python main.py --config tutorial/baseline_tutorial_config.yaml --train tutorial/
 To train the region model, we will use the [region config][region_config_link] found in the tutorial directory. This config inherits most information from the [larger region config][region_base_link], but overwrites (among other things) the save location of the trained model and the number of iterations.
 
 ```sh
-python main.py --config tutorial/region_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation
+python train.py --config tutorial/region_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation
 ```
 
 ### Altering Config
 
 To change the save location, the `--opts` argument can be used with the `OUTPUT_DIR` argument as follows:
 ```sh
-python main.py --config tutorial/region_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation --opts OUTPUT_DIR tutorial/other_results
+python train.py --config tutorial/region_tutorial_config.yaml --train tutorial/data/train --val tutorial/data/validation --opts OUTPUT_DIR tutorial/other_results
 ```
 
 All other aspects of the training can be changed in either the config file directly or using the `--opts` argument to change them from the command line.
@@ -78,7 +78,7 @@ inference
 For the inference of the baseline, we will again use the [baseline config][baseline_config_link] found in the tutorial directory.
 
 ```sh
-python run.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/inference --output tutorial/inference_results
+python inference.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/inference --output tutorial/inference_results
 ```
 The baseline models output the mask image for further processing. The pageXML output is just the name/placeholder.
 
@@ -86,7 +86,7 @@ The baseline models output the mask image for further processing. The pageXML ou
 For the inference of the regions, we will again use the [region config][region_config_link] found in the tutorial directory.
 
 ```sh
-python run.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/inference --output tutorial/inference_results
+python inference.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/inference --output tutorial/inference_results
 ```
 
 The region models output the pageXML with regions directly. The pageXML will already contain polygons which indicate where each text region is and what class they belong to.
@@ -95,7 +95,7 @@ The region models output the pageXML with regions directly. The pageXML will alr
 To change the weights that are loaded into the model the `--opts` argument can be used with the `TEST.WEIGHTS` argument. These weights should be trained using the same model structure, but perhaps with other hyperparameters, otherwise the weights will not match between models.
 
 ```sh
-python run.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/train --output tutorial/inference_results --opts TEST.WEIGHTS <TRAINING_RUN>/checkpoints/<MODEL_NAME>.pth
+python inference.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/train --output tutorial/inference_results --opts TEST.WEIGHTS <TRAINING_RUN>/checkpoints/<MODEL_NAME>.pth
 ```
 
 <!-- Images and Links Shorthand-->

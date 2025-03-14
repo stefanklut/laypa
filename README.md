@@ -208,13 +208,13 @@ Some dataset that should work with laypa are listed below, some preprocessing ma
 - [Bozen][bozen_link]
 
 ## Training 
-Three things are required to train a model using [`main.py`][main_link].
+Three things are required to train a model using [`train.py`][train_link].
 1. A config file, See [`configs/segmentation`][configs_link] for examples of config files and their contents.
 2. Ground truth training/validation data in the form of images and their corresponding pageXML. The training/validation data can be provided by giving either a `.txt` file containing image paths, the image paths themselves, or the path of a directory containing the images.
 
 Required arguments:
 ```sh
-python main.py \
+python train.py \
     -c/--config <CONFIG> \
     -t/--train <TRAIN [TRAIN ...]> \ 
     -v/--val <VAL [VAL ...]>
@@ -225,7 +225,7 @@ python main.py \
 
 Optional arguments:
 ```sh
-python main.py \
+python train.py \
     -c/--config CONFIG \
     -t/--train TRAIN [TRAIN ...] \
     -v/--val VAL [VAL ...] \
@@ -246,12 +246,16 @@ The remaining arguments are all for training with multiple GPUs or on multiple n
 As indicated by the trailing dots multiple training sets can be passed to the training model at once. This can also be done using the train argument multiple types. The `.txt` files can also be mixed with the directories. For example:
 ```sh
 # Pass multiple directories at once
-python main.py -c config.yml -t data/training_dir1 data/training_dir2 -v data/validation_set
+python train.py -c config.yml -t data/training_dir1 data/training_dir2 -v data/validation_set
 # Pass multiple directories with multiple arguments
-python main.py -c config.yml -t data/training_dir1 -t data/training_dir2 -v data/validation_set
+python train.py -c config.yml -t data/training_dir1 -t data/training_dir2 -v data/validation_set
 # Mix training directory with txt file
-python main.py -c config.yml -t data/training_dir -t data/training_file.txt -v data/validation_set
+python train.py -c config.yml -t data/training_dir -t data/training_file.txt -v data/validation_set
 ```
+
+> [!TIP]
+> See the tips and tricks section below for more information on how to train a model.
+
 <details>
 <summary> Tips and Tricks </summary>
 
@@ -274,14 +278,14 @@ To run the trained model on images without ground truth, the images need to be i
 How to run the Laypa inference individually will be explained first, and how to run it with the full scripts that include the conversion from images to pageXML with come after.
 
 ### Without External Processing
-To just run the Laypa inference in [`run.py`][run_link], you need three things:
+To just run the Laypa inference in [`inference.py`][inference_link], you need three things:
 1. A config file, See [`configs/segmentation`][configs_link] for examples of config files and their contents.
 2. The data can be provided by giving either a `.txt` file containing image paths, the image paths themselves, or the path of a directory containing the images.
 3. A location to which the processed files can be written. The directory will be created if it does not exist yet.
 
 Required arguments
 ```sh
-python run.py \
+python inference.py \
     -c/--config CONFIG \ 
     -i/--input INPUT \ 
     -o/--output OUTPUT
@@ -291,7 +295,7 @@ python run.py \
 
 Optional arguments:
 ```sh
-python run.py \
+python inference.py \
     -c/--config CONFIG \ 
     -i/--input INPUT \ 
     -o/--output OUTPUT
@@ -302,20 +306,23 @@ List values have to be overridden by encapsulating the whole list with quotes li
 </details>
 
 To set what weights the model should use, the `MODEL.WEIGHTS` parameter in the config file should be set to the path of the weights file. If the weights are not in the config file, the weights can be set using the `--opts` parameter.
-An example of how to call the `run.py` command is given below:
+An example of how to call the `inference.py` command is given below:
 ```sh
-python run.py -c config.yml -i data/inference_dir -o results_dir
+python inference.py -c config.yml -i data/inference_dir -o results_dir
 ```
 If setting the weights using the `--opts` parameter the command would look as follows:
 ```sh
-python run.py -c config.yml -i data/inference_dir -o results_dir --opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>
+python inference.py -c config.yml -i data/inference_dir -o results_dir --opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>
 ```
+
+> [!TIP]
+> See the tips and tricks section below for more information on how to run the model.
 
 <details>
 <summary> Tips and Tricks </summary>
 
 - You can run the model with less GPU requirement by using AMP (Automatic Mixed Precision). This can be done by setting the `MODEL.AMP_TEST.ENABLED` parameter to `True` in the config file. Or by using the `--opts` parameter to change the weights path (for example `--opts MODEL.AMP_TEST.ENABLED True`).
-- Specify what GPU the model the model should run on using the environment variable `CUDA_VISIBLE_DEVICES`. This should be in front of the `python run.py` command. For example, `CUDA_VISIBLE_DEVICES=0 python run.py -c config.yml -i data/inference_dir -o results_dir`. This will run the model on GPU 0. To run on CPU use `CUDA_VISIBLE_DEVICES="" python run.py -c config.yml -i data/inference_dir -o results_dir`.
+- Specify what GPU the model the model should run on using the environment variable `CUDA_VISIBLE_DEVICES`. This should be in front of the `python inference.py` command. For example, `CUDA_VISIBLE_DEVICES=0 python inference.py -c config.yml -i data/inference_dir -o results_dir`. This will run the model on GPU 0. To run on CPU use `CUDA_VISIBLE_DEVICES="" python inference.py -c config.yml -i data/inference_dir -o results_dir`.
 
 </details>
 
@@ -368,7 +375,7 @@ For a small tutorial using some concrete examples see the [`tutorial`][tutorial_
 ## Evaluation
 The Laypa repository also contains a few tools used to evaluate the results generated by the model.
 
-The first tool is a visual comparison between the predictions of the model and the ground truth. This is done as an overlay of the classes over the original image. The overlay class names and colors are taken from the dataset catalog. The tool to do this is [`visualization.py`][eval_link]. The visualization has almost the same arguments as the training command ([`main.py`][main_link]).
+The first tool is a visual comparison between the predictions of the model and the ground truth. This is done as an overlay of the classes over the original image. The overlay class names and colors are taken from the dataset catalog. The tool to do this is [`visualization.py`][eval_link]. The visualization has almost the same arguments as the training command ([`train.py`][train_link]).
 
 Required arguments:
 ```sh
@@ -517,8 +524,8 @@ If you discover a bug or missing feature that you would like to help with please
 [extra_defaults_link]: configs/extra_defaults.py
 [scripts_link]: scripts/
 [tutorial_link]: tutorial/
-[main_link]: main.py
-[run_link]: run.py
+[train_link]: train.py
+[inference_link]: inference.py
 [eval_link]: tooling/visualization.py
 [validation_link]: tooling/validation.py
 [xml_comparison_link]: tooling/xml_comparison.py

@@ -83,6 +83,7 @@ class OutputPageXML:
 
         self.output_dir = None
         self.page_dir = None
+        self.save_confidence_heatmap = save_confidence_heatmap
 
         if output_dir is not None:
             self.set_output_dir(output_dir)
@@ -92,7 +93,6 @@ class OutputPageXML:
         self.whitelist = set() if whitelist is None else set(whitelist)
         self.min_region_size = min_region_size
         self.rectangle_regions = set() if rectangle_regions is None else set(rectangle_regions)
-        self.save_confidence_heatmap = save_confidence_heatmap
 
     def set_output_dir(self, output_dir: str | Path):
         if isinstance(output_dir, str):
@@ -108,6 +108,8 @@ class OutputPageXML:
             self.logger.info(f"Could not find page dir ({page_dir}), creating one at specified location")
             page_dir.mkdir(parents=True)
         self.page_dir = page_dir
+        if self.save_confidence_heatmap:
+            self.confidence_dir = self.output_dir.joinpath("confidence")
 
     def set_whitelist(self, whitelist: Iterable[str]):
         self.whitelist = set(whitelist)
@@ -229,8 +231,7 @@ class OutputPageXML:
 
         return tensor
 
-    @staticmethod
-    def save_heatmap(scaled_confidence: torch.Tensor, confidence_output_path: Path):
+    def save_heatmap(self, scaled_confidence: torch.Tensor, image_path: Path):
         """
         Save a heatmap of the confidence.
 
@@ -238,6 +239,9 @@ class OutputPageXML:
             scaled_confidence (torch.Tensor): confidence as tensor.
             confidence_output_path (Path): path to save the heatmap.
         """
+        self.confidence_dir.mkdir(parents=True, exist_ok=True)
+        confidence_output_path = self.confidence_dir.joinpath(image_path.stem + "_confidence.png")
+
         confidence_grayscale = (scaled_confidence * 255).cpu().numpy().astype(np.uint8)
         confidence_colored = cv2.applyColorMap(confidence_grayscale, cv2.COLORMAP_PLASMA)[..., ::-1]
         with AtomicFileName(file_path=confidence_output_path) as path:
@@ -312,12 +316,11 @@ class OutputPageXML:
         page.new_page(image_path.name, str(old_height), str(old_width))
 
         if self.xml_regions.mode == "region":
-            confidence_output_path = self.page_dir.joinpath(image_path.stem + "_confidence.png")
             sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg)
 
             # Apply a color map
             if self.save_confidence_heatmap:
-                self.save_heatmap(confidence, confidence_output_path)
+                self.save_heatmap(confidence, image_path)
 
             sem_seg_classes = sem_seg_classes.cpu().numpy()
             mean_confidence = torch.mean(confidence).cpu().numpy().item()
@@ -376,12 +379,11 @@ class OutputPageXML:
 
         elif self.xml_regions.mode in ["baseline", "start", "end", "separator"]:
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            confidence_output_path = self.page_dir.joinpath(image_path.stem + "_confidence.png")
             sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
 
             # Apply a color map
             if self.save_confidence_heatmap:
-                self.save_heatmap(confidence, confidence_output_path)
+                self.save_heatmap(confidence, image_path)
 
             sem_seg_classes = sem_seg_classes.cpu().numpy()
             mean_confidence = torch.mean(confidence).cpu().numpy().item()
@@ -401,13 +403,12 @@ class OutputPageXML:
 
         elif self.xml_regions.mode in ["baseline_separator", "top_bottom"]:
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            confidence_output_path = self.page_dir.joinpath(image_path.stem + "_confidence.png")
 
             sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
 
             # Apply a color map
             if self.save_confidence_heatmap:
-                self.save_heatmap(confidence, confidence_output_path)
+                self.save_heatmap(confidence, image_path)
 
             sem_seg_classes = sem_seg_classes.cpu().numpy()
             mean_confidence = torch.mean(confidence).cpu().numpy().item()

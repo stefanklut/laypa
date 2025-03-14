@@ -14,7 +14,6 @@ from detectron2.modeling import build_model
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data._utils.collate import collate, default_collate_fn_map
 from tqdm import tqdm
-from ultralytics import YOLO
 
 from core.setup import setup_cfg, setup_logging
 from data.augmentations import build_augmentation
@@ -34,9 +33,6 @@ def get_arguments() -> argparse.Namespace:
     detectron2_args.add_argument("-c", "--config", help="config file", required=True)
     detectron2_args.add_argument("--opts", nargs="+", help="optional args to change", action="extend", default=[])
 
-    yolo_args = parser.add_argument_group("YOLO")
-    yolo_args.add_argument("--yolo", help="yolo model", type=str, default="yolo11n.pt")
-
     io_args = parser.add_argument_group("IO")
     io_args.add_argument(
         "-i",
@@ -51,6 +47,11 @@ def get_arguments() -> argparse.Namespace:
 
     page_xml_args = parser.add_argument_group("PageXML")
     page_xml_args.add_argument("-w", "--whitelist", nargs="+", help="Input folder", type=str, action="extend")
+    page_xml_args.add_argument(
+        "--save_confidence_heatmap",
+        help="Save the confidence heatmap",
+        action="store_true",
+    )
 
     dataloader_args = parser.add_argument_group("Dataloader")
     dataloader_args.add_argument("--num_workers", help="Number of workers to use", type=int, default=4)
@@ -65,7 +66,7 @@ class Predictor(DefaultPredictor):
     Predictor runs the model specified in the config, on call the image is processed and the results dict is output
     """
 
-    def __init__(self, cfg: CfgNode, yolo_model: str = "yolo11n.pt"):
+    def __init__(self, cfg: CfgNode):
         """
         Predictor runs the model specified in the config, on call the image is processed and the results dict is output
 
@@ -74,7 +75,7 @@ class Predictor(DefaultPredictor):
         """
         self.cfg = cfg.clone()  # cfg can be modified by model
 
-        self.model = YOLO(yolo_model)
+        self.model = build_model(self.cfg)
         self.model.eval()
 
         if len(cfg.DATASETS.TEST):
@@ -90,6 +91,12 @@ class Predictor(DefaultPredictor):
             raise ValueError(f"Unrecognized precision: {cfg.MODEL.AMP_TEST.PRECISION}")
 
         assert self.cfg.INPUT.FORMAT in ["RGB", "BGR"], self.cfg.INPUT.FORMAT
+
+        checkpointer = DetectionCheckpointer(self.model)
+        if not cfg.TEST.WEIGHTS:
+            raise FileNotFoundError("Cannot do inference without weights. Specify a checkpoint file to --opts TEST.WEIGHTS")
+
+        checkpointer.load(cfg.TEST.WEIGHTS)
 
         self.aug = T.AugmentationList(build_augmentation(cfg, "test"))
 
@@ -118,9 +125,21 @@ class Predictor(DefaultPredictor):
     #         if self.cfg.INPUT.RESIZE_MODE != "none":
     #             image = torch.nn.functional.interpolate(image[None], mode="bilinear", size=(new_height, new_width))[0]
 
-    #
+    #         inputs = {"image": image, "height": new_height, "width": new_width}
 
-    def cpu_call(self, data: AugInput, device: Optional[str] = None):
+    #         with torch.autocast(
+    #             device_type=self.cfg.MODEL.DEVICE,
+    #             enabled=self.cfg.MODEL.AMP_TEST.ENABLED,
+    #             dtype=self.precision,
+    #         ):
+    #             predictions = self.model([inputs])[0]
+
+    #         # if torch.isnan(predictions["sem_seg"]).any():
+    #         #     raise ValueError("NaN in predictions")
+
+    #         return predictions, height, width
+
+    def cpu_call(self, data: AugInput, device: Optional[str] = None) -> tuple[dict, int, int]:
         """
         Run the model on the image with preprocessing on the cpu
 
@@ -139,26 +158,37 @@ class Predictor(DefaultPredictor):
 
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
-            if data.image is None:
-                raise ValueError("No image found in data")
 
             height, width, channels = data.image.shape
             assert channels == 3, f"Must be a RBG image, found {channels} channels"
             # In place augmentation
-            # transform = self.aug(data)
-            # image = torch.as_tensor(data.image, dtype=torch.float32, device=device).permute(2, 0, 1)
-
-            image = data.image
+            transform = self.aug(data)
+            image = torch.as_tensor(data.image, dtype=torch.float32, device=device).permute(2, 0, 1)
 
             if self.cfg.INPUT.FORMAT == "BGR":
                 # whether the model expects BGR inputs or RGB
-                image = image[:, :, [2, 1, 0]]
+                image = image[[2, 1, 0], :, :]
 
-            results = self.model.predict(image, imgsz=640)
+            inputs = {"image": image, "height": image.shape[1], "width": image.shape[2]}
 
-            return results, height, width
+            # If we predict on CPU, use full precision
+            precision = self.precision if device != "cpu" else torch.float32
 
-    def __call__(self, data: AugInput, device: Optional[str] = None):
+            with torch.autocast(
+                device_type=device,
+                enabled=self.cfg.MODEL.AMP_TEST.ENABLED,
+                dtype=precision,
+            ):
+                self.model.to(device)
+
+                predictions = self.model([inputs])[0]
+
+            # if torch.isnan(predictions["sem_seg"]).any():
+            #     raise ValueError("NaN in predictions")
+
+        return predictions, height, width
+
+    def __call__(self, data: AugInput, device: Optional[str] = None) -> tuple[dict, int, int]:
         """
         Run the model on the image with preprocessing
 
@@ -219,7 +249,6 @@ class SavePredictor(Predictor):
     def __init__(
         self,
         cfg: CfgNode,
-        yolo_model: str,
         input_paths: str | Path | Sequence[str | Path],
         output_dir: str | Path,
         output_page: OutputPageXML,
@@ -236,7 +265,7 @@ class SavePredictor(Predictor):
             num_workers (int): number of workers to use
 
         """
-        super().__init__(cfg, yolo_model=yolo_model)
+        super().__init__(cfg)
 
         self.logger = logging.getLogger(get_logger_name())
 
@@ -318,12 +347,11 @@ class SavePredictor(Predictor):
 
         outputs = self.__call__(data)
 
-        yolo_output = outputs[0][0]
-
+        output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(output_image, dim=-3).cpu().numpy()
 
         self.output_page.link_image(input_path)
-        self.output_page.generate_single_page_yolo(yolo_output, input_path, old_height=outputs[1], old_width=outputs[2])
+        self.output_page.generate_single_page(output_image, input_path, old_height=outputs[1], old_width=outputs[2])
 
     def process(self):
         """
@@ -362,11 +390,11 @@ def main(args: argparse.Namespace) -> None:
         whitelist=args.whitelist,
         rectangle_regions=cfg.PREPROCESS.REGION.RECTANGLE_REGIONS,
         min_region_size=cfg.PREPROCESS.REGION.MIN_REGION_SIZE,
+        save_confidence_heatmap=args.save_confidence_heatmap,
     )
 
     predictor = SavePredictor(
         cfg=cfg,
-        yolo_model=args.yolo,
         input_paths=args.input,
         output_dir=args.output,
         output_page=output_page,

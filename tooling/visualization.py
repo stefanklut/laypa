@@ -17,8 +17,8 @@ sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.setup import setup_cfg
 from data.dataset import metadata_from_classes
 from data.mapper import AugInput
+from inference import Predictor
 from page_xml.xml_converters.xml_to_sem_seg import XMLToSemSeg
-from run import Predictor
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import SUPPORTED_IMAGE_FORMATS, get_file_paths
 from utils.logging_utils import get_logger_name
