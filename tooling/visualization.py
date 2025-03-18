@@ -86,7 +86,7 @@ def main(args) -> None:
     # Setup config
     cfg = setup_cfg(args)
 
-    xml_converter = XMLToSemSeg(cfg)
+    xml_converter = XMLToSemSeg(cfg)  # type: ignore
     metadata = metadata_from_classes(xml_converter.xml_regions.regions)
 
     image_paths = get_file_paths(args.input, SUPPORTED_IMAGE_FORMATS, cfg.PREPROCESS.DISABLE_CHECK)

@@ -191,7 +191,7 @@ def main(args) -> None:
 
     xml_list = get_file_paths(args.input, formats=[".xml"])
 
-    xml_converter = XMLToSemSeg(cfg)
+    xml_converter = XMLToSemSeg(cfg)  # type: ignore
 
     viewer = Viewer(xml_converter=xml_converter, output_dir=args.output, output_type=args.output_type)
     viewer.run(xml_list)
