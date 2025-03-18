@@ -64,7 +64,7 @@ class _XMLConverter:
             dict[str, Any]: A dictionary containing the converted configuration values.
         """
         ret = {
-            "xml_regions": XMLRegions(cfg),
+            "xml_regions": XMLRegions(cfg),  # type: ignore
             "square_lines": cfg.PREPROCESS.BASELINE.SQUARE_LINES,
         }
         return ret

@@ -1926,7 +1926,7 @@ def test(args) -> None:
 
     cfg = setup_cfg(args)
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not (args.keep_tmp_dir)) as tmp_dir:
-        preprocesser = preprocess.Preprocess(cfg)
+        preprocesser = preprocess.Preprocess(cfg)  # type: ignore
         preprocesser.set_output_dir(tmp_dir)
         output = preprocesser.process_single_file(input_path)
 

@@ -136,7 +136,7 @@ class PreprocessYOLO:
             "augmentations": build_augmentation(cfg, "preprocess"),
             "input_paths": input_paths,
             "output_dir": output_dir,
-            "xml_regions": XMLRegions(cfg),
+            "xml_regions": XMLRegions(cfg),  # type: ignore
             "square_lines": cfg.PREPROCESS.BASELINE.SQUARE_LINES,
             "n_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
             "disable_check": cfg.PREPROCESS.DISABLE_CHECK,
