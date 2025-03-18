@@ -4,8 +4,8 @@ from typing import Optional, Sequence
 
 from detectron2.config import CfgNode
 
-from datasets import dataset
-from datasets.preprocess import Preprocess
+from data import dataset
+from data.preprocess import Preprocess
 from utils.input_utils import clean_input_paths
 
 

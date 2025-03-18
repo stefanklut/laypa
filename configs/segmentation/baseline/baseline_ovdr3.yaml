@@ -1,6 +1,6 @@
 _BASE_: ../segmentation_base.yaml
 
-OUTPUT_DIR: /encrypted/baseline
+OUTPUT_DIR: ./output/baseline
 
 NAME: ovdr_long_training
 
@@ -15,14 +15,14 @@ PREPROCESS:
     MAX_SIZE: -1
 
 INPUT:
+  FORMAT: RGB
+
   RESIZE_MODE: "shortest_edge"
   MIN_SIZE_TRAIN_SAMPLING: choice
   MIN_SIZE_TRAIN: (1024,)
   MAX_SIZE_TRAIN: 2024
 
   MAX_SIZE_TEST: 2024
-
-  FORMAT: RGB
 
   # GRAYSCALE:
   #   PROBABILITY: 0.1

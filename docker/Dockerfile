@@ -1,6 +1,6 @@
-FROM condaforge/mambaforge
+FROM condaforge/miniforge3
 
-ENV DEBIAN_FRONTEND noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -y && \
     apt-get dist-upgrade -y && \
@@ -26,8 +26,8 @@ RUN mamba env create -f environment.yml && \
     rm -r /opt/conda/envs/laypa/nsight* 
 
 # SHELL ["conda", "run", "-n", "laypa", "/bin/bash", "-c"]
-ENV PATH /opt/conda/envs/laypa/bin:$PATH
-ENV CONDA_DEFAULT_ENV laypa
+ENV PATH=/opt/conda/envs/laypa/bin:$PATH
+ENV CONDA_DEFAULT_ENV=laypa
 ENV ENV_NAME=laypa
 
 # Fix cuda permissions with the docker

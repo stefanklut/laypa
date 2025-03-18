@@ -13,11 +13,11 @@ from flask import Flask, Response, abort, jsonify, request
 from prometheus_client import Counter, Gauge, generate_latest
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))  # noqa: E402
-from datasets.mapper import AugInput
-from main import setup_cfg, setup_logging
+from data.mapper import AugInput
+from inference import Predictor
 from page_xml.output_pageXML import OutputPageXML
 from page_xml.xml_regions import XMLRegions
-from run import Predictor
+from train import setup_cfg, setup_logging
 from utils.image_utils import load_image_array_from_bytes
 from utils.logging_utils import get_logger_name
 
@@ -102,7 +102,7 @@ class PredictorGenPageWrapper:
         args.opts = ["TEST.WEIGHTS", str(weights_paths[0])]
 
         cfg = setup_cfg(args)
-        xml_regions = XMLRegions(cfg)
+        xml_regions = XMLRegions(cfg)  # type: ignore
         self.gen_page = OutputPageXML(xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={})
 
         self.predictor = Predictor(cfg=cfg)
@@ -136,6 +136,8 @@ def safe_predict(data, device):
     """
 
     try:
+        if predict_gen_page_wrapper.predictor is None:
+            raise TypeError("The predictor is not initialized. Ensure setup_model is called successfully.")
         return predict_gen_page_wrapper.predictor(data, device)
     except Exception as exception:
         # Catch CUDA out of memory errors
@@ -145,6 +147,8 @@ def safe_predict(data, device):
             logger.warning("CUDA OOM encountered, falling back to CPU.")
             torch.cuda.empty_cache()
             torch.cuda.reset_peak_memory_stats()
+            if predict_gen_page_wrapper.predictor is None:
+                raise TypeError("The predictor is not initialized. Ensure setup_model is called successfully.")
             return predict_gen_page_wrapper.predictor(data, "cpu")
 
 
@@ -199,6 +203,9 @@ def predict_image(
 
         outputs = safe_predict(data, device=predict_gen_page_wrapper.predictor.cfg.MODEL.DEVICE)
 
+        if outputs is None:
+            raise ValueError("The predictor did not return any outputs")
+
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
 
@@ -252,6 +259,7 @@ def abort_with_info(
     if info is None:
         info = ResponseInfo(status_code=status_code)  # type: ignore
     info["error_message"] = error_message
+    info["status_code"] = status_code
     response = jsonify(info)
     response.status_code = status_code
     abort(response)
@@ -328,7 +336,7 @@ def predict() -> tuple[Response, int]:
     if data is None:
         abort_with_info(500, "Image could not be loaded correctly", response_info)
 
-    future = executor.submit(predict_image, data["image"], data["dpi"], image_name, identifier, model_name, whitelist)
+    future = executor.submit(predict_image, data["image"], data["dpi"], image_name, identifier, model_name, whitelist)  # type: ignore
     future.add_done_callback(check_exception_callback)
 
     response_info["status_code"] = 202

@@ -113,8 +113,15 @@ echo "Change to directory of script..."
 DIR_OF_SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 cd $DIR_OF_SCRIPT
 
+tmp_dir=$(mktemp -d)
+
 echo "Copy files for building docker..."
-cp -r -T $LAYPA/ laypa.multistage
+cp -r -T $LAYPA/ $tmp_dir/laypa.multistage
+cp Dockerfile.multistage $tmp_dir/Dockerfile
+cp _entrypoint.sh $tmp_dir/_entrypoint.sh
+cp .dockerignore $tmp_dir/.dockerignore
+
+cd $tmp_dir
 # HACK Fix git linking in submodules
 if [[ -f $LAYPA/.git ]]; then
 	GIT_DIR=$( cd $LAYPA && git rev-parse --git-dir )
@@ -122,15 +129,13 @@ if [[ -f $LAYPA/.git ]]; then
 	sed 's/.*worktree.*/\tworktree = ../' laypa.multistage/.git/config > laypa.multistage/.git/config
 fi
 
-# Checkout to make sure you are not on dev branch
 cd laypa.multistage
-# git checkout main
 git rev-parse HEAD > version_info
 cd ..
 
 echo "Building docker image..."
 # docker build --squash --no-cache . -t loghi/docker.laypa
-docker build --no-cache . -t loghi/docker.laypa -f Dockerfile.multistage
+docker build --no-cache . -t loghi/docker.laypa -f Dockerfile
 
 rm -rf laypa.multistage
 docker system prune -f

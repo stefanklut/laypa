@@ -29,7 +29,7 @@ class XMLRegions:
             region_types (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
         self.mode = mode
-        if self.mode == "region":
+        if mode == "region" or mode == "class_baseline":
             assert regions is not None
 
             self._regions = []
@@ -48,7 +48,7 @@ class XMLRegions:
             self.regions = regions
             self.region_types = region_type
             self.merged_regions = merge_regions
-        else:
+        if mode != "region":
             assert line_width is not None
 
             self._regions = self._build_regions()
@@ -80,7 +80,7 @@ class XMLRegions:
         """
         Return argparser that has the arguments required for the pageXML regions.
 
-        use like this: parser = argparse.ArgumentParser(parents=[XMLConverter.get_parser()])
+        use like this: parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()])
 
         Returns:
             argparse.ArgumentParser: the argparser for regions
@@ -107,7 +107,6 @@ class XMLRegions:
             "-m",
             "--mode",
             default="region",
-            choices=["baseline", "region", "start", "end", "separator", "baseline_separator"],
             type=str,
             help="Output mode",
         )
@@ -232,7 +231,7 @@ class XMLRegions:
             list[str]: the names of all the classes currently used
         """
         remaining_regions = ["background"]
-        if self.mode == "region":
+        if self.mode == "region" or self.mode == "class_baseline":
             removed_regions = set()
             if self.merged_regions is not None:
                 for values in self.merged_regions.values():

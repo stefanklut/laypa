@@ -137,9 +137,11 @@ dmypy.json
 
 # Output
 output/
+runs/
 
 # Pretrained_models
 *.pth
+*.pt
 
 # Tutorial
 tutorial/*results*/
@@ -147,5 +149,5 @@ tutorial/*results*/
 # Redis
 *.rdb
 
-# Transcibus
+# Transkribus
 doc.xml

@@ -3,10 +3,8 @@ from typing import Callable, Dict, Optional, Sequence, Union
 import torch
 from detectron2.config import configurable
 from detectron2.layers import ShapeSpec
-from detectron2.modeling.meta_arch.semantic_seg import (
-    SEM_SEG_HEADS_REGISTRY,
-    SemSegFPNHead,
-)
+from detectron2.modeling.meta_arch import SEM_SEG_HEADS_REGISTRY
+from detectron2.modeling.meta_arch.semantic_seg import SemSegFPNHead
 from torch.nn import functional as F
 
 

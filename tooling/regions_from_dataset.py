@@ -10,10 +10,11 @@ from pathlib import Path
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.pageXML_parser import PageXMLParser
-from utils.input_utils import get_file_paths, supported_image_formats
-from utils.path_utils import image_path_to_xml_path
 from xml_comparison import pretty_print
+
+from page_xml.pageXML_parser import PageXMLParser
+from utils.input_utils import SUPPORTED_IMAGE_FORMATS, get_file_paths
+from utils.path_utils import image_path_to_xml_path
 
 
 def get_arguments() -> argparse.Namespace:
@@ -56,7 +57,7 @@ def main(args):
         args (argparse.Namespace): command line arguments
     """
 
-    image_paths = get_file_paths(args.input, supported_image_formats)
+    image_paths = get_file_paths(args.input, SUPPORTED_IMAGE_FORMATS)
     xml_paths = [image_path_to_xml_path(image_path) for image_path in image_paths]
 
     # xml_paths = get_file_paths(args.input, [".xml"])

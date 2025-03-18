@@ -42,7 +42,7 @@ Developed using the following software and hardware:
 <!-- TODO Change to recent information, maybe write small script te generate this information -->
 | Operating System                                                  | Python | PyTorch | Cudatoolkit | GPU                                   | CPU                                  | Success            |
 | ----------------------------------------------------------------- | ------ | ------- | ----------- | ------------------------------------- | ------------------------------------ | ------------------ |
-| Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1   | 11.7        | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark: |
+| Ubuntu 22.04.4 LTS (Linux-6.5.0-28-generic-x86_64-with-glibc2.35) | 3.12.3 | 2.3.0   | 12.1        | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark: |
 
 <details>
 <summary> Click here to show all tested environments </summary>
@@ -50,11 +50,11 @@ Developed using the following software and hardware:
 <!-- TODO Add more with testing -->
 More coming soon
 
-Run [`utils/collect_env_info.py`][collect_env_info_link] to retrieve your environment information, and add them via [pull request][pull_request_link].
+Run [`tooling/collect_env_info.py`][collect_env_info_link] to retrieve your environment information, and add them via [pull request][pull_request_link].
 
 | Operating System                                                  | Python | PyTorch | Cudatoolkit | GPU                                   | CPU                                  | Success            |
 | ----------------------------------------------------------------- | ------ | ------- | ----------- | ------------------------------------- | ------------------------------------ | ------------------ |
-| Ubuntu 22.04.3 LTS (Linux-6.2.0-33-generic-x86_64-with-glibc2.35) | 3.11.4 | 2.0.1   | 11.7        | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark: |
+| Ubuntu 22.04.4 LTS (Linux-6.5.0-28-generic-x86_64-with-glibc2.35) | 3.12.3 | 2.3.0   | 12.1        | NVIDIA GeForce RTX 3080 Ti Laptop GPU | 12th Gen Intel(R) Core(TM) i9-12900H | :white_check_mark: |
 
 </details>
 
@@ -103,15 +103,6 @@ If not already installed, install the Docker Engine ([install instructions][dock
 Laypa now has a release on dockerhub. Using the docker of `loghi/docker.laypa`, should pull the corresponding laypa docker directly from docker hub. If this fails from some reason it can be pulled manually from [here][dockerhub_link]. If it is outdated or requires differences to the source code, please try the [Manual Installation](#manual-installation).
 
 #### Manual Installation
-Copy the docker install scripts and Dockerfile(s) to a temporary directory. This is necessary due to the script having to copy the directory it is in. This is not allowed and thus a different external directory is used as build context.
-
-```sh
-# Or other location for a temporary directory
-tmpdir=$(mktemp -d)
-cp -r docker $tmpdir
-cd $tmpdir/docker
-```
-
 Building the docker using the provided script:
 ```sh
 ./buildImage.sh <PATH_TO_LAYPA>
@@ -122,38 +113,22 @@ Or the multistage build with some profiler tools taken out (might be smaller):
 ./buildImage.multistage.sh <PATH_TO_LAYPA>
 ```
 
-
-Or the alternative docker using micromamba (might be more unstable, but builds are faster):
-```sh
-./buildImage.micromamba.sh <PATH_TO_LAYPA>
-```
-
-
 <details>
-<summary> Click for manual docker install instructions </summary>
+<summary> Click for manual docker install instructions (not recommended) </summary>
 
 First copy the Laypa directory to the temporary docker directory:
 ```sh
-cp -r <PARENT_DIR>/laypa $tmpdir/docker
+tmp_dir=$(mktemp -d)
+cp -r -T <PATH_TO_LAYPA> $tmp_dir/laypa
+cp Dockerfile $tmp_dir/Dockerfile
+cp _entrypoint.sh $tmp_dir/_entrypoint.sh
+cp .dockerignore $tmp_dir/.dockerignore
 ```
 
-Change the working dir to the docker directory:
+Then build the docker image using the following command:
 ```sh
-cd $tmpdir/docker
+docker build -t loghi/docker.laypa $tmp_dir
 ```
-
-Checkout to make sure you are not on the development branch:
-```sh
-cd laypa
-git checkout main
-cd ..
-```
-
-Build the docker using docker build:
-```sh
-docker build --no-cache . -t loghi/docker.laypa
-```
-
 </details>
 
 
@@ -194,7 +169,7 @@ When successful the docker image should be available under the name `loghi/docke
 ```sh
 docker image ls
 ```
-And checking if loghi/docker.laypa is present in the list of built images.
+And checking if `loghi/docker.laypa` is present in the list of built images.
 
 ### Pretrained models
 Some initial pretrained models can be found [here][pretrained_models_link].
@@ -233,13 +208,13 @@ Some dataset that should work with laypa are listed below, some preprocessing ma
 - [Bozen][bozen_link]
 
 ## Training 
-Three things are required to train a model using [`main.py`][main_link].
+Three things are required to train a model using [`train.py`][train_link].
 1. A config file, See [`configs/segmentation`][configs_link] for examples of config files and their contents.
 2. Ground truth training/validation data in the form of images and their corresponding pageXML. The training/validation data can be provided by giving either a `.txt` file containing image paths, the image paths themselves, or the path of a directory containing the images.
 
 Required arguments:
 ```sh
-python main.py \
+python train.py \
     -c/--config <CONFIG> \
     -t/--train <TRAIN [TRAIN ...]> \ 
     -v/--val <VAL [VAL ...]>
@@ -250,7 +225,7 @@ python main.py \
 
 Optional arguments:
 ```sh
-python main.py \
+python train.py \
     -c/--config CONFIG \
     -t/--train TRAIN [TRAIN ...] \
     -v/--val VAL [VAL ...] \
@@ -271,12 +246,31 @@ The remaining arguments are all for training with multiple GPUs or on multiple n
 As indicated by the trailing dots multiple training sets can be passed to the training model at once. This can also be done using the train argument multiple types. The `.txt` files can also be mixed with the directories. For example:
 ```sh
 # Pass multiple directories at once
-python main.py -c config.yml -t data/training_dir1 data/training_dir2 -v data/validation_set
+python train.py -c config.yml -t data/training_dir1 data/training_dir2 -v data/validation_set
 # Pass multiple directories with multiple arguments
-python main.py -c config.yml -t data/training_dir1 -t data/training_dir2 -v data/validation_set
+python train.py -c config.yml -t data/training_dir1 -t data/training_dir2 -v data/validation_set
 # Mix training directory with txt file
-python main.py -c config.yml -t data/training_dir -t data/training_file.txt -v data/validation_set
+python train.py -c config.yml -t data/training_dir -t data/training_file.txt -v data/validation_set
 ```
+
+> [!TIP]
+> See the tips and tricks section below for more information on how to train a model.
+
+<details>
+<summary> Tips and Tricks </summary>
+
+- When a models output is close to what you want, but not quite there yet, training the model from scratch can be a waste of time. Instead, you can finetune the existing model with ground truth that better matches your use case. This can be done by changing the `MODEL.WEIGHTS` parameter in the config file to the path of the existing model. Or by using the `--opts` parameter to change the weights path (for example `--opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>`).
+- If you notice a specific part of the data the model is failing on you can add more of that data to the training set. This can be done by adding the data to the training set and running the training again.
+- If a training was interrupted and you want to continue training from the last checkpoint, you can use the `--opts` parameter to change the `TRAIN.WEIGHTS` parameter to the path of the last checkpoint (for example `--opts TRAIN.WEIGHTS <PATH_TO_WEIGHTS>`). This can also be done by changing the `TRAIN.WEIGHTS` parameter in the config file. 
+- When a model does not fit on the GPU, the batch size can be reduced using the `--opts` parameter. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8. Or you can turn on the AMP (Automatic Mixed Precision) using the `--opts MODEL.AMP_TRAIN.ENABLED True` parameter.
+- When the model is not learning, the learning rate can be changed using the `--opts` parameter. For example, `--opts SOLVER.BASE_LR 0.0001` sets the learning rate to 0.0001. The learning rate can also be changed using the `--opts` parameter. For example, `--opts SOLVER.BASE_LR 0.0001` sets the learning rate to 0.0001.
+- When the loss during training becomes `nan`, `inf` or `0` there is something wrong with the training. Try changing the learning rate or the batch size.
+- The [configs][configs_link] directory contains some example config files. These can be used as a starting point for your own config file. Also see the [defaults.py][defaults_link] and [extra_defaults.py][extra_defaults_link] files for more information on what can be set in the config file. Config files can inherit from other config files, this can be done by setting the `_BASE_` parameter in the config file.
+- Never include training examples in the validation set. This will cause the validation to not be a good representation of the model's performance. This can lead to overfitting.
+- A good rule of thumb for a validation set is to have 10% of the training set. To turn you dataset into a training and validation set you can use the [tooling/dataset_creation.py](tooling/dataset_creation.py) file. This file will split the dataset into a training and validation set. The split is done by taking the first 80% of the dataset as the training set, 10% as the validation set, and the last 10% as the test set. The test set is not used for training or validation. Or use the `--split` parameter to change these percentages. 
+
+</details>
+
 
 ## Inference
 To run the trained model on images without ground truth, the images need to be in a single directory. The output consists of either pageXML in the case of regions or a mask in the other cases. This mask can then be processed using other tools to turn the pixel predictions into valid pageXML (for example on baselines). As stated, the regions are turned into polygons for the pageXML within the program already.
@@ -284,14 +278,14 @@ To run the trained model on images without ground truth, the images need to be i
 How to run the Laypa inference individually will be explained first, and how to run it with the full scripts that include the conversion from images to pageXML with come after.
 
 ### Without External Processing
-To just run the Laypa inference in [`run.py`][run_link], you need three things:
+To just run the Laypa inference in [`inference.py`][inference_link], you need three things:
 1. A config file, See [`configs/segmentation`][configs_link] for examples of config files and their contents.
 2. The data can be provided by giving either a `.txt` file containing image paths, the image paths themselves, or the path of a directory containing the images.
 3. A location to which the processed files can be written. The directory will be created if it does not exist yet.
 
 Required arguments
 ```sh
-python run.py \
+python inference.py \
     -c/--config CONFIG \ 
     -i/--input INPUT \ 
     -o/--output OUTPUT
@@ -301,7 +295,7 @@ python run.py \
 
 Optional arguments:
 ```sh
-python run.py \
+python inference.py \
     -c/--config CONFIG \ 
     -i/--input INPUT \ 
     -o/--output OUTPUT
@@ -311,11 +305,26 @@ The optional arguments are shown using square brackets. The final parameter `--o
 List values have to be overridden by encapsulating the whole list with quotes like `--opts PREPROCESS.REGION.RECTANGLE_REGIONS '["Photo"]'` 
 </details>
 
-An example of how to call the `run.py` command is given below:
+To set what weights the model should use, the `MODEL.WEIGHTS` parameter in the config file should be set to the path of the weights file. If the weights are not in the config file, the weights can be set using the `--opts` parameter.
+An example of how to call the `inference.py` command is given below:
 ```sh
-python run.py -c config.yml -i data/inference_dir -o results_dir
+python inference.py -c config.yml -i data/inference_dir -o results_dir
+```
+If setting the weights using the `--opts` parameter the command would look as follows:
+```sh
+python inference.py -c config.yml -i data/inference_dir -o results_dir --opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>
 ```
 
+> [!TIP]
+> See the tips and tricks section below for more information on how to run the model.
+
+<details>
+<summary> Tips and Tricks </summary>
+
+- You can run the model with less GPU requirement by using AMP (Automatic Mixed Precision). This can be done by setting the `MODEL.AMP_TEST.ENABLED` parameter to `True` in the config file. Or by using the `--opts` parameter to change the weights path (for example `--opts MODEL.AMP_TEST.ENABLED True`).
+- Specify what GPU the model the model should run on using the environment variable `CUDA_VISIBLE_DEVICES`. This should be in front of the `python inference.py` command. For example, `CUDA_VISIBLE_DEVICES=0 python inference.py -c config.yml -i data/inference_dir -o results_dir`. This will run the model on GPU 0. To run on CPU use `CUDA_VISIBLE_DEVICES="" python inference.py -c config.yml -i data/inference_dir -o results_dir`.
+
+</details>
 
 ### With External Java Processing
 <!-- TODO Remove the need for Java -->
@@ -366,14 +375,13 @@ For a small tutorial using some concrete examples see the [`tutorial`][tutorial_
 ## Evaluation
 The Laypa repository also contains a few tools used to evaluate the results generated by the model.
 
-The first tool is a visual comparison between the predictions of the model and the ground truth. This is done as an overlay of the classes over the original image. The overlay class names and colors are taken from the dataset catalog. The tool to do this is [`eval.py`][eval_link]. The visualization has almost the same arguments as the training command ([`main.py`][main_link]).
+The first tool is a visual comparison between the predictions of the model and the ground truth. This is done as an overlay of the classes over the original image. The overlay class names and colors are taken from the dataset catalog. The tool to do this is [`visualization.py`][eval_link]. The visualization has almost the same arguments as the training command ([`train.py`][train_link]).
 
 Required arguments:
 ```sh
-python eval.py \
-    -c/--config <CONFIG> \
-    -t/--train <TRAIN [TRAIN ...]> \ 
-    -v/--val <VAL [VAL ...]>
+python tooling/visualization.py \
+    -c/--config CONFIG \
+    -i/--input INPUT [INPUT ...] \
 ```
 
 <details>
@@ -381,34 +389,55 @@ python eval.py \
 
 Optional arguments:
 ```sh
-python eval.py \
+python tooling/visualization.py \
     -c/--config CONFIG \
-    -t/--train TRAIN [TRAIN ...] \
-    -v/--val VAL [VAL ...] \
+    -i/--input INPUT [INPUT ...] \
+    [-o/--output OUTPUT] \
     [--tmp_dir TMP_DIR] \
     [--keep_tmp_dir]
     [--opts OPTS [OPTS ...]] \
-    [--eval_path EVAL_PATH] \
     [--sorted] \
     [--save SAVE]
 ```
 
-The optional arguments are shown using square brackets. The `--tmp_dir` parameter specifies a folder in which to store temporary files. While the `--keep_tmp_dir` parameter prevents the temporary files from being deleted after a run (mostly for debugging). The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8.
+The optional arguments are shown using square brackets. The `-o/output` parameter specifies the output directory for the visualization masks. The `--tmp_dir` parameter specifies a folder in which to store temporary files. While the `--keep_tmp_dir` parameter prevents the temporary files from being deleted after a run (mostly for debugging). The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8. The `--sorted` parameter sorts the images based on the order in the operating system. The `--save` parameter specifies what type of file the visualization should be saved as. The options are "pred" for the prediction, "gt" for the ground truth, "both" for both the prediction and the ground truth and "all" for all of the previous. If just `--save` is given the default is "all".
 </details>
 
-Example of running [`eval.py`][eval_link]:
+Example of running [`visualization.py`][eval_link]:
 
 ```sh
-python eval.py -c config.yml -i input_dir
+python tooling/visualization.py -c config.yml -i input_dir
 ```
 
-The [`eval.py`][eval_link] will then open a window with both the prediction and the ground truth side by side (if the ground truth exists). Allowing for easier comparison. The visualization masks are created in the same way the preprocessing converts pageXML to masks.
+The [`visualization.py`][eval_link] will then open a window with both the prediction and the ground truth side by side (if the ground truth exists). Allowing for easier comparison. The visualization masks are created in the same way the preprocessing converts pageXML to masks.
 
-The second tool is a program to compare the similarity of two sets of pageXML. This can mean either comparing ground truth to predicted pageXML, or determining the similarity of two annotations by different people. This tool is the [`xml_comparison.py`][xml_comparison_link] file. The comparison allows you to specify how regions and baseline should be drawn in when creating the pixel masks. The pixel masks are then compared based on their Intersection over Union (IoU) and Accuracy (Acc) scores. For the sake of the Accuracy metric one of the two sets needs to be specified as the ground truth set. So one set is the ground truth directory (`--gt`) argument and the other is the input directory (`--input`) argument.
+The second tool [`validation.py`][validation_link] is used to get the validation scores of a model. This is done by comparing the prediction of the model to the ground truth. The validation scores are the Intersection over Union (IoU) and Accuracy (Acc) scores. The tool requires the input directory (`--input`) where there is also a page folder inside the input folder. The page folder should contain the xmls with the ground truth baselines/regions. To run the validation tool use the following command:
 
 Required arguments:
 ```sh
-python xml_comparison.py \ 
+python tooling/validation.py \ 
+    -c/--config CONFIG \
+    -i/--input INPUT
+```
+
+<details>
+<summary> Click to see all arguments </summary>
+
+Optional arguments:
+```sh
+python validation.py \ 
+    -c/--config CONFIG \
+    -i/--input INPUT \
+    [--opts OPTS [OPTS ...]]
+```
+
+The optional arguments are shown using square brackets. The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>` sets the path to the weights file. This needs to be done if the weights are not in the config file. Without `MODEL.WEIGHTS` the weights are taken from the config file. If the weights are not in the config file and not specified with `MODEL.WEIGHTS` the program will return results for an untrained model.
+
+The third tool is a program to compare the similarity of two sets of pageXML. This can mean either comparing ground truth to predicted pageXML, or determining the similarity of two annotations by different people. This tool is the [`xml_comparison.py`][xml_comparison_link] file. The comparison allows you to specify how regions and baseline should be drawn in when creating the pixel masks. The pixel masks are then compared based on their Intersection over Union (IoU) and Accuracy (Acc) scores. For the sake of the Accuracy metric one of the two sets needs to be specified as the ground truth set. So one set is the ground truth directory (`--gt`) argument and the other is the input directory (`--input`) argument.
+
+Required arguments:
+```sh
+python tooling/xml_comparison.py \ 
     -g/--gt GT [GT ...] \
     -i/--input INPUT [INPUT ...]
 ```
@@ -418,7 +447,7 @@ python xml_comparison.py \
 
 Optional arguments:
 ```sh
-python xml_comparison.py \ 
+python tooling/xml_comparison.py \ 
     -g/--gt GT [GT ...] \
     -i/--input INPUT [INPUT ...] \
     [-m/--mode {baseline,region,start,end,separator,baseline_separator}] \
@@ -437,7 +466,7 @@ The final tool is a program for showing the pageXML as mask images. This can hel
 
 Required arguments:
 ```sh
-python xml_viewer.py \ 
+python tooling/xml_viewer.py \ 
     -c/--config CONFIG \
     -i/--input INPUT [INPUT ...] \
     -o/--output OUTPUT [OUTPUT ...] 
@@ -448,7 +477,7 @@ python xml_viewer.py \
 
 Optional arguments:
 ```sh
-python xml_viewer.py \ 
+python tooling/xml_viewer.py \ 
     -c/--config CONFIG \
     -i/--input INPUT [INPUT ...] \
     -o/--output OUTPUT [OUTPUT ...] \
@@ -482,22 +511,25 @@ If you discover a bug or missing feature that you would like to help with please
 
 [cbad_link]: https://doi.org/10.5281/zenodo.2567397
 [voc_link]: https://doi.org/10.5281/zenodo.3517776
-[ohg_link]: https://doi.org/10.5281/zenodo.3517776
+[ohg_link]: https://doi.org/10.5281/zenodo.1322665
 [bozen_link]: https://doi.org/10.5281/zenodo.218236
 
 [pull_request_link]: https://github.com/stefanklut/laypa/pulls
 [issues_link]: https://github.com/stefanklut/laypa/issues
 [environment_link]: environment.yml
 [license_link]: LICENSE
-[collect_env_info_link]: utils/collect_env_info.py
+[collect_env_info_link]: tooling/collect_env_info.py
 [configs_link]: configs/segmentation/
+[defaults_link]: configs/defaults.py
+[extra_defaults_link]: configs/extra_defaults.py
 [scripts_link]: scripts/
 [tutorial_link]: tutorial/
-[main_link]: main.py
-[run_link]: run.py
-[eval_link]: eval.py
-[xml_comparison_link]: xml_comparison.py
-[xml_viewer_link]: xml_viewer.py
+[train_link]: train.py
+[inference_link]: inference.py
+[eval_link]: tooling/visualization.py
+[validation_link]: tooling/validation.py
+[xml_comparison_link]: tooling/xml_comparison.py
+[xml_viewer_link]: tooling/xml_viewer.py
 [start_flask_link]: /api/start_flask.sh
 [start_flask_local_link]: /api/start_flask_local.sh
 

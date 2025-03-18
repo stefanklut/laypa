@@ -1,30 +1,34 @@
 name: laypa
 channels:
-  # - default
-  - pytorch
-  - nvidia
-  - conda-forge
+      - pytorch
+      - nvidia
+      - conda-forge
+      - default
 dependencies:
-  - python=3
-  - numpy
-  - llvm-openmp<16 # For CPU affinity pytorch issues (https://github.com/pytorch/pytorch/issues/102269)
-  - pytorch
-  - cuda-toolkit
-  - torchvision
-  - opencv
-  - matplotlib
-  - scipy
-  - pip
-  - flask
-  - prometheus_client
-  - imagesize
-  - timm
-  - gunicorn
-  - pillow
-  - shapely
-  - natsort
-  # - pygments #Optional for colors
-  - pip:
-      - "git+https://github.com/facebookresearch/detectron2.git"
-      - "git+https://github.com/cocodataset/panopticapi.git"
-      - ./models/pixel_decoder/ops/
+      - python=3
+      - numpy=1
+      - llvm-openmp<16 # For CPU affinity pytorch issues (https://github.com/pytorch/pytorch/issues/102269)
+      - pytorch
+      - pytorch-cuda
+      - cuda-toolkit
+      - torchvision
+      - opencv
+      - matplotlib
+      - scipy
+      - pip=23
+      - flask
+      - prometheus_client
+      - imagesize
+      - timm
+      - gunicorn
+      - pillow
+      - shapely
+      - natsort
+      - ultralytics
+      - tqdm
+      # - jpeg # For loading JPEG2000 images
+      # - pygments #Optional for colors
+      - pip:
+              - git+https://github.com/facebookresearch/detectron2.git
+              - git+https://github.com/cocodataset/panopticapi.git
+              - ./models/pixel_decoder/ops/

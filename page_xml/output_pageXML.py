@@ -12,18 +12,24 @@ from typing import Iterable, Optional
 import cv2
 import numpy as np
 import torch
+import ultralytics
+import ultralytics.engine
+import ultralytics.engine.predictor
+import ultralytics.engine.results
 from detectron2.config import CfgNode
 from tqdm import tqdm
 
+from page_xml.pageXML_parser import PageXMLParser
+
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.setup import get_git_hash
-from datasets.dataset import classes_to_colors
+from data.dataset import classes_to_colors
 from page_xml.baseline_extractor import baseline_converter, image_to_baselines
 from page_xml.pageXML_creator import Baseline, PageXMLCreator, Region, TextLine
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
 from utils.image_utils import save_image_array_to_path
-from utils.input_utils import get_file_paths, supported_image_formats
+from utils.input_utils import SUPPORTED_IMAGE_FORMATS, get_file_paths
 from utils.logging_utils import get_logger_name
 from utils.tempdir import AtomicFileName
 
@@ -57,6 +63,7 @@ class OutputPageXML:
         min_region_size: int = 10,
         external_processing: bool = False,
         grayscale: bool = True,
+        save_confidence_heatmap: bool = False,
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
@@ -81,6 +88,7 @@ class OutputPageXML:
 
         self.output_dir = None
         self.page_dir = None
+        self.save_confidence_heatmap = save_confidence_heatmap
 
         if output_dir is not None:
             self.set_output_dir(output_dir)
@@ -109,6 +117,8 @@ class OutputPageXML:
             self.logger.info(f"Could not find page dir ({page_dir}), creating one at specified location")
             page_dir.mkdir(parents=True)
         self.page_dir = page_dir
+        if self.save_confidence_heatmap:
+            self.confidence_dir = self.output_dir.joinpath("confidence")
 
     def set_whitelist(self, whitelist: Iterable[str]):
         self.whitelist = set(whitelist)
@@ -229,20 +239,25 @@ class OutputPageXML:
     def add_regions_to_page(
         self,
         pageXML_creator: PageXMLCreator,
-        sem_seg: torch.Tensor,
+        sem_seg_tensor: torch.Tensor,
         old_height: int,
         old_width: int,
+        image_path: Path,
     ) -> PageXMLCreator:
         if self.output_dir is None:
             raise TypeError("Output dir is None")
         if self.page_dir is None:
             raise TypeError("Page dir is None")
 
-        height, width = sem_seg.shape[-2:]
+        height, width = sem_seg_tensor.shape[-2:]
 
         scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
 
-        sem_seg = torch.argmax(sem_seg, dim=-3).cpu().numpy()
+        sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg_tensor)
+
+        # Apply a color map
+        if self.save_confidence_heatmap:
+            self.save_heatmap(confidence, image_path)
 
         region_id = 0
 
@@ -254,8 +269,8 @@ class OutputPageXML:
             # Skip background
             if class_id == 0:
                 continue
-            binary_region_mask = np.zeros_like(sem_seg).astype(np.uint8)
-            binary_region_mask[sem_seg == class_id] = 1
+            binary_region_mask = np.zeros_like(sem_seg_classes).astype(np.uint8)
+            binary_region_mask[sem_seg_classes == class_id] = 1
 
             region_type = self.xml_regions.region_types[region]
 
@@ -301,6 +316,153 @@ class OutputPageXML:
 
         return pageXML_creator
 
+    def generate_single_page_yolo(
+        self,
+        yolo_output: ultralytics.engine.results.Results,
+        image_path: Path,
+        old_height: Optional[int] = None,
+        old_width: Optional[int] = None,
+    ):
+        """
+        Convert a single prediction into a page
+
+        Args:
+            yolo_output: yolo output
+            image_path (Path): Image path, used for path name
+            old_height (Optional[int], optional): height of the original image. Defaults to None.
+            old_width (Optional[int], optional): width of the original image. Defaults to None.
+        """
+
+        if self.output_dir is None:
+            raise TypeError("Output dir is None")
+        if self.page_dir is None:
+            raise TypeError("Page dir is None")
+
+        xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
+        if old_height is None or old_width is None:
+            old_height, old_width = yolo_output.orig_shape
+
+        page = PageXMLParser(xml_output_path)
+        page.new_page(image_path.name, str(old_height), str(old_width))
+
+        if self.cfg is not None:
+            page.add_processing_step(
+                get_git_hash(),
+                self.cfg.LAYPA_UUID,
+                self.cfg,
+                self.whitelist,
+                confidence=None,
+            )
+
+        if yolo_output.boxes is None:
+            page.save_xml()
+            return
+
+        region_id = 0
+
+        for i in range(yolo_output.boxes.shape[0]):
+            relative_box = yolo_output.boxes.xyxyn[i].cpu().numpy()
+
+            absolute_box = (
+                (relative_box[0] * old_width).round().astype(np.int32),
+                (relative_box[1] * old_height).round().astype(np.int32),
+                (relative_box[2] * old_width).round().astype(np.int32),
+                (relative_box[3] * old_height).round().astype(np.int32),
+            )
+
+            region_coords = f"{absolute_box[0]},{absolute_box[1]} {absolute_box[2]},{absolute_box[1]} {absolute_box[2]},{absolute_box[3]} {absolute_box[0]},{absolute_box[3]}"
+            region_coords = region_coords.strip()
+
+            class_id = int(yolo_output.boxes.cls[i].cpu().numpy())
+            confidence = yolo_output.boxes.conf[i].cpu().numpy()
+
+            region = yolo_output.names[class_id]
+            region_type = self.xml_regions.region_types[region]
+
+            region_id += 1
+
+            _uuid = uuid.uuid4()
+            text_reg = page.add_element(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
+
+        page.save_xml()
+
+    @staticmethod
+    def scale_to_range(
+        tensor: torch.Tensor,
+        min_value: float = 0.0,
+        max_value: float = 1.0,
+        tensor_min: Optional[float] = None,
+        tensor_max: Optional[float] = None,
+    ) -> torch.Tensor:
+        """
+        Scale tensor to a range
+
+        Args:
+            image (torch.Tensor): image to be scaled
+            min_value (float, optional): minimum value of the range. Defaults to 0.0.
+            max_value (float, optional): maximum value of the range. Defaults to 1.0.
+            tensor_min (Optional[float], optional): minimum value of the tensor. Defaults to None.
+            tensor_max (Optional[float], optional): maximum value of the tensor. Defaults to None.
+
+        Returns:
+            torch.Tensor: scaled image
+        """
+
+        if tensor_min is None:
+            tensor_min = torch.min(tensor).item()
+        if tensor_max is None:
+            tensor_max = torch.max(tensor).item()
+
+        tensor = (max_value - min_value) * (tensor - tensor_min) / (tensor_max - tensor_min) + min_value
+
+        return tensor
+
+    def save_heatmap(self, scaled_confidence: torch.Tensor, image_path: Path):
+        """
+        Save a heatmap of the confidence.
+
+        Args:
+            scaled_confidence (torch.Tensor): confidence as tensor.
+            confidence_output_path (Path): path to save the heatmap.
+        """
+        self.confidence_dir.mkdir(parents=True, exist_ok=True)
+        confidence_output_path = self.confidence_dir.joinpath(image_path.stem + "_confidence.png")
+
+        confidence_grayscale = (scaled_confidence * 255).cpu().numpy().astype(np.uint8)
+        confidence_colored = cv2.applyColorMap(confidence_grayscale, cv2.COLORMAP_PLASMA)[..., ::-1]
+        with AtomicFileName(file_path=confidence_output_path) as path:
+            save_image_array_to_path(str(path), confidence_colored)
+
+    def sem_seg_to_classes_and_confidence(
+        self,
+        sem_seg: torch.Tensor,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Convert a single prediction into classes and confidence.
+
+        Args:
+            sem_seg (torch.Tensor): sem_seg as tensor.
+
+        Returns:
+            torch.Tensor, torch.Tensor: classes and confidence.
+        """
+        sem_seg_normalized = torch.nn.functional.softmax(sem_seg, dim=-3)
+        if height is not None and width is not None:
+            sem_seg_interpolated = torch.nn.functional.interpolate(
+                sem_seg_normalized[None], size=(height, width), mode="bilinear", align_corners=False
+            )[0]
+        else:
+            sem_seg_interpolated = sem_seg_normalized
+
+        confidence, _ = torch.max(sem_seg_normalized, dim=-3)
+        sem_seg_classes = torch.argmax(sem_seg_interpolated, dim=-3)
+
+        scaled_confidence = self.scale_to_range(confidence, tensor_min=1 / len(self.xml_regions.regions), tensor_max=1.0)
+
+        return sem_seg_classes, scaled_confidence
+
     def generate_single_page(
         self,
         sem_seg: torch.Tensor,
@@ -308,6 +470,20 @@ class OutputPageXML:
         old_height: Optional[int] = None,
         old_width: Optional[int] = None,
     ):
+        """
+        Convert a single prediction into a page.
+
+        Args:
+            sem_seg (torch.Tensor): sem_seg as tensor.
+            image_path (Path): Image path, used for path name.
+            old_height (Optional[int], optional): height of the original image. Defaults to None.
+            old_width (Optional[int], optional): width of the original image. Defaults to None.
+
+        Raises:
+            TypeError: Output dir has not been set.
+            TypeError: Page dir has not been set.
+            NotImplementedError: mode is not known.
+        """
         if self.output_dir is None:
             raise TypeError("Output dir is None")
         if self.page_dir is None:
@@ -319,8 +495,9 @@ class OutputPageXML:
         pageXML_creator = PageXMLCreator()
         pageXML_creator.add_page(image_path.name, old_height, old_width)
 
-        if self.cfg is not None:
-            pageXML_creator.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
+        xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
+        page = PageXMLParser(xml_output_path)
+        page.new_page(image_path.name, str(old_height), str(old_width))
 
         if self.external_processing:
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
@@ -331,21 +508,72 @@ class OutputPageXML:
             return
 
         if self.xml_regions.mode == "region":
-            pageXML_creator = self.add_regions_to_page(pageXML_creator, sem_seg, old_height, old_width)
+            pageXML_creator = self.add_regions_to_page(pageXML_creator, sem_seg, old_height, old_width, image_path)
+            if self.cfg is not None:
+                pageXML_creator.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
             pageXML_creator.pageXML.save_xml(self.page_dir.joinpath(image_path.stem + ".xml"))
+
+        elif self.xml_regions.mode in ["baseline", "start", "end", "separator"]:
+            sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
+            sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
+
+            # Apply a color map
+            if self.save_confidence_heatmap:
+                self.save_heatmap(confidence, image_path)
+
+            sem_seg_classes = sem_seg_classes.cpu().numpy()
+            mean_confidence = torch.mean(confidence).cpu().numpy().item()
+
+            if self.cfg is not None:
+                page.add_processing_step(
+                    get_git_hash(),
+                    self.cfg.LAYPA_UUID,
+                    self.cfg,
+                    self.whitelist,
+                    confidence=mean_confidence,
+                )
+
+            # Save the mask
+            with AtomicFileName(file_path=sem_seg_output_path) as path:
+                save_image_array_to_path(str(path), (sem_seg_classes * 255).astype(np.uint8))
+
+        elif self.xml_regions.mode in ["baseline_separator", "top_bottom"]:
+            sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
+
+            sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
+
+            # Apply a color map
+            if self.save_confidence_heatmap:
+                self.save_heatmap(confidence, image_path)
+
+            sem_seg_classes = sem_seg_classes.cpu().numpy()
+            mean_confidence = torch.mean(confidence).cpu().numpy().item()
+
+            if self.cfg is not None:
+                page.add_processing_step(
+                    get_git_hash(),
+                    self.cfg.LAYPA_UUID,
+                    self.cfg,
+                    self.whitelist,
+                    confidence=mean_confidence,
+                )
+
+            # Save the mask
+            with AtomicFileName(file_path=sem_seg_output_path) as path:
+                save_image_array_to_path(str(path), (sem_seg_classes * 128).clip(0, 255).astype(np.uint8))
         else:
             pageXML_creator = self.add_baselines_to_page(pageXML_creator, sem_seg, old_height, old_width)
             pageXML_creator.pageXML.save_xml(self.page_dir.joinpath(image_path.stem + ".xml"))
 
     def generate_single_page_wrapper(self, info):
         """
-        Convert a single prediction into a page
+        Convert a single prediction into a page.
 
         Args:
             info (tuple[torch.Tensor | Path, Path]):
                 (tuple containing)
-                torch.Tensor | Path: mask as array or path to mask
-                Path: original image path
+                torch.Tensor | Path: mask as array or path to mask.
+                Path: original image path.
         """
         mask, image_path = info
         if isinstance(mask, Path):
@@ -359,14 +587,14 @@ class OutputPageXML:
         image_path_list: list[Path],
     ) -> None:
         """
-        Generate pageXML for all sem_seg-image pairs in the lists
+        Generate pageXML for all sem_seg-image pairs in the lists.
 
         Args:
-            sem_seg_list (list[np.ndarray] | list[Path]): all sem_seg as arrays or path to the sem_seg
-            image_path_list (list[Path]): path to the original image
+            sem_seg_list (list[np.ndarray] | list[Path]): all sem_seg as arrays or path to the sem_seg.
+            image_path_list (list[Path]): path to the original image.
 
         Raises:
-            ValueError: length of sem_seg list and image list do not match
+            ValueError: length of sem_seg list and image list do not match.
         """
 
         if len(sem_seg_list) != len(image_path_list):
@@ -394,7 +622,7 @@ class OutputPageXML:
 
 def main(args):
     sem_seg_paths = get_file_paths(args.sem_seg, formats=[".png"])
-    image_paths = get_file_paths(args.input, formats=supported_image_formats)
+    image_paths = get_file_paths(args.input, formats=SUPPORTED_IMAGE_FORMATS)
 
     xml_regions = XMLRegions(
         mode=args.mode,

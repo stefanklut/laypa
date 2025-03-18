@@ -1,8 +1,9 @@
 import copy
 import itertools
+import logging
 import os
 import weakref
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, OrderedDict, Set
 
 import torch
 from detectron2.checkpoint import DetectionCheckpointer
@@ -20,12 +21,19 @@ from detectron2.engine import (
     create_ddp_model,
     hooks,
 )
-from detectron2.evaluation import SemSegEvaluator
+from detectron2.evaluation import (
+    DatasetEvaluator,
+    inference_on_dataset,
+    print_csv_format,
+)
 from detectron2.projects.deeplab import build_lr_scheduler
 from detectron2.solver.build import maybe_add_gradient_clipping, reduce_param_groups
 from detectron2.utils import comm
 
-from datasets.mapper import Mapper
+from data.mapper import BinarySegMapper, SemSegInstancesMapper, SemSegMapper
+from evaluation.binary_seg_evaluation import BinarySegEvaluator
+from evaluation.sem_seg_evaluation import SemSegEvaluator
+from utils.logging_utils import get_logger_name
 
 
 def get_default_optimizer_params(
@@ -121,7 +129,6 @@ def get_default_optimizer_params(
                 hyperparams["lr"] = hyperparams["lr"] * backbone_multiplier
 
             if "relative_position_bias_table" in module_param_name or "absolute_pos_embed" in module_param_name:
-                print(module_param_name)
                 hyperparams["weight_decay"] = 0.0
 
             if isinstance(module, torch.nn.Embedding):
@@ -203,12 +210,31 @@ def build_optimizer(cfg: CfgNode, model: torch.nn.Module) -> torch.optim.Optimiz
     return optimizer
 
 
+MetaArchitechture_converter: dict[str, dict[str, Any]] = {
+    "SemanticSegmentor": {
+        "mapper": SemSegMapper,
+        "evaluator": SemSegEvaluator,
+        "output": "sem_seg",
+    },
+    "MaskFormer": {
+        "mapper": SemSegInstancesMapper,
+        "evaluator": SemSegEvaluator,
+        "output": "sem_seg",
+    },
+    "BinarySegmentor": {
+        "mapper": BinarySegMapper,
+        "evaluator": BinarySegEvaluator,
+        "output": "binary_seg",
+    },
+}
+
+
 class Trainer(DefaultTrainer):
     """
     Trainer class
     """
 
-    def __init__(self, cfg: CfgNode):
+    def __init__(self, cfg: CfgNode, validation: bool = False):
         TrainerBase.__init__(self)
 
         # logger = logging.getLogger("detectron2")
@@ -219,9 +245,10 @@ class Trainer(DefaultTrainer):
         # Assume these objects must be constructed in this order.
         model = self.build_model(cfg)
         optimizer = self.build_optimizer(cfg, model)
-        data_loader = self.build_train_loader(cfg)
-
         model = create_ddp_model(model, broadcast_buffers=False)
+
+        data_loader = self.build_train_loader(cfg, device=model.device) if not validation else None
+
         self._trainer = (AMPTrainer if cfg.MODEL.AMP_TRAIN.ENABLED else SimpleTrainer)(model, data_loader, optimizer)
         if isinstance(self._trainer, AMPTrainer):
             precision_converter = {
@@ -248,10 +275,12 @@ class Trainer(DefaultTrainer):
         self.max_iter = cfg.SOLVER.MAX_ITER
         self.cfg = cfg
 
+        output = MetaArchitechture_converter[cfg.MODEL.META_ARCHITECTURE]["output"]
+
         miou_checkpointer = hooks.BestCheckpointer(
             eval_period=cfg.TEST.EVAL_PERIOD,
             checkpointer=self.checkpointer,
-            val_metric="sem_seg/mIoU",
+            val_metric=f"{output}/mIoU",
             mode="max",
             file_prefix="model_best_mIoU",
         )
@@ -259,7 +288,7 @@ class Trainer(DefaultTrainer):
         fwiou_checkpointer = hooks.BestCheckpointer(
             eval_period=cfg.TEST.EVAL_PERIOD,
             checkpointer=self.checkpointer,
-            val_metric="sem_seg/fwIoU",
+            val_metric=f"{output}/fwIoU",
             mode="max",
             file_prefix="model_best_fwIoU",
         )
@@ -267,7 +296,7 @@ class Trainer(DefaultTrainer):
         macc_checkpointer = hooks.BestCheckpointer(
             eval_period=cfg.TEST.EVAL_PERIOD,
             checkpointer=self.checkpointer,
-            val_metric="sem_seg/mACC",
+            val_metric=f"{output}/mACC",
             mode="max",
             file_prefix="model_best_mACC",
         )
@@ -275,7 +304,7 @@ class Trainer(DefaultTrainer):
         pacc_checkpointer = hooks.BestCheckpointer(
             eval_period=cfg.TEST.EVAL_PERIOD,
             checkpointer=self.checkpointer,
-            val_metric="sem_seg/pACC",
+            val_metric=f"{output}/pACC",
             mode="max",
             file_prefix="model_best_pACC",
         )
@@ -284,31 +313,33 @@ class Trainer(DefaultTrainer):
 
     @classmethod
     def build_evaluator(cls, cfg, dataset_name):
-        sem_seg_output_dir = os.path.join(cfg.OUTPUT_DIR, "semantic_segmentation")
-        evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
-        # TODO Other Evaluator types
-        if evaluator_type == "sem_seg":
-            evaluator = SemSegEvaluator(dataset_name=dataset_name, distributed=True, output_dir=sem_seg_output_dir)
-        else:
-            raise NotImplementedError(f"Current evaluator type {evaluator_type} not supported")
+        evaluator = MetaArchitechture_converter[cfg.MODEL.META_ARCHITECTURE]["evaluator"](
+            dataset_name,
+            distributed=True,
+        )
 
         return evaluator
 
     @classmethod
-    def build_train_loader(cls, cfg):
-        if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
-            mapper = Mapper(cfg, mode="train")  # type: ignore
-        else:
-            raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
+    def get_mapper(cls, cfg, device=torch.device("cpu"), mode="train"):
+        mapper = MetaArchitechture_converter[cfg.MODEL.META_ARCHITECTURE]["mapper"](
+            cfg,
+            mode=mode,
+            on_gpu=cfg.INPUT.ON_GPU,
+            device=device,
+        )
 
-        return build_detection_train_loader(cfg=cfg, mapper=mapper)  # type: ignore
+        return mapper
 
     @classmethod
-    def build_test_loader(cls, cfg, dataset_name):
-        if cfg.MODEL.META_ARCHITECTURE in ["SemanticSegmentor", "MaskFormer", "PanopticFPN"]:
-            mapper = Mapper(cfg, mode="test")  # type: ignore
-        else:
-            raise NotImplementedError(f"Current META_ARCHITECTURE type {cfg.MODEL.META_ARCHITECTURE} not supported")
+    def build_train_loader(cls, cfg, device=torch.device("cpu")):
+        mapper = cls.get_mapper(cfg, device=device, mode="train")
+
+        return build_detection_train_loader(cfg=cfg, mapper=mapper, pin_memory=cfg.DATALOADER.PIN_MEMORY)  # type: ignore
+
+    @classmethod
+    def build_test_loader(cls, cfg, dataset_name, device=torch.device("cpu")):
+        mapper = cls.get_mapper(cfg, device=device, mode="val")
 
         return build_detection_test_loader(cfg=cfg, mapper=mapper, dataset_name=dataset_name)  # type: ignore
 
@@ -319,3 +350,58 @@ class Trainer(DefaultTrainer):
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
         return build_lr_scheduler(cfg, optimizer)
+
+    @classmethod
+    def test(cls, cfg, model, evaluators=None):
+        """
+        Evaluate the given model. The given model is expected to already contain
+        weights to evaluate.
+
+        Args:
+            cfg (CfgNode):
+            model (nn.Module):
+            evaluators (list[DatasetEvaluator] or None): if None, will call
+                :meth:`build_evaluator`. Otherwise, must have the same length as
+                ``cfg.DATASETS.TEST``.
+
+        Returns:
+            dict: a dict of result metrics
+        """
+        logger = logging.getLogger(get_logger_name())
+        if isinstance(evaluators, DatasetEvaluator):
+            evaluators = [evaluators]
+        if evaluators is not None:
+            assert len(cfg.DATASETS.TEST) == len(evaluators), "{} != {}".format(len(cfg.DATASETS.TEST), len(evaluators))
+
+        results = OrderedDict()
+        for idx, dataset_name in enumerate(cfg.DATASETS.TEST):
+            data_loader = cls.build_test_loader(cfg, dataset_name, model.device)
+            # When evaluators are passed in as arguments,
+            # implicitly assume that evaluators can be created before data_loader.
+            if evaluators is not None:
+                evaluator = evaluators[idx]
+            else:
+                try:
+                    evaluator = cls.build_evaluator(cfg, dataset_name)
+                except NotImplementedError:
+                    logger.warn(
+                        "No evaluator found. Use `DefaultTrainer.test(evaluators=)`, "
+                        "or implement its `build_evaluator` method."
+                    )
+                    results[dataset_name] = {}
+                    continue
+            results_i = inference_on_dataset(model, data_loader, evaluator)
+            results[dataset_name] = results_i
+            if comm.is_main_process():
+                assert isinstance(results_i, dict), "Evaluator must return a dict on the main process. Got {} instead.".format(
+                    results_i
+                )
+                logger.info("Evaluation results for {} in csv format:".format(dataset_name))
+                print_csv_format(results_i)
+
+        if len(results) == 1:
+            results = list(results.values())[0]
+        return results
+
+    def validate(self):
+        results = self.test(self.cfg, self.model)

@@ -36,13 +36,16 @@ class ContextTimer(contextlib.ContextDecorator):
                 if os.path.join("utils", "timing_utils") not in code.co_filename:
                     break
                 frame = frame.f_back
+            if frame is None:
+                self.label = "Unknown"
+                return
             filename = frame.f_globals["__file__"]
             lineno = frame.f_lineno
             self.label = f"{filename}:{lineno}"
 
     @classmethod
     @property
-    def stats(cls) -> dict[str, float]:
+    def stats(cls) -> dict[str, list[float]]:
         """
         The final timing results
 

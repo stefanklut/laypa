@@ -162,7 +162,7 @@ if [[ $GPU -gt -1 ]]; then
 fi
 
 docker run  $DOCKERGPUPARAMS --shm-size 8G --rm -it -m 32000m -v $input_dir:$input_dir -v $output_dir:$output_dir loghi/docker.laypa:latest \
-    python run.py \
+    python inference.py \
     -c configs/segmentation/baseline/baseline_dataset.yaml \
     -i $input_dir \
     -o $output_dir \

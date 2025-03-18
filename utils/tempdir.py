@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import tempfile
 import warnings
 import weakref
@@ -7,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from utils.logging_utils import get_logger_name
 
 

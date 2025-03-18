@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import sys
 from multiprocessing.pool import Pool
 from pathlib import Path
 
@@ -10,9 +11,10 @@ from detectron2.utils.visualizer import Visualizer
 # from multiprocessing.pool import ThreadPool as Pool
 from tqdm import tqdm
 
+sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.setup import setup_cfg
-from datasets.dataset import metadata_from_classes
-from page_xml.xml_converter import XMLConverter
+from data.dataset import metadata_from_classes
+from page_xml.xml_converters.xml_to_sem_seg import XMLToSemSeg
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
 from utils.input_utils import get_file_paths
 from utils.logging_utils import get_logger_name
@@ -47,7 +49,7 @@ class Viewer:
 
     def __init__(
         self,
-        xml_converter: XMLConverter,
+        xml_converter: XMLToSemSeg,
         output_dir: str | Path,
         output_type="gray",
     ) -> None:
@@ -70,7 +72,7 @@ class Viewer:
             output_dir = Path(output_dir)
 
         self.output_dir: Path = output_dir
-        self.xml_converter: XMLConverter = xml_converter
+        self.xml_converter: XMLToSemSeg = xml_converter
 
         self.metadata = metadata_from_classes(xml_converter.xml_regions.regions)
 
@@ -93,7 +95,7 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
-        sem_seg = self.xml_converter.to_sem_seg(xml_path_i)
+        sem_seg = self.xml_converter.convert(xml_path_i)
 
         if sem_seg is None:
             raise ValueError(f"Could not convert {xml_path_i} to sem_seg image")
@@ -108,7 +110,7 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
-        sem_seg = self.xml_converter.to_sem_seg(xml_path_i)
+        sem_seg = self.xml_converter.convert(xml_path_i)
 
         if sem_seg is None:
             raise ValueError(f"Could not convert {xml_path_i} to sem_seg image")
@@ -132,7 +134,7 @@ class Viewer:
             xml_path_i (Path): single pageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".jpg")
-        gray_image = self.xml_converter.to_sem_seg(xml_path_i)
+        gray_image = self.xml_converter.convert(xml_path_i)
 
         image_path_i = xml_path_to_image_path(xml_path_i)
 
@@ -189,7 +191,7 @@ def main(args) -> None:
 
     xml_list = get_file_paths(args.input, formats=[".xml"])
 
-    xml_converter = XMLConverter(cfg)
+    xml_converter = XMLToSemSeg(cfg)
 
     viewer = Viewer(xml_converter=xml_converter, output_dir=args.output, output_type=args.output_type)
     viewer.run(xml_list)
