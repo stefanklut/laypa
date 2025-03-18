@@ -182,7 +182,15 @@ class Page(ET.Element):
 
 
 class LaypaProcessingStep(ET.Element):
-    def __init__(self, git_hash: str, uuid: str, cfg: CfgNode, whitelist: Iterable[str], **kwargs):
+    def __init__(
+        self,
+        git_hash: str,
+        uuid: str,
+        cfg: CfgNode,
+        whitelist: Iterable[str],
+        confidence: Optional[float] = None,
+        **kwargs,
+    ):
         super().__init__("MetadataItem", **kwargs)
         self.logger = logging.getLogger(get_logger_name())
         self.attrib = {
@@ -202,6 +210,13 @@ class LaypaProcessingStep(ET.Element):
             "type": "uuid",
             "value": uuid,
         }
+
+        if confidence is not None:
+            confidence_element = ET.SubElement(labels, "Label")
+            confidence_element.attrib = {
+                "type": "confidence",
+                "value": str(confidence),
+            }
 
         for key in whitelist:
             sub_node = cfg
@@ -272,13 +287,25 @@ class PageXMLCreator:
         self.pageXML.getroot().append(metadata)
         return metadata
 
-    def add_page(self, image_filename: str, image_width: int, image_height: int):
+    def add_page(
+        self,
+        image_filename: str,
+        image_width: int,
+        image_height: int,
+    ):
         page = Page(image_filename, image_width, image_height)
         self.pageXML.getroot().append(page)
         return page
 
-    def add_processing_step(self, git_hash: str, uuid: str, cfg: CfgNode, whitelist: Iterable[str]):
-        processing_step = LaypaProcessingStep(git_hash, uuid, cfg, whitelist)
+    def add_processing_step(
+        self,
+        git_hash: str,
+        uuid: str,
+        cfg: CfgNode,
+        whitelist: Iterable[str],
+        confidence: Optional[float] = None,
+    ):
+        processing_step = LaypaProcessingStep(git_hash, uuid, cfg, whitelist, confidence)
         metadata = self.pageXML.getroot().find("Metadata")
         if metadata is None:
             metadata = self.add_metadata()

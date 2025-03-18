@@ -255,6 +255,9 @@ class OutputPageXML:
 
         sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg_tensor)
 
+        sem_seg_classes = sem_seg_classes.cpu().numpy()
+        mean_confidence = torch.mean(confidence).cpu().numpy().item()
+
         # Apply a color map
         if self.save_confidence_heatmap:
             self.save_heatmap(confidence, image_path)
@@ -264,6 +267,15 @@ class OutputPageXML:
         page = pageXML_creator.pageXML.find("Page")
         if page is None:
             raise ValueError("Page not found in pageXML")
+
+        if self.cfg is not None:
+            pageXML_creator.add_processing_step(
+                get_git_hash(),
+                self.cfg.LAYPA_UUID,
+                self.cfg,
+                self.whitelist,
+                confidence=mean_confidence,
+            )
 
         for class_id, region in enumerate(self.xml_regions.regions):
             # Skip background
@@ -509,8 +521,6 @@ class OutputPageXML:
 
         if self.xml_regions.mode == "region":
             pageXML_creator = self.add_regions_to_page(pageXML_creator, sem_seg, old_height, old_width, image_path)
-            if self.cfg is not None:
-                pageXML_creator.add_processing_step(get_git_hash(), self.cfg.LAYPA_UUID, self.cfg, self.whitelist)
             pageXML_creator.pageXML.save_xml(self.page_dir.joinpath(image_path.stem + ".xml"))
 
         elif self.xml_regions.mode in ["baseline", "start", "end", "separator"]:
