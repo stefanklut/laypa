@@ -1432,12 +1432,14 @@ class RandomCrop(T.Augmentation):
             return int(h * ch + 0.5), int(w * cw + 0.5)
         elif self.crop_type == "absolute":
             assert round(self.crop_size[0]) == self.crop_size[0] and round(self.crop_size[1]) == self.crop_size[1]
-            return (min(self.crop_size[0], h), min(self.crop_size[1], w))
+            assert self.crop_size[0].is_integer() and self.crop_size[1].is_integer()
+            return int(min(self.crop_size[0], h)), int(min(self.crop_size[1], w))
         elif self.crop_type == "absolute_range":
             assert round(self.crop_size[0]) == self.crop_size[0] and round(self.crop_size[1]) == self.crop_size[1]
             assert self.crop_size[0] <= self.crop_size[1]
-            ch = np.random.randint(min(h, self.crop_size[0]), min(h, self.crop_size[1]) + 1)
-            cw = np.random.randint(min(w, self.crop_size[0]), min(w, self.crop_size[1]) + 1)
+            assert self.crop_size[0].is_integer() and self.crop_size[1].is_integer()
+            ch = np.random.randint(int(min(h, self.crop_size[0])), int(min(h, self.crop_size[1]) + 1))
+            cw = np.random.randint(int(min(w, self.crop_size[0])), int(min(w, self.crop_size[1]) + 1))
             return ch, cw
         else:
             raise NotImplementedError("Unknown crop type {}".format(self.crop_type))

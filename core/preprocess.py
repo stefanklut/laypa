@@ -37,7 +37,7 @@ def preprocess_datasets(
     if not output_dir.is_dir():
         raise FileNotFoundError(f"Output Folder not found: {output_dir} does not exist")
 
-    process = Preprocess(cfg)
+    process = Preprocess(cfg)  # type: ignore
 
     train_output_dir = None
     if train is not None:
