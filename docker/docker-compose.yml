@@ -23,7 +23,5 @@ services:
     volumes:
       - '<path_to_model_base>:<path_to_model_base>'
       - '<path_to_output>:<path_to_output>'
-    networks:
-      - pipeline
     shm_size: 512mb
     restart: always
