@@ -30,6 +30,7 @@ Laypa is a segmentation network, with the goal of finding regions (paragraph, pa
     - [Without External Processing](#without-external-processing)
     - [With External Java Processing](#with-external-java-processing)
     - [Flask Server](#flask-server)
+    - [Docker API](#docker-api)
   - [Tutorial](#tutorial)
   - [Evaluation](#evaluation)
   - [License](#license)
@@ -367,7 +368,22 @@ curl -X POST -F image=@<PATH_TO_IMAGE> -F identifier=<identifier> -F model=<MODE
 ```
 The required form information is the image (`image`) that should be processed. A given identifier to differentiate multiple runs/tests (`identifier`). And finally which config and weights to use (`model`). The config and weights are saved in a folder, this folder name is what needs to be provided. In this folder, the config should be named `config.yml` and the weight file should end in `.pth`.
 
+### Docker API
 
+To use the docker image as an API service, we recommend using docker compose. The docker compose file is provided in the [`docker-compose.yml`][docker_compose_link] file. The docker compose file can be run using the following command:
+```sh
+docker-compose up
+```
+
+Then request the API (in this example using curl) with the following command:
+```sh
+curl -X POST 0.0.0.0:5000/predict \
+  -F identifier=<unique_id> \
+  -F model=</path/relative/to/model_base_path> \
+  -F image=@</path/to/image.jpg>
+```
+
+The identifier is a unique identifier for the document, the output will be saved in a directory with the name being the unique id. The model base path is set in the [`docker-compose.yml`][docker_compose_link] file. For example, the base path is set to `/models` and the model is stored in `/models/version1` then the model path is `version1`. This directory should contain the `config.yml` and the `.pth` file.
 
 ## Tutorial
 For a small tutorial using some concrete examples see the [`tutorial`][tutorial_link] directory.
@@ -532,6 +548,7 @@ If you discover a bug or missing feature that you would like to help with please
 [xml_viewer_link]: tooling/xml_viewer.py
 [start_flask_link]: /api/start_flask.sh
 [start_flask_local_link]: /api/start_flask_local.sh
+[docker_compose_link]: docker/docker-compose.yml
 
 [loghi_link]: https://github.com/knaw-huc/loghi
 [huc_di_link]: https://di.huc.knaw.nl/
