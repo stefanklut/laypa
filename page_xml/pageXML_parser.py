@@ -31,7 +31,7 @@ class PageXMLParser:
         self.logger = logging.getLogger(get_logger_name())
         self.filepath = filepath
         self.name = self.filepath.stem
-        self.creator = "Laypa" if creator == None else creator
+        self.creator = "Laypa" if creator is None else creator
 
         # REVIEW should this be replaced with the newer pageXML standard?
         self.XMLNS = {
@@ -137,7 +137,7 @@ class PageXMLParser:
         for element in self._iter_element(element_name):
             # --- get element type
             e_type = self.get_region_type(element)
-            if e_type == None:
+            if e_type is None:
                 self.logger.warning(f'Element type "{e_type}" undefined, set to "other"')
                 e_type = "other"
 
@@ -209,16 +209,16 @@ class PageXMLParser:
         get Text defined for element
         """
         text_node = element.find("".join(["./", self.base, "TextEquiv"]))
-        if text_node == None:
+        if text_node is None:
             self.logger.info(f"No Text node found for line {self.get_id(element)} at {self.filepath}")
             return ""
         else:
-            text_data = text_node.find("*").text
-            if text_data == None:
+            child_node = text_node.find("*")
+            if child_node is None or child_node.text is None:
                 self.logger.info(f"No text found in line {self.get_id(element)} at {self.filepath}")
                 return ""
             else:
-                return text_data.encode("utf-8").strip()
+                return child_node.text
 
     def get_transcription(self):
         """Extracts text from each line on the XML file"""
@@ -317,7 +317,7 @@ class PageXMLParser:
 
     def add_element(self, region_class, region_id, region_type, region_coords, parent=None):
         """add element to parent node"""
-        parent = self.page if parent == None else parent
+        parent = self.page if parent is None else parent
         t_reg = ET.SubElement(parent, region_class)
         t_reg.attrib = {
             "id": str(region_id),
@@ -328,7 +328,7 @@ class PageXMLParser:
 
     def remove_element(self, element, parent=None):
         """remove element from parent node"""
-        parent = self.page if parent == None else parent
+        parent = self.page if parent is None else parent
         parent.remove(element)
 
     def add_baseline(self, b_coords, parent):
