@@ -145,8 +145,10 @@ if __name__ == "__main__":
         mode="color",
         device=torch.device("cuda"),
     )
-
-    print(image["image"].shape)
-    print(image["dpi"])
-    print(image["image"].dtype)
-    print(image["image"].device)
+    if image is not None:
+        print(image["image"].shape)
+        print(image["dpi"])
+        print(image["image"].dtype)
+        print(image["image"].device)
+    else:
+        raise ValueError("Failed to load image from path")

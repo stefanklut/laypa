@@ -25,7 +25,7 @@ sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.setup import get_git_hash
 from data.dataset import classes_to_colors
 from page_xml.baseline_extractor import baseline_converter, image_to_baselines
-from page_xml.pageXML_creator import Baseline, PageXMLCreator, Region, TextLine
+from page_xml.pageXML_creator import Baseline, PageXMLEditor, Region, TextLine
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
 from utils.image_utils import save_image_array_to_path
@@ -178,12 +178,12 @@ class OutputPageXML:
 
     def add_baselines_to_page(
         self,
-        pageXML_creator: PageXMLCreator,
+        pageXML_creator: PageXMLEditor,
         sem_seg: torch.Tensor,
         old_height: int,
         old_width: int,
         upscale: bool = False,
-    ) -> PageXMLCreator:
+    ) -> PageXMLEditor:
         page = pageXML_creator.pageXML.find("Page")
         if page is None:
             raise ValueError("Page not found in pageXML")
@@ -238,12 +238,12 @@ class OutputPageXML:
 
     def add_regions_to_page(
         self,
-        pageXML_creator: PageXMLCreator,
+        pageXML_creator: PageXMLEditor,
         sem_seg_tensor: torch.Tensor,
         old_height: int,
         old_width: int,
         image_path: Path,
-    ) -> PageXMLCreator:
+    ) -> PageXMLEditor:
         if self.output_dir is None:
             raise TypeError("Output dir is None")
         if self.page_dir is None:
@@ -504,7 +504,7 @@ class OutputPageXML:
         if old_height is None or old_width is None:
             old_height, old_width = sem_seg.shape[-2:]
 
-        pageXML_creator = PageXMLCreator()
+        pageXML_creator = PageXMLEditor()
         pageXML_creator.add_page(image_path.name, old_height, old_width)
 
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")

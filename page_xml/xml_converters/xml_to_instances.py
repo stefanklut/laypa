@@ -5,8 +5,8 @@ import numpy as np
 from detectron2 import structures
 from detectron2.config import configurable
 
+from page_xml.pageXML_parser import PageXMLParser
 from page_xml.xml_converters.xml_converter import _XMLConverter
-from page_xml.xmlPAGE import PageData
 
 
 class Instance(TypedDict):
@@ -25,7 +25,7 @@ class Instance(TypedDict):
 class XMLToInstances(_XMLConverter):
     """
     New instance functions must be of the form:
-    def build_{mode}(self, page: PageData, out_size: tuple[int, int]) -> np.ndarray:
+    def build_{mode}(self, page: PageXMLParser, out_size: tuple[int, int]) -> np.ndarray:
     Where mode is the name of the mode in the xml_regions. See XMLConverter for more info
     """
 
@@ -33,14 +33,14 @@ class XMLToInstances(_XMLConverter):
     def __init__(self, xml_regions, square_lines):
         super().__init__(xml_regions, square_lines)
 
-    def build_region(self, page: PageData, out_size: tuple[int, int]) -> list[Instance]:
+    def build_region(self, page: PageXMLParser, out_size: tuple[int, int]) -> list[Instance]:
         """
         Create the instance version of the regions
         """
         size = page.get_size()
         instances = []
         for element in set(self.xml_regions.region_types.values()):
-            for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.region_classes):
+            for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.regions_to_classes):
                 coords = self._scale_coords(element_coords, out_size, size)
                 bbox = self._bounding_box(coords)
                 bbox_mode = structures.BoxMode.XYXY_ABS
@@ -58,7 +58,7 @@ class XMLToInstances(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains region instances")
         return instances
 
-    def build_instances_text_line(self, page: PageData, out_size: tuple[int, int]) -> list[Instance]:
+    def build_instances_text_line(self, page: PageXMLParser, out_size: tuple[int, int]) -> list[Instance]:
         """
         Create the instance version of the text line
         """
@@ -84,7 +84,7 @@ class XMLToInstances(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains text line instances")
         return instances
 
-    def build_baseline(self, page: PageData, out_size: tuple[int, int]):
+    def build_baseline(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Create the instance version of the baselines
         """

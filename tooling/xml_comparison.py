@@ -261,7 +261,7 @@ class IOUEvaluator:
         dilation = max(1, int(round(dilation_ratio * diag_len)))
         kernel = np.ones((3, 3), dtype=np.uint8)
 
-        padded_mask = cv2.copyMakeBorder(mask, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+        padded_mask = cv2.copyMakeBorder(mask, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=(0,))
         eroded_mask_with_padding = cv2.erode(padded_mask, kernel, iterations=dilation)
         eroded_mask = eroded_mask_with_padding[1:-1, 1:-1]
         boundary = mask - eroded_mask

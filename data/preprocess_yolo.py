@@ -354,6 +354,9 @@ class PreprocessYOLO:
                 manual_dpi=self.manual_dpi,
             )
             transforms = T.AugmentationList(self.augmentations)(aug_input)
+
+            if aug_input.image is None:
+                raise ValueError(f"Image {image_path} is None after augmentation")
             self.save_array_to_path(aug_input.image, out_image_path)
 
         with out_image_size_path.open(mode="w") as f:

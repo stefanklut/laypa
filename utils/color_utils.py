@@ -218,12 +218,12 @@ def distinct_color(exclude_colors: list[tuple[int, int, int]], n_attempts=1000, 
 
 def n_distinct_colors(
     n_colors: int,
-    exclude_colors: Optional[list[tuple[int, int, int] | int]] = None,
+    exclude_colors: Optional[list[tuple[int, int, int]] | list[int]] = None,
     return_excluded=False,
     n_attempts=1000,
     grayscale: bool = False,
     rng=None,
-) -> list[tuple[int, int, int] | int]:
+) -> list[tuple[int, int, int]] | list[int]:
     """
     Generate n distinct colors
 
@@ -247,9 +247,9 @@ def n_distinct_colors(
         else:
             assert isinstance(exclude_colors, list), "Expected list of grayscale colors"
             assert isinstance(exclude_colors[0], int), "Expected grayscale colors"
-        colors = exclude_colors.copy()
+        output_colors = exclude_colors.copy()
         for i in range(n_colors):
-            colors.append(distinct_grayscale(colors, n_attempts=n_attempts, rng=rng))
+            output_colors.append(distinct_grayscale(exclude_colors, n_attempts=n_attempts, rng=rng))  # type: ignore
     else:
         assert n_colors <= 256**3, "RGB only supports 256^3 colors"
         if exclude_colors is None:
@@ -258,14 +258,14 @@ def n_distinct_colors(
             assert isinstance(exclude_colors, list), "Expected list of RGB colors"
             assert isinstance(exclude_colors[0], tuple), "Expected RGB colors"
             assert len(exclude_colors[0]) == 3, "Expected RGB colors"
-        colors = exclude_colors.copy()
+        output_colors = exclude_colors.copy()
         for i in range(n_colors):
-            colors.append(distinct_color(colors, n_attempts=n_attempts, rng=rng))
+            output_colors.append(distinct_color(exclude_colors, n_attempts=n_attempts, rng=rng))  # type: ignore
 
     if return_excluded:
-        return colors
+        return output_colors
     else:
-        return colors[len(exclude_colors) :]
+        return output_colors[len(exclude_colors) :]
 
 
 if __name__ == "__main__":

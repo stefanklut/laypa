@@ -107,7 +107,7 @@ class OptionalTemporaryDirectory(tempfile.TemporaryDirectory):
             cleanup (bool, optional): flag if the temp dir needs to be deleted. Defaults to True.
         """
         if cleanup:
-            cls._rmtree(name, ignore_errors=ignore_errors)
+            cls._rmtree(name, ignore_errors=ignore_errors)  # type: ignore
             warnings.warn(warn_message, ResourceWarning)
 
     def __exit__(self, exc, value, tb) -> None:

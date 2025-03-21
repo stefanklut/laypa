@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.xmlPAGE import PageData
+from page_xml.pageXML_parser import PageXMLParser
 from utils.input_utils import get_file_paths
 
 
@@ -25,7 +25,7 @@ def get_arguments() -> argparse.Namespace:
 
 
 def get_confidence_from_pagexml(path: Path):
-    page_data = PageData(path)
+    page_data = PageXMLParser(path)
     page_data.parse()
 
     metadata_items = page_data._iter_element("MetadataItem")

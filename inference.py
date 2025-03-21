@@ -154,11 +154,12 @@ class Predictor(DefaultPredictor):
 
         # Default value of device should be the one in the config
         if device is None:
-            device = self.cfg.MODEL.DEVICE
+            device = str(self.cfg.MODEL.DEVICE)
 
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
-
+            if data.image is None:
+                raise ValueError("Image is None")
             height, width, channels = data.image.shape
             assert channels == 3, f"Must be a RBG image, found {channels} channels"
             # In place augmentation

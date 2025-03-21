@@ -109,6 +109,8 @@ def main(args) -> None:
         if not xml_path.is_file():
             return None
         image, dpi = load_image(image_path)
+        if image is None:
+            raise ValueError("image can not be None")
         original_image_shape = image.shape
         data = AugInput(
             image,
@@ -118,8 +120,8 @@ def main(args) -> None:
             manual_dpi=cfg.INPUT.DPI.MANUAL_DPI_TEST,
         )
         transforms = predictor.aug(data)
-        if image is None:
-            raise ValueError("image can not be None")
+        if data.image is None:
+            raise ValueError("data.image can not be None")
         sem_seg_gt = xml_converter.convert(
             xml_path,
             original_image_shape=(original_image_shape[0], original_image_shape[1]),

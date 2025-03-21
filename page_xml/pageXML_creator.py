@@ -264,7 +264,7 @@ class PageXML(ET.ElementTree):
                 elem.tail = i
 
 
-class PageXMLCreator:
+class PageXMLEditor:
     """Class to process PAGE xml files"""
 
     def __init__(self, filepath: Optional[Path] = None):

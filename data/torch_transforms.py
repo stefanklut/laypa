@@ -1,5 +1,6 @@
 import argparse
 import sys
+from abc import abstractmethod
 from pathlib import Path
 from typing import Optional
 
@@ -1005,7 +1006,7 @@ class CropTransform(T.Transform):
             cropped = polygon.intersection(crop_box)
             if cropped.is_empty:
                 continue
-            if isinstance(cropped, geometry.collection.BaseMultipartGeometry):
+            if isinstance(cropped, geometry.base.BaseMultipartGeometry):
                 cropped = cropped.geoms
             else:
                 cropped = [cropped]

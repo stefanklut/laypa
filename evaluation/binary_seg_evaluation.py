@@ -80,6 +80,7 @@ class BinarySegEvaluator(DatasetEvaluator):
         self._ignore_label = ignore_label if ignore_label is not None else meta.ignore_label
 
         # This is because cv2.erode did not work for int datatype. Only works for uint8.
+        # TODO Fix boundrey calculation for 3D masks
         self._compute_boundary_iou = False
         if not _CV2_IMPORTED:
             self._compute_boundary_iou = False
@@ -159,16 +160,25 @@ class BinarySegEvaluator(DatasetEvaluator):
             conf_matrix_list = all_gather(self._conf_matrix)
             b_conf_matrix_list = all_gather(self._b_conf_matrix)
             self._predictions = all_gather(self._predictions)
-            self._predictions = list(itertools.chain(*self._predictions))
+            for pred in self._predictions:
+                if pred is None:
+                    raise ValueError("Prediction is None")
+                if any(pred_i is None for pred_i in pred):
+                    raise ValueError("Prediction is None")
+            self._predictions = list(itertools.chain(*self._predictions))  # type: ignore
             if not is_main_process():
                 return
 
             self._conf_matrix = np.zeros_like(self._conf_matrix)
             for conf_matrix in conf_matrix_list:
+                if conf_matrix is None:
+                    raise ValueError("conf_matrix is None")
                 self._conf_matrix += conf_matrix
 
             self._b_conf_matrix = np.zeros_like(self._b_conf_matrix)
             for b_conf_matrix in b_conf_matrix_list:
+                if b_conf_matrix is None:
+                    raise ValueError("b_conf_matrix is None")
                 self._b_conf_matrix += b_conf_matrix
 
         acc = np.full(self._num_classes, np.nan, dtype=float)
@@ -220,7 +230,7 @@ class BinarySegEvaluator(DatasetEvaluator):
         dilation = max(1, int(round(dilation_ratio * diag_len)))
         kernel = np.ones((3, 3), dtype=np.uint8)
 
-        padded_mask = cv2.copyMakeBorder(mask, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+        padded_mask = cv2.copyMakeBorder(mask, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=(0,))
         eroded_mask_with_padding = cv2.erode(padded_mask, kernel, iterations=dilation)
         eroded_mask = eroded_mask_with_padding[1:-1, 1:-1]
         boundary = mask - eroded_mask

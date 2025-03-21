@@ -9,8 +9,8 @@ import numpy as np
 from detectron2.config import CfgNode, configurable
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from page_xml.pageXML_parser import PageXMLParser
 from page_xml.xml_regions import XMLRegions
-from page_xml.xmlPAGE import PageData
 from utils.image_utils import save_image_array_to_path
 from utils.logging_utils import get_logger_name
 from utils.vector_utils import point_at_start_or_end_assignment
@@ -89,7 +89,7 @@ class _XMLConverter:
         Returns:
             Optional[dict]: scaled coordinates about the location of the objects in the image
         """
-        gt_data = PageData(xml_path)
+        gt_data = PageXMLParser(xml_path)
         gt_data.parse()
 
         if original_image_shape is not None:
@@ -144,7 +144,7 @@ class _XMLConverter:
         self,
         image: np.ndarray,
         coords: np.ndarray,
-        color: int | tuple[int, int, int],
+        color: int | tuple[int] | tuple[int, int, int],
         thickness: int = 1,
     ) -> tuple[np.ndarray, bool]:
         """
@@ -164,8 +164,10 @@ class _XMLConverter:
 
         rounded_coords = np.round(coords).astype(np.int32)
 
+        color = (color,) if isinstance(color, int) else color
+
         if self.square_lines:
-            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, 1, thickness)
+            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, (1,), thickness)
             line_pixel_coords = np.column_stack(np.where(binary_mask == 1))[:, ::-1]
             start_or_end = point_at_start_or_end_assignment(rounded_coords, line_pixel_coords)
             if temp_image.ndim == 3:

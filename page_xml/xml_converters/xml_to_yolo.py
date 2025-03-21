@@ -5,8 +5,8 @@ import numpy as np
 from detectron2 import structures
 from detectron2.config import configurable
 
+from page_xml.pageXML_parser import PageXMLParser
 from page_xml.xml_converters.xml_converter import _XMLConverter
-from page_xml.xmlPAGE import PageData
 
 
 class Annotation(TypedDict):
@@ -52,7 +52,7 @@ class XMLToYOLO(_XMLConverter):
         normalized_coords = (coords / scale_factor[::-1]).astype(np.float32)
         return normalized_coords
 
-    def build_region(self, page: PageData, out_size: tuple[int, int]):
+    def build_region(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Create the instance version of the regions
         """
@@ -60,7 +60,7 @@ class XMLToYOLO(_XMLConverter):
         size = page.get_size()
         annotations = []
         for element in set(self.xml_regions.region_types.values()):
-            for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.region_classes):
+            for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.regions_to_classes):
                 coords = self._normalize_coords(element_coords, out_size)
 
                 bbox = self._bounding_box_center(coords)

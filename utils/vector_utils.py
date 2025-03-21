@@ -373,9 +373,8 @@ def draw_lines(lines: np.ndarray, thickness: int) -> np.ndarray:
     mask = np.zeros((height, width), dtype=np.uint8)
     for line in lines:
         rounded_coords = np.round(line).astype(np.int32)
-        cv2.polylines(empty_mask, [rounded_coords.reshape(-1, 1, 2)], False, 1, thickness)
+        cv2.polylines(empty_mask, [rounded_coords.reshape(-1, 1, 2)], False, (1,), thickness)
         line_pixel_coords = np.column_stack(np.where(empty_mask == 1))[:, ::-1]
-        print(line_pixel_coords.shape)
         empty_mask.fill(0)
         mask[line_pixel_coords[:, 1], line_pixel_coords[:, 0]] = (
             point_top_bottom_assignment(line, line_pixel_coords) + 1

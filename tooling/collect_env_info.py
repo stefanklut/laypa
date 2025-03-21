@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 
 import torch
+import torch.version
 
 
 def get_os() -> str:

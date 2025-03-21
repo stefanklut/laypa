@@ -14,19 +14,6 @@ class ContextTimer(contextlib.ContextDecorator):
 
     _stats = defaultdict(list)
 
-    # Hack to make it also work as Callable
-    def __new__(cls, arg=None, **kwargs):
-        self = super().__new__(cls)
-        self.__init__(**kwargs)
-
-        if arg is None:
-            return self
-        elif isinstance(arg, Callable):
-            return self.__call__(arg)
-        else:
-            self.__init__(arg)
-            return self
-
     def __init__(self, label: Optional[str] = None) -> None:
         self.label = label
         if self.label is None:
@@ -43,16 +30,27 @@ class ContextTimer(contextlib.ContextDecorator):
             lineno = frame.f_lineno
             self.label = f"{filename}:{lineno}"
 
-    @classmethod
-    @property
-    def stats(cls) -> dict[str, list[float]]:
-        """
-        The final timing results
+    def __enter__(self):
+        self.start_time = time.perf_counter()
+        return self
 
-        Returns:
-            dict[str, float]: results
-        """
-        return dict(cls._stats)
+    def __exit__(self, *exc):
+        net_time = time.perf_counter() - self.start_time
+        self.__class__._stats[self.label].append(net_time)
+        return False
+
+    # Hack to make it also work as Callable
+    def __new__(cls, arg=None, **kwargs):
+        self = super().__new__(cls)
+        self.__init__(**kwargs)
+
+        if arg is None:
+            return self
+        elif isinstance(arg, Callable):
+            return self.__call__(arg)
+        else:
+            self.__init__(arg)
+            return self
 
     def __call__(self, func: Callable):
         if self.label is None:
@@ -65,11 +63,13 @@ class ContextTimer(contextlib.ContextDecorator):
 
         return inner
 
-    def __enter__(self):
-        self.start_time = time.perf_counter()
-        return self
+    @classmethod
+    @property
+    def stats(cls) -> dict[str, list[float]]:
+        """
+        The final timing results
 
-    def __exit__(self, *exc):
-        net_time = time.perf_counter() - self.start_time
-        self.__class__._stats[self.label].append(net_time)
-        return False
+        Returns:
+            dict[str, float]: results
+        """
+        return dict(cls._stats)

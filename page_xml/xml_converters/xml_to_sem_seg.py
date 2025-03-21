@@ -2,15 +2,15 @@ import cv2
 import numpy as np
 from detectron2.config import CfgNode, configurable
 
+from page_xml.pageXML_parser import PageXMLParser
 from page_xml.xml_converters.xml_converter import _XMLConverter
-from page_xml.xmlPAGE import PageData
 from utils.vector_utils import point_top_bottom_assignment
 
 
 class XMLToSemSeg(_XMLConverter):
     """
     New sem_seg functions must be of the form:
-    def build_{mode}(self, page: PageData, out_size: tuple[int, int]) -> np.ndarray:
+    def build_{mode}(self, page: PageXMLParser, out_size: tuple[int, int]) -> np.ndarray:
     Where mode is the name of the mode in the xml_regions. See XMLConverter for more info
     """
 
@@ -18,7 +18,7 @@ class XMLToSemSeg(_XMLConverter):
     def __init__(self, xml_regions, square_lines):
         super().__init__(xml_regions, square_lines)
 
-    def build_baseline(self, page: PageData, out_size: tuple[int, int]):
+    def build_baseline(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the baselines
         """
@@ -37,14 +37,14 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains baseline sem_seg")
         return sem_seg
 
-    def build_region(self, page: PageData, out_size: tuple[int, int]):
+    def build_region(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Builds a "image" mask of desired elements
         """
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
         for element in set(self.xml_regions.region_types.values()):
-            for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.region_classes):
+            for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.regions_to_classes):
                 coords = self._scale_coords(element_coords, out_size, size)
                 rounded_coords = np.round(coords).astype(np.int32)
                 cv2.fillPoly(sem_seg, [rounded_coords], element_class)
@@ -52,7 +52,7 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains region sem_seg")
         return sem_seg
 
-    def build_class_baseline(self, page: PageData, out_size: tuple[int, int]):
+    def build_class_baseline(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the class baseline (baseline for each class)
         """
@@ -60,7 +60,7 @@ class XMLToSemSeg(_XMLConverter):
         sem_seg = np.zeros(out_size, np.uint8)
         total_overlap = False
         for element in set(self.xml_regions.region_types.values()):
-            for element_class, baseline_coords in page.iter_class_baseline_coords(element, self.xml_regions.region_classes):
+            for element_class, baseline_coords in page.iter_class_baseline_coords(element, self.xml_regions.regions_to_classes):
                 coords = self._scale_coords(baseline_coords, out_size, size)
                 sem_seg, overlap = self.draw_line(sem_seg, coords, element_class, thickness=self.xml_regions.line_width)
                 total_overlap = total_overlap or overlap
@@ -71,22 +71,22 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains class baseline sem_seg")
         return sem_seg
 
-    def build_text_line(self, page: PageData, out_size: tuple[int, int]):
+    def build_text_line(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Builds a sem_seg mask of the text line
         """
-        text_line_class = 1
+        text_line_color = (1,)
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
         for element_coords in page.iter_text_line_coords():
             coords = self._scale_coords(element_coords, out_size, size)
             rounded_coords = np.round(coords).astype(np.int32)
-            cv2.fillPoly(sem_seg, [rounded_coords], text_line_class)
+            cv2.fillPoly(sem_seg, [rounded_coords], text_line_color)
         if not sem_seg.any():
             self.logger.warning(f"File {page.filepath} does not contains text line sem_seg")
         return sem_seg
 
-    def build_top_bottom(self, page: PageData, out_size: tuple[int, int]):
+    def build_top_bottom(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the top bottom
         """
@@ -117,11 +117,11 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains top bottom sem_seg")
         return sem_seg
 
-    def build_start(self, page: PageData, out_size: tuple[int, int]):
+    def build_start(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the start
         """
-        start_color = 1
+        start_color = (1,)
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
         for baseline_coords in page.iter_baseline_coords():
@@ -132,11 +132,11 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains start sem_seg")
         return sem_seg
 
-    def build_end(self, page: PageData, out_size: tuple[int, int]):
+    def build_end(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the end
         """
-        end_color = 1
+        end_color = (1,)
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
         for baseline_coords in page.iter_baseline_coords():
@@ -147,11 +147,11 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains end sem_seg")
         return sem_seg
 
-    def build_separator(self, page: PageData, out_size: tuple[int, int]):
+    def build_separator(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the separator
         """
-        separator_color = 1
+        separator_color = (1,)
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)
         for baseline_coords in page.iter_baseline_coords():
@@ -165,12 +165,12 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains separator sem_seg")
         return sem_seg
 
-    def build_baseline_separator(self, page: PageData, out_size: tuple[int, int]):
+    def build_baseline_separator(self, page: PageXMLParser, out_size: tuple[int, int]):
         """
         Create the sem_seg version of the baseline separator
         """
-        baseline_color = 1
-        separator_color = 2
+        baseline_color = (1,)
+        separator_color = (2,)
 
         size = page.get_size()
         sem_seg = np.zeros(out_size, np.uint8)

@@ -105,7 +105,7 @@ def convert_to_paths(dataset_dir: Path, input_data: dict[str, list]) -> list[dic
     return converted_data
 
 
-def classes_to_colors(classes: list[str], grayscale=False) -> list[tuple[int, int, int] | int]:
+def classes_to_colors(classes: list[str], grayscale=False) -> list[int] | list[tuple[int, int, int]]:
     """
     Assign a unique distinct color to each class
 
@@ -126,13 +126,14 @@ def classes_to_colors(classes: list[str], grayscale=False) -> list[tuple[int, in
     else:
         background_color = (0, 0, 0)
         line_color = (255, 255, 255)
+
     if len(classes) == 2:
-        return [background_color, line_color]
+        return [background_color, line_color]  # type: ignore
 
     # No rng should give the same colors every time
     distinct_colors = n_distinct_colors(len(classes) - 1, grayscale=grayscale, rng=0)
     colors = [background_color] + distinct_colors
-    return colors
+    return colors  # type: ignore
 
 
 def metadata_from_classes(classes: list[str], ignore_label: int = 255) -> Metadata:
