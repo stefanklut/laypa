@@ -4,6 +4,7 @@ import random
 import sys
 from functools import lru_cache
 from pathlib import Path
+from typing import Optional
 
 import cv2
 import matplotlib.pyplot as plt
@@ -94,17 +95,17 @@ def main(args) -> None:
     predictor = Predictor(cfg=cfg)
 
     @lru_cache(maxsize=10)
-    def load_image(path):
+    def load_image(path) -> tuple[np.ndarray, int]:
         data = load_image_array_from_path(path, mode="color")
         if data is None:
             raise TypeError(f"Image {path} is None, loading failed")
 
-        image = data["image"]
-        dpi = data["dpi"]
+        image: np.ndarray = data["image"]
+        dpi: int = data["dpi"]
         return image, dpi
 
     @lru_cache(maxsize=10)
-    def create_gt_visualization(image_path):
+    def create_gt_visualization(image_path) -> Optional[np.ndarray]:
         xml_path = image_path_to_xml_path(image_path, check=False)
         if not xml_path.is_file():
             return None
@@ -127,12 +128,12 @@ def main(args) -> None:
             original_image_shape=(original_image_shape[0], original_image_shape[1]),
             image_shape=(data.image.shape[0], data.image.shape[1]),
         )
-        vis_im_gt = Visualizer(data.image.copy(), metadata=metadata, scale=1)
+        vis_im_gt = Visualizer(data.image.copy(), metadata=metadata, scale=1)  # type: ignore
         vis_im_gt = vis_im_gt.draw_sem_seg(sem_seg_gt, alpha=0.4)
         return vis_im_gt.get_image()
 
     @lru_cache(maxsize=10)
-    def create_pred_visualization(image_path):
+    def create_pred_visualization(image_path) -> Optional[np.ndarray]:
         image, dpi = load_image(image_path)
         data = AugInput(
             image,
@@ -205,7 +206,10 @@ def main(args) -> None:
         fig_manager = plt.get_current_fig_manager()
         if fig_manager is None:
             raise ValueError("Could not find figure manager")
-        fig_manager.window.showMaximized()
+        try:
+            fig_manager.window.showMaximized()  # type: ignore
+        except AttributeError:
+            logger.warning("Could not maximize window, continuing")
 
         i = 0
         while 0 <= i < len(loader):
@@ -220,7 +224,10 @@ def main(args) -> None:
             # vis_im = vis_im.draw_panoptic_seg(outputs["panoptic_seg"][0], outputs["panoptic_seg"][1])
             # vis_im_gt = vis_im_gt.draw_panoptic_seg(pano_gt, [item | {"isthing": True} for item in inputs["segments_info"]])
 
-            fig_manager.window.setWindowTitle(str(image_path))
+            try:
+                fig_manager.window.setWindowTitle(str(image_path))  # type: ignore
+            except AttributeError:
+                logger.warning("Could not set window title, continuing")
 
             # HACK Just remove the previous axes, I can't find how to resize the image otherwise
             axes[0].clear()
