@@ -235,12 +235,11 @@ class LaypaProcessingStep(ET.Element):
 
 class PageXML(ET.ElementTree):
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._root = PcGts()
+        super().__init__(element=PcGts(), **kwargs)
 
     def save_xml(self, filepath: Path):
         """write out XML file of current PAGE data"""
-        self._indent(self._root)
+        self._indent(self.getroot())
         with AtomicFileName(filepath) as path:
             super().write(path, encoding="UTF-8", xml_declaration=True)
 
@@ -264,37 +263,187 @@ class PageXML(ET.ElementTree):
                 elem.tail = i
 
 
-class PageXMLEditor:
+class PageXMLEditor(PageXML):
     """Class to process PAGE xml files"""
 
-    def __init__(self, filepath: Optional[Path] = None):
-        self.pageXML = PageXML()
-        self.filepath = filepath
-        if filepath is not None:
-            if filepath.exists():
-                self.pageXML.parse(filepath)
+    def __init__(self, filepath: Optional[Path | str] = None):
+        self.logger = logging.getLogger(get_logger_name())
+        self.XMLNS = {
+            "xmlns": "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15",
+            "xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+            "xsi:schemaLocation": " ".join(
+                [
+                    "http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15",
+                    " http://schema.primaresearch.org/PAGE/gts/pagecontent/2013-07-15/pagecontent.xsd",
+                ]
+            ),
+        }
+
+        ET.register_namespace("", self.XMLNS["xmlns"])
+
+        self.filepath = Path(filepath) if filepath is not None else None
+        if self.filepath is not None:
+            if self.filepath.exists():
+                self.parse(self.filepath)
+                # HACK Remove namespace from tree
+                default_namespace = "{" + self.XMLNS["xmlns"] + "}"
+                for elem in self.getroot().iter():
+                    name_space = elem.tag.split("}")[0] + "}"
+                    if name_space and name_space != default_namespace:
+                        raise ValueError(f"Found unexpected namespace {name_space}")
+                    if name_space == default_namespace:
+                        elem.tag = elem.tag.split("}")[1]
             else:
                 raise FileNotFoundError(f"File {filepath} does not exist")
 
         if filepath is None:
+            super().__init__()
             self.add_metadata()
+
+    def set_size(self, size: tuple[int, int]):
+        self.size = size
+
+    def get_size(self):
+        """
+        Get Image size defined on XML file
+        """
+        if self.size is not None:
+            return self.size
+
+        img_width_str = self.getroot().findall("Page")[0].get("imageWidth")
+        if img_width_str is None:
+            raise ValueError("imageWidth attribute is missing in the XML file.")
+        img_width = int(img_width_str)
+        img_height_str = self.getroot().findall("Page")[0].get("imageHeight")
+        if img_height_str is None:
+            raise ValueError("imageHeight attribute is missing in the XML file.")
+        img_height = int(img_height_str)
+        self.size = (img_height, img_width)
+
+        return self.size
+
+    def get_region_type(self, element):
+        """
+        Returns the type of element
+        """
+        try:
+            re_match = re.match(r".*structure {.*type:(.*);.*}", element.attrib["custom"])
+        except KeyError:
+            self.logger.warning(f"No region type defined for {self.get_id(element)} at {self.filepath}")
+            return None
+        if re_match is None:
+            self.logger.warning(f"No region type defined for {self.get_id(element)} at {self.filepath}")
+            return None
+        e_type = re_match.group(1)
+
+        return e_type
+
+    def get_id(self, element) -> str:
+        """
+        get Id of current element
+        """
+        return str(element.attrib.get("id"))
+
+    def get_zones(self, region_names):
+        to_return = {}
+        idx = 0
+        for element in region_names:
+            for node in self.getroot().findall(element):
+                to_return[idx] = {
+                    "coords": self.get_coords(node),
+                    "type": self.get_region_type(node),
+                    "id": self.get_id(node),
+                }
+                idx += 1
+        if to_return:
+            return to_return
+        else:
+            return None
+
+    def get_coords(self, element: ET.Element) -> np.ndarray:
+        coords_element = element.find("Coords")
+        if coords_element is None:
+            raise ValueError(f"'Coords' element not found in the provided element: {element.tag}")
+        points_attr = coords_element.attrib.get("points")
+        if points_attr is None:
+            raise ValueError(f"'points' attribute is missing in the 'Coords' element: {coords_element.tag}")
+        str_coords = points_attr.split()
+        return np.array([i.split(",") for i in str_coords]).astype(np.int32)
+
+    def iter_class_coords(self, element, class_dict):
+        for node in self.getroot().iterfind(element):
+            element_type = self.get_region_type(node)
+            if element_type is None or element_type not in class_dict:
+                self.logger.warning(f'Element type "{element_type}" undefined in class dict {self.filepath}')
+                continue
+            element_class = class_dict[element_type]
+            element_coords = self.get_coords(node)
+
+            # Ignore lines
+            if element_coords.shape[0] < 3:
+                continue
+
+            yield element_class, element_coords
+
+    def iter_baseline_coords(self):
+        for node in self.getroot().iterfind("Baseline"):
+            str_coords = node.attrib.get("points")
+            # Ignoring empty baselines
+            if str_coords is None:
+                continue
+            split_str_coords = str_coords.split()
+            # Ignoring empty baselines
+            if len(split_str_coords) == 0:
+                continue
+            # HACK Doubling single value baselines (otherwise they are not drawn)
+            if len(split_str_coords) == 1:
+                split_str_coords = split_str_coords * 2  # Double list [value]*2 for cv2.polyline
+            coords = np.array([i.split(",") for i in split_str_coords]).astype(np.int32)
+            yield coords
+
+    def iter_class_baseline_coords(self, element, class_dict):
+        for class_node in self.getroot().iterfind(element):
+            element_type = self.get_region_type(class_node)
+            if element_type is None or element_type not in class_dict:
+                self.logger.warning(f'Element type "{element_type}" undefined in class dict {self.filepath}')
+                continue
+            element_class = class_dict[element_type]
+            for baseline_node in class_node.iterfind("Baseline"):
+                str_coords = baseline_node.attrib.get("points")
+                # Ignoring empty baselines
+                if str_coords is None:
+                    continue
+                split_str_coords = str_coords.split()
+                # Ignoring empty baselines
+                if len(split_str_coords) == 0:
+                    continue
+                # HACK Doubling single value baselines (otherwise they are not drawn)
+                if len(split_str_coords) == 1:
+                    split_str_coords = split_str_coords * 2  # Double list [value]*2 for cv2.polyline
+                coords = np.array([i.split(",") for i in split_str_coords]).astype(np.int32)
+                yield element_class, coords
+
+    def iter_text_line_coords(self):
+        for node in self.getroot().iterfind("TextLine"):
+            coords = self.get_coords(node)
+            yield coords
 
     def add_metadata(self):
         metadata = Metadata()
         metadata.append(Creator("laypa"))
         metadata.append(Created())
         metadata.append(LastChange())
-        self.pageXML.getroot().append(metadata)
+        self.getroot().append(metadata)
         return metadata
 
     def add_page(
         self,
         image_filename: str,
-        image_width: int,
         image_height: int,
+        image_width: int,
     ):
         page = Page(image_filename, image_width, image_height)
-        self.pageXML.getroot().append(page)
+        self.getroot().append(page)
         return page
 
     def add_processing_step(
@@ -306,9 +455,36 @@ class PageXMLEditor:
         confidence: Optional[float] = None,
     ):
         processing_step = LaypaProcessingStep(git_hash, uuid, cfg, whitelist, confidence)
-        metadata = self.pageXML.getroot().find("Metadata")
+        metadata = self.getroot().find("Metadata")
         if metadata is None:
             metadata = self.add_metadata()
 
         metadata.append(processing_step)
         return processing_step
+
+    def get_text(self, element):
+        """
+        get Text defined for element
+        """
+        text_node = element.find("TextEquiv")
+        if text_node is None:
+            self.logger.info(f"No Text node found for line {self.get_id(element)} at {self.filepath}")
+            return ""
+        else:
+            child_node = text_node.find("*")
+            if child_node is None or child_node.text is None:
+                self.logger.info(f"No text found in line {self.get_id(element)} at {self.filepath}")
+                return ""
+            else:
+                return child_node.text
+
+    def get_transcription(self):
+        """Extracts text from each line on the XML file"""
+        data = {}
+        for element in self.getroot().findall("TextRegion"):
+            r_id = self.get_id(element)
+            for line in element.findall("TextLine"):
+                l_id = self.get_id(line)
+                data["_".join([r_id, l_id])] = self.get_text(line)
+
+        return data

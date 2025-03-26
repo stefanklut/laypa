@@ -2,14 +2,14 @@ import cv2
 import numpy as np
 from detectron2.config import configurable
 
-from page_xml.pageXML_parser import PageXMLParser
+from page_xml.pageXML_editor import PageXMLEditor
 from page_xml.xml_converters.xml_converter import _XMLConverter
 
 
 class XMLToBinarySeg(_XMLConverter):
     """
     New binary_seg functions must be of the form:
-    def build_{mode}(self, page: PageXMLParser, out_size: tuple[int, int]) -> np.ndarray:
+    def build_{mode}(self, page: PageXMLEditor, out_size: tuple[int, int]) -> np.ndarray:
     Where mode is the name of the mode in the xml_regions. See XMLConverter for more info
     """
 
@@ -17,7 +17,7 @@ class XMLToBinarySeg(_XMLConverter):
     def __init__(self, xml_regions, square_lines):
         super().__init__(xml_regions, square_lines)
 
-    def build_baseline(self, page: PageXMLParser, out_size: tuple[int, int]):
+    def build_baseline(self, page: PageXMLEditor, out_size: tuple[int, int]):
         """
         Create the binary seg version of the baselines
         """
@@ -38,7 +38,7 @@ class XMLToBinarySeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains baseline sem_seg")
         return sem_seg
 
-    def build_region(self, page: PageXMLParser, out_size: tuple[int, int]):
+    def build_region(self, page: PageXMLEditor, out_size: tuple[int, int]):
         """
         Builds a "image" mask of desired elements
         """

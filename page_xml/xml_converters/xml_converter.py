@@ -9,7 +9,7 @@ import numpy as np
 from detectron2.config import CfgNode, configurable
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.pageXML_parser import PageXMLParser
+from page_xml.pageXML_editor import PageXMLEditor
 from page_xml.xml_regions import XMLRegions
 from utils.image_utils import save_image_array_to_path
 from utils.logging_utils import get_logger_name
@@ -89,8 +89,7 @@ class _XMLConverter:
         Returns:
             Optional[dict]: scaled coordinates about the location of the objects in the image
         """
-        gt_data = PageXMLParser(xml_path)
-        gt_data.parse()
+        gt_data = PageXMLEditor(xml_path)
 
         if original_image_shape is not None:
             gt_data.set_size(original_image_shape)

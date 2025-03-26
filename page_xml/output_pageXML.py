@@ -19,13 +19,11 @@ import ultralytics.engine.results
 from detectron2.config import CfgNode
 from tqdm import tqdm
 
-from page_xml.pageXML_parser import PageXMLParser
-
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.setup import get_git_hash
 from data.dataset import classes_to_colors
 from page_xml.baseline_extractor import baseline_converter, image_to_baselines
-from page_xml.pageXML_creator import Baseline, PageXMLEditor, Region, TextLine
+from page_xml.pageXML_editor import Baseline, PageXMLEditor, Region, TextLine
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
 from utils.image_utils import save_image_array_to_path
@@ -139,7 +137,7 @@ class OutputPageXML:
 
         copy_mode(image_path, image_output_path, mode="link")
 
-    def generate_image_from_sem_seg(self, sem_seg: torch.Tensor, old_height: int, old_width: int) -> np.ndarray:
+    def generate_image_from_sem_seg(self, sem_seg_classes: np.ndarray, old_height: int, old_width: int) -> np.ndarray:
         """
         Generate image from sem_seg
 
@@ -155,14 +153,9 @@ class OutputPageXML:
         if self.output_dir is None:
             raise TypeError("Output dir is None")
 
-        sem_seg = torch.nn.functional.interpolate(
-            sem_seg[None], size=(old_height, old_width), mode="bilinear", align_corners=False
-        )[0]
-        sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy()
-
         # If we have only two classes, we can use the binary image
         if len(self.classes_to_colors) == 2:
-            return sem_seg_image * 255
+            return sem_seg_classes * 255
 
         if self.grayscale:
             image = np.zeros((old_height, old_width), dtype=np.uint8)
@@ -172,19 +165,19 @@ class OutputPageXML:
             # Skip background
             if class_id == 0:
                 continue
-            image[sem_seg_image == class_id] = color
+            image[sem_seg_classes == class_id] = color
 
         return image
 
     def add_baselines_to_page(
         self,
-        pageXML_creator: PageXMLEditor,
+        pageXML_editor: PageXMLEditor,
         sem_seg: torch.Tensor,
         old_height: int,
         old_width: int,
         upscale: bool = False,
     ) -> PageXMLEditor:
-        page = pageXML_creator.pageXML.find("Page")
+        page = pageXML_editor.find("Page")
         if page is None:
             raise ValueError("Page not found in pageXML")
         # image_name = page.attrib["imageFilename"]
@@ -234,11 +227,11 @@ class OutputPageXML:
             text_line.append(baseline)
             text_region.append(text_line)
 
-        return pageXML_creator
+        return pageXML_editor
 
     def add_regions_to_page(
         self,
-        pageXML_creator: PageXMLEditor,
+        pageXML_editor: PageXMLEditor,
         sem_seg_tensor: torch.Tensor,
         old_height: int,
         old_width: int,
@@ -264,12 +257,12 @@ class OutputPageXML:
 
         region_id = 0
 
-        page = pageXML_creator.pageXML.find("Page")
+        page = pageXML_editor.find("Page")
         if page is None:
             raise ValueError("Page not found in pageXML")
 
         if self.cfg is not None:
-            pageXML_creator.add_processing_step(
+            pageXML_editor.add_processing_step(
                 get_git_hash(),
                 self.cfg.LAYPA_UUID,
                 self.cfg,
@@ -326,7 +319,7 @@ class OutputPageXML:
                     )
                 )
 
-        return pageXML_creator
+        return pageXML_editor
 
     def generate_single_page_yolo(
         self,
@@ -352,13 +345,15 @@ class OutputPageXML:
 
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
         if old_height is None or old_width is None:
-            old_height, old_width = yolo_output.orig_shape
+            height, width = yolo_output.orig_shape
+        else:
+            height, width = old_height, old_width
 
-        page = PageXMLParser(xml_output_path)
-        page.new_page(image_path.name, str(old_height), str(old_width))
+        pageXML_editor = PageXMLEditor()
+        page = pageXML_editor.add_page(image_path.name, height, width)
 
         if self.cfg is not None:
-            page.add_processing_step(
+            pageXML_editor.add_processing_step(
                 get_git_hash(),
                 self.cfg.LAYPA_UUID,
                 self.cfg,
@@ -367,7 +362,7 @@ class OutputPageXML:
             )
 
         if yolo_output.boxes is None:
-            page.save_xml()
+            pageXML_editor.save_xml(xml_output_path)
             return
 
         region_id = 0
@@ -376,14 +371,11 @@ class OutputPageXML:
             relative_box = yolo_output.boxes.xyxyn[i].cpu().numpy()
 
             absolute_box = (
-                (relative_box[0] * old_width).round().astype(np.int32),
-                (relative_box[1] * old_height).round().astype(np.int32),
-                (relative_box[2] * old_width).round().astype(np.int32),
-                (relative_box[3] * old_height).round().astype(np.int32),
+                (relative_box[0] * width).round().astype(np.int32),
+                (relative_box[1] * height).round().astype(np.int32),
+                (relative_box[2] * width).round().astype(np.int32),
+                (relative_box[3] * height).round().astype(np.int32),
             )
-
-            region_coords = f"{absolute_box[0]},{absolute_box[1]} {absolute_box[2]},{absolute_box[1]} {absolute_box[2]},{absolute_box[3]} {absolute_box[0]},{absolute_box[3]}"
-            region_coords = region_coords.strip()
 
             class_id = int(yolo_output.boxes.cls[i].cpu().numpy())
             confidence = yolo_output.boxes.conf[i].cpu().numpy()
@@ -394,9 +386,23 @@ class OutputPageXML:
             region_id += 1
 
             _uuid = uuid.uuid4()
-            text_reg = page.add_element(region_type, f"region_{_uuid}_{region_id}", region, region_coords)
+            page.append(
+                Region.with_tag(
+                    region_type,
+                    np.array(
+                        [
+                            [absolute_box[0], absolute_box[1]],
+                            [absolute_box[2], absolute_box[1]],
+                            [absolute_box[2], absolute_box[3]],
+                            [absolute_box[0], absolute_box[3]],
+                        ]
+                    ),
+                    region,
+                    id=f"region_{_uuid}_{region_id}",
+                )
+            )
 
-        page.save_xml()
+        pageXML_editor.save_xml(xml_output_path)
 
     @staticmethod
     def scale_to_range(
@@ -504,76 +510,42 @@ class OutputPageXML:
         if old_height is None or old_width is None:
             old_height, old_width = sem_seg.shape[-2:]
 
-        pageXML_creator = PageXMLEditor()
-        pageXML_creator.add_page(image_path.name, old_height, old_width)
+        pageXML_editor = PageXMLEditor()
+        pageXML_editor.add_page(image_path.name, old_height, old_width)
 
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
-        page = PageXMLParser(xml_output_path)
-        page.new_page(image_path.name, str(old_height), str(old_width))
 
         if self.external_processing:
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            colored_image = self.generate_image_from_sem_seg(sem_seg, old_height, old_width)
+            sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
+            if self.save_confidence_heatmap:
+                self.save_heatmap(confidence, image_path)
+            sem_seg_classes = sem_seg_classes.cpu().numpy()
+            mean_confidence = torch.mean(confidence).cpu().numpy().item()
+            if self.cfg is not None:
+                pageXML_editor.add_processing_step(
+                    get_git_hash(),
+                    self.cfg.LAYPA_UUID,
+                    self.cfg,
+                    self.whitelist,
+                    confidence=mean_confidence,
+                )
+            colored_image = self.generate_image_from_sem_seg(sem_seg_classes, old_height, old_width)
             with AtomicFileName(file_path=sem_seg_output_path) as path:
                 save_image_array_to_path(str(path), colored_image.astype(np.uint8))
-            pageXML_creator.pageXML.save_xml(self.page_dir.joinpath(image_path.stem + ".xml"))
+            pageXML_editor.save_xml(xml_output_path)
             return
 
         if self.xml_regions.mode == "region":
-            pageXML_creator = self.add_regions_to_page(pageXML_creator, sem_seg, old_height, old_width, image_path)
-            pageXML_creator.pageXML.save_xml(self.page_dir.joinpath(image_path.stem + ".xml"))
-
-        elif self.xml_regions.mode in ["baseline", "start", "end", "separator"]:
-            sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
-
-            # Apply a color map
-            if self.save_confidence_heatmap:
-                self.save_heatmap(confidence, image_path)
-
-            sem_seg_classes = sem_seg_classes.cpu().numpy()
-            mean_confidence = torch.mean(confidence).cpu().numpy().item()
-
-            if self.cfg is not None:
-                page.add_processing_step(
-                    get_git_hash(),
-                    self.cfg.LAYPA_UUID,
-                    self.cfg,
-                    self.whitelist,
-                    confidence=mean_confidence,
-                )
-
-            # Save the mask
-            with AtomicFileName(file_path=sem_seg_output_path) as path:
-                save_image_array_to_path(str(path), (sem_seg_classes * 255).astype(np.uint8))
-
-        elif self.xml_regions.mode in ["baseline_separator", "top_bottom"]:
-            sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-
-            sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
-
-            # Apply a color map
-            if self.save_confidence_heatmap:
-                self.save_heatmap(confidence, image_path)
-
-            sem_seg_classes = sem_seg_classes.cpu().numpy()
-            mean_confidence = torch.mean(confidence).cpu().numpy().item()
-
-            if self.cfg is not None:
-                page.add_processing_step(
-                    get_git_hash(),
-                    self.cfg.LAYPA_UUID,
-                    self.cfg,
-                    self.whitelist,
-                    confidence=mean_confidence,
-                )
-
-            # Save the mask
-            with AtomicFileName(file_path=sem_seg_output_path) as path:
-                save_image_array_to_path(str(path), (sem_seg_classes * 128).clip(0, 255).astype(np.uint8))
+            pageXML_editor = self.add_regions_to_page(pageXML_editor, sem_seg, old_height, old_width, image_path)
+            pageXML_editor.save_xml(xml_output_path)
+        elif self.xml_regions.mode == "baseline":
+            pageXML_editor = self.add_baselines_to_page(pageXML_editor, sem_seg, old_height, old_width)
+            pageXML_editor.save_xml(xml_output_path)
         else:
-            pageXML_creator = self.add_baselines_to_page(pageXML_creator, sem_seg, old_height, old_width)
-            pageXML_creator.pageXML.save_xml(self.page_dir.joinpath(image_path.stem + ".xml"))
+            raise NotImplementedError(
+                f"No internal processing mode {self.xml_regions.mode}, use external processing by setting external_processing=True"
+            )
 
     def generate_single_page_wrapper(self, info):
         """

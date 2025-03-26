@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from detectron2.config import configurable
 
-from page_xml.pageXML_parser import PageXMLParser
+from page_xml.pageXML_editor import PageXMLEditor
 from page_xml.xml_converters.xml_converter import _XMLConverter
 
 
@@ -21,7 +21,7 @@ class SegmentsInfo(TypedDict):
 class XMLToPano(_XMLConverter):
     """
     New pano functions must be of the form:
-    def build_{mode}(self, page: PageXMLParser, out_size: tuple[int, int]) -> tuple[np.ndarray, list]:
+    def build_{mode}(self, page: PageXMLEditor, out_size: tuple[int, int]) -> tuple[np.ndarray, list]:
     Where mode is the name of the mode in the xml_regions. See XMLConverter for more info
     """
 
@@ -45,7 +45,7 @@ class XMLToPano(_XMLConverter):
             id_map //= 256
         return tuple(color)
 
-    def build_baseline(self, page: PageXMLParser, out_size: tuple[int, int]):
+    def build_baseline(self, page: PageXMLEditor, out_size: tuple[int, int]):
         """
         Create the pano version of the baselines
         """
@@ -76,7 +76,7 @@ class XMLToPano(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains baseline pano")
         return pano_mask, segments_info
 
-    def build_region(self, page: PageXMLParser, out_size: tuple[int, int]):
+    def build_region(self, page: PageXMLEditor, out_size: tuple[int, int]):
         """
         Create the pano version of the regions
         """
@@ -105,7 +105,7 @@ class XMLToPano(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains region pano")
         return pano_mask, segments_info
 
-    def build_text_line(self, page: PageXMLParser, out_size: tuple[int, int]):
+    def build_text_line(self, page: PageXMLEditor, out_size: tuple[int, int]):
         """
         Create the pano version of the text line
         """

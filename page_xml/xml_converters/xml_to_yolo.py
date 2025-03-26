@@ -5,7 +5,7 @@ import numpy as np
 from detectron2 import structures
 from detectron2.config import configurable
 
-from page_xml.pageXML_parser import PageXMLParser
+from page_xml.pageXML_editor import PageXMLEditor
 from page_xml.xml_converters.xml_converter import _XMLConverter
 
 
@@ -52,7 +52,7 @@ class XMLToYOLO(_XMLConverter):
         normalized_coords = (coords / scale_factor[::-1]).astype(np.float32)
         return normalized_coords
 
-    def build_region(self, page: PageXMLParser, out_size: tuple[int, int]):
+    def build_region(self, page: PageXMLEditor, out_size: tuple[int, int]):
         """
         Create the instance version of the regions
         """

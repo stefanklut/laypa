@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.pageXML_parser import PageXMLParser
+from page_xml.pageXML_editor import PageXMLEditor
 from utils.input_utils import get_file_paths
 
 
@@ -25,15 +25,14 @@ def get_arguments() -> argparse.Namespace:
 
 
 def get_confidence_from_pagexml(path: Path):
-    page_data = PageXMLParser(path)
-    page_data.parse()
+    page_data = PageXMLEditor(path)
 
-    metadata_items = page_data._iter_element("MetadataItem")
+    metadata_items = page_data.findall("MetadataItem")
     for metadata_item in metadata_items:
         if metadata_item.attrib["value"] != "laypa":
             continue
 
-        labels = page_data._iter_subelement(metadata_item, "Label")
+        labels = metadata_item.findall("Label")
         for label in labels:
             if label.attrib["type"] != "confidence":
                 continue
