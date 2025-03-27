@@ -37,7 +37,6 @@ def count_regions_single_page(xml_path: Path) -> Counter:
         Counter: Count of all unique regions
     """
     page_data = PageXMLEditor(xml_path)
-    page_data.parse()
 
     region_names = ["TextRegion"]  # Assuming this is all there is
     zones = page_data.get_zones(region_names)
