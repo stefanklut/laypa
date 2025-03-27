@@ -287,7 +287,7 @@ class PageXMLEditor(PageXML):
                 self.parse(self.filepath)
                 # HACK Remove namespace from tree
                 default_namespace = self.getroot().tag.split("}")[0] + "}"
-                for elem in self.getroot().iter():
+                for elem in self.iter():
                     name_space = elem.tag.split("}")[0] + "}"
                     if name_space and name_space != default_namespace:
                         raise ValueError(f"Found unexpected namespace {name_space}")
