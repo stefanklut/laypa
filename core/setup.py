@@ -39,6 +39,10 @@ def setup_logging(cfg: Optional[CfgNode] = None, save_log: bool = True) -> loggi
     logging.getLogger("fvcore")
     logging.getLogger("detectron2")
 
+    # Check if logger exists
+    if logging.getLogger("laypa").hasHandlers():
+        return logging.getLogger("laypa")
+
     logger = setup_logger(output_dir, distributed_rank=rank, name="laypa")
 
     for item in root_logger.manager.loggerDict:

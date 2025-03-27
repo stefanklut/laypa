@@ -27,13 +27,11 @@ def get_arguments() -> argparse.Namespace:
 def get_confidence_from_pagexml(path: Path):
     page_data = PageXMLEditor(path)
 
-    metadata_items = page_data.findall("MetadataItem")
-    for metadata_item in metadata_items:
+    for metadata_item in page_data.iterfind(".//MetadataItem"):
         if metadata_item.attrib["value"] != "laypa":
             continue
 
-        labels = metadata_item.findall("Label")
-        for label in labels:
+        for label in page_data.iterfind(".//Label"):
             if label.attrib["type"] != "confidence":
                 continue
 

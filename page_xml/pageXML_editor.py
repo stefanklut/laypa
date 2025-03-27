@@ -310,11 +310,15 @@ class PageXMLEditor(PageXML):
         if self.size is not None:
             return self.size
 
-        img_width_str = self.getroot().findall("Page")[0].get("imageWidth")
+        page = self.find(".//Page")
+        if page is None:
+            raise ValueError("Page element is missing in the XML file.")
+
+        img_width_str = page.get("imageWidth")
         if img_width_str is None:
             raise ValueError("imageWidth attribute is missing in the XML file.")
         img_width = int(img_width_str)
-        img_height_str = self.getroot().findall("Page")[0].get("imageHeight")
+        img_height_str = page.get("imageHeight")
         if img_height_str is None:
             raise ValueError("imageHeight attribute is missing in the XML file.")
         img_height = int(img_height_str)
@@ -348,7 +352,7 @@ class PageXMLEditor(PageXML):
         to_return = {}
         idx = 0
         for element in region_names:
-            for node in self.getroot().findall(element):
+            for node in self.iterfind(f".//{element}"):
                 to_return[idx] = {
                     "coords": self.get_coords(node),
                     "type": self.get_region_type(node),
@@ -371,7 +375,7 @@ class PageXMLEditor(PageXML):
         return np.array([i.split(",") for i in str_coords]).astype(np.int32)
 
     def iter_class_coords(self, element, class_dict):
-        for node in self.getroot().iterfind(element):
+        for node in self.iterfind(f".//{element}"):
             element_type = self.get_region_type(node)
             if element_type is None or element_type not in class_dict:
                 self.logger.warning(f'Element type "{element_type}" undefined in class dict {self.filepath}')
@@ -386,7 +390,7 @@ class PageXMLEditor(PageXML):
             yield element_class, element_coords
 
     def iter_baseline_coords(self):
-        for node in self.getroot().iterfind("Baseline"):
+        for node in self.iterfind(".//Baseline"):
             str_coords = node.attrib.get("points")
             # Ignoring empty baselines
             if str_coords is None:
@@ -402,13 +406,13 @@ class PageXMLEditor(PageXML):
             yield coords
 
     def iter_class_baseline_coords(self, element, class_dict):
-        for class_node in self.getroot().iterfind(element):
+        for class_node in self.iterfind(f".//{element}"):
             element_type = self.get_region_type(class_node)
             if element_type is None or element_type not in class_dict:
                 self.logger.warning(f'Element type "{element_type}" undefined in class dict {self.filepath}')
                 continue
             element_class = class_dict[element_type]
-            for baseline_node in class_node.iterfind("Baseline"):
+            for baseline_node in class_node.iterfind(".//Baseline"):
                 str_coords = baseline_node.attrib.get("points")
                 # Ignoring empty baselines
                 if str_coords is None:
@@ -424,7 +428,7 @@ class PageXMLEditor(PageXML):
                 yield element_class, coords
 
     def iter_text_line_coords(self):
-        for node in self.getroot().iterfind("TextLine"):
+        for node in self.iterfind(".//TextLine"):
             coords = self.get_coords(node)
             yield coords
 
@@ -455,7 +459,7 @@ class PageXMLEditor(PageXML):
         confidence: Optional[float] = None,
     ):
         processing_step = LaypaProcessingStep(git_hash, uuid, cfg, whitelist, confidence)
-        metadata = self.getroot().find("Metadata")
+        metadata = self.find("Metadata")
         if metadata is None:
             metadata = self.add_metadata()
 
@@ -481,9 +485,9 @@ class PageXMLEditor(PageXML):
     def get_transcription(self):
         """Extracts text from each line on the XML file"""
         data = {}
-        for element in self.getroot().findall("TextRegion"):
+        for element in self.iterfind(".//TextRegion"):
             r_id = self.get_id(element)
-            for line in element.findall("TextLine"):
+            for line in element.iterfind(".//TextLine"):
                 l_id = self.get_id(line)
                 data["_".join([r_id, l_id])] = self.get_text(line)
 

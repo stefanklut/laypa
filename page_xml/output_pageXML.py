@@ -177,7 +177,7 @@ class OutputPageXML:
         old_width: int,
         upscale: bool = False,
     ) -> PageXMLEditor:
-        page = pageXML_editor.find("Page")
+        page = pageXML_editor.find(".//Page")
         if page is None:
             raise ValueError("Page not found in pageXML")
         # image_name = page.attrib["imageFilename"]
@@ -208,7 +208,7 @@ class OutputPageXML:
             sem_seg_image, self.xml_regions, minimum_width=minimum_width, minimum_height=minimum_height, step=step
         )
 
-        text_region = page.find("TextRegion")
+        text_region = page.find("./TextRegion")
         if text_region is None:
             raise ValueError("TextRegion not found in pageXML")
         for coords_baseline in coords_baselines:
@@ -257,7 +257,7 @@ class OutputPageXML:
 
         region_id = 0
 
-        page = pageXML_editor.find("Page")
+        page = pageXML_editor.find(".//Page")
         if page is None:
             raise ValueError("Page not found in pageXML")
 
