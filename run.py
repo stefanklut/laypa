@@ -9,7 +9,7 @@ from utils.logging_utils import get_logger_name
 if __name__ == "__main__":
     args = get_arguments()
     cfg = setup_cfg(args)
-    setup_logging(cfg, save_log=True)
+    setup_logging(cfg, save_log=False)
     logger = logging.getLogger(get_logger_name())
     logger.warning(
         (
