@@ -391,6 +391,8 @@ def main(args: argparse.Namespace) -> None:
         whitelist=args.whitelist,
         rectangle_regions=cfg.PREPROCESS.REGION.RECTANGLE_REGIONS,
         min_region_size=cfg.PREPROCESS.REGION.MIN_REGION_SIZE,
+        external_processing=cfg.POSTPROCESS.EXTERNAL.ENABLED,
+        external_processing_grayscale=cfg.POSTPROCESS.EXTERNAL.GRAYSCALE,
         save_confidence_heatmap=args.save_confidence_heatmap,
     )
 

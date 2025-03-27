@@ -22,6 +22,7 @@ def round_up(array: np.ndarray):
 
 def baseline_converter(
     image: np.ndarray,
+    xml_file: str,
     minimum_width: int = 15,
     minimum_height: int = 3,
     step: int = 50,
@@ -39,7 +40,7 @@ def baseline_converter(
         sub_image = labels[y_offset : y_offset + height, x_offset : x_offset + width]
         sub_image = (sub_image == i).astype(np.uint8)
 
-        baseline = extract_baseline_v2(sub_image, "test.xml", (x_offset, y_offset), minimum_height, step)
+        baseline = extract_baseline_v2(sub_image, xml_file, (x_offset, y_offset), minimum_height, step)
         if len(baseline) < 2:
             continue
         baseline = cv2.approxPolyDP(np.array(baseline, dtype=np.float32), 1, False).reshape(-1, 2)
@@ -423,12 +424,13 @@ def test2(image: np.ndarray):
 def image_to_baselines(
     image: np.ndarray,
     xml_regions: XMLRegions,
+    xml_file: str,
     minimum_width: int = 15,
     minimum_height: int = 3,
     step: int = 50,
 ):
     if xml_regions.mode == "baseline":
-        return baseline_converter(image, minimum_width, minimum_height, step)
+        return baseline_converter(image, xml_file, minimum_width, minimum_height, step)
     if xml_regions.mode == "top_bottom":
         return top_bottom_converter(image, minimum_width, minimum_height, step)
     else:

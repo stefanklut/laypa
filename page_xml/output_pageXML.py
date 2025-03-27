@@ -59,8 +59,8 @@ class OutputPageXML:
         whitelist: Optional[Iterable[str]] = None,
         rectangle_regions: Optional[Iterable[str]] = None,
         min_region_size: int = 10,
-        external_processing: bool = True,
-        grayscale: bool = True,
+        external_processing: bool = False,
+        external_processing_grayscale: bool = True,
         save_confidence_heatmap: bool = False,
     ) -> None:
         """
@@ -98,8 +98,8 @@ class OutputPageXML:
         self.rectangle_regions = set() if rectangle_regions is None else set(rectangle_regions)
 
         self.external_processing = external_processing
-        self.grayscale = grayscale
-        self.classes_to_colors = classes_to_colors(xml_regions.regions, grayscale)
+        self.grayscale = external_processing_grayscale
+        self.classes_to_colors = classes_to_colors(xml_regions.regions, external_processing_grayscale)
 
     def set_output_dir(self, output_dir: str | Path):
         if isinstance(output_dir, str):
@@ -172,6 +172,7 @@ class OutputPageXML:
     def add_baselines_to_page(
         self,
         pageXML_editor: PageXMLEditor,
+        xml_path: Path,
         sem_seg: torch.Tensor,
         old_height: int,
         old_width: int,
@@ -204,8 +205,10 @@ class OutputPageXML:
         minimum_height = 3 / scaling[1]
         step = 50 // scaling[0]
 
+        xml_file = str(xml_path)
+
         coords_baselines = image_to_baselines(
-            sem_seg_image, self.xml_regions, minimum_width=minimum_width, minimum_height=minimum_height, step=step
+            sem_seg_image, self.xml_regions, xml_file, minimum_width=minimum_width, minimum_height=minimum_height, step=step
         )
 
         text_region = page.find("./TextRegion")
@@ -515,7 +518,8 @@ class OutputPageXML:
 
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
 
-        if self.external_processing:
+        # TODO This external processing is only done for baselines, not for regions. So exlude regions for now
+        if self.external_processing and not self.xml_regions.mode == "region":
             sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
             sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
             if self.save_confidence_heatmap:
@@ -540,7 +544,7 @@ class OutputPageXML:
             pageXML_editor = self.add_regions_to_page(pageXML_editor, sem_seg, old_height, old_width, image_path)
             pageXML_editor.save_xml(xml_output_path)
         elif self.xml_regions.mode == "baseline":
-            pageXML_editor = self.add_baselines_to_page(pageXML_editor, sem_seg, old_height, old_width)
+            pageXML_editor = self.add_baselines_to_page(pageXML_editor, xml_output_path, sem_seg, old_height, old_width)
             pageXML_editor.save_xml(xml_output_path)
         else:
             raise NotImplementedError(
