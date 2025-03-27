@@ -1,4 +1,5 @@
 import itertools
+import logging
 import sys
 from pathlib import Path
 from typing import Iterable
@@ -6,8 +7,12 @@ from typing import Iterable
 import cv2
 import numpy as np
 
+from utils.logging_utils import get_logger_name
+
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from page_xml.xml_regions import XMLRegions
+
+logger = logging.getLogger(get_logger_name())
 
 
 ## Old method
@@ -83,7 +88,7 @@ def extract_baseline(baseline_mat: np.ndarray, xml_file: str, offset: tuple[int,
         baseline.append(point)
 
     if merged_line_detected:
-        print(f"mergedLineDetected: {xml_file}")
+        logger.warning(f"mergedLineDetected: {xml_file}")
 
     return baseline
 
@@ -115,7 +120,7 @@ def extract_baseline_v2(baseline_mat: np.ndarray, xml_file: str, offset: tuple[i
         baseline.append(point)
 
     if merged_line_detected:
-        print(f"mergedLineDetected: {xml_file}")
+        logger.warning(f"mergedLineDetected: {xml_file}")
 
     return baseline
 
