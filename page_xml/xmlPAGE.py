@@ -7,35 +7,15 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from types import NoneType
-from typing import Iterable, Optional, TypedDict
+from typing import Iterable, Optional
 
 import numpy as np
 from detectron2.config import CfgNode
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from utils.cfg_utils import convert_cfg_node_to_dict
 from utils.logging_utils import get_logger_name
 from utils.tempdir import AtomicFileName
-
-_VALID_TYPES = {tuple, list, str, int, float, bool, NoneType}
-
-
-# TODO convert from dict to CfgNode, move to separate file. Use this to save the config in the pickled model. Then also create tooling to combine existing configs and weights.
-def convert_to_dict(cfg_node, key_list: list = []):
-    """Convert a config node to dictionary"""
-    if not isinstance(cfg_node, CfgNode):
-        if type(cfg_node) not in _VALID_TYPES:
-            print(
-                "Key {} with value {} is not a valid type; valid types: {}".format(
-                    ".".join(key_list), type(cfg_node), _VALID_TYPES
-                ),
-            )
-        return cfg_node
-    else:
-        cfg_dict = dict(cfg_node)
-        for k, v in cfg_dict.items():
-            cfg_dict[k] = convert_to_dict(v, key_list + [k])
-        return cfg_dict
 
 
 class PageData:
@@ -324,7 +304,7 @@ class PageData:
             whilelisted_element = ET.SubElement(labels, "Label")
             whilelisted_element.attrib = {
                 "type": key,
-                "value": str(convert_to_dict(sub_node)),
+                "value": str(convert_cfg_node_to_dict(sub_node)),
             }
 
     def add_element(self, region_class, region_id, region_type, region_coords, parent=None):
