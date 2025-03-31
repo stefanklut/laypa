@@ -80,7 +80,7 @@ class BinarySegEvaluator(DatasetEvaluator):
         self._ignore_label = ignore_label if ignore_label is not None else meta.ignore_label
 
         # This is because cv2.erode did not work for int datatype. Only works for uint8.
-        # TODO Fix boundrey calculation for 3D masks
+        # TODO Fix boundary calculation for 3D masks
         self._compute_boundary_iou = False
         if not _CV2_IMPORTED:
             self._compute_boundary_iou = False
