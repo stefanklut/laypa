@@ -28,7 +28,7 @@ def get_arguments() -> argparse.Namespace:
 
 def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
     """
-    copy a list of image paths to an output dir. The respective pageXMLs are also copied
+    copy a list of image paths to an output dir. The respective PageXMLs are also copied
 
     Args:
         paths (list[Path]): image paths
@@ -63,7 +63,7 @@ def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
 
 def main(args):
     """
-    Sample result (or really an pageXML) from a larger corpus to process or view.
+    Sample result (or really an PageXML) from a larger corpus to process or view.
 
     Args:
         args (argparse.Namespace): arguments for where to find the images, and the output dir

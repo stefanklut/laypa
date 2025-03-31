@@ -23,7 +23,7 @@ sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from core.setup import get_git_hash
 from data.dataset import classes_to_colors
 from page_xml.baseline_extractor import baseline_converter, image_to_baselines
-from page_xml.pageXML_editor import Baseline, PageXMLEditor, Region, TextLine
+from page_xml.page_xml_editor import Baseline, PageXMLEditor, Region, TextLine
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
 from utils.image_utils import save_image_array_to_path

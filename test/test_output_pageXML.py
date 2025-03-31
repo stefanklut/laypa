@@ -9,7 +9,7 @@ import numpy as np
 import torch
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.output_pageXML import OutputPageXML
+from page_xml.output_page_xml import OutputPageXML
 from page_xml.xml_regions import XMLRegions
 
 

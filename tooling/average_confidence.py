@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.pageXML_editor import PageXMLEditor
+from page_xml.page_xml_editor import PageXMLEditor
 from utils.input_utils import get_file_paths
 
 

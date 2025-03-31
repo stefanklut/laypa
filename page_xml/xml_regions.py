@@ -24,7 +24,7 @@ class XMLRegions:
         Args:
             mode (str): mode of the region type
             line_width (Optional[int], optional): width of line. Defaults to None.
-            regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
+            regions (Optional[list[str]], optional): list of regions to extract from PageXML. Defaults to None.
             merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
             region_types (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
@@ -78,7 +78,7 @@ class XMLRegions:
     @classmethod
     def get_parser(cls) -> argparse.ArgumentParser:
         """
-        Return argparser that has the arguments required for the pageXML regions.
+        Return argparser that has the arguments required for the PageXML regions.
 
         use like this: parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()])
 

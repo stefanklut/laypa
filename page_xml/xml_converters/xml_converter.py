@@ -9,7 +9,7 @@ import numpy as np
 from detectron2.config import CfgNode, configurable
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.pageXML_editor import PageXMLEditor
+from page_xml.page_xml_editor import PageXMLEditor
 from page_xml.xml_regions import XMLRegions
 from utils.image_utils import save_image_array_to_path
 from utils.logging_utils import get_logger_name
@@ -76,10 +76,10 @@ class _XMLConverter:
         image_shape: Optional[tuple[int, int]] = None,
     ) -> Any:
         """
-        Turn a single pageXML into a dict with scaled coordinates
+        Turn a single PageXML into a dict with scaled coordinates
 
         Args:
-            xml_path (Path): path to pageXML
+            xml_path (Path): path to PageXML
             original_image_shape (Optional[tuple[int, int]], optional): shape of the original image. Defaults to None.
             image_shape (Optional[tuple[int, int]], optional): shape of the output image. Defaults to None.
 

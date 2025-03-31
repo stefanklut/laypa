@@ -39,7 +39,7 @@ def get_arguments() -> argparse.Namespace:
         nargs="?",
         const="all",
         default=None,
-        help="Check if images is not corrupted, and if pageXML is properly formatted",
+        help="Check if images is not corrupted, and if PageXML is properly formatted",
     )
 
     args = parser.parse_args()
@@ -48,7 +48,7 @@ def get_arguments() -> argparse.Namespace:
 
 def copy_xml_paths(xml_paths: list[Path], output_dir: Path, mode: str = "copy") -> list[Path]:
     """
-    copy a list of pageXML paths to an output dir. The respective images are also copied
+    copy a list of PageXML paths to an output dir. The respective images are also copied
 
     Args:
         xml_paths (list[Path]): image paths
@@ -83,7 +83,7 @@ def copy_xml_paths(xml_paths: list[Path], output_dir: Path, mode: str = "copy") 
 
 def copy_image_paths(image_paths: list[Path], output_dir: Path, mode: str = "copy") -> list[Path]:
     """
-    copy a list of image paths to an output dir. The respective pageXMLs are also copied
+    copy a list of image paths to an output dir. The respective PageXMLs are also copied
 
     Args:
         image_paths (list[Path]): image paths
@@ -166,7 +166,7 @@ def main(args):
             raise FileNotFoundError(f"{input_path} does not exist")
 
         if input_path.is_dir():
-            # Get all pageXMLs somewhere in the folders
+            # Get all PageXMLs somewhere in the folders
             xml_paths = list(input_path.rglob(f"**/page/*.xml"))
             if len(xml_paths) == 0:
                 raise FileNotFoundError(f"No xml_files found within {input_path}")

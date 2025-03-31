@@ -31,7 +31,7 @@ training
 └── ...
 ```
 
-Any training data should follow this structure. And the the pageXML should contain (depending on what type of training you have) either baselines and/or regions.
+Any training data should follow this structure. And the the PageXML should contain (depending on what type of training you have) either baselines and/or regions.
 
 The results (by default) will be saved in the output dir specified in the config file. This includes the trained models at various steps throughout the training process. Additionally, it contains the models that achieved the highest scores in a number of metrics, such as Intersection over Union (IoU) and Accuracy (Acc). Apart from saved models, it also contains all the necessary info to retrain the model from scratch. This includes the full config and a `.txt` file containing all the images used as training and validation data.
 
@@ -80,7 +80,7 @@ For the inference of the baseline, we will again use the [baseline config][basel
 ```sh
 python inference.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/inference --output tutorial/inference_results
 ```
-The baseline models output the mask image for further processing. The pageXML output is just the name/placeholder.
+The baseline models output the mask image for further processing. The PageXML output is just the name/placeholder.
 
 ### Region Models
 For the inference of the regions, we will again use the [region config][region_config_link] found in the tutorial directory.
@@ -89,7 +89,7 @@ For the inference of the regions, we will again use the [region config][region_c
 python inference.py --config tutorial/baseline_tutorial_config.yaml --input tutorial/data/inference --output tutorial/inference_results
 ```
 
-The region models output the pageXML with regions directly. The pageXML will already contain polygons which indicate where each text region is and what class they belong to.
+The region models output the PageXML with regions directly. The PageXML will already contain polygons which indicate where each text region is and what class they belong to.
 
 ### Altering Config
 To change the weights that are loaded into the model the `--opts` argument can be used with the `TEST.WEIGHTS` argument. These weights should be trained using the same model structure, but perhaps with other hyperparameters, otherwise the weights will not match between models.

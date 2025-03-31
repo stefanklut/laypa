@@ -17,7 +17,7 @@ def preprocess_datasets(
     save_image_locations: bool = True,
 ):
     """
-    Preprocess the dataset(s). Converts ground truth pageXML to label masks for training
+    Preprocess the dataset(s). Converts ground truth PageXML to label masks for training
 
     Args:
         cfg (CfgNode): Configuration node.

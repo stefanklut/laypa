@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 from detectron2.config import configurable
 
-from page_xml.pageXML_editor import PageXMLEditor
+from page_xml.page_xml_editor import PageXMLEditor
 from page_xml.xml_converters.xml_converter import _XMLConverter
 
 

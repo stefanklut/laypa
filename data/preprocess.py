@@ -47,7 +47,7 @@ from utils.path_utils import check_path_accessible, image_path_to_xml_path
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         parents=[Preprocess.get_parser(), XMLRegions.get_parser()],
-        description="Preprocessing an annotated dataset of documents with pageXML",
+        description="Preprocessing an annotated dataset of documents with PageXML",
     )
 
     io_args = parser.add_argument_group("IO")
@@ -693,7 +693,7 @@ class Preprocess:
 
     def process_single_file(self, image_path: Path) -> dict:
         """
-        Process a single image and pageXML to be used during training
+        Process a single image and PageXML to be used during training
 
         Args:
             image_path (Path): Path to input image
@@ -737,7 +737,7 @@ class Preprocess:
             TypeError: Input paths must be set
             TypeError: Output dir must be set
             ValueError: Must find at least one image in all input paths
-            ValueError: Must find at least one pageXML in all input paths
+            ValueError: Must find at least one PageXML in all input paths
         """
         if self.input_paths is None:
             raise TypeError("Cannot run when the input path is None")
