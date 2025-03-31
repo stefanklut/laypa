@@ -1,7 +1,4 @@
 import argparse
-import sys
-from abc import abstractmethod
-from pathlib import Path
 from typing import Optional
 
 import cv2
