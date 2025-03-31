@@ -133,6 +133,9 @@ def safe_predict(data, device):
 
     Returns:
         Prediction output
+
+    Raises:
+        TypeError: If the predictor is not initialized
     """
 
     try:
@@ -174,6 +177,7 @@ def predict_image(
     Raises:
         TypeError: If the current GenPageXML is not initialized
         TypeError: If the current Predictor is not initialized
+        ValueError: If the predictor did not return any outputs
 
     Returns:
         dict[str, Any]: Information about the processed image

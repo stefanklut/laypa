@@ -486,7 +486,7 @@ class PreprocessYOLO:
             raise ValueError(f"No images found when checking input ({self.input_paths})")
 
         if len(xml_paths) == 0:
-            raise ValueError(f"No pagexml found when checking input  ({self.input_paths})")
+            raise ValueError(f"No PageXML found when checking input  ({self.input_paths})")
 
         if not self.disable_check:
             self.check_paths_exists(self.input_paths)

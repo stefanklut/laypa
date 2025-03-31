@@ -67,17 +67,20 @@ class OutputPageXML:
         Class for the generation of the pageXML from class predictions on images
 
         Args:
-            xml_regions (XMLRegions): contains the page xml configurations
-            output_dir (str | Path): path to output dir
+            xml_regions (XMLRegions): Contains the page xml configurations
+            output_dir (str | Path): Path to output dir
             'regions'. Defaults to None.
-            cfg (Optional[CfgNode]): contains the configuration that is used for providence in the pageXML.
+            cfg (Optional[CfgNode]): Contains the configuration that is used for providence in the pageXML.
             Defaults to None.
-            whitelist (Optional[Iterable[str]]): names of the configuration fields to be used in the pageXML.
+            whitelist (Optional[Iterable[str]]): Names of the configuration fields to be used in the pageXML.
             Defaults to None.
-            rectangle_regions (Optional[Iterable[str]]): the regions that have to be described with the minimal rectangle,
+            rectangle_regions (Optional[Iterable[str]]): The regions that have to be described with the minimal rectangle,
             that fits them. Defaults to None.
-            min_region_size (int): minimum size a region has to be, to be considered a valid region.
+            min_region_size (int): Minimum size a region has to be, to be considered a valid region.
             Defaults to 10 pixels.
+            external_processing (bool): If True, the sem_seg is processed externally
+            external_processing_grayscale (bool): If True, the sem_seg is output for external processing in grayscale
+            save_confidence_heatmap (bool): If True, the confidence heatmap is saved
         """
 
         self.logger = logging.getLogger(get_logger_name())
@@ -102,6 +105,13 @@ class OutputPageXML:
         self.classes_to_colors = classes_to_colors(xml_regions.regions, external_processing_grayscale)
 
     def set_output_dir(self, output_dir: str | Path):
+        """
+        Set the output dir for the generated PageXMLs and the images
+        The output dir will be created if it does not exist.
+
+        Args:
+            output_dir (str | Path): Path to output dir
+        """
         if isinstance(output_dir, str):
             output_dir = Path(output_dir)
 
@@ -119,6 +129,12 @@ class OutputPageXML:
             self.confidence_dir = self.output_dir.joinpath("confidence")
 
     def set_whitelist(self, whitelist: Iterable[str]):
+        """
+        Set the whitelist for the configuration fields to be saved in the PageXML.
+
+        Args:
+            whitelist (Iterable[str]): Names of the configuration fields to be used in the PageXML.
+        """
         self.whitelist = set(whitelist)
 
     def link_image(self, image_path: Path):
@@ -126,7 +142,7 @@ class OutputPageXML:
         Symlink image to get the correct output structure
 
         Args:
-            image_path (Path): path to original image
+            image_path (Path): Path to original image
 
         Raises:
             TypeError: Output dir has not been set
@@ -144,11 +160,14 @@ class OutputPageXML:
         Args:
             sem_seg (torch.Tensor): sem_seg as tensor
             image_path (Path): Image path, used for path name
-            old_height (int): height of the original image
-            old_width (int): width of the original image
+            old_height (int): Height of the original image
+            old_width (int): Width of the original image
 
         Raises:
             TypeError: Output dir has not been set
+
+        Returns:
+            np.ndarray: Image as numpy array
         """
         if self.output_dir is None:
             raise TypeError("Output dir is None")
@@ -171,14 +190,33 @@ class OutputPageXML:
 
     def add_baselines_to_page(
         self,
-        pageXML_editor: PageXMLEditor,
+        page_xml_editor: PageXMLEditor,
         xml_path: Path,
-        sem_seg: torch.Tensor,
+        sem_seg_tensor: torch.Tensor,
         old_height: int,
         old_width: int,
         upscale: bool = False,
     ) -> PageXMLEditor:
-        page = pageXML_editor.find(".//Page")
+        """
+        Add baselines to the pageXML editor.
+        The baselines are generated from the sem_seg image.
+
+        Args:
+            page_xml_editor (PageXMLEditor): PageXML editor
+            xml_path (Path): Path to the PageXML file
+            sem_seg (torch.Tensor): sem_seg as tensor
+            old_height (int): Height of the original image
+            old_width (int): Width of the original image
+            upscale (bool, optional): If True, the sem_seg is upscaled to the original image size. Defaults to False.
+
+        Raises:
+            ValueError: Page not found in PageXML editor
+            ValueError: TextRegion not found in PageXML editor
+
+        Returns:
+            PageXMLEditor: PageXML editor with the baselines added
+        """
+        page = page_xml_editor.find(".//Page")
         if page is None:
             raise ValueError("Page not found in pageXML")
         # image_name = page.attrib["imageFilename"]
@@ -190,16 +228,34 @@ class OutputPageXML:
             )
         )
 
-        height, width = sem_seg.shape[-2:]
+        height, width = sem_seg_tensor.shape[-2:]
 
-        scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
+        height, width = sem_seg_tensor.shape[-2:]
+
         if upscale:
-            sem_seg = torch.nn.functional.interpolate(
-                sem_seg[None], size=(old_height, old_width), mode="bilinear", align_corners=False
-            )[0]
             scaling = np.asarray([1, 1])
+            height, width = old_height, old_width
+        else:
+            height, width = sem_seg_tensor.shape[-2:]
+            scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
 
-        sem_seg_image = torch.argmax(sem_seg, dim=-3).cpu().numpy().astype(np.uint8)
+        sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg_tensor, height, width)
+
+        sem_seg_classes = sem_seg_classes.cpu().numpy()
+        mean_confidence = torch.mean(confidence).cpu().numpy().item()
+
+        if self.cfg is not None:
+            page_xml_editor.add_processing_step(
+                get_git_hash(),
+                self.cfg.LAYPA_UUID,
+                self.cfg,
+                self.whitelist,
+                confidence=mean_confidence,
+            )
+
+        # Apply a color map
+        if self.save_confidence_heatmap:
+            self.save_heatmap(confidence, xml_path)
 
         minimum_width = 15 / scaling[0]
         minimum_height = 3 / scaling[1]
@@ -208,7 +264,7 @@ class OutputPageXML:
         xml_file = str(xml_path)
 
         coords_baselines = image_to_baselines(
-            sem_seg_image, self.xml_regions, xml_file, minimum_width=minimum_width, minimum_height=minimum_height, step=step
+            sem_seg_classes, self.xml_regions, xml_file, minimum_width=minimum_width, minimum_height=minimum_height, step=step
         )
 
         text_region = page.find("./TextRegion")
@@ -230,48 +286,67 @@ class OutputPageXML:
             text_line.append(baseline)
             text_region.append(text_line)
 
-        return pageXML_editor
+        return page_xml_editor
 
     def add_regions_to_page(
         self,
-        pageXML_editor: PageXMLEditor,
+        page_xml_editor: PageXMLEditor,
+        xml_path: Path,
         sem_seg_tensor: torch.Tensor,
         old_height: int,
         old_width: int,
-        image_path: Path,
+        upscale: bool = False,
     ) -> PageXMLEditor:
-        if self.output_dir is None:
-            raise TypeError("Output dir is None")
-        if self.page_dir is None:
-            raise TypeError("Page dir is None")
+        """
+        Add regions to the PageXML editor.
+        The regions are generated from the sem_seg image.
 
+        Args:
+            page_xml_editor (PageXMLEditor): PageXML editor
+            xml_path (Path): Path to the PageXML file
+            sem_seg (torch.Tensor): sem_seg as tensor
+            old_height (int): Height of the original image
+            old_width (int): Width of the original image
+            upscale (bool, optional): If True, the sem_seg is upscaled to the original image size. Defaults to False.
+
+        Raises:
+            ValueError: Page not found in PageXML editor
+
+        Returns:
+            PageXMLEditor: PageXML editor with the regions added
+        """
         height, width = sem_seg_tensor.shape[-2:]
 
-        scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
+        if upscale:
+            scaling = np.asarray([1, 1])
+            height, width = old_height, old_width
+        else:
+            height, width = sem_seg_tensor.shape[-2:]
+            scaling = np.asarray([old_width, old_height] / np.asarray([width, height]))
 
-        sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg_tensor)
+        sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg_tensor, height, width)
 
         sem_seg_classes = sem_seg_classes.cpu().numpy()
         mean_confidence = torch.mean(confidence).cpu().numpy().item()
 
-        # Apply a color map
-        if self.save_confidence_heatmap:
-            self.save_heatmap(confidence, image_path)
-
-        region_id = 0
-
-        page = pageXML_editor.find(".//Page")
-        if page is None:
-            raise ValueError("Page not found in pageXML")
-
         if self.cfg is not None:
-            pageXML_editor.add_processing_step(
+            page_xml_editor.add_processing_step(
                 get_git_hash(),
                 self.cfg.LAYPA_UUID,
                 self.cfg,
                 self.whitelist,
                 confidence=mean_confidence,
             )
+
+        # Apply a color map
+        if self.save_confidence_heatmap:
+            self.save_heatmap(confidence, xml_path)
+
+        region_id = 0
+
+        page = page_xml_editor.find(".//Page")
+        if page is None:
+            raise ValueError("Page not found in pageXML")
 
         for class_id, region in enumerate(self.xml_regions.regions):
             # Skip background
@@ -322,7 +397,7 @@ class OutputPageXML:
                     )
                 )
 
-        return pageXML_editor
+        return page_xml_editor
 
     def generate_single_page_yolo(
         self,
@@ -352,11 +427,11 @@ class OutputPageXML:
         else:
             height, width = old_height, old_width
 
-        pageXML_editor = PageXMLEditor()
-        page = pageXML_editor.add_page(image_path.name, height, width)
+        page_xml_editor = PageXMLEditor()
+        page = page_xml_editor.add_page(image_path.name, height, width)
 
         if self.cfg is not None:
-            pageXML_editor.add_processing_step(
+            page_xml_editor.add_processing_step(
                 get_git_hash(),
                 self.cfg.LAYPA_UUID,
                 self.cfg,
@@ -365,7 +440,7 @@ class OutputPageXML:
             )
 
         if yolo_output.boxes is None:
-            pageXML_editor.save_xml(xml_output_path)
+            page_xml_editor.save_xml(xml_output_path)
             return
 
         region_id = 0
@@ -405,7 +480,7 @@ class OutputPageXML:
                 )
             )
 
-        pageXML_editor.save_xml(xml_output_path)
+        page_xml_editor.save_xml(xml_output_path)
 
     @staticmethod
     def scale_to_range(
@@ -438,7 +513,7 @@ class OutputPageXML:
 
         return tensor
 
-    def save_heatmap(self, scaled_confidence: torch.Tensor, image_path: Path):
+    def save_heatmap(self, scaled_confidence: torch.Tensor, xml_path: Path):
         """
         Save a heatmap of the confidence.
 
@@ -447,7 +522,7 @@ class OutputPageXML:
             confidence_output_path (Path): path to save the heatmap.
         """
         self.confidence_dir.mkdir(parents=True, exist_ok=True)
-        confidence_output_path = self.confidence_dir.joinpath(image_path.stem + "_confidence.png")
+        confidence_output_path = self.confidence_dir.joinpath(xml_path.stem + "_confidence.png")
 
         confidence_grayscale = (scaled_confidence * 255).cpu().numpy().astype(np.uint8)
         confidence_colored = cv2.applyColorMap(confidence_grayscale, cv2.COLORMAP_PLASMA)[..., ::-1]
@@ -513,8 +588,8 @@ class OutputPageXML:
         if old_height is None or old_width is None:
             old_height, old_width = sem_seg.shape[-2:]
 
-        pageXML_editor = PageXMLEditor()
-        pageXML_editor.add_page(image_path.name, old_height, old_width)
+        page_xml_editor = PageXMLEditor()
+        page_xml_editor.add_page(image_path.name, old_height, old_width)
 
         xml_output_path = self.page_dir.joinpath(image_path.stem + ".xml")
 
@@ -527,7 +602,7 @@ class OutputPageXML:
             sem_seg_classes = sem_seg_classes.cpu().numpy()
             mean_confidence = torch.mean(confidence).cpu().numpy().item()
             if self.cfg is not None:
-                pageXML_editor.add_processing_step(
+                page_xml_editor.add_processing_step(
                     get_git_hash(),
                     self.cfg.LAYPA_UUID,
                     self.cfg,
@@ -537,15 +612,27 @@ class OutputPageXML:
             colored_image = self.generate_image_from_sem_seg(sem_seg_classes, old_height, old_width)
             with AtomicFileName(file_path=sem_seg_output_path) as path:
                 save_image_array_to_path(str(path), colored_image.astype(np.uint8))
-            pageXML_editor.save_xml(xml_output_path)
+            page_xml_editor.save_xml(xml_output_path)
             return
 
         if self.xml_regions.mode == "region":
-            pageXML_editor = self.add_regions_to_page(pageXML_editor, sem_seg, old_height, old_width, image_path)
-            pageXML_editor.save_xml(xml_output_path)
+            page_xml_editor = self.add_regions_to_page(
+                page_xml_editor,
+                xml_output_path,
+                sem_seg,
+                old_height,
+                old_width,
+            )
+            page_xml_editor.save_xml(xml_output_path)
         elif self.xml_regions.mode == "baseline":
-            pageXML_editor = self.add_baselines_to_page(pageXML_editor, xml_output_path, sem_seg, old_height, old_width)
-            pageXML_editor.save_xml(xml_output_path)
+            page_xml_editor = self.add_baselines_to_page(
+                page_xml_editor,
+                xml_output_path,
+                sem_seg,
+                old_height,
+                old_width,
+            )
+            page_xml_editor.save_xml(xml_output_path)
         else:
             raise NotImplementedError(
                 f"No internal processing mode {self.xml_regions.mode}, use external processing by setting external_processing=True"

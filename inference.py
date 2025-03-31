@@ -147,6 +147,10 @@ class Predictor(DefaultPredictor):
             data (AugInput): image to run the model on
             device (str): device to run the model on
 
+        Raises:
+            ValueError: Image is None
+            AssertionError: Must be a RBG image, found {channels} channels
+
         Returns:
             tuple[dict, int, int]: predictions, height, width
         """
@@ -260,10 +264,13 @@ class SavePredictor(Predictor):
 
         Args:
             cfg (CfgNode): config
-            input_paths (str | Path | Sequence[str | Path]): path(s) from which to extract the images
-            output_dir (str | Path): path to output dir
-            output_page (OutputPageXML): output PageXML object
-            num_workers (int): number of workers to use
+            input_paths (str | Path | Sequence[str | Path]): Path(s) from which to extract the images
+            output_dir (str | Path): Path to output dir
+            output_page (OutputPageXML): Output PageXML object
+            num_workers (int): Number of workers to use
+
+        Raises:
+            TypeError: Must provide conversion from mask to PageXML.
 
         """
         super().__init__(cfg)

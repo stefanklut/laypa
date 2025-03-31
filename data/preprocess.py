@@ -382,6 +382,7 @@ class Preprocess:
         Raises:
             TypeError: If the output directory is None.
             TypeError: If the image loading fails.
+            ValueError: If the image is None after augmentation.
         """
 
         if self.output_dir is None:
@@ -700,6 +701,7 @@ class Preprocess:
 
         Raises:
             TypeError: Cannot return if output dir is not set
+            NotImplementedError: If the output type is not implemented
 
         Returns:
             dict: Preprocessing results
@@ -750,7 +752,7 @@ class Preprocess:
             raise ValueError(f"No images found when checking input ({self.input_paths})")
 
         if len(xml_paths) == 0:
-            raise ValueError(f"No pagexml found when checking input  ({self.input_paths})")
+            raise ValueError(f"No PageXML found when checking input  ({self.input_paths})")
 
         if not self.disable_check:
             self.check_paths_exists(self.input_paths)

@@ -24,7 +24,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def get_confidence_from_pagexml(path: Path):
+def get_confidence_from_page_xml(path: Path):
     page_data = PageXMLEditor(path)
 
     for metadata_item in page_data.iterfind(".//MetadataItem"):
@@ -44,7 +44,7 @@ def main(args):
     xml_paths = get_file_paths(args.input, [".xml"])
 
     with Pool() as pool:
-        results = list(tqdm(pool.imap_unordered(get_confidence_from_pagexml, xml_paths), total=len(xml_paths)))
+        results = list(tqdm(pool.imap_unordered(get_confidence_from_page_xml, xml_paths), total=len(xml_paths)))
 
     if any([result is None for result in results]):
         raise ValueError("Some confidence values are missing")

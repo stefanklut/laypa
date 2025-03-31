@@ -10,7 +10,7 @@ from utils.path_utils import image_path_to_xml_path
 
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Copying sampled files from a large pagexml corpus to a different folder")
+    parser = argparse.ArgumentParser(description="Copying sampled files from a large PageXML corpus to a different folder")
 
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input folder", required=True, type=str)

@@ -24,7 +24,7 @@ from utils.input_utils import get_file_paths
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        parents=[XMLRegions.get_parser()], description="Compare two sets of pagexml, based on pixel level metrics"
+        parents=[XMLRegions.get_parser()], description="Compare two sets of PageXML, based on pixel level metrics"
     )
 
     io_args = parser.add_argument_group("IO")

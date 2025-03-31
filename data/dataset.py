@@ -111,12 +111,13 @@ def classes_to_colors(classes: list[str], grayscale=False) -> list[int] | list[t
 
     Args:
         classes (list[str]): names of classes
+        grayscale (bool, optional): flag indicating whether to use grayscale colors. Defaults to False.
 
     Raises:
         ValueError: must have at least two classes
 
     Returns:
-        list[tuple[int,int,int]]: colors in RGB form for each class
+        list[int] | list[tuple[int, int, int]]: list of colors
     """
     if len(classes) < 2:
         raise ValueError(f"Expecting at least 2 classes got {len(classes)}")

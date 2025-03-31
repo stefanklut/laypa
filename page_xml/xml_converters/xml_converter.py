@@ -79,9 +79,9 @@ class _XMLConverter:
         Turn a single PageXML into a dict with scaled coordinates
 
         Args:
-            xml_path (Path): path to PageXML
-            original_image_shape (Optional[tuple[int, int]], optional): shape of the original image. Defaults to None.
-            image_shape (Optional[tuple[int, int]], optional): shape of the output image. Defaults to None.
+            xml_path (Path): Path to PageXML
+            original_image_shape (Optional[tuple[int, int]], optional): Shape of the original image. Defaults to None.
+            image_shape (Optional[tuple[int, int]], optional): Shape of the output image. Defaults to None.
 
         Raises:
             NotImplementedError: mode is not known
@@ -152,7 +152,7 @@ class _XMLConverter:
         Args:
             image (np.ndarray): image to draw on
             lines (np.ndarray): lines to draw
-            color (tuple[int, int, int]): color of the lines
+            color (int | tuple[int] | tuple[int, int, int]): color of the lines
             thickness (int, optional): thickness of the lines. Defaults to 1.
         """
         temp_image = np.zeros_like(image)
