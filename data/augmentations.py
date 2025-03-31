@@ -1432,12 +1432,10 @@ class RandomCrop(T.Augmentation):
             return int(h * ch + 0.5), int(w * cw + 0.5)
         elif self.crop_type == "absolute":
             assert round(self.crop_size[0]) == self.crop_size[0] and round(self.crop_size[1]) == self.crop_size[1]
-            assert self.crop_size[0].is_integer() and self.crop_size[1].is_integer()
             return int(min(self.crop_size[0], h)), int(min(self.crop_size[1], w))
         elif self.crop_type == "absolute_range":
             assert round(self.crop_size[0]) == self.crop_size[0] and round(self.crop_size[1]) == self.crop_size[1]
             assert self.crop_size[0] <= self.crop_size[1]
-            assert self.crop_size[0].is_integer() and self.crop_size[1].is_integer()
             ch = np.random.randint(int(min(h, self.crop_size[0])), int(min(h, self.crop_size[1]) + 1))
             cw = np.random.randint(int(min(w, self.crop_size[0])), int(min(w, self.crop_size[1]) + 1))
             return ch, cw
