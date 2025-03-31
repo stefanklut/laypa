@@ -127,6 +127,7 @@ def distinct_grayscale(exclude_colors: list[int], n_attempts=1000, rng=None) -> 
     for color in [0, 255]:
         if color not in exclude_colors:
             distance_to_nearest = min([abs(color - c) for c in exclude_colors])
+
             if max_distance is None or (distance_to_nearest > max_distance):
                 max_distance = distance_to_nearest
                 best_color = color
