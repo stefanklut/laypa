@@ -65,7 +65,7 @@ def xml_path_to_image_path(xml_path: Path, check: bool = True) -> Path:
     image_paths = image_path_dir.glob(f"{xml_path.stem}*")
 
     for image_path in image_paths:
-        # TODO multiple images with the same name (extract from pageXML what to use)
+        # TODO multiple images with the same name (extract from PageXML what to use)
         if is_path_supported_format(image_path, SUPPORTED_IMAGE_FORMATS):
             break
     else:

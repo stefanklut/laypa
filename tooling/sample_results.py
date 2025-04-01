@@ -10,7 +10,7 @@ from utils.path_utils import image_path_to_xml_path
 
 
 def get_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Copying sampled files from a large pagexml corpus to a different folder")
+    parser = argparse.ArgumentParser(description="Copying sampled files from a large PageXML corpus to a different folder")
 
     io_args = parser.add_argument_group("IO")
     io_args.add_argument("-i", "--input", help="Input folder", required=True, type=str)
@@ -28,7 +28,7 @@ def get_arguments() -> argparse.Namespace:
 
 def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
     """
-    copy a list of image paths to an output dir. The respective pageXMLs are also copied
+    copy a list of image paths to an output dir. The respective PageXMLs are also copied
 
     Args:
         paths (list[Path]): image paths
@@ -63,7 +63,7 @@ def copy_paths(paths: list[Path], output_dir, mode="copy") -> list[Path]:
 
 def main(args):
     """
-    Sample result (or really an pageXML) from a larger corpus to process or view.
+    Sample result (or really an PageXML) from a larger corpus to process or view.
 
     Args:
         args (argparse.Namespace): arguments for where to find the images, and the output dir

@@ -89,10 +89,10 @@ class Viewer:
 
     def save_gray_image(self, xml_path_i: Path):
         """
-        Save the pageXML as a grayscale image
+        Save the PageXML as a grayscale image
 
         Args:
-            xml_path_i (Path): single pageXML path
+            xml_path_i (Path): single PageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
         sem_seg = self.xml_converter.convert(xml_path_i)
@@ -104,10 +104,10 @@ class Viewer:
 
     def save_color_image(self, xml_path_i: Path):
         """
-        Save the pageXML as a color image
+        Save the PageXML as a color image
 
         Args:
-            xml_path_i (Path): single pageXML path
+            xml_path_i (Path): single PageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".png")
         sem_seg = self.xml_converter.convert(xml_path_i)
@@ -128,10 +128,10 @@ class Viewer:
 
     def save_overlay_image(self, xml_path_i: Path):
         """
-        Save the pageXML as a overlay image. Requires the image file to exist folder up
+        Save the PageXML as a overlay image. Requires the image file to exist folder up
 
         Args:
-            xml_path_i (Path): single pageXML path
+            xml_path_i (Path): single PageXML path
         """
         output_image_path = self.output_dir.joinpath(xml_path_i.stem + ".jpg")
         gray_image = self.xml_converter.convert(xml_path_i)
@@ -155,10 +155,10 @@ class Viewer:
 
     def run(self, xml_list: list[str] | list[Path]) -> None:
         """
-        Run the conversion of pageXML to images on all pageXML paths specified
+        Run the conversion of PageXML to images on all PageXML paths specified
 
         Args:
-            xml_list (list[str] | list[Path]): multiple pageXML paths
+            xml_list (list[str] | list[Path]): multiple PageXML paths
         """
         cleaned_xml_list: list[Path] = [Path(path) if isinstance(path, str) else path for path in xml_list]
         cleaned_xml_list = [path.resolve() for path in cleaned_xml_list]
@@ -191,7 +191,7 @@ def main(args) -> None:
 
     xml_list = get_file_paths(args.input, formats=[".xml"])
 
-    xml_converter = XMLToSemSeg(cfg)
+    xml_converter = XMLToSemSeg(cfg)  # type: ignore
 
     viewer = Viewer(xml_converter=xml_converter, output_dir=args.output, output_type=args.output_type)
     viewer.run(xml_list)

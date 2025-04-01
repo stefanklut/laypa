@@ -47,7 +47,7 @@ from utils.path_utils import check_path_accessible, image_path_to_xml_path
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         parents=[Preprocess.get_parser(), XMLRegions.get_parser()],
-        description="Preprocessing an annotated dataset of documents with pageXML",
+        description="Preprocessing an annotated dataset of documents with PageXML",
     )
 
     io_args = parser.add_argument_group("IO")
@@ -165,7 +165,7 @@ class Preprocess:
             "augmentations": build_augmentation(cfg, "preprocess"),
             "input_paths": input_paths,
             "output_dir": output_dir,
-            "xml_regions": XMLRegions(cfg),
+            "xml_regions": XMLRegions(cfg),  # type: ignore
             "square_lines": cfg.PREPROCESS.BASELINE.SQUARE_LINES,
             "n_classes": n_classes,
             "disable_check": cfg.PREPROCESS.DISABLE_CHECK,
@@ -382,6 +382,7 @@ class Preprocess:
         Raises:
             TypeError: If the output directory is None.
             TypeError: If the image loading fails.
+            ValueError: If the image is None after augmentation.
         """
 
         if self.output_dir is None:
@@ -422,6 +423,8 @@ class Preprocess:
                 manual_dpi=self.manual_dpi,
             )
             transforms = T.AugmentationList(self.augmentations)(aug_input)
+            if aug_input.image is None:
+                raise ValueError(f"Image {image_path} is None after augmentation")
             self.save_array_to_path(aug_input.image, out_image_path)
 
         with out_image_size_path.open(mode="w") as f:
@@ -474,8 +477,6 @@ class Preprocess:
         converter = XMLToSemSeg(self.xml_regions, square_lines=self.square_lines)
 
         sem_seg = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-        if sem_seg is None:
-            return None
 
         sem_seg_dir.mkdir(parents=True, exist_ok=True)
 
@@ -530,8 +531,6 @@ class Preprocess:
         converter = XMLToInstances(self.xml_regions, square_lines=self.square_lines)
 
         instances = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-        if instances is None:
-            return None
 
         instances_dir.mkdir(parents=True, exist_ok=True)
 
@@ -590,8 +589,6 @@ class Preprocess:
         converter = XMLToPano(self.xml_regions, square_lines=self.square_lines)
 
         pano_output = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-        if pano_output is None:
-            return None
         pano, segments_info = pano_output
 
         pano_dir.mkdir(parents=True, exist_ok=True)
@@ -653,8 +650,6 @@ class Preprocess:
         converter = XMLToBinarySeg(self.xml_regions, square_lines=self.square_lines)
 
         binary_seg = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-        if binary_seg is None:
-            return None
 
         binary_seg_dir.mkdir(parents=True, exist_ok=True)
 
@@ -691,13 +686,14 @@ class Preprocess:
 
     def process_single_file(self, image_path: Path) -> dict:
         """
-        Process a single image and pageXML to be used during training
+        Process a single image and PageXML to be used during training
 
         Args:
             image_path (Path): Path to input image
 
         Raises:
             TypeError: Cannot return if output dir is not set
+            NotImplementedError: If the output type is not implemented
 
         Returns:
             dict: Preprocessing results
@@ -735,7 +731,7 @@ class Preprocess:
             TypeError: Input paths must be set
             TypeError: Output dir must be set
             ValueError: Must find at least one image in all input paths
-            ValueError: Must find at least one pageXML in all input paths
+            ValueError: Must find at least one PageXML in all input paths
         """
         if self.input_paths is None:
             raise TypeError("Cannot run when the input path is None")
@@ -748,7 +744,7 @@ class Preprocess:
             raise ValueError(f"No images found when checking input ({self.input_paths})")
 
         if len(xml_paths) == 0:
-            raise ValueError(f"No pagexml found when checking input  ({self.input_paths})")
+            raise ValueError(f"No PageXML found when checking input  ({self.input_paths})")
 
         if not self.disable_check:
             self.check_paths_exists(self.input_paths)

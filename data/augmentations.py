@@ -1432,12 +1432,12 @@ class RandomCrop(T.Augmentation):
             return int(h * ch + 0.5), int(w * cw + 0.5)
         elif self.crop_type == "absolute":
             assert round(self.crop_size[0]) == self.crop_size[0] and round(self.crop_size[1]) == self.crop_size[1]
-            return (min(self.crop_size[0], h), min(self.crop_size[1], w))
+            return int(min(self.crop_size[0], h)), int(min(self.crop_size[1], w))
         elif self.crop_type == "absolute_range":
             assert round(self.crop_size[0]) == self.crop_size[0] and round(self.crop_size[1]) == self.crop_size[1]
             assert self.crop_size[0] <= self.crop_size[1]
-            ch = np.random.randint(min(h, self.crop_size[0]), min(h, self.crop_size[1]) + 1)
-            cw = np.random.randint(min(w, self.crop_size[0]), min(w, self.crop_size[1]) + 1)
+            ch = np.random.randint(int(min(h, self.crop_size[0])), int(min(h, self.crop_size[1]) + 1))
+            cw = np.random.randint(int(min(w, self.crop_size[0])), int(min(w, self.crop_size[1]) + 1))
             return ch, cw
         else:
             raise NotImplementedError("Unknown crop type {}".format(self.crop_type))
@@ -1924,7 +1924,7 @@ def test(args) -> None:
 
     cfg = setup_cfg(args)
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not (args.keep_tmp_dir)) as tmp_dir:
-        preprocesser = preprocess.Preprocess(cfg)
+        preprocesser = preprocess.Preprocess(cfg)  # type: ignore
         preprocesser.set_output_dir(tmp_dir)
         output = preprocesser.process_single_file(input_path)
 

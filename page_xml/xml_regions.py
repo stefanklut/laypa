@@ -24,7 +24,7 @@ class XMLRegions:
         Args:
             mode (str): mode of the region type
             line_width (Optional[int], optional): width of line. Defaults to None.
-            regions (Optional[list[str]], optional): list of regions to extract from pageXML. Defaults to None.
+            regions (Optional[list[str]], optional): list of regions to extract from PageXML. Defaults to None.
             merge_regions (Optional[list[str]], optional): list of region to merge into one. Defaults to None.
             region_types (Optional[list[str]], optional): type of region for each region. Defaults to None.
         """
@@ -33,6 +33,8 @@ class XMLRegions:
             assert regions is not None
 
             self._regions = []
+            self._regions_to_classes: dict[str, int] = {}
+            self._classes_to_regions: dict[int, str] = {}
             self._merge_regions: dict[str, str] = {}
             self._region_type: dict[str, str] = {}
 
@@ -76,7 +78,7 @@ class XMLRegions:
     @classmethod
     def get_parser(cls) -> argparse.ArgumentParser:
         """
-        Return argparser that has the arguments required for the pageXML regions.
+        Return argparser that has the arguments required for the PageXML regions.
 
         use like this: parser = argparse.ArgumentParser(parents=[XMLRegions.get_parser()])
 
@@ -205,14 +207,17 @@ class XMLRegions:
                 region_types[region] = "TextRegion"
         return region_types
 
-    def _build_region_classes(self) -> dict[str, int]:
-        region_classes = {region: i for i, region in enumerate(self.regions)}
+    def _build_regions_to_classes(self) -> dict[str, int]:
+        regions_to_classes = {region: i for i, region in enumerate(self.regions)}
 
         for parent, childs in self.merged_regions.items():
             for child in childs:
-                region_classes[child] = region_classes[parent]
+                regions_to_classes[child] = regions_to_classes[parent]
 
-        return region_classes
+        return regions_to_classes
+
+    def _build_classes_to_regions(self) -> dict[int, str]:
+        return {i: region for i, region in enumerate(self.regions)}
 
     def _build_regions(self) -> list[str]:
         """
@@ -272,10 +277,11 @@ class XMLRegions:
         self._regions_internal = [region for region in regions if region != "background"]
         self._regions = self._build_regions()
         self._merge_regions = self._build_merged_regions()
-        self._region_classes = self._build_region_classes()
+        self._regions_to_classes = self._build_regions_to_classes()
+        self._classes_to_regions = self._build_classes_to_regions()
 
     @property
-    def region_classes(self) -> dict[str, int]:
+    def regions_to_classes(self) -> dict[str, int]:
         """
         Return the region classes
 
@@ -283,7 +289,18 @@ class XMLRegions:
             dict[str, int]: Mapping from region to class
         """
 
-        return self._region_classes
+        return self._regions_to_classes
+
+    @property
+    def classes_to_regions(self) -> dict[int, str]:
+        """
+        Return the region classes
+
+        Returns:
+            dict[int, str]: Mapping from class to region
+        """
+
+        return self._classes_to_regions
 
     @property
     def region_types(self) -> dict[str, str]:
@@ -327,4 +344,5 @@ class XMLRegions:
         self._merge_regions_internal = merged_regions
         self._merge_regions = self._build_merged_regions()
         self._regions = self._build_regions()
-        self._region_classes = self._build_region_classes()
+        self._regions_to_classes = self._build_regions_to_classes()
+        self._classes_to_regions = self._build_classes_to_regions()

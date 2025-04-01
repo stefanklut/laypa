@@ -24,7 +24,7 @@ from utils.input_utils import get_file_paths
 
 def get_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        parents=[XMLRegions.get_parser()], description="Compare two sets of pagexml, based on pixel level metrics"
+        parents=[XMLRegions.get_parser()], description="Compare two sets of PageXML, based on pixel level metrics"
     )
 
     io_args = parser.add_argument_group("IO")
@@ -261,7 +261,7 @@ class IOUEvaluator:
         dilation = max(1, int(round(dilation_ratio * diag_len)))
         kernel = np.ones((3, 3), dtype=np.uint8)
 
-        padded_mask = cv2.copyMakeBorder(mask, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=0)
+        padded_mask = cv2.copyMakeBorder(mask, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=(0,))
         eroded_mask_with_padding = cv2.erode(padded_mask, kernel, iterations=dilation)
         eroded_mask = eroded_mask_with_padding[1:-1, 1:-1]
         boundary = mask - eroded_mask
@@ -270,15 +270,15 @@ class IOUEvaluator:
 
 class EvalWrapper:
     """
-    Wrapper to run the IOUEvaluator with pageXML, requires conversion to mask images first
+    Wrapper to run the IOUEvaluator with PageXML, requires conversion to mask images first
     """
 
     def __init__(self, xml_to_image: XMLToSemSeg, evaluator: IOUEvaluator) -> None:
         """
-        Wrapper to run the IOUEvaluator with pageXML, requires conversion to mask images first
+        Wrapper to run the IOUEvaluator with PageXML, requires conversion to mask images first
 
         Args:
-            xml_to_image (XMLImage): converter from pageXML to mask image
+            xml_to_image (XMLImage): converter from PageXML to mask image
             evaluator (IOUEvaluator): evaluator for the XML
         """
         self.xml_to_image: XMLToSemSeg = xml_to_image
@@ -286,15 +286,15 @@ class EvalWrapper:
 
     def compare_xml(self, info: tuple[Path, Path]):
         """
-        Conversion of two pageXMLs to a mask, and then running these masks through the IOUEvaluator
+        Conversion of two PageXMLs to a mask, and then running these masks through the IOUEvaluator
 
         Args:
             info (tuple[Path, Path]): (tuple containing)
-                Path: ground truth pageXML path
-                Path: predicted pageXML path
+                Path: ground truth PageXML path
+                Path: predicted PageXML path
 
         Raises:
-            ValueError: the names of the pageXMLs do not match
+            ValueError: the names of the PageXMLs do not match
         """
         xml_i_1, xml_i_2 = info
 
@@ -308,16 +308,16 @@ class EvalWrapper:
 
     def compare_xml_output(self, info: tuple[Path, Path]) -> tuple[np.ndarray, np.ndarray]:
         """
-        Conversion of two pageXMLs to a mask, and then running these masks through the IOUEvaluator
+        Conversion of two PageXMLs to a mask, and then running these masks through the IOUEvaluator
         With the return option multiprocessing is possible, no internal values are overwritten
 
         Args:
             info (tuple[Path, Path]): (tuple containing)
-                Path: ground truth pageXML path
-                Path: predicted pageXML path
+                Path: ground truth PageXML path
+                Path: predicted PageXML path
 
         Raises:
-            ValueError: the names of the pageXMLs do not match
+            ValueError: the names of the PageXMLs do not match
 
         Returns:
             np.ndarray: confusion matrix
@@ -345,7 +345,7 @@ class EvalWrapper:
                 Path: predicted image path
 
         Raises:
-            ValueError: the names of the pageXMLs do not match
+            ValueError: the names of the PageXMLs do not match
         """
         image_path_i_1, image_path_i_2 = info
 
@@ -388,11 +388,11 @@ class EvalWrapper:
 
     def run_xml(self, xml_list1: list[Path], xml_list2: list[Path]):
         """
-        Run the xml IOU evaluation on list of pageXML paths
+        Run the xml IOU evaluation on list of PageXML paths
 
         Args:
-            xml_list1 (list[Path]): ground truth pageXML paths
-            xml_list2 (list[Path]): predicted pageXML paths
+            xml_list1 (list[Path]): ground truth PageXML paths
+            xml_list2 (list[Path]): predicted PageXML paths
 
         Raises:
             ValueError: number of xmls in both list is not equal

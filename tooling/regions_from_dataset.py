@@ -12,7 +12,7 @@ from tqdm import tqdm
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
 from xml_comparison import pretty_print
 
-from page_xml.xmlPAGE import PageData
+from page_xml.page_xml_editor import PageXMLEditor
 from utils.input_utils import SUPPORTED_IMAGE_FORMATS, get_file_paths
 from utils.path_utils import image_path_to_xml_path
 
@@ -28,16 +28,15 @@ def get_arguments() -> argparse.Namespace:
 
 def count_regions_single_page(xml_path: Path) -> Counter:
     """
-    Count the unique regions in a pageXML
+    Count the unique regions in a PageXML
 
     Args:
-        xml_path (Path): Path to pageXML
+        xml_path (Path): Path to PageXML
 
     Returns:
         Counter: Count of all unique regions
     """
-    page_data = PageData(xml_path)
-    page_data.parse()
+    page_data = PageXMLEditor(xml_path)
 
     region_names = ["TextRegion"]  # Assuming this is all there is
     zones = page_data.get_zones(region_names)
@@ -51,7 +50,7 @@ def count_regions_single_page(xml_path: Path) -> Counter:
 
 def main(args):
     """
-    Run the full count over all pageXMLs found in the input dir
+    Run the full count over all PageXMLs found in the input dir
 
     Args:
         args (argparse.Namespace): command line arguments

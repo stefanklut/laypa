@@ -1,0 +1,27 @@
+services:
+  laypa:
+    image: 'loghi/docker.laypa'
+    command: 'python api/gunicorn_app.py'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    container_name: 'laypa'
+    ports:
+      - '5000:5000'
+    environment:
+      LAYPA_MAX_QUEUE_SIZE: 128
+      LAYPA_MODEL_BASE_PATH: <path_to_model_base>
+      LAYPA_OUTPUT_BASE_PATH: <path_to_output>
+      GUNICORN_RUN_HOST: '0.0.0.0:5000'
+      GUNICORN_WORKERS: 1
+      GUNICORN_THREADS: 1
+      GUNICORN_ACCESSLOG: '-'
+    volumes:
+      - '<path_to_model_base>:<path_to_model_base>'
+      - '<path_to_output>:<path_to_output>'
+    shm_size: 512mb
+    restart: always

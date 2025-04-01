@@ -2,12 +2,13 @@ import argparse
 import sys
 from multiprocessing.pool import Pool
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
-from page_xml.xmlPAGE import PageData
+from page_xml.page_xml_editor import PageXMLEditor
 from utils.input_utils import get_file_paths
 
 
@@ -24,17 +25,23 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def get_confidence_from_pagexml(path: Path):
-    page_data = PageData(path)
-    page_data.parse()
+def get_confidence_from_page_xml(path: Path) -> Optional[float]:
+    """
+    Get confidence value from PageXML file
 
-    metadata_items = page_data._iter_element("MetadataItem")
-    for metadata_item in metadata_items:
+    Args:
+        path (Path): Path to the PageXML file
+
+    Returns:
+        Optional[float]: Confidence value or None if not found
+    """
+    page_data = PageXMLEditor(path)
+
+    for metadata_item in page_data.iterfind(".//MetadataItem"):
         if metadata_item.attrib["value"] != "laypa":
             continue
 
-        labels = page_data._iter_subelement(metadata_item, "Label")
-        for label in labels:
+        for label in page_data.iterfind(".//Label"):
             if label.attrib["type"] != "confidence":
                 continue
 
@@ -47,7 +54,7 @@ def main(args):
     xml_paths = get_file_paths(args.input, [".xml"])
 
     with Pool() as pool:
-        results = list(tqdm(pool.imap_unordered(get_confidence_from_pagexml, xml_paths), total=len(xml_paths)))
+        results = list(tqdm(pool.imap_unordered(get_confidence_from_page_xml, xml_paths), total=len(xml_paths)))
 
     if any([result is None for result in results]):
         raise ValueError("Some confidence values are missing")

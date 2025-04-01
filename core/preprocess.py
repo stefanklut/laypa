@@ -17,7 +17,7 @@ def preprocess_datasets(
     save_image_locations: bool = True,
 ):
     """
-    Preprocess the dataset(s). Converts ground truth pageXML to label masks for training
+    Preprocess the dataset(s). Converts ground truth PageXML to label masks for training
 
     Args:
         cfg (CfgNode): Configuration node.
@@ -37,7 +37,7 @@ def preprocess_datasets(
     if not output_dir.is_dir():
         raise FileNotFoundError(f"Output Folder not found: {output_dir} does not exist")
 
-    process = Preprocess(cfg)
+    process = Preprocess(cfg)  # type: ignore
 
     train_output_dir = None
     if train is not None:

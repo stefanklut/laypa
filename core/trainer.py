@@ -159,20 +159,20 @@ def build_optimizer(cfg: CfgNode, model: torch.nn.Module) -> torch.optim.Optimiz
         weight_decay_bias=cfg.SOLVER.WEIGHT_DECAY_BIAS,
     )
 
-    def maybe_add_full_model_gradient_clipping(optim):
+    def maybe_add_full_model_gradient_clipping(optimizer):
         # detectron2 doesn't have full model gradient clipping now
         clip_norm_val = cfg.SOLVER.CLIP_GRADIENTS.CLIP_VALUE
         enable = (
             cfg.SOLVER.CLIP_GRADIENTS.ENABLED and cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model" and clip_norm_val > 0.0
         )
 
-        class FullModelGradientClippingOptimizer(optim):
+        class FullModelGradientClippingOptimizer(optimizer):
             def step(self, closure=None):
                 all_params = itertools.chain(*[x["params"] for x in self.param_groups])
                 torch.nn.utils.clip_grad_norm_(all_params, clip_norm_val)
                 super().step(closure=closure)
 
-        return FullModelGradientClippingOptimizer if enable else optim
+        return FullModelGradientClippingOptimizer if enable else optimizer
 
     optimizer_type = cfg.SOLVER.OPTIMIZER
     if optimizer_type == "SGD":
@@ -206,8 +206,8 @@ def build_optimizer(cfg: CfgNode, model: torch.nn.Module) -> torch.optim.Optimiz
     else:
         raise NotImplementedError(f"no optimizer type {optimizer_type}")
     if not cfg.SOLVER.CLIP_GRADIENTS.CLIP_TYPE == "full_model":
-        optimizer = maybe_add_gradient_clipping(cfg, optimizer)
-    return optimizer
+        optimizer = maybe_add_gradient_clipping(cfg, optimizer)  # type: ignore
+    return optimizer  # type: ignore
 
 
 MetaArchitechture_converter: dict[str, dict[str, Any]] = {
@@ -404,4 +404,4 @@ class Trainer(DefaultTrainer):
         return results
 
     def validate(self):
-        results = self.test(self.cfg, self.model)
+        results = self.test(self.cfg, self.model)  # type: ignore

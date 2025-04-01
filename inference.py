@@ -18,7 +18,7 @@ from tqdm import tqdm
 from core.setup import setup_cfg, setup_logging
 from data.augmentations import build_augmentation
 from data.mapper import AugInput
-from page_xml.output_pageXML import OutputPageXML
+from page_xml.output_page_xml import OutputPageXML
 from page_xml.xml_regions import XMLRegions
 from utils.image_utils import load_image_array_from_path
 from utils.input_utils import SUPPORTED_IMAGE_FORMATS, get_file_paths
@@ -147,6 +147,10 @@ class Predictor(DefaultPredictor):
             data (AugInput): image to run the model on
             device (str): device to run the model on
 
+        Raises:
+            ValueError: Image is None
+            AssertionError: Must be a RBG image, found {channels} channels
+
         Returns:
             tuple[dict, int, int]: predictions, height, width
         """
@@ -154,11 +158,12 @@ class Predictor(DefaultPredictor):
 
         # Default value of device should be the one in the config
         if device is None:
-            device = self.cfg.MODEL.DEVICE
+            device = str(self.cfg.MODEL.DEVICE)
 
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
-
+            if data.image is None:
+                raise ValueError("Image is None")
             height, width, channels = data.image.shape
             assert channels == 3, f"Must be a RBG image, found {channels} channels"
             # In place augmentation
@@ -243,7 +248,7 @@ def collate_numpy(batch):
 
 class SavePredictor(Predictor):
     """
-    Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
+    Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as PageXML
     """
 
     def __init__(
@@ -255,14 +260,17 @@ class SavePredictor(Predictor):
         num_workers: int = 4,
     ):
         """
-        Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
+        Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as PageXML
 
         Args:
             cfg (CfgNode): config
-            input_paths (str | Path | Sequence[str | Path]): path(s) from which to extract the images
-            output_dir (str | Path): path to output dir
-            output_page (OutputPageXML): output pageXML object
-            num_workers (int): number of workers to use
+            input_paths (str | Path | Sequence[str | Path]): Path(s) from which to extract the images
+            output_dir (str | Path): Path to output dir
+            output_page (OutputPageXML): Output PageXML object
+            num_workers (int): Number of workers to use
+
+        Raises:
+            TypeError: Must provide conversion from mask to PageXML.
 
         """
         super().__init__(cfg)
@@ -279,7 +287,7 @@ class SavePredictor(Predictor):
 
         if not isinstance(output_page, OutputPageXML):
             raise TypeError(
-                f"Must provide conversion from mask to pageXML. Current type is {type(output_page)}, not OutputPageXML"
+                f"Must provide conversion from mask to PageXML. Current type is {type(output_page)}, not OutputPageXML"
             )
 
         self.output_page = output_page
@@ -321,7 +329,7 @@ class SavePredictor(Predictor):
     # def save_prediction(self, input_path: Path | str):
     def save_prediction(self, image: np.ndarray, dpi: int, input_path: Path):
         """
-        Run the model on the image and save the results as pageXML
+        Run the model on the image and save the results as PageXML
 
         Args:
             image (np.ndarray): image to run the model on
@@ -382,7 +390,7 @@ class SavePredictor(Predictor):
 def main(args: argparse.Namespace) -> None:
     cfg = setup_cfg(args)
     setup_logging(cfg, save_log=False)
-    xml_regions = XMLRegions(cfg)
+    xml_regions = XMLRegions(cfg)  # type: ignore
     output_page = OutputPageXML(
         xml_regions=xml_regions,
         output_dir=args.output,
@@ -390,6 +398,8 @@ def main(args: argparse.Namespace) -> None:
         whitelist=args.whitelist,
         rectangle_regions=cfg.PREPROCESS.REGION.RECTANGLE_REGIONS,
         min_region_size=cfg.PREPROCESS.REGION.MIN_REGION_SIZE,
+        external_processing=cfg.POSTPROCESS.EXTERNAL.ENABLED,
+        external_processing_grayscale=cfg.POSTPROCESS.EXTERNAL.GRAYSCALE,
         save_confidence_heatmap=args.save_confidence_heatmap,
     )
 

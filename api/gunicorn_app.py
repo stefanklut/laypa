@@ -15,6 +15,8 @@ class GunicornApp(BaseApplication):
         super().__init__()
 
     def load_config(self):
+        if self.cfg is None:
+            raise RuntimeError("No Config object loaded")
         for key, value in self.options.items():
             self.cfg.set(key, value)
 

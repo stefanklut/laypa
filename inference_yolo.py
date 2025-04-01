@@ -17,7 +17,7 @@ from ultralytics import YOLO
 from core.setup import setup_cfg, setup_logging
 from data.augmentations import build_augmentation
 from data.mapper import AugInput
-from page_xml.output_pageXML import OutputPageXML
+from page_xml.output_page_xml import OutputPageXML
 from page_xml.xml_regions import XMLRegions
 from utils.image_utils import load_image_array_from_path
 from utils.input_utils import SUPPORTED_IMAGE_FORMATS, get_file_paths
@@ -211,7 +211,7 @@ def collate_numpy(batch):
 
 class SavePredictor(Predictor):
     """
-    Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
+    Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as PageXML
     """
 
     def __init__(
@@ -224,14 +224,17 @@ class SavePredictor(Predictor):
         num_workers: int = 4,
     ):
         """
-        Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as pageXML
+        Extension on the predictor that actually saves the part on the prediction we current care about: the semantic segmentation as PageXML
 
         Args:
             cfg (CfgNode): config
-            input_paths (str | Path | Sequence[str | Path]): path(s) from which to extract the images
-            output_dir (str | Path): path to output dir
-            output_page (OutputPageXML): output pageXML object
-            num_workers (int): number of workers to use
+            input_paths (str | Path | Sequence[str | Path]): Path(s) from which to extract the images
+            output_dir (str | Path): Path to output dir
+            output_page (OutputPageXML): Output PageXML object
+            num_workers (int): Number of workers to use
+
+        Raises:
+            TypeError: output_page is not an instance of OutputPageXML
 
         """
         super().__init__(cfg, yolo_model=yolo_model)
@@ -248,7 +251,7 @@ class SavePredictor(Predictor):
 
         if not isinstance(output_page, OutputPageXML):
             raise TypeError(
-                f"Must provide conversion from mask to pageXML. Current type is {type(output_page)}, not OutputPageXML"
+                f"Must provide conversion from mask to PageXML. Current type is {type(output_page)}, not OutputPageXML"
             )
 
         self.output_page = output_page
@@ -290,7 +293,7 @@ class SavePredictor(Predictor):
     # def save_prediction(self, input_path: Path | str):
     def save_prediction(self, image: np.ndarray, dpi: int, input_path: Path):
         """
-        Run the model on the image and save the results as pageXML
+        Run the model on the image and save the results as PageXML
 
         Args:
             image (np.ndarray): image to run the model on
@@ -352,7 +355,7 @@ class SavePredictor(Predictor):
 def main(args: argparse.Namespace) -> None:
     cfg = setup_cfg(args)
     setup_logging(cfg, save_log=False)
-    xml_regions = XMLRegions(cfg)
+    xml_regions = XMLRegions(cfg)  # type: ignore
     output_page = OutputPageXML(
         xml_regions=xml_regions,
         output_dir=args.output,

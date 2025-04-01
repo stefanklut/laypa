@@ -100,7 +100,7 @@ def main(args):
     #         with ContextTimer(label="Load"):
     #             next(dataloader)
     # paths = list(Path(args.train[0]).glob("*.jpg"))
-    with ContextTimer(), Pool(os.cpu_count()) as pool:
+    with ContextTimer(), Pool(os.cpu_count()) as pool:  # type: ignore
         # for image_path in tqdm(paths):
         #     cv2.imread(str(image_path))
         # _ = list(tqdm(pool.imap_unordered(load, paths), total=len(paths)))

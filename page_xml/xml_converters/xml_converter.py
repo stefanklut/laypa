@@ -9,8 +9,8 @@ import numpy as np
 from detectron2.config import CfgNode, configurable
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))
+from page_xml.page_xml_editor import PageXMLEditor
 from page_xml.xml_regions import XMLRegions
-from page_xml.xmlPAGE import PageData
 from utils.image_utils import save_image_array_to_path
 from utils.logging_utils import get_logger_name
 from utils.vector_utils import point_at_start_or_end_assignment
@@ -64,7 +64,7 @@ class _XMLConverter:
             dict[str, Any]: A dictionary containing the converted configuration values.
         """
         ret = {
-            "xml_regions": XMLRegions(cfg),
+            "xml_regions": XMLRegions(cfg),  # type: ignore
             "square_lines": cfg.PREPROCESS.BASELINE.SQUARE_LINES,
         }
         return ret
@@ -76,12 +76,12 @@ class _XMLConverter:
         image_shape: Optional[tuple[int, int]] = None,
     ) -> Any:
         """
-        Turn a single pageXML into a dict with scaled coordinates
+        Turn a single PageXML into a dict with scaled coordinates
 
         Args:
-            xml_path (Path): path to pageXML
-            original_image_shape (Optional[tuple[int, int]], optional): shape of the original image. Defaults to None.
-            image_shape (Optional[tuple[int, int]], optional): shape of the output image. Defaults to None.
+            xml_path (Path): Path to PageXML
+            original_image_shape (Optional[tuple[int, int]], optional): Shape of the original image. Defaults to None.
+            image_shape (Optional[tuple[int, int]], optional): Shape of the output image. Defaults to None.
 
         Raises:
             NotImplementedError: mode is not known
@@ -89,8 +89,7 @@ class _XMLConverter:
         Returns:
             Optional[dict]: scaled coordinates about the location of the objects in the image
         """
-        gt_data = PageData(xml_path)
-        gt_data.parse()
+        gt_data = PageXMLEditor(xml_path)
 
         if original_image_shape is not None:
             gt_data.set_size(original_image_shape)
@@ -144,7 +143,7 @@ class _XMLConverter:
         self,
         image: np.ndarray,
         coords: np.ndarray,
-        color: int | tuple[int, int, int],
+        color: int | tuple[int] | tuple[int, int, int],
         thickness: int = 1,
     ) -> tuple[np.ndarray, bool]:
         """
@@ -153,7 +152,7 @@ class _XMLConverter:
         Args:
             image (np.ndarray): image to draw on
             lines (np.ndarray): lines to draw
-            color (tuple[int, int, int]): color of the lines
+            color (int | tuple[int] | tuple[int, int, int]): color of the lines
             thickness (int, optional): thickness of the lines. Defaults to 1.
         """
         temp_image = np.zeros_like(image)
@@ -164,8 +163,10 @@ class _XMLConverter:
 
         rounded_coords = np.round(coords).astype(np.int32)
 
+        color = (color,) if isinstance(color, int) else color
+
         if self.square_lines:
-            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, 1, thickness)
+            cv2.polylines(binary_mask, [rounded_coords.reshape(-1, 1, 2)], False, (1,), thickness)
             line_pixel_coords = np.column_stack(np.where(binary_mask == 1))[:, ::-1]
             start_or_end = point_at_start_or_end_assignment(rounded_coords, line_pixel_coords)
             if temp_image.ndim == 3:

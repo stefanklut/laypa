@@ -12,7 +12,7 @@ ArXiv paper: Coming soon!
 
 Part of the [Loghi pipeline][loghi_link]
 
-Laypa is a segmentation network, with the goal of finding regions (paragraph, page number, etc.) and baselines in documents. The current approach is using a ResNet backbone and a feature pyramid head, which made pixel wise classifications. The models are built using the [detectron2][detectron_link] framework. The baselines and region classifications are then made available for further processing. This post-processing turn the classification into instances. So that they can be used by other programs (OCR/HTR), either as masks or directly as pageXML.
+Laypa is a segmentation network, with the goal of finding regions (paragraph, page number, etc.) and baselines in documents. The current approach is using a ResNet backbone and a feature pyramid head, which made pixel wise classifications. The models are built using the [detectron2][detectron_link] framework. The baselines and region classifications are then made available for further processing. This post-processing turn the classification into instances. So that they can be used by other programs (OCR/HTR), either as masks or directly as PageXML.
 
 ## Table of Contents
 - [Laypa](#laypa)
@@ -30,6 +30,7 @@ Laypa is a segmentation network, with the goal of finding regions (paragraph, pa
     - [Without External Processing](#without-external-processing)
     - [With External Java Processing](#with-external-java-processing)
     - [Flask Server](#flask-server)
+    - [Docker API](#docker-api)
   - [Tutorial](#tutorial)
   - [Evaluation](#evaluation)
   - [License](#license)
@@ -176,7 +177,7 @@ Some initial pretrained models can be found [here][pretrained_models_link].
 
 ## Dataset(s)
 
-The dataset used for training requires images combined with ground truth pageXML. For structure the pageXML needs to be inside a directory one level down from the images. The dataset can be split over multiple directories, with the image paths specified in a `.txt` file. The structure should look as follows:
+The dataset used for training requires images combined with ground truth PageXML. For structure the PageXML needs to be inside a directory one level down from the images. The dataset can be split over multiple directories, with the image paths specified in a `.txt` file. The structure should look as follows:
 ```
 training_data
 ├── page
@@ -190,7 +191,7 @@ training_data
 └── ...
 ```
 
-Where the image and pageXML filename stems should match `image1.jpg <-> image1.xml`. For the `.txt` based dataset absolute paths to the images are recommended. The structure for the data used as validation is the same as that for training.
+Where the image and PageXML filename stems should match `image1.jpg <-> image1.xml`. For the `.txt` based dataset absolute paths to the images are recommended. The structure for the data used as validation is the same as that for training.
 
 When running inference the images you want processed should be in a single directory. With the images directly under the root folder as follows:
 ```
@@ -210,7 +211,7 @@ Some dataset that should work with laypa are listed below, some preprocessing ma
 ## Training 
 Three things are required to train a model using [`train.py`][train_link].
 1. A config file, See [`configs/segmentation`][configs_link] for examples of config files and their contents.
-2. Ground truth training/validation data in the form of images and their corresponding pageXML. The training/validation data can be provided by giving either a `.txt` file containing image paths, the image paths themselves, or the path of a directory containing the images.
+2. Ground truth training/validation data in the form of images and their corresponding PageXML. The training/validation data can be provided by giving either a `.txt` file containing image paths, the image paths themselves, or the path of a directory containing the images.
 
 Required arguments:
 ```sh
@@ -273,9 +274,9 @@ python train.py -c config.yml -t data/training_dir -t data/training_file.txt -v 
 
 
 ## Inference
-To run the trained model on images without ground truth, the images need to be in a single directory. The output consists of either pageXML in the case of regions or a mask in the other cases. This mask can then be processed using other tools to turn the pixel predictions into valid pageXML (for example on baselines). As stated, the regions are turned into polygons for the pageXML within the program already.
+To run the trained model on images without ground truth, the images need to be in a single directory. The output consists of either PageXML in the case of regions or a mask in the other cases. This mask can then be processed using other tools to turn the pixel predictions into valid PageXML (for example on baselines). As stated, the regions are turned into polygons for the PageXML within the program already.
 
-How to run the Laypa inference individually will be explained first, and how to run it with the full scripts that include the conversion from images to pageXML with come after.
+How to run the Laypa inference individually will be explained first, and how to run it with the full scripts that include the conversion from images to PageXML with come after.
 
 ### Without External Processing
 To just run the Laypa inference in [`inference.py`][inference_link], you need three things:
@@ -367,7 +368,22 @@ curl -X POST -F image=@<PATH_TO_IMAGE> -F identifier=<identifier> -F model=<MODE
 ```
 The required form information is the image (`image`) that should be processed. A given identifier to differentiate multiple runs/tests (`identifier`). And finally which config and weights to use (`model`). The config and weights are saved in a folder, this folder name is what needs to be provided. In this folder, the config should be named `config.yml` and the weight file should end in `.pth`.
 
+### Docker API
 
+To use the docker image as an API service, we recommend using docker compose. The docker compose file is provided in the [`docker-compose.yml`][docker_compose_link] file. The docker compose file can be run using the following command:
+```sh
+docker-compose up
+```
+
+Then request the API (in this example using curl) with the following command:
+```sh
+curl -X POST 0.0.0.0:5000/predict \
+  -F identifier=<unique_id> \
+  -F model=</path/relative/to/model_base_path> \
+  -F image=@</path/to/image.jpg>
+```
+
+The identifier is a unique identifier for the document, the output will be saved in a directory with the name being the unique id. The model base path is set in the [`docker-compose.yml`][docker_compose_link] file. For example, the base path is set to `/models` and the model is stored in `/models/version1` then the model path is `version1`. This directory should contain the `config.yml` and the `.pth` file.
 
 ## Tutorial
 For a small tutorial using some concrete examples see the [`tutorial`][tutorial_link] directory.
@@ -375,7 +391,7 @@ For a small tutorial using some concrete examples see the [`tutorial`][tutorial_
 ## Evaluation
 The Laypa repository also contains a few tools used to evaluate the results generated by the model.
 
-The first tool is a visual comparison between the predictions of the model and the ground truth. This is done as an overlay of the classes over the original image. The overlay class names and colors are taken from the dataset catalog. The tool to do this is [`visualization.py`][eval_link]. The visualization has almost the same arguments as the training command ([`train.py`][train_link]).
+The first tool is a visual comparison between the predictions of the model and the ground truth. This is done as an overlay of the classes over the original image. The overlay class names and colors are taken from the dataset catalog. The tool to do this is [`visualization.py`][visualization_link]. The visualization has almost the same arguments as the training command ([`train.py`][train_link]).
 
 Required arguments:
 ```sh
@@ -403,13 +419,13 @@ python tooling/visualization.py \
 The optional arguments are shown using square brackets. The `-o/output` parameter specifies the output directory for the visualization masks. The `--tmp_dir` parameter specifies a folder in which to store temporary files. While the `--keep_tmp_dir` parameter prevents the temporary files from being deleted after a run (mostly for debugging). The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts SOLVER.IMS_PER_BATCH 8` sets the batch size to 8. The `--sorted` parameter sorts the images based on the order in the operating system. The `--save` parameter specifies what type of file the visualization should be saved as. The options are "pred" for the prediction, "gt" for the ground truth, "both" for both the prediction and the ground truth and "all" for all of the previous. If just `--save` is given the default is "all".
 </details>
 
-Example of running [`visualization.py`][eval_link]:
+Example of running [`visualization.py`][visualization_link]:
 
 ```sh
 python tooling/visualization.py -c config.yml -i input_dir
 ```
 
-The [`visualization.py`][eval_link] will then open a window with both the prediction and the ground truth side by side (if the ground truth exists). Allowing for easier comparison. The visualization masks are created in the same way the preprocessing converts pageXML to masks.
+The [`visualization.py`][visualization_link] will then open a window with both the prediction and the ground truth side by side (if the ground truth exists). Allowing for easier comparison. The visualization masks are created in the same way the preprocessing converts PageXML to masks.
 
 The second tool [`validation.py`][validation_link] is used to get the validation scores of a model. This is done by comparing the prediction of the model to the ground truth. The validation scores are the Intersection over Union (IoU) and Accuracy (Acc) scores. The tool requires the input directory (`--input`) where there is also a page folder inside the input folder. The page folder should contain the xmls with the ground truth baselines/regions. To run the validation tool use the following command:
 
@@ -433,7 +449,7 @@ python validation.py \
 
 The optional arguments are shown using square brackets. The final parameter `--opts` allows you to change values specified in the config files. For example, `--opts MODEL.WEIGHTS <PATH_TO_WEIGHTS>` sets the path to the weights file. This needs to be done if the weights are not in the config file. Without `MODEL.WEIGHTS` the weights are taken from the config file. If the weights are not in the config file and not specified with `MODEL.WEIGHTS` the program will return results for an untrained model.
 
-The third tool is a program to compare the similarity of two sets of pageXML. This can mean either comparing ground truth to predicted pageXML, or determining the similarity of two annotations by different people. This tool is the [`xml_comparison.py`][xml_comparison_link] file. The comparison allows you to specify how regions and baseline should be drawn in when creating the pixel masks. The pixel masks are then compared based on their Intersection over Union (IoU) and Accuracy (Acc) scores. For the sake of the Accuracy metric one of the two sets needs to be specified as the ground truth set. So one set is the ground truth directory (`--gt`) argument and the other is the input directory (`--input`) argument.
+The third tool is a program to compare the similarity of two sets of PageXML. This can mean either comparing ground truth to predicted PageXML, or determining the similarity of two annotations by different people. This tool is the [`xml_comparison.py`][xml_comparison_link] file. The comparison allows you to specify how regions and baseline should be drawn in when creating the pixel masks. The pixel masks are then compared based on their Intersection over Union (IoU) and Accuracy (Acc) scores. For the sake of the Accuracy metric one of the two sets needs to be specified as the ground truth set. So one set is the ground truth directory (`--gt`) argument and the other is the input directory (`--input`) argument.
 
 Required arguments:
 ```sh
@@ -457,11 +473,11 @@ python tooling/xml_comparison.py \
     [-w/--line_width LINE_WIDTH] 
 ```
 
-The optional arguments are shown using square brackets. The `--mode` parameter specifies what type of prediction the model has to do. If the mode is region, the `--regions` argument specifies which regions need to be extracted from the pageXML (for example "page-number"). The `--merge_regions` then specifies if any of these regions need to be merged. This could mean converting "insertion" into "resolution" since they are talking about the same thing `resolution:insertion`. The final region argument is `--region_type` which can specify the region type of a region. In the other modes lines are used. The line arguments are `--line_width`, which specifies the line width, and `--line_color`, which specifies the line color.
+The optional arguments are shown using square brackets. The `--mode` parameter specifies what type of prediction the model has to do. If the mode is region, the `--regions` argument specifies which regions need to be extracted from the PageXML (for example "page-number"). The `--merge_regions` then specifies if any of these regions need to be merged. This could mean converting "insertion" into "resolution" since they are talking about the same thing `resolution:insertion`. The final region argument is `--region_type` which can specify the region type of a region. In the other modes lines are used. The line arguments are `--line_width`, which specifies the line width, and `--line_color`, which specifies the line color.
 </details>
 
 
-The final tool is a program for showing the pageXML as mask images. This can help with showing how the pageXML regions and baseline look. This can be done in gray scale, color, or as a colored overlay over the original image. This tool is located in the [xml_viewer.py][xml_viewer_link] file. It requires an input directory (`--input`) argument and output directory (`--output`) argument.
+The final tool is a program for showing the PageXML as mask images. This can help with showing how the PageXML regions and baseline look. This can be done in gray scale, color, or as a colored overlay over the original image. This tool is located in the [xml_viewer.py][xml_viewer_link] file. It requires an input directory (`--input`) argument and output directory (`--output`) argument.
 
 
 Required arguments:
@@ -526,12 +542,13 @@ If you discover a bug or missing feature that you would like to help with please
 [tutorial_link]: tutorial/
 [train_link]: train.py
 [inference_link]: inference.py
-[eval_link]: tooling/visualization.py
+[visualization_link]: tooling/visualization.py
 [validation_link]: tooling/validation.py
 [xml_comparison_link]: tooling/xml_comparison.py
 [xml_viewer_link]: tooling/xml_viewer.py
 [start_flask_link]: /api/start_flask.sh
 [start_flask_local_link]: /api/start_flask_local.sh
+[docker_compose_link]: docker/docker-compose.yml
 
 [loghi_link]: https://github.com/knaw-huc/loghi
 [huc_di_link]: https://di.huc.knaw.nl/
