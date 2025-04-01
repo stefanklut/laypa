@@ -84,7 +84,7 @@ class XMLToInstances(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains text line instances")
         return instances
 
-    def build_baseline(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_baseline(self, page: PageXMLEditor, out_size: tuple[int, int]) -> list[Instance]:
         """
         Create the instance version of the baselines
         """

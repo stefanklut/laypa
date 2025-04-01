@@ -52,7 +52,7 @@ class XMLToYOLO(_XMLConverter):
         normalized_coords = (coords / scale_factor[::-1]).astype(np.float32)
         return normalized_coords
 
-    def build_region(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_region(self, page: PageXMLEditor, out_size: tuple[int, int]) -> dict[str, Any]:
         """
         Create the instance version of the regions
         """

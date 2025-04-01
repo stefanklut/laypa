@@ -45,7 +45,7 @@ class XMLToPano(_XMLConverter):
             id_map //= 256
         return tuple(color)
 
-    def build_baseline(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_baseline(self, page: PageXMLEditor, out_size: tuple[int, int]) -> tuple[np.ndarray, list[SegmentsInfo]]:
         """
         Create the pano version of the baselines
         """
@@ -76,7 +76,7 @@ class XMLToPano(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains baseline pano")
         return pano_mask, segments_info
 
-    def build_region(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_region(self, page: PageXMLEditor, out_size: tuple[int, int]) -> tuple[np.ndarray, list[SegmentsInfo]]:
         """
         Create the pano version of the regions
         """
@@ -105,7 +105,7 @@ class XMLToPano(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains region pano")
         return pano_mask, segments_info
 
-    def build_text_line(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_text_line(self, page: PageXMLEditor, out_size: tuple[int, int]) -> tuple[np.ndarray, list[SegmentsInfo]]:
         """
         Create the pano version of the text line
         """

@@ -477,8 +477,6 @@ class Preprocess:
         converter = XMLToSemSeg(self.xml_regions, square_lines=self.square_lines)
 
         sem_seg = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-        if sem_seg is None:
-            return None
 
         sem_seg_dir.mkdir(parents=True, exist_ok=True)
 
@@ -533,8 +531,6 @@ class Preprocess:
         converter = XMLToInstances(self.xml_regions, square_lines=self.square_lines)
 
         instances = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-        if instances is None:
-            return None
 
         instances_dir.mkdir(parents=True, exist_ok=True)
 
@@ -593,8 +589,6 @@ class Preprocess:
         converter = XMLToPano(self.xml_regions, square_lines=self.square_lines)
 
         pano_output = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-        if pano_output is None:
-            return None
         pano, segments_info = pano_output
 
         pano_dir.mkdir(parents=True, exist_ok=True)
@@ -656,8 +650,6 @@ class Preprocess:
         converter = XMLToBinarySeg(self.xml_regions, square_lines=self.square_lines)
 
         binary_seg = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-        if binary_seg is None:
-            return None
 
         binary_seg_dir.mkdir(parents=True, exist_ok=True)
 

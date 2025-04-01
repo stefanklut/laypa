@@ -18,7 +18,7 @@ class XMLToSemSeg(_XMLConverter):
     def __init__(self, xml_regions, square_lines):
         super().__init__(xml_regions, square_lines)
 
-    def build_baseline(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_baseline(self, page: PageXMLEditor, out_size: tuple[int, int]) -> np.ndarray:
         """
         Create the sem_seg version of the baselines
         """
@@ -37,7 +37,7 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains baseline sem_seg")
         return sem_seg
 
-    def build_region(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_region(self, page: PageXMLEditor, out_size: tuple[int, int]) -> np.ndarray:
         """
         Builds a "image" mask of desired elements
         """
@@ -52,7 +52,7 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains region sem_seg")
         return sem_seg
 
-    def build_class_baseline(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_class_baseline(self, page: PageXMLEditor, out_size: tuple[int, int]) -> np.ndarray:
         """
         Create the sem_seg version of the class baseline (baseline for each class)
         """
@@ -71,7 +71,7 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains class baseline sem_seg")
         return sem_seg
 
-    def build_text_line(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_text_line(self, page: PageXMLEditor, out_size: tuple[int, int]) -> np.ndarray:
         """
         Builds a sem_seg mask of the text line
         """
@@ -86,7 +86,7 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains text line sem_seg")
         return sem_seg
 
-    def build_top_bottom(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_top_bottom(self, page: PageXMLEditor, out_size: tuple[int, int]) -> np.ndarray:
         """
         Create the sem_seg version of the top bottom
         """
@@ -117,7 +117,7 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains top bottom sem_seg")
         return sem_seg
 
-    def build_start(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_start(self, page: PageXMLEditor, out_size: tuple[int, int]) -> np.ndarray:
         """
         Create the sem_seg version of the start
         """
@@ -132,7 +132,7 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains start sem_seg")
         return sem_seg
 
-    def build_end(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_end(self, page: PageXMLEditor, out_size: tuple[int, int]) -> np.ndarray:
         """
         Create the sem_seg version of the end
         """
@@ -147,7 +147,7 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains end sem_seg")
         return sem_seg
 
-    def build_separator(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_separator(self, page: PageXMLEditor, out_size: tuple[int, int]) -> np.ndarray:
         """
         Create the sem_seg version of the separator
         """
@@ -165,7 +165,7 @@ class XMLToSemSeg(_XMLConverter):
             self.logger.warning(f"File {page.filepath} does not contains separator sem_seg")
         return sem_seg
 
-    def build_baseline_separator(self, page: PageXMLEditor, out_size: tuple[int, int]):
+    def build_baseline_separator(self, page: PageXMLEditor, out_size: tuple[int, int]) -> np.ndarray:
         """
         Create the sem_seg version of the baseline separator
         """

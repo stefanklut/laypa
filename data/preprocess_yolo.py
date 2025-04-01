@@ -308,12 +308,14 @@ class PreprocessYOLO:
             original_image_shape (tuple[int, int]): The original shape of the image.
             image_shape (tuple[int, int]): The desired shape of the image.
 
-        Returns:
-            dict: The relative path to the saved image.
-
         Raises:
             TypeError: If the output directory is None.
             TypeError: If the image loading fails.
+            ValueError: If the image is None after augmentation.
+
+        Returns:
+            dict: The relative path to the saved image.
+
         """
 
         if self.output_dir is None:
@@ -366,7 +368,12 @@ class PreprocessYOLO:
 
         return results
 
-    def save_yolo(self, image_path: Path, original_image_shape: tuple[int, int], image_shape: tuple[int, int]):
+    def save_yolo(
+        self,
+        image_path: Path,
+        original_image_shape: tuple[int, int],
+        image_shape: tuple[int, int],
+    ) -> Optional[dict[str, str]]:
         """
         Generate the YOLO format for an image.
 
@@ -374,6 +381,9 @@ class PreprocessYOLO:
             image_path (Path): The path to the image file.
             original_image_shape (tuple[int, int]): The original shape of the image.
             image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            dict: The relative path to the saved YOLO file.
         """
         if self.output_dir is None:
             raise TypeError("Cannot run when the output dir is None")
@@ -395,9 +405,6 @@ class PreprocessYOLO:
         converter = XMLToYOLO(self.xml_regions, square_lines=self.square_lines)
 
         yolo = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
-
-        if not yolo["annotations"]:
-            return {"yolo_file_name": None}  # Skip empty annotations
 
         yolo_dir.mkdir(parents=True, exist_ok=True)
         with out_yolo_path.open(mode="w") as f:
