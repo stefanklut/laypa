@@ -2,6 +2,7 @@ import argparse
 import sys
 from multiprocessing.pool import Pool
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 from tqdm import tqdm
@@ -24,7 +25,16 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def get_confidence_from_page_xml(path: Path):
+def get_confidence_from_page_xml(path: Path) -> Optional[float]:
+    """
+    Get confidence value from PageXML file
+
+    Args:
+        path (Path): Path to the PageXML file
+
+    Returns:
+        Optional[float]: Confidence value or None if not found
+    """
     page_data = PageXMLEditor(path)
 
     for metadata_item in page_data.iterfind(".//MetadataItem"):
