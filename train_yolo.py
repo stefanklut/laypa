@@ -177,10 +177,6 @@ def setup_training(args: argparse.Namespace):
             workers=cfg.DATALOADER.NUM_WORKERS,
         )
 
-        results = model.val()
-
-    return results
-
 
 def main(args: argparse.Namespace) -> None:
     assert (
