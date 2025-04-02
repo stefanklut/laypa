@@ -43,6 +43,7 @@ class XMLToYOLOSegmentation(_XMLConverter):
         """
         Create the instance version of the regions
         """
+        # Overwrite the out_size to 1x1, since we are not using it
         out_size = (1, 1)
         size = page.get_size()
         annotations = []
