@@ -3,7 +3,7 @@
 This document describes how to use YOLO with Laypa pre- and post-processing. It will guide you through the process of training a YOLO model, and then using it to return PageXML files with bounding boxes for the detected objects.
 
 ## Training a YOLO model
-In order to train a model you need the same files as for training a Laypa model. The preprocessing will convert the PageXML files to the COCO format, which is used by YOLO.
+In order to train a model you need the same files as for training a Laypa model. The preprocessing will convert the PageXML files to the YOLO format. The YOLO format is a text file with the same name as the image file, but with a `.txt` extension. The text file contains the bounding boxes or polygons for the objects in the image, depending on the type of task. 
 
 To start training a YOLO model use a config file for Laypa, in which you specify the region types you want to detect. Then call the [`train_yolo.py`][train_yolo] script as follows:
 
