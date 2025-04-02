@@ -443,17 +443,26 @@ class OutputPageXML:
             page_xml_editor.save_xml(xml_output_path)
             return
 
+        if yolo_output.masks is not None:
+            relative_contours = [yolo_output.masks.xyn[i].cpu().numpy() for i in range(yolo_output.masks.shape[0])]
+        else:
+            relative_bboxes = [yolo_output.boxes.xyxyn[i].cpu().numpy() for i in range(yolo_output.boxes.shape[0])]
+            relative_contours = [
+                np.array(
+                    [
+                        [relative_bbox[0], relative_bbox[1]],
+                        [relative_bbox[2], relative_bbox[1]],
+                        [relative_bbox[2], relative_bbox[3]],
+                        [relative_bbox[0], relative_bbox[3]],
+                    ]
+                )
+                for relative_bbox in relative_bboxes
+            ]
+
         region_id = 0
 
-        for i in range(yolo_output.boxes.shape[0]):
-            relative_box = yolo_output.boxes.xyxyn[i].cpu().numpy()
-
-            absolute_box = (
-                (relative_box[0] * width).round().astype(np.int32),
-                (relative_box[1] * height).round().astype(np.int32),
-                (relative_box[2] * width).round().astype(np.int32),
-                (relative_box[3] * height).round().astype(np.int32),
-            )
+        for i in range(len(relative_contours)):
+            absolute_contour = relative_contours[i] * np.asarray([width, height])
 
             class_id = int(yolo_output.boxes.cls[i].cpu().numpy())
             confidence = yolo_output.boxes.conf[i].cpu().numpy()
@@ -467,14 +476,7 @@ class OutputPageXML:
             page.append(
                 Region.with_tag(
                     region_type,
-                    np.array(
-                        [
-                            [absolute_box[0], absolute_box[1]],
-                            [absolute_box[2], absolute_box[1]],
-                            [absolute_box[2], absolute_box[3]],
-                            [absolute_box[0], absolute_box[3]],
-                        ]
-                    ),
+                    absolute_contour,
                     region,
                     id=f"region_{_uuid}_{region_id}",
                 )

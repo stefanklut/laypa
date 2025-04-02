@@ -18,7 +18,7 @@ class Annotation(TypedDict):
     category_id: int
 
 
-class XMLToYOLO(_XMLConverter):
+class XMLToYOLODetection(_XMLConverter):
     @configurable
     def __init__(self, xml_regions, square_lines):
         super().__init__(xml_regions, square_lines)
@@ -61,7 +61,7 @@ class XMLToYOLO(_XMLConverter):
         annotations = []
         for element in set(self.xml_regions.region_types.values()):
             for element_class, element_coords in page.iter_class_coords(element, self.xml_regions.regions_to_classes):
-                coords = self._normalize_coords(element_coords, out_size)
+                coords = self._normalize_coords(element_coords, size)
 
                 bbox = self._bounding_box_center(coords)
                 category_id = element_class - 1  # Ignore background class
