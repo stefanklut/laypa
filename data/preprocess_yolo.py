@@ -20,7 +20,7 @@ from detectron2.config import CfgNode, configurable
 
 from data.augmentations import Augmentation, build_augmentation
 from data.mapper import AugInput
-from page_xml.xml_converters import XMLToYOLO
+from page_xml.xml_converters import XMLToYOLODetection, XMLToYOLOSegmentation
 from page_xml.xml_regions import XMLRegions
 from utils.copy_utils import copy_mode
 from utils.image_utils import load_image_array_from_path, save_image_array_to_path
@@ -56,10 +56,10 @@ class PreprocessYOLO:
         n_classes: Optional[int] = None,
         disable_check: bool = False,
         overwrite: bool = False,
-        output: dict[str, str] = {},
         auto_dpi: bool = True,
         default_dpi: Optional[int] = None,
         manual_dpi: Optional[int] = None,
+        yolo_type: str = "detection",
     ) -> None:
         """
         Initializes the Preprocessor object.
@@ -105,7 +105,7 @@ class PreprocessYOLO:
 
         self.overwrite = overwrite
 
-        self.output = {"image": "png", "yolo": None}
+        self.output = self.yolo_type_to_output(yolo_type)
 
         self.augmentations = augmentations
 
@@ -113,12 +113,15 @@ class PreprocessYOLO:
         self.default_dpi = default_dpi
         self.manual_dpi = manual_dpi
 
+        self.yolo_type = yolo_type
+
     @classmethod
     def from_config(
         cls,
         cfg: CfgNode,
         input_paths: Optional[Sequence[Path]] = None,
         output_dir: Optional[Path] = None,
+        yolo_type: str = "detection",
     ) -> dict[str, Any]:
         """
         Converts a configuration object to a dictionary to be used as keyword arguments.
@@ -141,12 +144,29 @@ class PreprocessYOLO:
             "n_classes": cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
             "disable_check": cfg.PREPROCESS.DISABLE_CHECK,
             "overwrite": cfg.PREPROCESS.OVERWRITE,
-            "output": {"image": "png", "yolo": None},
             "auto_dpi": cfg.PREPROCESS.DPI.AUTO_DETECT,
             "default_dpi": cfg.PREPROCESS.DPI.DEFAULT_DPI,
             "manual_dpi": cfg.PREPROCESS.DPI.MANUAL_DPI,
+            "yolo_type": yolo_type,
         }
         return ret
+
+    @staticmethod
+    def yolo_type_to_output(
+        yolo_type: str,
+    ) -> dict[str, Any]:
+        """
+        Converts the YOLO type to the output format.
+
+        Returns:
+            dict[str, str]: A dictionary containing the output format.
+        """
+        if yolo_type == "detection":
+            return {"image": "png", "yolo_detection": None}
+        elif yolo_type == "segmentation":
+            return {"image": "png", "yolo_segmentation": None}
+        else:
+            raise ValueError(f"Unknown YOLO type: {yolo_type}")
 
     def set_input_paths(
         self,
@@ -368,7 +388,7 @@ class PreprocessYOLO:
 
         return results
 
-    def save_yolo(
+    def save_yolo_detection(
         self,
         image_path: Path,
         original_image_shape: tuple[int, int],
@@ -402,7 +422,7 @@ class PreprocessYOLO:
             if out_yolo_shape == image_shape:
                 return {"yolo_file_name": str(out_yolo_path.relative_to(self.output_dir))}
 
-        converter = XMLToYOLO(self.xml_regions, square_lines=self.square_lines)
+        converter = XMLToYOLODetection(self.xml_regions, square_lines=self.square_lines)
 
         yolo = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
 
@@ -410,6 +430,52 @@ class PreprocessYOLO:
         with out_yolo_path.open(mode="w") as f:
             for annotation in yolo["annotations"]:
                 output = [annotation["category_id"]] + annotation["bbox"]
+                f.write(" ".join(map(str, output)) + "\n")
+
+        return {"yolo_file_name": str(out_yolo_path.relative_to(self.output_dir))}
+
+    def save_yolo_segmentation(
+        self,
+        image_path: Path,
+        original_image_shape: tuple[int, int],
+        image_shape: tuple[int, int],
+    ) -> Optional[dict[str, str]]:
+        """
+        Generate the YOLO format for an image.
+
+        Args:
+            image_path (Path): The path to the image file.
+            original_image_shape (tuple[int, int]): The original shape of the image.
+            image_shape (tuple[int, int]): The desired shape of the image.
+
+        Returns:
+            dict: The relative path to the saved YOLO file.
+        """
+        if self.output_dir is None:
+            raise TypeError("Cannot run when the output dir is None")
+
+        xml_path = image_path_to_xml_path(image_path, self.disable_check)
+
+        yolo_dir = self.output_dir.joinpath("labels")
+
+        out_yolo_path = yolo_dir.joinpath(xml_path.name).with_suffix(f".txt")
+        out_yolo_size_path = yolo_dir.joinpath(xml_path.name).with_suffix(".size")
+
+        # Check if image already exists and if it doesn't need resizing
+        if not self.overwrite and out_yolo_path.exists() and out_yolo_size_path.exists():
+            with out_yolo_size_path.open(mode="r") as f:
+                out_yolo_shape = tuple(int(x) for x in f.read().strip().split(","))
+            if out_yolo_shape == image_shape:
+                return {"yolo_file_name": str(out_yolo_path.relative_to(self.output_dir))}
+
+        converter = XMLToYOLOSegmentation(self.xml_regions, square_lines=self.square_lines)
+
+        yolo = converter.convert(xml_path, original_image_shape=original_image_shape, image_shape=image_shape)
+
+        yolo_dir.mkdir(parents=True, exist_ok=True)
+        with out_yolo_path.open(mode="w") as f:
+            for annotation in yolo["annotations"]:
+                output = [annotation["category_id"]] + annotation["coords"]
                 f.write(" ".join(map(str, output)) + "\n")
 
         return {"yolo_file_name": str(out_yolo_path.relative_to(self.output_dir))}
