@@ -5,7 +5,6 @@ from detectron2.config import CfgNode
 _VALID_TYPES = {tuple, list, str, int, float, bool, NoneType}
 
 
-# TODO convert from dict to CfgNode, move to separate file. Use this to save the config in the pickled model. Then also create tooling to combine existing configs and weights.
 def convert_cfg_node_to_dict(cfg_node, key_list: list = []):
     """Convert a config node to dictionary"""
     if not isinstance(cfg_node, CfgNode):
