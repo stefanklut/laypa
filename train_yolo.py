@@ -106,21 +106,13 @@ def setup_training(args: argparse.Namespace):
         torch.multiprocessing.set_start_method("spawn", force=True)
 
     # Find the yolo type
-    if args.yolo.endswith("seg.pt"):
-        yolo_type = "segmentation"
-    else:
-        yolo_type = "detection"
-    logger.info(f"Using YOLO type: {yolo_type}")
-    logger.info(f"Using YOLO model: {args.yolo}")
-
-    if not args.yolo.startswith("yolo11"):
-        logger.warning(
-            "The YOLO model is not a YOLOv11 model. This may lead to unexpected results.  Currently YoloV11 is the latest version of YOLO."
-        )
+    model = YOLO(args.yolo)
+    yolo_task = model.task
+    logger.info(f"Yolo task: {yolo_task}")
 
     # Temp dir for preprocessing in case no temporary dir was specified
     with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not (args.keep_tmp_dir)) as tmp_dir:
-        process = PreprocessYOLO(cfg, yolo_type=yolo_type)  # type: ignore
+        process = PreprocessYOLO(cfg, yolo_task=yolo_task)  # type: ignore
 
         tmp_dir = Path(tmp_dir)
 
@@ -165,8 +157,6 @@ def setup_training(args: argparse.Namespace):
 
         with yolo_output_path.open("w") as f:
             yaml.dump(yolo_output, f)
-
-        model = YOLO(args.yolo)
 
         model.train(
             data=str(yolo_output_path),

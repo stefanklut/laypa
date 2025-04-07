@@ -59,7 +59,7 @@ class PreprocessYOLO:
         auto_dpi: bool = True,
         default_dpi: Optional[int] = None,
         manual_dpi: Optional[int] = None,
-        yolo_type: str = "detection",
+        yolo_task: str = "detect",
     ) -> None:
         """
         Initializes the Preprocessor object.
@@ -105,7 +105,7 @@ class PreprocessYOLO:
 
         self.overwrite = overwrite
 
-        self.output = self.yolo_type_to_output(yolo_type)
+        self.output = self.yolo_task_to_output(yolo_task)
 
         self.augmentations = augmentations
 
@@ -113,15 +113,13 @@ class PreprocessYOLO:
         self.default_dpi = default_dpi
         self.manual_dpi = manual_dpi
 
-        self.yolo_type = yolo_type
-
     @classmethod
     def from_config(
         cls,
         cfg: CfgNode,
         input_paths: Optional[Sequence[Path]] = None,
         output_dir: Optional[Path] = None,
-        yolo_type: str = "detection",
+        yolo_task: str = "detect",
     ) -> dict[str, Any]:
         """
         Converts a configuration object to a dictionary to be used as keyword arguments.
@@ -147,13 +145,13 @@ class PreprocessYOLO:
             "auto_dpi": cfg.PREPROCESS.DPI.AUTO_DETECT,
             "default_dpi": cfg.PREPROCESS.DPI.DEFAULT_DPI,
             "manual_dpi": cfg.PREPROCESS.DPI.MANUAL_DPI,
-            "yolo_type": yolo_type,
+            "yolo_task": yolo_task,
         }
         return ret
 
     @staticmethod
-    def yolo_type_to_output(
-        yolo_type: str,
+    def yolo_task_to_output(
+        yolo_task: str,
     ) -> dict[str, Any]:
         """
         Converts the YOLO type to the output format.
@@ -161,12 +159,12 @@ class PreprocessYOLO:
         Returns:
             dict[str, str]: A dictionary containing the output format.
         """
-        if yolo_type == "detection":
+        if yolo_task == "detect":
             return {"image": "png", "yolo_detection": None}
-        elif yolo_type == "segmentation":
+        elif yolo_task == "segment":
             return {"image": "png", "yolo_segmentation": None}
         else:
-            raise ValueError(f"Unknown YOLO type: {yolo_type}")
+            raise ValueError(f"Unknown YOLO task: {yolo_task}")
 
     def set_input_paths(
         self,
