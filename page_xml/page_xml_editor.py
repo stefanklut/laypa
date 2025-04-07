@@ -267,8 +267,11 @@ class PageXMLEditor(PageXML):
         if self.filepath is not None:
             if self.filepath.exists():
                 self.parse(self.filepath)
+                root = self.getroot()
+                if root is None:
+                    raise ValueError("Root element not found in the XML tree.")
                 # HACK Remove namespace from tree
-                default_namespace = self.getroot().tag.split("}")[0] + "}"
+                default_namespace = root.tag.split("}")[0] + "}"
                 for elem in self.iter():
                     name_space = elem.tag.split("}")[0] + "}"
                     if name_space and name_space != default_namespace:
@@ -419,7 +422,10 @@ class PageXMLEditor(PageXML):
         metadata.append(Creator("laypa"))
         metadata.append(Created())
         metadata.append(LastChange())
-        self.getroot().append(metadata)
+        root = self.getroot()
+        if root is None:
+            raise ValueError("Root element not found in the XML tree.")
+        root.append(metadata)
         return metadata
 
     def add_page(
@@ -429,7 +435,10 @@ class PageXMLEditor(PageXML):
         image_width: int,
     ):
         page = Page(image_filename, image_width, image_height)
-        self.getroot().append(page)
+        root = self.getroot()
+        if root is None:
+            raise ValueError("Root element not found in the XML tree.")
+        root.append(page)
         return page
 
     def add_processing_step(
