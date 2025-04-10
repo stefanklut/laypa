@@ -108,6 +108,9 @@ def setup_training(args: argparse.Namespace):
     # Find the yolo type
     model = YOLO(args.yolo)
     yolo_task = model.task
+    if not isinstance(yolo_task, str):
+        raise TypeError(f"Invalid YOLO task: {yolo_task}")
+
     logger.info(f"Yolo task: {yolo_task}")
 
     # Temp dir for preprocessing in case no temporary dir was specified
