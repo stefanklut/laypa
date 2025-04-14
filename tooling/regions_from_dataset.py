@@ -26,6 +26,18 @@ def get_arguments() -> argparse.Namespace:
 
     output_args = parser.add_argument_group("Output")
     output_args.add_argument("--show_filenames", action="store_true", help="Show filenames of pages with issues")
+    output_args.add_argument(
+        "--save_remaining_pages",
+        action="store_true",
+        help="Save the remaining pages to a file",
+    )
+    output_args.add_argument(
+        "--output_dir",
+        type=str,
+        default=".",
+        help="Output directory for the remaining pages",
+    )
+
     args = parser.parse_args()
     return args
 
@@ -97,6 +109,13 @@ def main(args):
         if "Text" in regions["count"]:
             text_regions_pages.append(regions["path"])
 
+    # Get all the paths that have no issues
+    remaining_pages = set(xml_paths) - set(no_regions_pages) - set(none_regions_pages) - set(text_regions_pages)
+    if args.save_remaining_pages:
+        with Path(args.output_dir).joinpath("remaining_pages.txt").open("w") as f:
+            for path in remaining_pages:
+                f.write(f"{path}\n")
+
     def print_xml_path_with_image_path(xml_paths: list[Path]) -> None:
         from utils.path_utils import xml_path_to_image_path
 
@@ -120,9 +139,7 @@ def main(args):
     if args.show_filenames:
         print_xml_path_with_image_path(text_regions_pages)
 
-    print(
-        f"Number of pages with no issue: {len(regions_per_page) - len(no_regions_pages) - len(none_regions_pages) - len(text_regions_pages)}"
-    )
+    print(f"Number of pages with no issue: {len(remaining_pages)}")
     pretty_print(dict(total_regions), n_decimals=0)
 
 
