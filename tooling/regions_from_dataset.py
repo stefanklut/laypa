@@ -106,7 +106,7 @@ def main(args):
 
     # count pages that have no region (This could indicate that annotation was not done)
     print(f"Number of pages: {len(regions_per_page)}")
-    print(f"Number of pages with regions: {len(regions_per_page) - len(no_regions_pages)}")
+    print(f"Number of pages without regions: {len(no_regions_pages)}")
     if args.show_filenames:
         print_xml_path_with_image_path(no_regions_pages)
 
