@@ -250,7 +250,7 @@ def n_distinct_colors(
             assert isinstance(exclude_colors[0], int), "Expected grayscale colors"
         output_colors = exclude_colors.copy()
         for i in range(n_colors):
-            output_colors.append(distinct_grayscale(exclude_colors, n_attempts=n_attempts, rng=rng))  # type: ignore
+            output_colors.append(distinct_grayscale(output_colors, n_attempts=n_attempts, rng=rng))  # type: ignore
     else:
         assert n_colors <= 256**3, "RGB only supports 256^3 colors"
         if exclude_colors is None:
@@ -261,7 +261,7 @@ def n_distinct_colors(
             assert len(exclude_colors[0]) == 3, "Expected RGB colors"
         output_colors = exclude_colors.copy()
         for i in range(n_colors):
-            output_colors.append(distinct_color(exclude_colors, n_attempts=n_attempts, rng=rng))  # type: ignore
+            output_colors.append(distinct_color(output_colors, n_attempts=n_attempts, rng=rng))  # type: ignore
 
     if return_excluded:
         return output_colors
