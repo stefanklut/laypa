@@ -3,7 +3,7 @@ import argparse
 # from multiprocessing.pool import ThreadPool as Pool
 import os
 import sys
-from collections import Counter
+from collections import Counter, defaultdict
 from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import Any
@@ -25,9 +25,12 @@ def get_arguments() -> argparse.Namespace:
     io_args.add_argument("-i", "--input", help="Input folder/file", nargs="+", action="extend", type=str)
 
     output_args = parser.add_argument_group("Output")
+    output_args.add_argument(
+        "--incorrect_regions", action="extend", help="Incorrect regions to check", nargs="+", type=str, default=["Text"]
+    )
     output_args.add_argument("--show_filenames", action="store_true", help="Show filenames of pages with issues")
     output_args.add_argument(
-        "--save_remaining_pages",
+        "--save_pages",
         action="store_true",
         help="Save the remaining pages to a file",
     )
@@ -93,8 +96,10 @@ def main(args):
         )
 
     no_regions_pages = []
-    none_regions_pages = []
-    text_regions_pages = []
+    incorrect_regions = [None] + args.incorrect_regions
+    incorrect_region_pages = defaultdict(list)
+
+    remaining_pages = set(xml_paths)
 
     # Combine the counters of multiple regions
     total_regions = Counter()
@@ -104,17 +109,29 @@ def main(args):
         # Check if the page has no regions
         if len(regions["count"]) == 0:
             no_regions_pages.append(regions["path"])
-        if None in regions["count"]:
-            none_regions_pages.append(regions["path"])
-        if "Text" in regions["count"]:
-            text_regions_pages.append(regions["path"])
+            remaining_pages.discard(regions["path"])
+            continue
+        # Check if the page has incorrect regions
+        for incorrect_region in incorrect_regions:
+            if incorrect_region in regions["count"]:
+                incorrect_region_pages[incorrect_region].append(regions["path"])
+                remaining_pages.discard(regions["path"])
 
-    # Get all the paths that have no issues
-    remaining_pages = set(xml_paths) - set(no_regions_pages) - set(none_regions_pages) - set(text_regions_pages)
-    if args.save_remaining_pages:
-        with Path(args.output_dir).joinpath("remaining_pages.txt").open("w") as f:
+    if args.save_pages:
+        output_dir = Path(args.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        with output_dir.joinpath("remaining_pages.txt").open("w") as f:
             for path in remaining_pages:
                 f.write(f"{path}\n")
+
+        with output_dir.joinpath("no_regions.txt").open("w") as f:
+            for path in no_regions_pages:
+                f.write(f"{path}\n")
+
+        for incorrect_region, pages in incorrect_region_pages.items():
+            with output_dir.joinpath(f"incorrect_region_{incorrect_region}.txt").open("w") as f:
+                for path in pages:
+                    f.write(f"{path}\n")
 
     def print_xml_path_with_image_path(xml_paths: list[Path]) -> None:
         from utils.path_utils import xml_path_to_image_path
@@ -129,15 +146,10 @@ def main(args):
     if args.show_filenames:
         print_xml_path_with_image_path(no_regions_pages)
 
-    # count pages that have None as a region (None means the region had no annotation)
-    print(f"Number of pages with None regions: {len(none_regions_pages)}")
-    if args.show_filenames:
-        print_xml_path_with_image_path(none_regions_pages)
-
-    # count pages that have Text as a region (Text is the default region so possibly not given an annotation)
-    print(f"Number of pages with Text regions: {len(text_regions_pages)}")
-    if args.show_filenames:
-        print_xml_path_with_image_path(text_regions_pages)
+    for incorrect_region, pages in incorrect_region_pages.items():
+        print(f"Number of pages with {incorrect_region}: {len(pages)}")
+        if args.show_filenames:
+            print_xml_path_with_image_path(pages)
 
     print(f"Number of pages with no issue: {len(remaining_pages)}")
     pretty_print(dict(total_regions), n_decimals=0)
