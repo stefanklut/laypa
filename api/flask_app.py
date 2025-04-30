@@ -10,7 +10,9 @@ from typing import Any, Optional, TypedDict
 import numpy as np
 import torch
 from flask import Flask, Response, abort, jsonify, request
-from prometheus_client import Counter, Gauge, generate_latest
+from prometheus_client import Counter, Gauge, Summary, generate_latest
+
+from utils.dict_utils import FIFOdict
 
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))  # noqa: E402
 from data.mapper import AugInput
@@ -103,7 +105,7 @@ class PredictorGenPageWrapper:
 
         cfg = setup_cfg(args)
         xml_regions = XMLRegions(cfg)  # type: ignore
-        self.gen_page = OutputPageXML(xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={})
+        self.gen_page = OutputPageXML(xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={}, external_processing=True)
 
         self.predictor = Predictor(cfg=cfg)
 
@@ -121,11 +123,169 @@ executor = ThreadPoolExecutor(max_workers=max_workers)
 queue_size_gauge = Gauge("queue_size", "Size of worker queue").set_function(lambda: executor._work_queue.qsize())
 images_processed_counter = Counter("images_processed", "Total number of images processed")
 exception_predict_counter = Counter("exception_predict", "Exception thrown in predict() function")
+process_time_summary = Summary("process_time", "Time taken to process an image")
+queue_time_summary = Summary("queue_time", "Time taken to queue an image")
+total_time_summary = Summary("total_time", "Total time taken to process an image")
+
+ledger = FIFOdict(maxSize=1000000)
+
+
+class ResponseInfo(dict):
+    """
+    Template for what fields are allowed in the response
+    """
+
+    allowed_fields = {
+        "status_code",
+        "identifier",
+        "filename",
+        "whitelist",
+        "added_queue_position",
+        "remaining_queue_size",
+        "added_time",
+        "model_name",
+        "error_message",
+        "status",
+        "queue_time",
+        "process_time",
+        "total_time",
+    }
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """
+        Set the item in the dictionary, ignore if the value is None
+        and ensure the key is in the allowed fields
+        """
+        if value is None:
+            return
+        if key not in self.allowed_fields:
+            raise KeyError(f"Key {key} is not allowed in the response")
+        super().__setitem__(key, value)
+
+
+@dataclass
+class Info:
+    """
+    Information about the current state of a request
+    """
+
+    _status: str = "loading"
+    status_code: Optional[int] = None
+    identifier: Optional[str] = None
+    filename: Optional[str] = None
+    whitelist: Optional[list[str]] = None
+    added_queue_position: Optional[int] = None
+    remaining_queue_size: Optional[int] = None
+    model_name: Optional[str] = None
+    error_message: Optional[str] = None
+    start_time_queue: Optional[float] = None
+    start_time_process: Optional[float] = None
+    end_time_queue: Optional[float] = None
+    end_time_process: Optional[float] = None
+
+    @property
+    def status(self) -> str:
+        """
+        Get the current status of the request
+
+        Returns:
+            str: Status of the request
+        """
+
+        return self._status
+
+    @status.setter
+    def status(self, value: str) -> None:
+        """
+        Set the status of the request
+
+        Args:
+            value (str): Status of the request
+        """
+        if value not in ["loading", "queued", "processing", "finished", "error"]:
+            raise ValueError(f"Invalid status {value}. Must be one of ['loading', 'queued', 'processing', 'finished', 'error']")
+        self._status = value
+
+    @property
+    def queue_time(self) -> Optional[float]:
+        """
+        Get the current queue time
+
+        Returns:
+            Optional[float]: Time in seconds
+        """
+        if self.start_time_queue is None:
+            return None
+        if not self.end_time_queue:
+            end_time = time.time()
+        else:
+            end_time = self.end_time_queue
+        queue_time = end_time - self.start_time_queue
+        return queue_time
+
+    @property
+    def process_time(self) -> Optional[float]:
+        """
+        Get the current process time
+
+        Returns:
+            Optional[float]: Time in seconds
+        """
+        if self.start_time_process is None:
+            return None
+        if not self.end_time_process:
+            end_time = time.time()
+        else:
+            end_time = self.end_time_process
+        process_time = end_time - self.start_time_process
+        return process_time
+
+    @property
+    def total_time(self) -> Optional[float]:
+        """
+        Get the current total time
+
+        Returns:
+            Optional[float]: Time in seconds
+        """
+        if self.start_time_queue is None:
+            return None
+        if not self.end_time_process:
+            end_time = time.time()
+        else:
+            end_time = self.end_time_process
+        total_time = end_time - self.start_time_queue
+        return total_time
+
+    @property
+    def response_info(self) -> ResponseInfo:
+        """
+        Get the response info
+
+        Returns:
+            ResponseInfo: Response info
+        """
+        response_info = ResponseInfo()
+        response_info["status_code"] = self.status_code or 500
+        response_info["identifier"] = self.identifier
+        response_info["filename"] = self.filename
+        response_info["whitelist"] = self.whitelist
+        response_info["added_queue_position"] = self.added_queue_position
+        response_info["remaining_queue_size"] = self.remaining_queue_size
+        response_info["added_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.start_time_queue))
+        response_info["model_name"] = self.model_name
+        response_info["error_message"] = self.error_message
+        response_info["status"] = self.status
+        response_info["queue_time"] = self.queue_time
+        response_info["process_time"] = self.process_time
+        response_info["total_time"] = self.total_time
+        return response_info
 
 
 def safe_predict(data, device):
     """
-    Attempt to predict on the speci
+    Attempt to predict on the specified data and device, handling CUDA out of memory errors gracefully.
+    This function is a wrapper around the predictor to ensure that if a CUDA OOM error occurs, it falls back to CPU.
 
     Args:
         data: Data to predict on
@@ -182,6 +342,12 @@ def predict_image(
     Returns:
         dict[str, Any]: Information about the processed image
     """
+    info = ledger[identifier]
+    info.status = "processing"
+    current_time = time.time()
+    info.start_time_process = current_time
+    info.end_time_queue = current_time
+
     input_args = locals()
     try:
         predict_gen_page_wrapper.setup_model(args=args, model_name=model_name)
@@ -231,26 +397,10 @@ def predict_image(
         return input_args | {"exception": exception}
 
 
-class ResponseInfo(TypedDict, total=False):
-    """
-    Template for what fields are allowed in the response
-    """
-
-    status_code: int
-    identifier: str
-    filename: str
-    whitelist: list[str]
-    added_queue_position: int
-    remaining_queue_size: int
-    added_time: str
-    model_name: str
-    error_message: str
-
-
 def abort_with_info(
     status_code: int,
     error_message: str,
-    info: Optional[ResponseInfo] = None,
+    info: Optional[Info] = None,
 ):
     """
     Abort while still providing info about what went wrong
@@ -261,24 +411,35 @@ def abort_with_info(
         info (Optional[ResponseInfo], optional): Response info. Defaults to None.
     """
     if info is None:
-        info = ResponseInfo(status_code=status_code)  # type: ignore
-    info["error_message"] = error_message
-    info["status_code"] = status_code
-    response = jsonify(info)
+        info = Info("error")
+
+    info.status = "error"
+    info.status_code = status_code
+    info.error_message = error_message
+
+    response = jsonify(info.response_info)
     response.status_code = status_code
     abort(response)
 
 
-def check_exception_callback(future: Future):
+def processing_done_callback(future: Future):
     """
     Log on exception
 
     Args:
         future (Future): Results from other thread
     """
+
     results = future.result()
+    identifier = results["identifier"]
+    info = ledger[identifier]
+    info.end_time_process = time.time()
     if "exception" in results:
         logger.exception(results, exc_info=results["exception"])
+        info.status = "error"
+        info.error_message = str(results["exception"])
+    else:
+        info.status = "finished"
 
 
 @app.route("/predict", methods=["POST"])
@@ -293,59 +454,66 @@ def predict() -> tuple[Response, int]:
     if request.method != "POST":
         abort(405)
 
-    response_info = ResponseInfo(status_code=500)
-
-    current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
-    response_info["added_time"] = current_time
+    info = Info()
 
     try:
         identifier = request.form["identifier"]
-        response_info["identifier"] = identifier
+        info.identifier = identifier
     except KeyError as error:
-        abort_with_info(400, "Missing identifier in form", response_info)
+        abort_with_info(400, "Missing identifier in form", info)
+
+    # Add the identifier to the ledger
+    ledger[identifier] = info
 
     try:
         model_name = request.form["model"]
-        response_info["model_name"] = model_name
+        info.model_name = model_name
     except KeyError as error:
-        abort_with_info(400, "Missing model in form", response_info)
+        abort_with_info(400, "Missing model in form", info)
 
     try:
         whitelist = request.form.getlist("whitelist")
-        response_info["whitelist"] = whitelist
+        info.whitelist = whitelist
     except KeyError as error:
-        abort_with_info(400, "Missing whitelist in form", response_info)
+        abort_with_info(400, "Missing whitelist in form", info)
 
     try:
         post_file = request.files["image"]
     except KeyError as error:
-        abort_with_info(400, "Missing image in form", response_info)
+        abort_with_info(400, "Missing image in form", info)
 
     if (image_name := post_file.filename) is not None:
         image_name = Path(image_name)
-        response_info["filename"] = str(image_name)
+        info.filename = str(image_name)
     else:
-        abort_with_info(400, "Missing filename", response_info)
+        abort_with_info(400, "Missing filename", info)
 
     # TODO Maybe make slightly more stable/predicable, https://docs.python.org/3/library/threading.html#threading.Semaphore https://gist.github.com/frankcleary/f97fe244ef54cd75278e521ea52a697a
     queue_size = executor._work_queue.qsize()
-    response_info["added_queue_position"] = queue_size
-    response_info["remaining_queue_size"] = max_queue_size - queue_size
+    info.added_queue_position = queue_size
+    info.remaining_queue_size = max_queue_size - queue_size
     if queue_size > max_queue_size:
-        abort_with_info(429, "Exceeding queue size", response_info)
+        abort_with_info(429, "Exceeding queue size", info)
 
     img_bytes = post_file.read()
     data = load_image_array_from_bytes(img_bytes, image_path=image_name)
 
     if data is None:
-        abort_with_info(500, "Image could not be loaded correctly", response_info)
+        abort_with_info(500, "Image could not be loaded correctly", info)
+
+    info.status = "queued"
+    info.start_time_queue = time.time()
 
     future = executor.submit(predict_image, data["image"], data["dpi"], image_name, identifier, model_name, whitelist)  # type: ignore
-    future.add_done_callback(check_exception_callback)
+    future.add_done_callback(processing_done_callback)
 
-    response_info["status_code"] = 202
+    info.status_code = 202
     # Return response and status code
-    return jsonify(response_info), 202
+    response = info.response_info
+    response.pop("queue_time", None)
+    response.pop("process_time", None)
+    response.pop("total_time", None)
+    return jsonify(response), 202
 
 
 @app.route("/prometheus", methods=["GET"])
@@ -359,6 +527,28 @@ def metrics() -> bytes:
     if request.method != "GET":
         abort(405)
     return generate_latest()
+
+
+@app.route("/status_info", methods=["GET"])
+def status_info() -> tuple[Response, int]:
+    """
+    Return the status of the current model
+
+    Returns:
+        Response: Status of the current model
+    """
+    if request.method != "GET":
+        abort(405)
+
+    info = Info()
+
+    try:
+        identifier = request.form["identifier"]
+        info = ledger[identifier]
+    except KeyError as error:
+        abort_with_info(400, "Missing identifier in form", info)
+
+    return jsonify(info.response_info), 200
 
 
 @app.route("/health", methods=["GET"])
