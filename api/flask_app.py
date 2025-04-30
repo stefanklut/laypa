@@ -549,9 +549,13 @@ def status_info() -> tuple[Response, int]:
 
     try:
         identifier = request.form["identifier"]
-        info = ledger[identifier]
     except KeyError as error:
         abort_with_info(400, "Missing identifier in form", info)
+
+    try:
+        info = ledger[identifier]
+    except KeyError as error:
+        abort_with_info(400, "Identifier not found in ledger", info)
 
     return jsonify(info.response_info), 200
 
