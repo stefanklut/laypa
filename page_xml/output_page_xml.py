@@ -241,7 +241,7 @@ class OutputPageXML:
 
         sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg_tensor, height, width)
 
-        sem_seg_classes = sem_seg_classes.cpu().numpy()
+        sem_seg_classes = sem_seg_classes.cpu().numpy().astype(np.uint8)
         mean_confidence = torch.mean(confidence).cpu().numpy().item()
 
         if self.cfg is not None:
