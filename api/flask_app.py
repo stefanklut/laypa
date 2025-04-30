@@ -141,7 +141,7 @@ class ResponseInfo(dict):
         "filename",
         "whitelist",
         "added_queue_position",
-        "remaining_queue_size",
+        "remaining_queue_size_on_insert",
         "added_time",
         "model_name",
         "error_message",
@@ -175,7 +175,7 @@ class Info:
     filename: Optional[str] = None
     whitelist: Optional[list[str]] = None
     added_queue_position: Optional[int] = None
-    remaining_queue_size: Optional[int] = None
+    remaining_queue_size_on_insert: Optional[int] = None
     model_name: Optional[str] = None
     error_message: Optional[str] = None
     start_time_queue: Optional[float] = None
@@ -271,7 +271,7 @@ class Info:
         response_info["filename"] = self.filename
         response_info["whitelist"] = self.whitelist
         response_info["added_queue_position"] = self.added_queue_position
-        response_info["remaining_queue_size"] = self.remaining_queue_size
+        response_info["remaining_queue_size_on_insert"] = self.remaining_queue_size_on_insert
         response_info["added_time"] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.start_time_queue))
         response_info["model_name"] = self.model_name
         response_info["error_message"] = self.error_message
@@ -496,7 +496,7 @@ def predict() -> tuple[Response, int]:
     # TODO Maybe make slightly more stable/predicable, https://docs.python.org/3/library/threading.html#threading.Semaphore https://gist.github.com/frankcleary/f97fe244ef54cd75278e521ea52a697a
     queue_size = executor._work_queue.qsize()
     info.added_queue_position = queue_size
-    info.remaining_queue_size = max_queue_size - queue_size
+    info.remaining_queue_size_on_insert = max_queue_size - queue_size
     if queue_size > max_queue_size:
         abort_with_info(429, "Exceeding queue size", info)
 
@@ -558,6 +558,46 @@ def status_info() -> tuple[Response, int]:
         abort_with_info(400, "Identifier not found in ledger", info)
 
     return jsonify(info.response_info), 200
+
+
+@app.route("/status_info/<identifier>", methods=["GET"])
+def status_info_identifier(identifier: str) -> tuple[Response, int]:
+    """
+    Return the status of the current model
+
+    Args:
+        identifier (str): Unique identifier for the image
+
+    Returns:
+        Response: Status of the current model
+    """
+    if request.method != "GET":
+        abort(405)
+
+    info = Info()
+
+    try:
+        info = ledger[identifier]
+    except KeyError as error:
+        abort_with_info(400, "Identifier not found in ledger", info)
+
+    return jsonify(info.response_info), 200
+
+
+@app.route("/queue_size", methods=["GET"])
+def queue_size() -> tuple[Response, int]:
+    """
+    Return the current size of the queue
+
+    Returns:
+        Response: Size of the queue
+    """
+    if request.method != "GET":
+        abort(405)
+
+    queue_size = executor._work_queue.qsize()
+    response_info = {"current_queue_size": queue_size}
+    return jsonify(response_info), 200
 
 
 @app.route("/health", methods=["GET"])
