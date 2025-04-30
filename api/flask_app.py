@@ -416,6 +416,7 @@ def abort_with_info(
     info.status = "error"
     info.status_code = status_code
     info.error_message = error_message
+    info.end_time_queue = time.time()
 
     response = jsonify(info.response_info)
     response.status_code = status_code
@@ -440,6 +441,10 @@ def processing_done_callback(future: Future):
         info.error_message = str(results["exception"])
     else:
         info.status = "finished"
+
+    process_time_summary.observe(info.process_time)
+    queue_time_summary.observe(info.queue_time)
+    total_time_summary.observe(info.total_time)
 
 
 @app.route("/predict", methods=["POST"])
