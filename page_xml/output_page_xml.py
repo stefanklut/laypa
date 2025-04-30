@@ -59,7 +59,7 @@ class OutputPageXML:
         whitelist: Optional[Iterable[str]] = None,
         rectangle_regions: Optional[Iterable[str]] = None,
         min_region_size: int = 10,
-        external_processing: bool = False,
+        external_processing: bool = True,
         external_processing_grayscale: bool = True,
         save_confidence_heatmap: bool = False,
     ) -> None:
