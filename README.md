@@ -363,10 +363,31 @@ The positional arguments input and output refer to the input and output director
 The Flask Server is set up to run the inference code in a Kubernetes environment. To run the Flask API run the [`start_flask.sh`][start_flask_link] application with the environment variables set. This can generally be set when running a docker, which can set the environment variables beforehand depending on the docker internal file structure.  To quickly test locally you can run the [`start_flask_local.sh`][start_flask_local_link] application, which sets the environment variables at runtime.
 
 The flask server will run on port 5000 and can be called from outside using a `curl` command. When testing on a localhost the command will look as follows:
+```sh
+curl -X POST 'http://localhost:5000/predict' -F image=@<PATH_TO_IMAGE> -F identifier=<identifier> -F model=<MODEL_FOLDER_NAME> 
 ```
-curl -X POST -F image=@<PATH_TO_IMAGE> -F identifier=<identifier> -F model=<MODEL_FOLDER_NAME> 'http://localhost:5000/predict'
+The required form information is the image (`image`) that should be processed. A given identifier to differentiate multiple runs/tests (`identifier`). The identifier can be any string, but it is recommended to use a UUID or a timestamp to ensure uniqueness. And finally which config and weights to use (`model`). The config and weights are saved in a folder, this folder name is what needs to be provided. This folder should be relative to the `LAYPA_MODEL_BASE_PATH`, given as an environment variable. So if the `LAYPA_MODEL_BASE_PATH` is set to `/models` and the model is stored in `/models/version1` then the model path is `version1`. The model folder should contain the config and weights files. The config file should be named `config.yml` and the weight file should end in `.pth`.
+
+To monitor a specific request, the identifier can be used to check the status of the request. This can be done using the following commands:
+```sh
+curl -X GET 'http://localhost:5000/status_info/<identifier>'
+curl -X GET 'http://localhost:5000/status_info' -F identifier=<identifier>
 ```
-The required form information is the image (`image`) that should be processed. A given identifier to differentiate multiple runs/tests (`identifier`). And finally which config and weights to use (`model`). The config and weights are saved in a folder, this folder name is what needs to be provided. In this folder, the config should be named `config.yml` and the weight file should end in `.pth`.
+This will return information about the request, such as the status of the request, the time it took to process the request, and what error occurred (if any). This information will be returned in JSON format.
+
+To view more general overview of the history or performance of the server, the following command can be used:
+```sh
+curl -X GET 'http://localhost:5000/prometheus'
+```
+This will give back the standard prometheus metrics. As well as the number of images in the queue, the number of images processed, the number of exceptions encountered, and information about how long images are in the queue and how long it took to process them. If you just want the current number of images in the queue, you can use the following command:
+```sh
+curl -X GET 'http://localhost:5000/queue_size'
+```
+For kubernetes checks there is a health check available. This can be done using the following command:
+```sh
+curl -X GET 'http://localhost:5000/health'
+```
+The health check will return a 200 OK if the server is running and a 500 if the server is not running. The health check can be used to check if the server is running and ready to process requests.
 
 ### Docker API
 
@@ -375,15 +396,9 @@ To use the docker image as an API service, we recommend using docker compose. Th
 docker-compose up
 ```
 
-Then request the API (in this example using curl) with the following command:
-```sh
-curl -X POST 0.0.0.0:5000/predict \
-  -F identifier=<unique_id> \
-  -F model=</path/relative/to/model_base_path> \
-  -F image=@</path/to/image.jpg>
-```
+Then request the API (in this example using curl) with the same arguments as the Flask server (see [Flask Server](#flask-server)).
 
-The identifier is a unique identifier for the document, the output will be saved in a directory with the name being the unique id. The model base path is set in the [`docker-compose.yml`][docker_compose_link] file. For example, the base path is set to `/models` and the model is stored in `/models/version1` then the model path is `version1`. This directory should contain the `config.yml` and the `.pth` file.
+The model base path is set in the [`docker-compose.yml`][docker_compose_link] file.
 
 ## Tutorial
 For a small tutorial using some concrete examples see the [`tutorial`][tutorial_link] directory.
