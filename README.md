@@ -379,7 +379,7 @@ To view more general overview of the history or performance of the server, the f
 ```sh
 curl -X GET 'http://localhost:5000/prometheus'
 ```
-This will give back the standard prometheus metrics. As well as the number of images in the queue, the number of images processed, the number of exceptions encountered, and information about how long images are in the queue and how long it took to process them. If you just want the current number of images in the queue, you can use the following command:
+This will give back the standard [prometheus](https://prometheus.io) metrics. As well as the current number of images in the queue, the number of images processed, the number of exceptions encountered, and information about how long images are in the queue and how long it took to process them. If you just want the current number of images in the queue, you can use the following command:
 ```sh
 curl -X GET 'http://localhost:5000/queue_size'
 ```
