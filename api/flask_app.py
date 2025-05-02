@@ -203,8 +203,10 @@ class Info:
         Args:
             value (str): Status of the request
         """
-        if value not in ["loading", "queued", "processing", "finished", "error"]:
-            raise ValueError(f"Invalid status {value}. Must be one of ['loading', 'queued', 'processing', 'finished', 'error']")
+        if value not in ["loading", "queued", "processing", "finished", "error", "not found"]:
+            raise ValueError(
+                f"Invalid status {value}. Must be one of ['loading', 'queued', 'processing', 'finished', 'error', 'not found']"
+            )
         self._status = value
 
     @property
@@ -536,7 +538,7 @@ def metrics() -> bytes:
 
 
 @app.route("/status", methods=["GET"])
-def status_info() -> tuple[Response, int]:
+def status() -> tuple[Response, int]:
     """
     Return the status of the current model
 
@@ -556,13 +558,13 @@ def status_info() -> tuple[Response, int]:
     try:
         info = ledger[identifier]
     except KeyError as error:
-        abort_with_info(404, "Identifier not found in ledger", info)
+        info.status = "not found"
 
     return jsonify(info.response_info), 200
 
 
 @app.route("/status/<identifier>", methods=["GET"])
-def status_info_identifier(identifier: str) -> tuple[Response, int]:
+def status_identifier(identifier: str) -> tuple[Response, int]:
     """
     Return the status of the current model
 
@@ -580,7 +582,7 @@ def status_info_identifier(identifier: str) -> tuple[Response, int]:
     try:
         info = ledger[identifier]
     except KeyError as error:
-        abort_with_info(404, "Identifier not found in ledger", info)
+        info.status = "not found"
 
     return jsonify(info.response_info), 200
 
