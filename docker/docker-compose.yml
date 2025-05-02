@@ -16,6 +16,7 @@ services:
       LAYPA_MAX_QUEUE_SIZE: 128
       LAYPA_MODEL_BASE_PATH: <path_to_model_base>
       LAYPA_OUTPUT_BASE_PATH: <path_to_output>
+      LAYPA_LEDGER_SIZE: 1000000
       GUNICORN_RUN_HOST: '0.0.0.0:5000'
       GUNICORN_WORKERS: 1
       GUNICORN_THREADS: 1

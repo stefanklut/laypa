@@ -28,6 +28,7 @@ try:
     max_queue_size_string: str = os.environ["LAYPA_MAX_QUEUE_SIZE"]
     model_base_path_string: str = os.environ["LAYPA_MODEL_BASE_PATH"]
     output_base_path_string: str = os.environ["LAYPA_OUTPUT_BASE_PATH"]
+    ledger_size_int: int = int(os.environ["LAYPA_LEDGER_SIZE"])
 except KeyError as error:
     raise KeyError(f"Missing Laypa Environment variable: {error.args[0]}")
 
@@ -127,7 +128,7 @@ process_time_summary = Summary("process_time", "Time taken to process an image")
 queue_time_summary = Summary("queue_time", "Time taken to queue an image")
 total_time_summary = Summary("total_time", "Total time taken to process an image")
 
-ledger = FIFOdict(maxSize=1000000)
+ledger = FIFOdict(maxSize=ledger_size_int)
 
 
 class ResponseInfo(dict):
@@ -534,7 +535,7 @@ def metrics() -> bytes:
     return generate_latest()
 
 
-@app.route("/status_info", methods=["GET"])
+@app.route("/status", methods=["GET"])
 def status_info() -> tuple[Response, int]:
     """
     Return the status of the current model
@@ -560,7 +561,7 @@ def status_info() -> tuple[Response, int]:
     return jsonify(info.response_info), 200
 
 
-@app.route("/status_info/<identifier>", methods=["GET"])
+@app.route("/status/<identifier>", methods=["GET"])
 def status_info_identifier(identifier: str) -> tuple[Response, int]:
     """
     Return the status of the current model

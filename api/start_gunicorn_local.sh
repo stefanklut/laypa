@@ -9,6 +9,7 @@ fi
 export LAYPA_MAX_QUEUE_SIZE=128 \
 export LAYPA_MODEL_BASE_PATH="/home/stefan/Documents/models/" \
 export LAYPA_OUTPUT_BASE_PATH="/tmp/gunicorn" \
+export LAYPA_LEDGER_SIZE=1000000 \
 
 mkdir -p $LAYPA_OUTPUT_BASE_PATH
 
