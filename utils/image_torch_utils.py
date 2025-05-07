@@ -14,7 +14,7 @@ from utils.logging_utils import get_logger_name
 
 
 def load_image_tensor_from_path_gpu_decode(
-    path: str | Path,
+    image_path: str | Path,
     mode: str = "color",
     device: torch.device = torch.device("cpu"),
     ignore_exif: bool = False,
@@ -23,7 +23,7 @@ def load_image_tensor_from_path_gpu_decode(
     Load an image from a given path and convert it to a torch tensor.
 
     Args:
-        path (Path): The path to the image file.
+        image_path (Path): The path to the image file.
         mode (str, optional): The color mode of the image. Supported values are "color" and "grayscale". Defaults to "color".
         device (torch.device, optional): The device to load the image tensor to. Defaults to torch.device("cpu").
         ignore_exif (bool, optional): Whether to ignore the EXIF data of the image. Defaults to False.
@@ -32,12 +32,12 @@ def load_image_tensor_from_path_gpu_decode(
         Optional[dict]: _description_
     """
     assert mode in ["color", "grayscale"], f'Mode "{mode}" not supported'
-    path = Path(path)
+    image_path = Path(image_path)
 
     try:
         torchvision_mode = torchvision.io.ImageReadMode.RGB if mode == "color" else torchvision.io.ImageReadMode.GRAY
-        if path.suffix in [".JPG", ".JPEG", ".jpeg", ".jpg"]:
-            image_bytes = torchvision.io.read_file(str(path))
+        if image_path.suffix in [".JPG", ".JPEG", ".jpeg", ".jpg"]:
+            image_bytes = torchvision.io.read_file(str(image_path))
             image = torchvision.io.decode_jpeg(
                 image_bytes,
                 mode=torchvision_mode,
@@ -46,14 +46,14 @@ def load_image_tensor_from_path_gpu_decode(
             )
         else:
             image = torchvision.io.read_image(
-                str(path),
+                str(image_path),
                 torchvision_mode,
                 apply_exif_orientation=not ignore_exif,
             )
             image = image.to(device)
-        dpi = imagesize.getDPI(path)
-        assert len(dpi) == 2, f"Invalid DPI: {dpi}"
-        assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}"
+        dpi = imagesize.getDPI(image_path)
+        assert len(dpi) == 2, f"Invalid DPI: {dpi}, for image: {image_path}"
+        assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}, for image: {image_path}"
         if dpi == (-1, -1):
             dpi = None
         else:
@@ -62,7 +62,7 @@ def load_image_tensor_from_path_gpu_decode(
         return {"image": image, "dpi": dpi}
     except OSError:
         logger = logging.getLogger(get_logger_name())
-        logger.warning(f"Cannot load image: {path} skipping for now")
+        logger.warning(f"Cannot load image: {image_path} skipping for now")
         return None
 
 
@@ -88,8 +88,8 @@ def load_image_tensor_from_path(
         )
 
         dpi = imagesize.getDPI(image_path)
-        assert len(dpi) == 2, f"Invalid DPI: {dpi}"
-        assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}"
+        assert len(dpi) == 2, f"Invalid DPI: {dpi}, for image: {image_path}"
+        assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}, for image: {image_path}"
         if dpi == (-1, -1):
             dpi = None
         else:
@@ -104,7 +104,7 @@ def load_image_tensor_from_path(
 
 def load_image_tensor_from_bytes(
     image_bytes: bytes,
-    image_path: Optional[Path] = None,
+    image_path: Path,
     mode: str = "color",
 ) -> Optional[dict]:
     """
@@ -112,7 +112,7 @@ def load_image_tensor_from_bytes(
 
     Args:
         image_bytes (bytes): transfer bytes of data that represent an image
-        image_path (Optional[Path], optional): image_path for logging. Defaults to None.
+        image_path (Path): image_path for logging.
         mode (str, optional): color mode, either "color" or "grayscale". Defaults to "color"
 
     Returns:
@@ -128,8 +128,8 @@ def load_image_tensor_from_bytes(
         image_dpi = Image.open(BytesIO(image_bytes))
         dpi = image_dpi.info.get("dpi")
         if dpi is not None:
-            assert len(dpi) == 2, f"Invalid DPI: {dpi}"
-            assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}"
+            assert len(dpi) == 2, f"Invalid DPI: {dpi}, for image: {image_path}"
+            assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}, for image: {image_path}"
             dpi = dpi[0]
         return {"image": image, "dpi": dpi}
     except OSError:

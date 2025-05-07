@@ -678,11 +678,15 @@ class Preprocess:
             if original_image_dpi == (-1, -1):
                 return self.default_dpi
 
-            assert len(original_image_dpi) == 2, f"Invalid DPI: {original_image_dpi}"
-            assert original_image_dpi[0] == original_image_dpi[1], f"Non-square DPI: {original_image_dpi}"
+            assert len(original_image_dpi) == 2, f"Invalid DPI: {original_image_dpi}, for image: {image_path}"
+            assert (
+                original_image_dpi[0] == original_image_dpi[1]
+            ), f"Non-square DPI: {original_image_dpi}, for image: {image_path}"
             original_image_dpi = original_image_dpi[0]
         else:
             original_image_dpi = self.manual_dpi
+
+        return original_image_dpi
 
     def process_single_file(self, image_path: Path) -> dict:
         """
