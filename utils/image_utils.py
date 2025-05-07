@@ -16,7 +16,7 @@ _M_RGB2YUV = [[0.299, 0.587, 0.114], [-0.14713, -0.28886, 0.436], [0.615, -0.514
 
 
 # Taken from detectron2.data.detection_utils
-def convert_PIL_to_numpy(image, format):
+def convert_PIL_to_numpy(image: Image.Image, format: str) -> np.ndarray:
     """
     Convert PIL image to numpy array of target format.
 
@@ -33,20 +33,25 @@ def convert_PIL_to_numpy(image, format):
         if format in ["BGR", "YUV-BT.601"]:
             conversion_format = "RGB"
         image = image.convert(conversion_format)
-    image = np.asarray(image)
+    image_array = np.asarray(image)
 
     # handle formats not supported by PIL
     if format == "BGR":
         # flip channels if needed
-        image = image[:, :, ::-1]
+        image_array = image_array[:, :, ::-1]
     elif format == "YUV-BT.601":
-        image = image / 255.0
-        image = np.dot(image, np.array(_M_RGB2YUV).T)
+        image_array = image_array / 255.0
+        image_array = np.dot(image_array, np.array(_M_RGB2YUV).T)
 
-    return image
+    return image_array
 
 
-def image_to_array_dpi(image, mode, ignore_exif) -> tuple[np.ndarray, Optional[int]]:
+def image_to_array_dpi(
+    image: Image.Image,
+    mode: str,
+    ignore_exif: bool,
+    image_path: Path | str,
+) -> tuple[np.ndarray, Optional[int]]:
     """
     Convert image to numpy array and get DPI
 
@@ -63,16 +68,17 @@ def image_to_array_dpi(image, mode, ignore_exif) -> tuple[np.ndarray, Optional[i
         tuple[np.ndarray, Optional[int]]: The image as a numpy array and the DPI (dots per inch) of the image.
     """
     if not ignore_exif:
-        image = ImageOps.exif_transpose(image)
-        if image is None:
+        transposed_image = ImageOps.exif_transpose(image)
+        if transposed_image is None:
             raise OSError("Image is None after exif transpose")
+        image = transposed_image
     dpi = image.info.get("dpi")
     if dpi is not None:
-        assert len(dpi) == 2, f"Invalid DPI: {dpi}"
-        assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}"
+        assert len(dpi) == 2, f"Invalid DPI: {dpi}, for image: {image_path}"
+        assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}, for image: {image_path}"
         dpi = dpi[0]
-    image = convert_PIL_to_numpy(image, "RGB" if mode == "color" else "L").copy()
-    return image, dpi
+    image_array = convert_PIL_to_numpy(image, "RGB" if mode == "color" else "L").copy()
+    return image_array, dpi
 
 
 def load_image_array_from_path(
@@ -104,7 +110,7 @@ def load_image_array_from_path(
 
     try:
         image = Image.open(image_path)
-        image, dpi = image_to_array_dpi(image, mode, ignore_exif)
+        image, dpi = image_to_array_dpi(image, mode, ignore_exif, image_path)
         return {"image": image, "dpi": dpi}
     except OSError:
         logger = logging.getLogger(get_logger_name())
@@ -114,7 +120,7 @@ def load_image_array_from_path(
 
 def load_image_array_from_bytes(
     image_bytes: bytes,
-    image_path: Optional[Path] = None,
+    image_path: Path,
     mode: str = "color",
     ignore_exif: bool = False,
 ) -> Optional[dict]:
@@ -123,7 +129,7 @@ def load_image_array_from_bytes(
 
     Args:
         image_bytes (bytes): The image bytes to load.
-        image_path (Optional[Path], optional): The path to the image file. Defaults to None.
+        image_path (Path): The path to the image file.
         mode (str, optional): The color mode of the image. Supported values are "color" and "grayscale". Defaults to "color".
         ignore_exif (bool, optional): Whether to ignore the EXIF data of the image. Defaults to False.
 
@@ -140,7 +146,7 @@ def load_image_array_from_bytes(
 
     try:
         image = Image.open(BytesIO(image_bytes))
-        image, dpi = image_to_array_dpi(image, mode, ignore_exif)
+        image, dpi = image_to_array_dpi(image, mode, ignore_exif, image_path)
         return {"image": image, "dpi": dpi}
     except OSError:
         image_path_info = image_path if image_path is not None else "Filename not given"
@@ -187,7 +193,7 @@ if __name__ == "__main__":
 
     image_bytes = image.tobytes()
 
-    image = load_image_array_from_bytes(image_bytes)
+    image = load_image_array_from_bytes(image_bytes, image_path, mode="color")
     if image is not None:
         print(image["image"].shape)
     else:

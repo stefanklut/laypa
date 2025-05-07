@@ -504,7 +504,7 @@ def predict() -> tuple[Response, int]:
         abort_with_info(429, "Exceeding queue size", info)
 
     img_bytes = post_file.read()
-    data = load_image_array_from_bytes(img_bytes, image_path=image_name)
+    data = load_image_array_from_bytes(img_bytes, image_path=image_name)  # type: ignore
 
     if data is None:
         abort_with_info(500, "Image could not be loaded correctly", info)
