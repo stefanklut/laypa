@@ -559,7 +559,7 @@ def status() -> tuple[Response, int]:
         info = ledger[identifier]
     except KeyError as error:
         info.status = "not found"
-        return abort_with_info(404, "Identifier not found", info)
+        abort_with_info(404, "Identifier not found", info)
 
     return jsonify(info.response_info), 200
 
@@ -584,7 +584,7 @@ def status_identifier(identifier: str) -> tuple[Response, int]:
         info = ledger[identifier]
     except KeyError as error:
         info.status = "not found"
-        return abort_with_info(404, "Identifier not found", info)
+        abort_with_info(404, "Identifier not found", info)
 
     return jsonify(info.response_info), 200
 
