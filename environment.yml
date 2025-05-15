@@ -27,6 +27,9 @@ dependencies:
   - ultralytics
   - tqdm
   - scikit-image
+  - sphinx
+  - sphinx_rtd_theme
+  - setuptools
   # - jpeg # For loading JPEG2000 images
   # - pygments #Optional for colors
   - pip:
