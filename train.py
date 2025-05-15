@@ -2,7 +2,9 @@ import argparse
 import logging
 import os
 import sys
+from collections import OrderedDict
 from pathlib import Path
+from typing import Optional
 
 import torch
 
@@ -68,7 +70,7 @@ def get_arguments() -> argparse.Namespace:
     return args
 
 
-def setup_training(args: argparse.Namespace):
+def setup_training(args: argparse.Namespace) -> Optional[OrderedDict]:
     """
     Setup and start training
 
@@ -76,7 +78,7 @@ def setup_training(args: argparse.Namespace):
         args (argparse.Namespace): arguments used to load a config file, also used for overwriting values directly (--opts)
 
     Returns:
-        OrderedDict|None: results, if evaluation is enabled. Otherwise None.
+        Optional[OrderedDict] results, if evaluation is enabled. Otherwise None.
     """
     cfg = setup_cfg(args)
     setup_logging(cfg)
