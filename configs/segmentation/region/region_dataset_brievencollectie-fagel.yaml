@@ -1,0 +1,165 @@
+_BASE_: ../segmentation_base.yaml
+
+OUTPUT_DIR: ./output/region
+
+NAME: brievencollectie-fagel
+
+PREPROCESS:
+  REGION:
+    REGIONS:
+      [
+        "Tekstblok",
+        "Leeg",
+        "Afsluiting",
+        "Handtekening",
+        "Marginalia-Contemporain",
+        "Aanhef",
+        "Adresblad-Metadata",
+        "Adresblad-Geadresseerde",
+        "Adresblad-Lakzegel",
+        "Adresblad",
+        "Marginalia-Modern",
+        "Stempel",
+        "Titel",
+        "Marginalia-Secretarieel",
+        "Misc",
+        "Lijst",
+        "Ondertitel",
+        "Drukwerk-Leeg",
+        "Drukwerk-Marginalia-modern",
+        "Drukwerk-Illustratie",
+        "Drukwerk-Titel",
+        "Drukwerk-Tekstblok",
+        "Drukwerk-Metadata",
+        "Drukwerk-Marginalia-Contemporain",
+        "Drukwerk-Paginanummer",
+        "Drukwerk-Groet",
+        "Drukwerk-Marginalia-Modern",
+        "Drukwerk-Marginalia-gedrukt",
+        "Drukwerk-Handtekening",
+        "Drukwerk-Lijst",
+        "Drukwerk-Extract",
+        "Drukwerk-Aanhef",
+        "Drukwerk-Exract",
+        "Drukwerk-Marginalia-contemporain",
+      ]
+    MERGE_REGIONS: []
+    REGION_TYPE: []
+
+  RESIZE:
+    RESIZE_MODE: "scaling"
+    SCALING: 0.33
+
+INPUT:
+  FORMAT: RGB
+
+  RESIZE_MODE: "scaling"
+  SCALING_TRAIN: 1.0
+  MAX_SIZE_TRAIN: -1
+
+  CROP:
+    ENABLED: true
+    SIZE: [2048, 2048]
+    TYPE: absolute
+
+  MAX_SIZE_TEST: -1
+
+  GRAYSCALE:
+    PROBABILITY: 0.1
+
+  ADAPTIVE_THRESHOLDING:
+    PROBABILITY: 0.05
+
+  BRIGHTNESS:
+    PROBABILITY: 0.25
+    MIN_INTENSITY: 0.5
+    MAX_INTENSITY: 1.5
+
+  CONTRAST:
+    PROBABILITY: 0.25
+    MIN_INTENSITY: 0.5
+    MAX_INTENSITY: 1.5
+
+  SATURATION:
+    PROBABILITY: 0.25
+    MIN_INTENSITY: 0.5
+    MAX_INTENSITY: 1.5
+
+  HUE:
+    PROBABILITY: 0.25
+    MIN_DELTA: -0.25
+    MAX_DELTA: 0.25
+
+  INVERT:
+    PROBABILITY: 0.1
+
+  JPEG_COMPRESSION:
+    PROBABILITY: 0.25
+    MIN_QUALITY: 50
+    MAX_QUALITY: 100
+
+  NOISE:
+    PROBABILITY: 0.25
+    MIN_STD: 10
+    MAX_STD: 32
+
+  GAUSSIAN_FILTER:
+    PROBABILITY: 0.25
+    MIN_SIGMA: 0.5
+    MAX_SIGMA: 1.5
+
+  HORIZONTAL_FLIP:
+    PROBABILITY: 0.
+
+  VERTICAL_FLIP:
+    PROBABILITY: 0.
+
+  ELASTIC_DEFORMATION:
+    PROBABILITY: 0.25
+    ALPHA: 0.1
+    SIGMA: 0.01
+
+  AFFINE:
+    PROBABILITY: 1.
+
+    TRANSLATION:
+      PROBABILITY: 0.9
+      STANDARD_DEVIATION: 0.02
+
+    ROTATION:
+      PROBABILITY: 0.9
+      KAPPA: 30.
+
+    SHEAR:
+      PROBABILITY: 0.9
+      KAPPA: 20.
+
+    SCALE:
+      PROBABILITY: 0.9
+      STANDARD_DEVIATION: 0.12
+
+  ORIENTATION:
+    PROBABILITY: 1.0
+    PERCENTAGES: (0.25, 0.25, 0.25, 0.25)
+
+MODEL:
+  MODE: region
+
+  SEM_SEG_HEAD:
+    NUM_CLASSES: 35
+
+  WEIGHTS:
+
+TRAIN:
+  WEIGHTS:
+
+TEST:
+  WEIGHTS:
+  EVAL_PERIOD: 10000
+
+SOLVER:
+  MAX_ITER: 250000
+  CHECKPOINT_PERIOD: 25000
+  AMP:
+    ENABLED: true
+  IMS_PER_BATCH: 4
