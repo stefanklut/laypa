@@ -1,14 +1,27 @@
-﻿lumache
-=======
+﻿laypa
+=====
 
-.. automodule:: lumache
+.. automodule:: laypa
 
+   
+   
+   
+
+   
    
    .. rubric:: Functions
 
    .. autosummary::
    
-      get_random_ingredients
+      train_test
+   
+   
+
+   
+   
+   
+
+   
    
    .. rubric:: Exceptions
 
@@ -16,3 +29,7 @@
    
       InvalidKindError
    
+   
+
+
+

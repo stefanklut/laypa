@@ -18,9 +18,9 @@ sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
 
-project = "Basic Sphinx Example Project"
-copyright = "2022, Read the Docs core team"
-author = "Read the Docs core team"
+project = "Loghi"
+copyright = "2022, KNAW HuC DI Team Images"
+author = "KNAW HuC DI Team Images"
 
 
 # -- General configuration ---------------------------------------------------
@@ -33,6 +33,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
+    "myst_parser",
 ]
 
 intersphinx_mapping = {

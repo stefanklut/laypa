@@ -29,6 +29,7 @@ dependencies:
   - scikit-image
   - sphinx
   - sphinx_rtd_theme
+  - myst-parser
   - setuptools
   # - jpeg # For loading JPEG2000 images
   # - pygments #Optional for colors
