@@ -114,7 +114,11 @@ def setup_training(args: argparse.Namespace):
     logger.info(f"Yolo task: {yolo_task}")
 
     # Temp dir for preprocessing in case no temporary dir was specified
-    with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not (args.keep_tmp_dir)) as tmp_dir:
+    with OptionalTemporaryDirectory(
+        prefix="laypa_preprocess.",
+        name=args.tmp_dir,
+        cleanup=not (args.keep_tmp_dir),
+    ) as tmp_dir:
         process = PreprocessYOLO(cfg, yolo_task=yolo_task)  # type: ignore
 
         tmp_dir = Path(tmp_dir)

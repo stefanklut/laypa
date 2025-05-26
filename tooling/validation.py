@@ -49,7 +49,11 @@ def main(args):
     logger = logging.getLogger(get_logger_name())
 
     # Temp dir for preprocessing in case no temporary dir was specified
-    with OptionalTemporaryDirectory(name=args.tmp_dir, cleanup=not (args.keep_tmp_dir)) as tmp_dir:
+    with OptionalTemporaryDirectory(
+        prefix="laypa_preprocess.",
+        name=args.tmp_dir,
+        cleanup=not (args.keep_tmp_dir),
+    ) as tmp_dir:
         preprocess_datasets(cfg, None, args.input, tmp_dir)
 
         trainer = Trainer(cfg, validation=True)
