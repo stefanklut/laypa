@@ -285,6 +285,8 @@ class PageXMLEditor(PageXML):
             super().__init__()
             self.add_metadata()
 
+        self.size: Optional[tuple[int, int]] = None
+
     def set_size(self, size: tuple[int, int]):
         self.size = size
 
