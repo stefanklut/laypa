@@ -26,7 +26,7 @@ def get_arguments() -> argparse.Namespace:
 
     output_args = parser.add_argument_group("Output")
     output_args.add_argument(
-        "--incorrect_regions", action="extend", help="Incorrect regions to check", nargs="+", type=str, default=["Text"]
+        "--incorrect_regions", action="extend", help="Incorrect regions to check", nargs="+", type=str, default=[]
     )
     output_args.add_argument("--show_filenames", action="store_true", help="Show filenames of pages with issues")
     output_args.add_argument(
@@ -42,6 +42,8 @@ def get_arguments() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
+    if not args.incorrect_regions:
+        args.incorrect_regions.append("Text")  # Default to checking for Text regions
     return args
 
 
@@ -96,7 +98,7 @@ def main(args):
         )
 
     no_regions_pages = []
-    incorrect_regions = [None] + args.incorrect_regions
+    incorrect_regions = set([None] + args.incorrect_regions)
     incorrect_region_pages = defaultdict(list)
 
     remaining_pages = set(xml_paths)
