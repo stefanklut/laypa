@@ -8,19 +8,18 @@ PREPROCESS:
   REGION:
     REGIONS:
       [
-        "tekstblok",
-        "ondertekening",
+        "paginanummer",
+        "titel",
         "zijkopmetadata",
         "Aanhef",
-        "paginanummer",
+        "tekstblok",
+        "ondertekening",
         "marginalia",
-        "titel",
         "misc",
+        "catch-word",
         "lijst",
         "zijkopbijlage",
-        "zijkop",
-        "page-number",
-        "afschrift",
+        "stempel",
       ]
     MERGE_REGIONS: []
     REGION_TYPE: []
