@@ -124,7 +124,7 @@ MODEL:
   MODE: region
 
   SEM_SEG_HEAD:
-    NUM_CLASSES: 14
+    NUM_CLASSES: 13
 
   WEIGHTS:
 
