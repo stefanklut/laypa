@@ -12,14 +12,13 @@ import torch
 from flask import Flask, Response, abort, jsonify, request
 from prometheus_client import Counter, Gauge, Summary, generate_latest
 
-from utils.dict_utils import FIFOdict
-
 sys.path.append(str(Path(__file__).resolve().parent.joinpath("..")))  # noqa: E402
 from data.mapper import AugInput
 from inference import Predictor
 from page_xml.output_page_xml import OutputPageXML
 from page_xml.xml_regions import XMLRegions
 from train import setup_cfg, setup_logging
+from utils.dict_utils import FIFOdict
 from utils.image_utils import load_image_array_from_bytes
 from utils.logging_utils import get_logger_name
 
