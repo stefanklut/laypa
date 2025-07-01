@@ -114,7 +114,13 @@ def load_image_array_from_path(
         return {"image": image, "dpi": dpi}
     except OSError:
         logger = logging.getLogger(get_logger_name())
-        logger.warning(f"Cannot load image: {image_path} skipping for now")
+        logger.warning(f'Cannot load image: "{image_path}" skipping for now')
+        return None
+    except Image.DecompressionBombError:
+        logger = logging.getLogger(get_logger_name())
+        logger.warning(
+            f'Trying to load image: "{image_path}" has failed due to decompression bomb error in PIL (see https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.open for more info). skipping for now'
+        )
         return None
 
 
@@ -151,7 +157,14 @@ def load_image_array_from_bytes(
     except OSError:
         image_path_info = image_path if image_path is not None else "Filename not given"
         logger = logging.getLogger(get_logger_name())
-        logger.warning(f"Cannot load image: {image_path_info}. skipping for now")
+        logger.warning(f'Cannot load image: "{image_path_info}" skipping for now')
+        return None
+    except Image.DecompressionBombError:
+        image_path_info = image_path if image_path is not None else "Filename not given"
+        logger = logging.getLogger(get_logger_name())
+        logger.warning(
+            f'Trying to load image: "{image_path_info}" has failed due to decompression bomb error in PIL (see https://pillow.readthedocs.io/en/stable/reference/Image.html#PIL.Image.open for more info). skipping for now'
+        )
         return None
 
 
