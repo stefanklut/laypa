@@ -65,6 +65,7 @@ def get_file_paths(
     input_paths: str | Path | Sequence[str | Path],
     formats: Container[str],
     disable_check: bool = False,
+    empty_dir_ok: bool = True,
 ) -> list[Path]:
     """
     Takes input paths, that may point to txt files containing more input paths and extracts them
@@ -111,7 +112,7 @@ def get_file_paths(
                 image_path.absolute() for image_path in input_path.glob("*") if is_path_supported_format(image_path, formats)
             ]
 
-            if len(sub_output_paths) == 0:
+            if not empty_dir_ok and len(sub_output_paths) == 0:
                 raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
 
         elif input_path.is_file() and is_path_supported_format(input_path, formats):
@@ -120,14 +121,12 @@ def get_file_paths(
         elif input_path.is_file() and input_path.suffix == ".txt":
             with input_path.open(mode="r") as f:
                 paths_from_file = [Path(line) for line in f.read().splitlines()]
-            sub_output_paths = [path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file]
-            for path in sub_output_paths:
-                if not disable_check and not path.is_file():
-                    raise FileNotFoundError(f"File from txt file does not exist: {path}")
-                if not is_path_supported_format(path, formats):
-                    raise ValueError(f"Invalid file type in txt file {input_path}, {path}: {path.suffix}")
+            _sub_output_paths = [path if path.is_absolute() else input_path.parent.joinpath(path) for path in paths_from_file]
+            sub_output_paths = []
+            for path in _sub_output_paths:
+                sub_output_paths.extend(get_file_paths(path, formats, disable_check=disable_check))
 
-            if len(sub_output_paths) == 0:
+            if not empty_dir_ok and len(sub_output_paths) == 0:
                 raise FileNotFoundError(f"No files found in the provided dir(s)/file(s) {input_path}")
 
         else:
