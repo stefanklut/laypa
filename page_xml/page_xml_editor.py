@@ -29,6 +29,7 @@ class Coords(ET.Element):
 
     @points.setter
     def points(self, value: np.ndarray):
+        assert len(value.shape) == 2, f"Expected 2D array, got {value.shape}"
         assert value.shape[1] == 2, f"Expected 2D array, got {value.shape}"
         str_coords = ""
         for coords in value:
@@ -76,6 +77,7 @@ class TextLine(_Polygon):
     @reading_order.setter
     def reading_order(self, value: Optional[int]):
         if value is not None:
+            assert isinstance(value, (int)), "Reading order must be an integer"
             self.attrib["custom"] = f"readingOrder {{index:{value};}}"
 
 
@@ -87,17 +89,18 @@ class TextEquiv(ET.Element):
 
 
 class Region(_Polygon):
-    def __init__(self, points: np.ndarray, region_type: Optional[str] = None, **kwargs):
+    def __init__(self, points: np.ndarray, region_type: Optional[str] = None, reading_order: Optional[int] = None, **kwargs):
         super().__init__(points, **kwargs)
         self.logger = logging.getLogger(get_logger_name())
 
         self.tag = "Region"
         self.region_type = region_type
+        self.reading_order = reading_order
 
     @property
     def region_type(self) -> Optional[str]:
         try:
-            re_match = re.match(r".*structure {.*type:(.*);.*}", self.attrib["custom"])
+            re_match = re.match(r".*structure {type:(.*?);}", self.attrib["custom"])
         except KeyError:
             self.logger.warning(f"No region type defined for {self.attrib['id']}")
             return None
@@ -110,14 +113,203 @@ class Region(_Polygon):
 
     @region_type.setter
     def region_type(self, value: Optional[str]):
-        if value is not None:
-            self.attrib["custom"] = f"structure {{type:{value};}}"
+        if value is None:
+            return
+        if self.attrib.get("custom") is not None:
+            new_string, changes_made = re.subn(r"structure {type:.*?;}", f"structure {{type:{value};}}", self.attrib["custom"])
+            if changes_made == 0:
+                new_string = self.attrib["custom"] + f" structure {{type:{value};}}"
+            new_string = new_string.strip()
+        else:
+            new_string = f"structure {{type:{value};}}"
+        self.attrib["custom"] = new_string
+
+    @property
+    def reading_order(self) -> Optional[int]:
+        try:
+            re_match = re.match(r".*readingOrder {index:(\d+);}", self.attrib["custom"])
+        except KeyError:
+            self.logger.warning(f"No reading order defined for {self.attrib['id']}")
+            return None
+        if re_match is None:
+            self.logger.warning(f"No reading order defined for {self.attrib['id']}")
+            return None
+        reading_order_index = re_match.group(1)
+
+        return int(reading_order_index)
+
+    @reading_order.setter
+    def reading_order(self, value: Optional[int]):
+        if value is None:
+            return
+        assert isinstance(value, (int)), "Reading order must be an integer"
+        if self.attrib.get("custom") is not None:
+            new_string, changes_made = re.subn(
+                r"readingOrder {index:\d+;}", f"readingOrder {{index:{value};}}", self.attrib["custom"]
+            )
+            if changes_made == 0:
+                new_string = self.attrib["custom"] + f" readingOrder {{index:{value};}}"
+            new_string = new_string.strip()
+        else:
+            new_string = f"readingOrder {{index:{value};}}"
+        self.attrib["custom"] = new_string
 
     @classmethod
     def with_tag(cls, tag: str, points: np.ndarray, region_type: Optional[str] = None, **kwargs):
         region = cls(points, region_type, **kwargs)
         region.tag = tag
         return region
+
+
+class TextRegion(Region):
+    def __init__(self, points: np.ndarray, **kwargs):
+        super().__init__(points, **kwargs)
+        self.tag = "TextRegion"
+
+
+class ImageRegion(Region):
+    def __init__(self, points: np.ndarray, **kwargs):
+        super().__init__(points, **kwargs)
+        self.tag = "ImageRegion"
+
+
+class TableRegion(Region):
+    def __init__(self, points: np.ndarray, rows: Optional[int] = None, columns: Optional[int] = None, **kwargs):
+        super().__init__(points, **kwargs)
+        self.tag = "TableRegion"
+        if rows is not None:
+            assert isinstance(rows, int), "Rows must be an integer"
+            self.attrib["rows"] = str(rows)
+        if columns is not None:
+            assert isinstance(columns, int), "Columns must be an integer"
+            self.attrib["columns"] = str(columns)
+
+    @property
+    def rows(self) -> int:
+        rows = self.attrib.get("rows")
+        if rows is not None:
+            return int(rows)
+
+        cells: list[TableCell] = self.findall(".//TableCell")  # type: ignore
+        if not cells:
+            self.rows = 0
+            return 0
+
+        max_row = max(cell.row + cell.rowspan for cell in cells)
+        self.rows = max_row
+        return max_row
+
+    @rows.setter
+    def rows(self, value: int):
+        assert isinstance(value, int), "Rows must be an integer"
+        self.attrib["rows"] = str(value)
+
+    @property
+    def columns(self) -> int:
+        columns = self.attrib.get("columns")
+        if columns is not None:
+            return int(columns)
+
+        cells: list[TableCell] = self.findall(".//TableCell")  # type: ignore
+        if not cells:
+            self.columns = 0
+            return 0
+
+        max_col = max(cell.col + cell.colspan for cell in cells)
+        self.columns = max_col
+        return max_col
+
+    @columns.setter
+    def columns(self, value: int):
+        assert isinstance(value, int), "Columns must be an integer"
+        self.attrib["columns"] = str(value)
+
+
+class TableCell(_Polygon):
+    def __init__(
+        self,
+        points: np.ndarray,
+        row: int,
+        col: int,
+        rowspan: int = 1,
+        colspan: int = 1,
+        corner_points: Optional[np.ndarray] = None,
+        **kwargs,
+    ):
+        super().__init__(points, **kwargs)
+        self.attrib["row"] = str(row)
+        self.attrib["col"] = str(col)
+        self.attrib["rowSpan"] = str(rowspan)
+        self.attrib["colSpan"] = str(colspan)
+        self.tag = "TableCell"
+        if corner_points is None:
+            corner_points = np.arange(4)
+        self.append(CornerPts(corner_points))
+
+    @property
+    def row(self) -> int:
+        row = self.attrib.get("row")
+        if row is None:
+            raise ValueError("Row attribute is not set")
+        return int(row)
+
+    @row.setter
+    def row(self, value: int):
+        assert isinstance(value, int), "Row must be an integer"
+        self.attrib["row"] = str(value)
+
+    @property
+    def col(self) -> int:
+        col = self.attrib.get("col")
+        if col is None:
+            raise ValueError("Column attribute is not set")
+        return int(col)
+
+    @col.setter
+    def col(self, value: int):
+        assert isinstance(value, int), "Column must be an integer"
+        self.attrib["col"] = str(value)
+
+    @property
+    def rowspan(self) -> int:
+        rowspan = self.attrib.get("rowSpan")
+        if rowspan is None:
+            raise ValueError("Rowspan attribute is not set")
+        return int(rowspan)
+
+    @rowspan.setter
+    def rowspan(self, value: int):
+        assert isinstance(value, int), "Rowspan must be an integer"
+        self.attrib["rowSpan"] = str(value)
+
+    @property
+    def colspan(self) -> int:
+        colspan = self.attrib.get("colSpan")
+        if colspan is None:
+            raise ValueError("Colspan attribute is not set")
+        return int(colspan)
+
+    @colspan.setter
+    def colspan(self, value: int):
+        assert isinstance(value, int), "Colspan must be an integer"
+        self.attrib["colSpan"] = str(value)
+
+
+class CornerPts(ET.Element):
+    def __init__(self, points: np.ndarray, **kwargs):
+        super().__init__("CornerPts", **kwargs)
+        self.points = points
+
+    @property
+    def points(self) -> np.ndarray:
+        if self.text is None:
+            return np.array([])
+        return np.fromstring(self.text, sep=" ")
+
+    @points.setter
+    def points(self, value: np.ndarray):
+        assert value.shape == (4,), "Corner points must be a 1D array of 4 elements"
+        self.text = " ".join(map(str, value))
 
 
 class PcGts(ET.Element):
