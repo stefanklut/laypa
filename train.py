@@ -113,16 +113,30 @@ def setup_training(args: argparse.Namespace):
     ) as tmp_dir:
         preprocess_datasets(cfg, args.train, args.val, tmp_dir)
 
-        trainer = Trainer(cfg=cfg)
-        if not cfg.TRAIN.WEIGHTS:
-            if cfg.MODEL.RESUME and not trainer.checkpointer.has_checkpoint():
-                raise FileNotFoundError(f"No checkpoint found in {cfg.OUTPUT_DIR}")
-            trainer.resume_or_load(resume=cfg.MODEL.RESUME)
-        else:
-            trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
-            trainer.start_iter = trainer.iter + 1
+        try:
+            trainer = Trainer(cfg=cfg)
+            if not cfg.TRAIN.WEIGHTS:
+                if cfg.MODEL.RESUME and not trainer.checkpointer.has_checkpoint():
+                    raise FileNotFoundError(f"No checkpoint found in {cfg.OUTPUT_DIR}")
+                trainer.resume_or_load(resume=cfg.MODEL.RESUME)
+            else:
+                trainer.checkpointer.load(cfg.TRAIN.WEIGHTS)
+                trainer.start_iter = trainer.iter + 1
 
-        results = trainer.train()
+            results = trainer.train()
+        except torch.cuda.OutOfMemoryError as e:
+            logger = logging.getLogger(get_logger_name())
+            e.add_note(
+                "CUDA out of memory. Try reducing the batch size or consider cropping the image. Another option is to change the resizing."
+                "To reduce the batch size, you can use --opts SOLVER.IMS_PER_BATCH <new_batch_size>"
+                "To crop the image, you can use --opts INPUT.CROP.ENABLED True --opts INPUT.CROP.SIZE <new_size>"
+                "To change resizing, you can use --opts INPUT.RESIZE_MODE <new_mode> --opts INPUT.SCALING_TRAIN <new_scaling> --opts INPUT.MAX_SIZE_TRAIN <new_max_size>"
+                'Resize mode "scaling" is used to resize the image while maintaining relative pixel dimensions.'
+                'Resize mode "shortest_edge" is used to resize the shortest edge to a given size, while maintaining aspect ratio.'
+                "or change the resizing during preprocessing using --opts PREPROCESS.RESIZE.RESIZE_MODE <new_mode> --opts PREPROCESS.RESIZE.SCALING <new_scaling> --opts PREPROCESS.RESIZE.MAX_SIZE <new_max_size>"
+                "For all these options, you can also modify the config (.yaml) file."
+            )
+            raise e
 
     return results
 
