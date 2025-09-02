@@ -127,14 +127,29 @@ def setup_training(args: argparse.Namespace):
         except torch.cuda.OutOfMemoryError as e:
             logger = logging.getLogger(get_logger_name())
             e.add_note(
-                "CUDA out of memory. Try reducing the batch size or consider cropping the image. Another option is to change the resizing."
-                "To reduce the batch size, you can use --opts SOLVER.IMS_PER_BATCH <new_batch_size>"
-                "To crop the image, you can use --opts INPUT.CROP.ENABLED True --opts INPUT.CROP.SIZE <new_size>"
-                "To change resizing, you can use --opts INPUT.RESIZE_MODE <new_mode> --opts INPUT.SCALING_TRAIN <new_scaling> --opts INPUT.MAX_SIZE_TRAIN <new_max_size>"
-                'Resize mode "scaling" is used to resize the image while maintaining relative pixel dimensions.'
-                'Resize mode "shortest_edge" is used to resize the shortest edge to a given size, while maintaining aspect ratio.'
-                "or change the resizing during preprocessing using --opts PREPROCESS.RESIZE.RESIZE_MODE <new_mode> --opts PREPROCESS.RESIZE.SCALING <new_scaling> --opts PREPROCESS.RESIZE.MAX_SIZE <new_max_size>"
-                "For all these options, you can also modify the config (.yaml) file."
+                "\n"
+                "╭─────────────────────────────────────────────────────────────────────────────╮\n"
+                "│ CUDA out of memory detected.                                                │\n"
+                "│                                                                             │\n"
+                "│ Suggestions:                                                                │\n"
+                "│   • Reduce batch size:                                                      │\n"
+                "│       --opts SOLVER.IMS_PER_BATCH <new_batch_size>                          │\n"
+                "│   • Enable cropping:                                                        │\n"
+                "│       --opts INPUT.CROP.ENABLED True --opts INPUT.CROP.SIZE <new_size>      │\n"
+                "│   • Change resizing:                                                        │\n"
+                "│       --opts INPUT.RESIZE_MODE <new_mode>                                   │\n"
+                "│       --opts INPUT.SCALING_TRAIN <new_scaling>                              │\n"
+                "│       --opts INPUT.MAX_SIZE_TRAIN <new_max_size>                            │\n"
+                "│     Resize modes:                                                           │\n"
+                '│       - "scaling": maintains relative pixel dimensions                      │\n'
+                '│       - "shortest_edge": resizes shortest edge, keeps aspect ratio          │\n'
+                "│   • Preprocessing resizing options:                                         │\n"
+                "│       --opts PREPROCESS.RESIZE.RESIZE_MODE <new_mode>                       │\n"
+                "│       --opts PREPROCESS.RESIZE.SCALING <new_scaling>                        │\n"
+                "│       --opts PREPROCESS.RESIZE.MAX_SIZE <new_max_size>                      │\n"
+                "│                                                                             │\n"
+                "│ You may also modify these options in your config (.yaml) file.              │\n"
+                "╰─────────────────────────────────────────────────────────────────────────────╯\n"
             )
             raise e
 
