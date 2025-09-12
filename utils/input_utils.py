@@ -66,6 +66,7 @@ def get_file_paths(
     formats: Container[str],
     disable_check: bool = False,
     empty_dir_ok: bool = True,
+    output_natsorted: bool = True,
 ) -> list[Path]:
     """
     Takes input paths, that may point to txt files containing more input paths and extracts them
@@ -74,6 +75,7 @@ def get_file_paths(
         input_paths (str | Path | Sequence[str | Path]): input path that have not been formatted
         formats (Container[str]): list of accepted file formats (extensions)
         disable_check (bool, optional): Run a check to see if all extracted files exist. Defaults to False.
+        output_natsorted (bool, optional): Sort the output paths using natural sorting. Defaults to True.
 
     Raises:
         TypeError: input_paths is not set
@@ -100,10 +102,10 @@ def get_file_paths(
 
     for input_path in input_paths:
         input_path = input_path.expanduser().resolve()
-        if not input_path.exists():
+        if not disable_check and not input_path.exists():
             raise FileNotFoundError(f"Input dir/file ({input_path}) is not found")
 
-        if not os.access(path=input_path, mode=os.R_OK):
+        if not disable_check and not os.access(path=input_path, mode=os.R_OK):
             raise PermissionError(f"No access to {input_path} for read operations")
 
         # IDEA This could be replaces with input_path.rglob(f"**/page/*.xml"), con: this remove the supported format check
@@ -134,4 +136,6 @@ def get_file_paths(
 
         output_paths.extend(sub_output_paths)
 
-    return natsorted(output_paths)
+    if output_natsorted:
+        output_paths = natsorted(output_paths)
+    return output_paths
