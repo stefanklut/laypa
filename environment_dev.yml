@@ -11,7 +11,7 @@ dependencies:
   - mkl
   - pytorch
   - pytorch-cuda
-  # - cuda-toolkit
+  - cuda-toolkit
   - torchvision
   - matplotlib
   - scipy
