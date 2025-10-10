@@ -42,4 +42,3 @@ dependencies:
   - pip:
       - git+https://github.com/facebookresearch/detectron2.git
       - git+https://github.com/cocodataset/panopticapi.git
-      # local ops installed separately after env creation
