@@ -444,9 +444,9 @@ class OutputPageXML:
             return
 
         if yolo_output.masks is not None:
-            relative_contours = [yolo_output.masks.xyn[i].cpu().numpy() for i in range(yolo_output.masks.shape[0])]
+            relative_contours = [yolo_output.masks.xyn[i] for i in range(yolo_output.masks.shape[0])]
         else:
-            relative_bboxes = [yolo_output.boxes.xyxyn[i].cpu().numpy() for i in range(yolo_output.boxes.shape[0])]
+            relative_bboxes = [yolo_output.boxes.xyxyn[i] for i in range(yolo_output.boxes.shape[0])]
             relative_contours = [
                 np.array(
                     [
