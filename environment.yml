@@ -3,15 +3,19 @@ channels:
   - pytorch
   - nvidia
   - conda-forge
-  - default
+  - defaults
 dependencies:
   - python=3
   - numpy=1
   - llvm-openmp<16 # For CPU affinity pytorch issues (https://github.com/pytorch/pytorch/issues/102269)
   - mkl
   - pytorch
-  - pytorch-cuda
-  - cuda-toolkit
+  - pytorch-cuda=12.4 # pin CUDA version to match dev packages
+  # CUDA development headers & compiler toolchain (instead of cuda-toolkit meta)
+  - cuda-cudart-dev=12.4
+  - cuda-nvcc=12.4
+  - cuda-libraries-dev=12.4
+  # removed: cuda-toolkit
   - torchvision
   - opencv
   - matplotlib
@@ -28,9 +32,14 @@ dependencies:
   - ultralytics
   - tqdm
   - scikit-image
+  # build helpers for custom torch extensions
+  - ninja
+  - pybind11
+  - setuptools
+  - wheel
   # - jpeg # For loading JPEG2000 images
   # - pygments #Optional for colors
   - pip:
       - git+https://github.com/facebookresearch/detectron2.git
       - git+https://github.com/cocodataset/panopticapi.git
-      - ./models/pixel_decoder/ops/
+      # local ops installed separately after env creation

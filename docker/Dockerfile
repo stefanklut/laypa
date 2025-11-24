@@ -14,7 +14,7 @@ RUN apt-get update -y && \
 
 WORKDIR /src/
 COPY laypa/ laypa/
-COPY _entrypoint.sh /_entrypoint.sh
+COPY laypa/docker/_entrypoint.sh /_entrypoint.sh
 
 # When github is open
 # RUN git clone https://github.com/stefanklut/laypa.git
