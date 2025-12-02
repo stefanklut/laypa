@@ -14,7 +14,7 @@ RUN apt-get update -y && \
 
 WORKDIR /src/
 COPY laypa/ laypa/
-COPY laypa/docker/_entrypoint.sh /_entrypoint.sh
+COPY _entrypoint.sh /_entrypoint.sh
 
 # When github is open
 # RUN git clone https://github.com/stefanklut/laypa.git
@@ -27,10 +27,6 @@ RUN mamba env create -p /env -f environment.yml && \
 ENV PATH=/opt/conda/envs/laypa/bin:$PATH
 ENV CONDA_DEFAULT_ENV=laypa
 ENV ENV_NAME=laypa
-ENV CUDA_HOME=/opt/conda/envs/laypa
-# Architectures: adjust if you only need specific SM versions
-ENV TORCH_CUDA_ARCH_LIST=8.0;8.6;9.0
-ENV FORCE_CUDA=1
 
 ENTRYPOINT ["/_entrypoint.sh"]
 CMD ["/bin/bash"]
