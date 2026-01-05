@@ -2,7 +2,6 @@ name: laypa
 channels:
   - nvidia
   - conda-forge
-  - default
 dependencies:
   - python=3
   - numpy
