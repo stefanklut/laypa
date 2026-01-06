@@ -20,7 +20,6 @@ COPY _entrypoint.sh /_entrypoint.sh
 # RUN git clone https://github.com/stefanklut/laypa.git
 
 WORKDIR /src/laypa
-# Removing the nsight-compute folder as it is not needed for runtime
 RUN mamba env create -p /env -f environment.yml -y && \
     mamba clean -y --all --force-pkgs-dirs
 
