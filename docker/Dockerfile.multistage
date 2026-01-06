@@ -20,7 +20,7 @@ COPY laypa.multistage/ laypa/
 # RUN git clone https://github.com/stefanklut/laypa.git
 
 WORKDIR /src/laypa
-RUN mamba env create -p /env -f environment.yml -y && \
+RUN CONDA_OVERRIDE_CUDA="13" mamba env create -p /env -f environment.yml -y && \
     mamba clean -y --all --force-pkgs-dirs
 
 

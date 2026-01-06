@@ -1,6 +1,8 @@
 FROM condaforge/miniforge3
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 RUN apt-get update -y && \
     apt-get dist-upgrade -y && \
@@ -20,7 +22,7 @@ COPY _entrypoint.sh /_entrypoint.sh
 # RUN git clone https://github.com/stefanklut/laypa.git
 
 WORKDIR /src/laypa
-RUN mamba env create -p /env -f environment.yml -y && \
+RUN CONDA_OVERRIDE_CUDA="13" mamba env create -p /env -f environment.yml -y && \
     mamba clean -y --all --force-pkgs-dirs
 
 ENV PATH=/env/bin/:$PATH
