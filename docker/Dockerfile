@@ -24,9 +24,9 @@ WORKDIR /src/laypa
 RUN mamba env create -p /env -f environment.yml -y && \
     mamba clean -y --all --force-pkgs-dirs
 
-ENV PATH=/opt/conda/envs/laypa/bin:$PATH
-ENV CONDA_DEFAULT_ENV=laypa
-ENV ENV_NAME=laypa
+ENV PATH=/env/bin/:$PATH
+ENV CONDA_DEFAULT_ENV=/env
+ENV ENV_NAME=/env
 
 ENTRYPOINT ["/_entrypoint.sh"]
 CMD ["/bin/bash"]
