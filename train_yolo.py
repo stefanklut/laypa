@@ -167,7 +167,7 @@ def setup_training(args: argparse.Namespace):
 
         model.train(
             data=str(yolo_output_path),
-            epochs=100,
+            epochs=300,
             batch=cfg.SOLVER.IMS_PER_BATCH,
             imgsz=640,
             device=cfg.MODEL.DEVICE,
