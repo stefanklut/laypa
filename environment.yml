@@ -2,12 +2,12 @@ name: laypa
 channels:
   - conda-forge
 dependencies:
-  - python=3
+  - python>=3.12
   - numpy
   # - llvm-openmp<16 # For CPU affinity pytorch issues (https://github.com/pytorch/pytorch/issues/102269)
-  - pytorch-gpu
+  - pytorch
   - torchvision
-  - cuda-toolkit
+  - cuda-toolkit>=12.8
   - opencv
   - matplotlib
   - scipy
