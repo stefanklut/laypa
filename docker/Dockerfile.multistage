@@ -1,6 +1,8 @@
 FROM condaforge/miniforge3 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 RUN apt-get update -y && \
     apt-get dist-upgrade -y && \
@@ -35,6 +37,8 @@ ENV ENV_NAME=/env
 FROM condaforge/miniforge3 AS runner
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 RUN apt-get update -y && \
     apt-get install -y ffmpeg libsm6 libxext6 libegl1 libopengl0 && \
