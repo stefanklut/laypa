@@ -21,6 +21,7 @@ from train import setup_cfg, setup_logging
 from utils.dict_utils import FIFOdict
 from utils.image_utils import load_image_array_from_bytes
 from utils.logging_utils import get_logger_name
+from api.simple_security import SimpleSecurity, session_key_required
 
 # Reading environment files
 try:
@@ -47,6 +48,10 @@ setup_logging()
 logger = logging.getLogger(get_logger_name())
 
 app = Flask(__name__)
+
+enable_security = os.getenv("SECURITY_ENABLED", False)
+api_key_user_json_string = os.getenv("API_KEY_USER_JSON_STRING")
+SimpleSecurity(app, enable_security, api_key_user_json_string)
 
 predictor = None
 gen_page = None
@@ -451,6 +456,7 @@ def processing_done_callback(future: Future):
 
 @app.route("/predict", methods=["POST"])
 @exception_predict_counter.count_exceptions()
+@session_key_required
 def predict() -> tuple[Response, int]:
     """
     Run the prediction on a submitted image
@@ -524,6 +530,7 @@ def predict() -> tuple[Response, int]:
 
 
 @app.route("/prometheus", methods=["GET"])
+@session_key_required
 def metrics() -> bytes:
     """
     Return the Prometheus metrics for the running flask application
