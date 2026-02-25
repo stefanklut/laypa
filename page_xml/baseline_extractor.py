@@ -230,7 +230,7 @@ def most_likely_orientation(overlap_image: np.ndarray, top_image: np.ndarray, bo
     assert 360 % step == 0, "Step must be a divisor of 360"
     assert overlap_image.shape == top_image.shape == bottom_image.shape, "All images must have the same shape"
 
-    (h, w) = overlap_image.shape[:2]
+    h, w = overlap_image.shape[:2]
 
     max_dimension = max(h, w)
 

@@ -83,19 +83,15 @@ class SemSegEvaluator(DatasetEvaluator):
         self._compute_boundary_iou = True
         if not _CV2_IMPORTED:
             self._compute_boundary_iou = False
-            self._logger.warning(
-                """Boundary IoU calculation requires OpenCV. B-IoU metrics are
-                not going to be computed because OpenCV is not available to import."""
-            )
+            self._logger.warning("""Boundary IoU calculation requires OpenCV. B-IoU metrics are
+                not going to be computed because OpenCV is not available to import.""")
         if self._num_classes >= np.iinfo(np.uint8).max:
             self._compute_boundary_iou = False
-            self._logger.warning(
-                f"""SemSegEvaluator(num_classes) is more than supported value for Boundary IoU
+            self._logger.warning(f"""SemSegEvaluator(num_classes) is more than supported value for Boundary IoU
                 calculation! B-IoU metrics are not going to be computed. Max allowed value
                 (exclusive) for num_classes for calculating Boundary IoU is.
                 {np.iinfo(np.uint8).max} The number of classes of dataset {self._dataset_name} is
-                {self._num_classes}"""
-            )
+                {self._num_classes}""")
 
     def reset(self):
         self._conf_matrix = np.zeros((self._num_classes + 1, self._num_classes + 1), dtype=np.int64)
