@@ -81,6 +81,7 @@ class OutputPageXML:
         external_processing: bool = True,
         external_processing_grayscale: bool = True,
         save_confidence_heatmap: bool = False,
+        png_compress_level: Optional[int] = None,
     ) -> None:
         """
         Class for the generation of the pageXML from class predictions on images
@@ -100,6 +101,7 @@ class OutputPageXML:
             external_processing (bool): If True, the sem_seg is processed externally
             external_processing_grayscale (bool): If True, the sem_seg is output for external processing in grayscale
             save_confidence_heatmap (bool): If True, the confidence heatmap is saved
+            png_compress_level (Optional[int]): PNG compression level to use for generated images.
         """
 
         self.logger = logging.getLogger(get_logger_name())
@@ -121,6 +123,7 @@ class OutputPageXML:
 
         self.external_processing = external_processing
         self.grayscale = external_processing_grayscale
+        self.png_compress_level = png_compress_level
         self.classes_to_colors = classes_to_colors(xml_regions.regions, external_processing_grayscale)
 
     def set_output_dir(self, output_dir: str | Path):
@@ -256,13 +259,17 @@ class OutputPageXML:
             prepared_page.old_width,
         )
         with AtomicFileName(file_path=sem_seg_output_path) as path:
-            save_image_array_to_path(str(path), colored_image.astype(np.uint8))
+            save_image_array_to_path(str(path), colored_image.astype(np.uint8), png_compress_level=self.png_compress_level)
 
         if prepared_page.confidence_heatmap is not None:
             self.confidence_dir.mkdir(parents=True, exist_ok=True)
             confidence_output_path = self.confidence_dir.joinpath(prepared_page.image_path.stem + "_confidence.png")
             with AtomicFileName(file_path=confidence_output_path) as path:
-                save_image_array_to_path(str(path), prepared_page.confidence_heatmap)
+                save_image_array_to_path(
+                    str(path),
+                    prepared_page.confidence_heatmap,
+                    png_compress_level=self.png_compress_level,
+                )
 
         page_xml_editor.save_xml(xml_output_path)
 

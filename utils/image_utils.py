@@ -4,7 +4,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Optional
 
-# import cv2
+import cv2
 import numpy as np
 from PIL import Image, ImageOps
 
@@ -13,6 +13,17 @@ from utils.logging_utils import get_logger_name
 
 # https://en.wikipedia.org/wiki/YUV#SDTV_with_BT.601
 _M_RGB2YUV = [[0.299, 0.587, 0.114], [-0.14713, -0.28886, 0.436], [0.615, -0.51499, -0.10001]]
+_EXIF_ORIENTATION_TAG = 274
+
+
+def get_pil_dpi(image: Image.Image, image_path: Path | str | None) -> Optional[int | float]:
+    dpi = image.info.get("dpi")
+    if dpi is None:
+        return None
+
+    assert len(dpi) == 2, f"Invalid DPI: {dpi}, for image: {image_path}"
+    assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}, for image: {image_path}"
+    return dpi[0]
 
 
 # Taken from detectron2.data.detection_utils
@@ -72,13 +83,59 @@ def image_to_array_dpi(
         if transposed_image is None:
             raise OSError("Image is None after exif transpose")
         image = transposed_image
-    dpi = image.info.get("dpi")
-    if dpi is not None:
-        assert len(dpi) == 2, f"Invalid DPI: {dpi}, for image: {image_path}"
-        assert dpi[0] == dpi[1], f"Non-square DPI: {dpi}, for image: {image_path}"
-        dpi = dpi[0]
+    dpi = get_pil_dpi(image, image_path)
     image_array = convert_PIL_to_numpy(image, "RGB" if mode == "color" else "L").copy()
     return image_array, dpi
+
+
+def opencv_decode_image_from_bytes(image_bytes: bytes, mode: str) -> Optional[np.ndarray]:
+    image_buffer = np.frombuffer(image_bytes, dtype=np.uint8)
+
+    if mode == "color":
+        image = cv2.imdecode(image_buffer, cv2.IMREAD_COLOR)
+        if image is None:
+            return None
+        return np.ascontiguousarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+
+    image = cv2.imdecode(image_buffer, cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        return None
+    return np.ascontiguousarray(image)
+
+
+def torchvision_decode_jpeg_from_bytes(image_bytes: bytes, mode: str, ignore_exif: bool) -> Optional[np.ndarray]:
+    try:
+        import torch
+        import torchvision
+    except ImportError:
+        return None
+
+    try:
+        image_buffer = torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)
+        torchvision_mode = torchvision.io.ImageReadMode.RGB if mode == "color" else torchvision.io.ImageReadMode.GRAY
+        image = torchvision.io.decode_jpeg(
+            image_buffer,
+            mode=torchvision_mode,
+            apply_exif_orientation=not ignore_exif,
+        )
+    except RuntimeError:
+        return None
+
+    if mode == "color":
+        return np.ascontiguousarray(image.permute(1, 2, 0).numpy())
+
+    return np.ascontiguousarray(image.squeeze(0).numpy())
+
+
+def is_jpeg_image(image_bytes: bytes, image_path: Path | str | None) -> bool:
+    if image_path is not None and Path(image_path).suffix.lower() in {".jpg", ".jpeg"}:
+        return True
+    return image_bytes.startswith(b"\xff\xd8")
+
+
+def has_exif_orientation(image: Image.Image) -> bool:
+    orientation = image.getexif().get(_EXIF_ORIENTATION_TAG, 1)
+    return orientation not in (None, 1)
 
 
 def load_image_array_from_path(
@@ -152,8 +209,20 @@ def load_image_array_from_bytes(
 
     try:
         image = Image.open(BytesIO(image_bytes))
-        image, dpi = image_to_array_dpi(image, mode, ignore_exif, image_path)
-        return {"image": image, "dpi": dpi}
+        dpi = get_pil_dpi(image, image_path)
+
+        if is_jpeg_image(image_bytes, image_path):
+            image_array = torchvision_decode_jpeg_from_bytes(image_bytes, mode, ignore_exif)
+            if image_array is not None:
+                return {"image": image_array, "dpi": dpi}
+
+        if ignore_exif or not has_exif_orientation(image):
+            image_array = opencv_decode_image_from_bytes(image_bytes, mode)
+            if image_array is not None:
+                return {"image": image_array, "dpi": dpi}
+
+        image_array, dpi = image_to_array_dpi(image, mode, ignore_exif, image_path)
+        return {"image": image_array, "dpi": dpi}
     except OSError:
         image_path_info = image_path if image_path is not None else "Filename not given"
         logger = logging.getLogger(get_logger_name())
@@ -172,6 +241,7 @@ def save_image_array_to_path(
     image_path: Path | str,
     array: np.ndarray,
     dpi: Optional[int] = None,
+    png_compress_level: Optional[int] = None,
 ):
     """
     Save image to a given path, log error in case of an error
@@ -183,10 +253,14 @@ def save_image_array_to_path(
     """
     try:
         # cv2.imwrite(str(image_path), array)
+        image_path = Path(image_path)
         image = Image.fromarray(array)
+        save_kwargs = {}
         if dpi is not None:
-            image.info["dpi"] = (dpi, dpi)
-        image.save(image_path)
+            save_kwargs["dpi"] = (dpi, dpi)
+        if png_compress_level is not None and image_path.suffix.lower() == ".png":
+            save_kwargs["compress_level"] = png_compress_level
+        image.save(image_path, **save_kwargs)
     except OSError:
         logger = logging.getLogger(get_logger_name())
         logger.warning(f"Cannot save image: {image_path}, skipping for now")

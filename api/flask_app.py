@@ -35,6 +35,7 @@ except KeyError as error:
 max_queue_size = int(max_queue_size_string)
 model_base_path = Path(model_base_path_string)
 output_base_path = Path(output_base_path_string)
+api_profile_enabled = os.environ.get("LAYPA_PROFILE_API", "").lower() in {"1", "true", "yes", "on"}
 
 # Checks if ENV variable exist
 if not model_base_path.is_dir():
@@ -109,7 +110,14 @@ class PredictorGenPageWrapper:
         xml_regions = XMLRegions(cfg)  # type: ignore
         self.cfg = cfg
         self.xml_regions = xml_regions
-        self.gen_page = OutputPageXML(xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={}, external_processing=True)
+        self.gen_page = OutputPageXML(
+            xml_regions=xml_regions,
+            output_dir=None,
+            cfg=cfg,
+            whitelist={},
+            external_processing=True,
+            png_compress_level=output_png_compress_level,
+        )
 
         self.predictor = Predictor(cfg=cfg)
 
@@ -124,6 +132,7 @@ class PredictorGenPageWrapper:
             cfg=self.cfg,
             whitelist=whitelist,
             external_processing=True,
+            png_compress_level=output_png_compress_level,
         )
 
 
@@ -135,6 +144,12 @@ max_queue_size = max_workers + max_queue_size
 output_workers = int(os.environ.get("LAYPA_OUTPUT_WORKERS", "2"))
 if output_workers < 1:
     raise ValueError("LAYPA_OUTPUT_WORKERS must be at least 1")
+output_png_compress_level_string = os.environ.get("LAYPA_OUTPUT_PNG_COMPRESS_LEVEL", "1")
+output_png_compress_level = (
+    None if output_png_compress_level_string.lower() in {"", "none"} else int(output_png_compress_level_string)
+)
+if output_png_compress_level is not None and not 0 <= output_png_compress_level <= 9:
+    raise ValueError("LAYPA_OUTPUT_PNG_COMPRESS_LEVEL must be between 0 and 9, or 'none'")
 
 # Run a separate thread on which the GPU runs and processes requests put in the queue
 executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -173,6 +188,7 @@ class ResponseInfo(dict):
         "queue_time",
         "process_time",
         "total_time",
+        "profile",
     }
 
     def __setitem__(self, key: str, value: Any) -> None:
@@ -206,6 +222,8 @@ class Info:
     start_time_process: Optional[float] = None
     end_time_queue: Optional[float] = None
     end_time_process: Optional[float] = None
+    profile: dict[str, float] = field(default_factory=dict)
+    profile_output_queue_start: Optional[float] = None
 
     @property
     def status(self) -> str:
@@ -306,7 +324,21 @@ class Info:
         response_info["queue_time"] = self.queue_time
         response_info["process_time"] = self.process_time
         response_info["total_time"] = self.total_time
+        if api_profile_enabled and self.profile:
+            response_info["profile"] = dict(self.profile)
         return response_info
+
+
+def profile_start() -> Optional[float]:
+    if not api_profile_enabled:
+        return None
+    return time.perf_counter()
+
+
+def profile_end(info: Info, key: str, start_time: Optional[float]) -> None:
+    if start_time is None:
+        return
+    info.profile[key] = time.perf_counter() - start_time
 
 
 def safe_predict(data, device):
@@ -377,12 +409,17 @@ def predict_image(
 
     input_args = locals()
     try:
+        profile_phase = profile_start()
         predict_gen_page_wrapper.setup_model(args=args, model_name=model_name)
+        profile_end(info, "model_setup_seconds", profile_phase)
 
         output_path = output_base_path.joinpath(identifier, image_path)
         if predict_gen_page_wrapper.predictor is None:
             raise TypeError("The current Predictor is not initialized")
+
+        profile_phase = profile_start()
         gen_page = predict_gen_page_wrapper.make_gen_page(output_path.parent, whitelist)
+        profile_end(info, "output_setup_seconds", profile_phase)
 
         data = AugInput(
             image=image,
@@ -392,18 +429,21 @@ def predict_image(
             manual_dpi=predict_gen_page_wrapper.predictor.cfg.INPUT.DPI.MANUAL_DPI_TEST,
         )
 
+        profile_phase = profile_start()
         outputs = safe_predict(data, device=predict_gen_page_wrapper.predictor.cfg.MODEL.DEVICE)
+        profile_end(info, "predictor_call_seconds", profile_phase)
 
         if outputs is None:
             raise ValueError("The predictor did not return any outputs")
 
         output_image = outputs[0]["sem_seg"]
-        # output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
-
-        prepared_page = gen_page.prepare_single_page(
-            output_image, output_path, old_height=outputs[1], old_width=outputs[2]
-        )
-        return input_args | {"gen_page": gen_page, "prepared_page": prepared_page}
+        return input_args | {
+            "gen_page": gen_page,
+            "output_image": output_image,
+            "output_path": output_path,
+            "old_height": outputs[1],
+            "old_width": outputs[2],
+        }
     except Exception as exception:
         # Catch CUDA out of memory errors
         if isinstance(exception, torch.cuda.OutOfMemoryError) or (
@@ -443,9 +483,34 @@ def abort_with_info(
     abort(response)
 
 
-def finalize_prediction(identifier: str, gen_page: OutputPageXML, prepared_page) -> dict[str, Any]:
+def finalize_prediction(
+    identifier: str,
+    gen_page: OutputPageXML,
+    output_image: torch.Tensor,
+    output_path: Path,
+    old_height: int,
+    old_width: int,
+) -> dict[str, Any]:
+    info = ledger[identifier]
+    if info.profile_output_queue_start is not None:
+        profile_end(info, "output_queue_seconds", info.profile_output_queue_start)
+        info.profile_output_queue_start = None
     try:
-        gen_page.write_prepared_single_page(prepared_page)
+        profile_phase = profile_start()
+        try:
+            with torch.inference_mode():
+                prepared_page = gen_page.prepare_single_page(
+                    output_image, output_path, old_height=old_height, old_width=old_width
+                )
+        finally:
+            profile_end(info, "output_prepare_seconds", profile_phase)
+
+        profile_phase = profile_start()
+        try:
+            gen_page.write_prepared_single_page(prepared_page)
+        finally:
+            profile_end(info, "output_write_seconds", profile_phase)
+
         images_processed_counter.inc()
         return {"identifier": identifier}
     except Exception as exception:
@@ -489,7 +554,19 @@ def processing_done_callback(future: Future):
         return
 
     info.status = "finalizing"
-    future = output_executor.submit(finalize_prediction, identifier, results["gen_page"], results["prepared_page"])
+    if api_profile_enabled:
+        info.profile_output_queue_start = time.perf_counter()
+    profile_phase = profile_start()
+    future = output_executor.submit(
+        finalize_prediction,
+        identifier,
+        results["gen_page"],
+        results["output_image"],
+        results["output_path"],
+        results["old_height"],
+        results["old_width"],
+    )
+    profile_end(info, "output_enqueue_seconds", profile_phase)
     future.add_done_callback(output_done_callback)
 
 
@@ -506,9 +583,13 @@ def predict() -> tuple[Response, int]:
         abort(405)
 
     info = Info()
+    request_profile_start = profile_start()
 
+    profile_phase = profile_start()
+    request_form = request.form
+    profile_end(info, "request_form_seconds", profile_phase)
     try:
-        identifier = request.form["identifier"]
+        identifier = request_form["identifier"]
         info.identifier = identifier
     except KeyError as error:
         abort_with_info(400, "Missing identifier in form", info)
@@ -517,19 +598,22 @@ def predict() -> tuple[Response, int]:
     ledger[identifier] = info
 
     try:
-        model_name = request.form["model"]
+        model_name = request_form["model"]
         info.model_name = model_name
     except KeyError as error:
         abort_with_info(400, "Missing model in form", info)
 
     try:
-        whitelist = request.form.getlist("whitelist")
+        whitelist = request_form.getlist("whitelist")
         info.whitelist = whitelist
     except KeyError as error:
         abort_with_info(400, "Missing whitelist in form", info)
 
+    profile_phase = profile_start()
+    request_files = request.files
+    profile_end(info, "request_files_seconds", profile_phase)
     try:
-        post_file = request.files["image"]
+        post_file = request_files["image"]
     except KeyError as error:
         abort_with_info(400, "Missing image in form", info)
 
@@ -546,16 +630,24 @@ def predict() -> tuple[Response, int]:
     if queue_size > max_queue_size:
         abort_with_info(429, "Exceeding queue size", info)
 
+    profile_phase = profile_start()
     img_bytes = post_file.read()
+    profile_end(info, "request_read_seconds", profile_phase)
+
+    profile_phase = profile_start()
     data = load_image_array_from_bytes(img_bytes, image_path=image_name)  # type: ignore
+    profile_end(info, "request_decode_seconds", profile_phase)
 
     if data is None:
         abort_with_info(500, "Image could not be loaded correctly", info)
 
     info.status = "queued"
     info.start_time_queue = time.time()
+    profile_end(info, "request_to_queue_seconds", request_profile_start)
 
+    profile_phase = profile_start()
     future = executor.submit(predict_image, data["image"], data["dpi"], image_name, identifier, model_name, whitelist)  # type: ignore
+    profile_end(info, "worker_enqueue_seconds", profile_phase)
     future.add_done_callback(processing_done_callback)
 
     info.status_code = 202
