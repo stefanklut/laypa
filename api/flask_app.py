@@ -93,8 +93,7 @@ class PredictorGenPageWrapper:
         ):
             return
 
-        self.model_name = model_name
-        model_path = model_base_path.joinpath(self.model_name)
+        model_path = model_base_path.joinpath(model_name)
         config_path = model_path.joinpath("config.yaml")
         if not config_path.is_file():
             raise FileNotFoundError(f"config.yaml not found in {model_path}")
@@ -103,14 +102,15 @@ class PredictorGenPageWrapper:
             raise FileNotFoundError(f"No valid .pth files found in {model_path}")
         if len(weights_paths) > 1:
             logger.warning(f"Found multiple .pth files. Using first {weights_paths[0]}")
-        args.config = str(config_path)
-        args.opts = ["TEST.WEIGHTS", str(weights_paths[0])]
+        model_args = DummyArgs(
+            config=str(config_path),
+            output=args.output,
+            opts=["TEST.WEIGHTS", str(weights_paths[0])],
+        )
 
-        cfg = setup_cfg(args)
+        cfg = setup_cfg(model_args)
         xml_regions = XMLRegions(cfg)  # type: ignore
-        self.cfg = cfg
-        self.xml_regions = xml_regions
-        self.gen_page = OutputPageXML(
+        gen_page = OutputPageXML(
             xml_regions=xml_regions,
             output_dir=None,
             cfg=cfg,
@@ -118,8 +118,13 @@ class PredictorGenPageWrapper:
             external_processing=True,
             png_compress_level=output_png_compress_level,
         )
+        predictor = Predictor(cfg=cfg)
 
-        self.predictor = Predictor(cfg=cfg)
+        self.model_name = model_name
+        self.cfg = cfg
+        self.xml_regions = xml_regions
+        self.gen_page = gen_page
+        self.predictor = predictor
 
     def make_gen_page(self, output_dir: Path, whitelist: list[str]) -> OutputPageXML:
         if self.cfg is None:
