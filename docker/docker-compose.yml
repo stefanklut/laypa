@@ -13,6 +13,7 @@ services:
     ports:
       - '5000:5000'
     environment:
+      PYTHONPATH: /src/laypa
       LAYPA_MAX_QUEUE_SIZE: 128
       LAYPA_MODEL_BASE_PATH: <path_to_model_base>
       LAYPA_OUTPUT_BASE_PATH: <path_to_output>

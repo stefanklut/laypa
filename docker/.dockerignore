@@ -146,3 +146,10 @@
 
 # Pretrained models
 **/pretrained_models/
+
+# uv cache
+**/.uv-cache/
+**/.uv/
+
+# Benchmarks
+**/benchmarks/

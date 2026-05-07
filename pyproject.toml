@@ -1,0 +1,34 @@
+[project]
+name = "laypa"
+version = "0.0.0"
+description = "Layout analysis training and inference service"
+requires-python = ">=3.12"
+dependencies = [
+    "flask",
+    "gunicorn",
+    "imagesize",
+    "matplotlib",
+    "natsort",
+    "numpy",
+    "opencv-python-headless",
+    "pillow",
+    "prometheus-client",
+    "scikit-image",
+    "scipy",
+    "shapely",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    "tqdm",
+    "ultralytics",
+    "pi-heif",
+    "detectron2 @ git+https://github.com/facebookresearch/detectron2.git",
+    "panopticapi @ git+https://github.com/cocodataset/panopticapi.git",
+]
+
+[tool.uv]
+package = false
+prerelease = "allow"
+
+[tool.uv.extra-build-dependencies]
+detectron2 = ["torch>=2.11.0", "setuptools", "wheel", "ninja", "numpy"]
+panopticapi = ["setuptools", "wheel"]
