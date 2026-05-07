@@ -72,6 +72,8 @@ class PredictorGenPageWrapper:
         self.model_name: Optional[str] = None
         self.predictor: Optional[Predictor] = None
         self.gen_page: Optional[OutputPageXML] = None
+        self.cfg = None
+        self.xml_regions: Optional[XMLRegions] = None
 
     def setup_model(self, model_name: str, args: DummyArgs):
         """
@@ -105,9 +107,24 @@ class PredictorGenPageWrapper:
 
         cfg = setup_cfg(args)
         xml_regions = XMLRegions(cfg)  # type: ignore
+        self.cfg = cfg
+        self.xml_regions = xml_regions
         self.gen_page = OutputPageXML(xml_regions=xml_regions, output_dir=None, cfg=cfg, whitelist={}, external_processing=True)
 
         self.predictor = Predictor(cfg=cfg)
+
+    def make_gen_page(self, output_dir: Path, whitelist: list[str]) -> OutputPageXML:
+        if self.cfg is None:
+            raise TypeError("The current config is not initialized")
+        if self.xml_regions is None:
+            raise TypeError("The current XMLRegions is not initialized")
+        return OutputPageXML(
+            xml_regions=self.xml_regions,
+            output_dir=output_dir,
+            cfg=self.cfg,
+            whitelist=whitelist,
+            external_processing=True,
+        )
 
 
 args = DummyArgs()
@@ -115,12 +132,19 @@ predict_gen_page_wrapper = PredictorGenPageWrapper()
 
 max_workers = 1
 max_queue_size = max_workers + max_queue_size
+output_workers = int(os.environ.get("LAYPA_OUTPUT_WORKERS", "2"))
+if output_workers < 1:
+    raise ValueError("LAYPA_OUTPUT_WORKERS must be at least 1")
 
 # Run a separate thread on which the GPU runs and processes requests put in the queue
 executor = ThreadPoolExecutor(max_workers=max_workers)
+output_executor = ThreadPoolExecutor(max_workers=output_workers)
 
 # Prometheus metrics to be returned
 queue_size_gauge = Gauge("queue_size", "Size of worker queue").set_function(lambda: executor._work_queue.qsize())
+output_queue_size_gauge = Gauge("output_queue_size", "Size of output worker queue").set_function(
+    lambda: output_executor._work_queue.qsize()
+)
 images_processed_counter = Counter("images_processed", "Total number of images processed")
 exception_predict_counter = Counter("exception_predict", "Exception thrown in predict() function")
 process_time_summary = Summary("process_time", "Time taken to process an image")
@@ -202,9 +226,10 @@ class Info:
         Args:
             value (str): Status of the request
         """
-        if value not in ["loading", "queued", "processing", "finished", "error", "not found"]:
+        if value not in ["loading", "queued", "processing", "finalizing", "finished", "error", "not found"]:
             raise ValueError(
-                f"Invalid status {value}. Must be one of ['loading', 'queued', 'processing', 'finished', 'error', 'not found']"
+                "Invalid status "
+                f"{value}. Must be one of ['loading', 'queued', 'processing', 'finalizing', 'finished', 'error', 'not found']"
             )
         self._status = value
 
@@ -355,15 +380,9 @@ def predict_image(
         predict_gen_page_wrapper.setup_model(args=args, model_name=model_name)
 
         output_path = output_base_path.joinpath(identifier, image_path)
-        if predict_gen_page_wrapper.gen_page is None:
-            raise TypeError("The current GenPageXML is not initialized")
         if predict_gen_page_wrapper.predictor is None:
             raise TypeError("The current Predictor is not initialized")
-
-        predict_gen_page_wrapper.gen_page.set_output_dir(output_path.parent)
-        predict_gen_page_wrapper.gen_page.set_whitelist(whitelist)
-        if not output_path.parent.is_dir():
-            output_path.parent.mkdir()
+        gen_page = predict_gen_page_wrapper.make_gen_page(output_path.parent, whitelist)
 
         data = AugInput(
             image=image,
@@ -381,11 +400,10 @@ def predict_image(
         output_image = outputs[0]["sem_seg"]
         # output_image = torch.argmax(outputs[0]["sem_seg"], dim=-3).cpu().numpy()
 
-        predict_gen_page_wrapper.gen_page.generate_single_page(
+        prepared_page = gen_page.prepare_single_page(
             output_image, output_path, old_height=outputs[1], old_width=outputs[2]
         )
-        images_processed_counter.inc()
-        return input_args
+        return input_args | {"gen_page": gen_page, "prepared_page": prepared_page}
     except Exception as exception:
         # Catch CUDA out of memory errors
         if isinstance(exception, torch.cuda.OutOfMemoryError) or (
@@ -425,20 +443,21 @@ def abort_with_info(
     abort(response)
 
 
-def processing_done_callback(future: Future):
-    """
-    Log on exception
+def finalize_prediction(identifier: str, gen_page: OutputPageXML, prepared_page) -> dict[str, Any]:
+    try:
+        gen_page.write_prepared_single_page(prepared_page)
+        images_processed_counter.inc()
+        return {"identifier": identifier}
+    except Exception as exception:
+        return {"identifier": identifier, "exception": exception}
 
-    Args:
-        future (Future): Results from other thread
-    """
 
-    results = future.result()
+def finish_processing(results: dict[str, Any]) -> None:
     identifier = results["identifier"]
     info = ledger[identifier]
     info.end_time_process = time.time()
     if "exception" in results:
-        logger.exception(results, exc_info=results["exception"])
+        logger.exception("Failed processing %s", identifier, exc_info=results["exception"])
         info.status = "error"
         info.error_message = str(results["exception"])
     else:
@@ -447,6 +466,31 @@ def processing_done_callback(future: Future):
     process_time_summary.observe(info.process_time)
     queue_time_summary.observe(info.queue_time)
     total_time_summary.observe(info.total_time)
+
+
+def output_done_callback(future: Future):
+    results = future.result()
+    finish_processing(results)
+
+
+def processing_done_callback(future: Future):
+    """
+    Hand off completed GPU work to the output worker.
+
+    Args:
+        future (Future): Results from other thread
+    """
+
+    results = future.result()
+    identifier = results["identifier"]
+    info = ledger[identifier]
+    if "exception" in results:
+        finish_processing(results)
+        return
+
+    info.status = "finalizing"
+    future = output_executor.submit(finalize_prediction, identifier, results["gen_page"], results["prepared_page"])
+    future.add_done_callback(output_done_callback)
 
 
 @app.route("/predict", methods=["POST"])
