@@ -342,8 +342,6 @@ class OutputPageXML:
 
         height, width = sem_seg_tensor.shape[-2:]
 
-        height, width = sem_seg_tensor.shape[-2:]
-
         if upscale:
             scaling = np.asarray([1, 1])
             height, width = old_height, old_width

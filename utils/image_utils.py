@@ -111,7 +111,7 @@ def torchvision_decode_jpeg_from_bytes(image_bytes: bytes, mode: str, ignore_exi
         return None
 
     try:
-        image_buffer = torch.frombuffer(bytearray(image_bytes), dtype=torch.uint8)
+        image_buffer = torch.frombuffer(image_bytes, dtype=torch.uint8)
         torchvision_mode = torchvision.io.ImageReadMode.RGB if mode == "color" else torchvision.io.ImageReadMode.GRAY
         image = torchvision.io.decode_jpeg(
             image_buffer,

@@ -346,7 +346,7 @@ def profile_end(info: Info, key: str, start_time: Optional[float]) -> None:
     info.profile[key] = time.perf_counter() - start_time
 
 
-def safe_predict(data, device):
+def safe_predict(data: AugInput, device: str) -> tuple[dict, int, int]:
     """
     Attempt to predict on the specified data and device, handling CUDA out of memory errors gracefully.
     This function is a wrapper around the predictor to ensure that if a CUDA OOM error occurs, it falls back to CPU.
@@ -367,16 +367,17 @@ def safe_predict(data, device):
             raise TypeError("The predictor is not initialized. Ensure setup_model is called successfully.")
         return predict_gen_page_wrapper.predictor(data, device)
     except Exception as exception:
-        # Catch CUDA out of memory errors
-        if isinstance(exception, torch.cuda.OutOfMemoryError) or (
-            isinstance(exception, RuntimeError) and "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(exception)
+        if not (
+            isinstance(exception, torch.cuda.OutOfMemoryError)
+            or (isinstance(exception, RuntimeError) and "NVML_SUCCESS == r INTERNAL ASSERT FAILED" in str(exception))
         ):
-            logger.warning("CUDA OOM encountered, falling back to CPU.")
-            torch.cuda.empty_cache()
-            torch.cuda.reset_peak_memory_stats()
-            if predict_gen_page_wrapper.predictor is None:
-                raise TypeError("The predictor is not initialized. Ensure setup_model is called successfully.")
-            return predict_gen_page_wrapper.predictor(data, "cpu")
+            raise
+        logger.warning("CUDA OOM encountered, falling back to CPU.")
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
+        if predict_gen_page_wrapper.predictor is None:
+            raise TypeError("The predictor is not initialized. Ensure setup_model is called successfully.")
+        return predict_gen_page_wrapper.predictor(data, "cpu")
 
 
 def predict_image(
@@ -412,7 +413,6 @@ def predict_image(
     info.start_time_process = current_time
     info.end_time_queue = current_time
 
-    input_args = locals()
     try:
         profile_phase = profile_start()
         predict_gen_page_wrapper.setup_model(args=args, model_name=model_name)
@@ -442,7 +442,8 @@ def predict_image(
             raise ValueError("The predictor did not return any outputs")
 
         output_image = outputs[0]["sem_seg"]
-        return input_args | {
+        return {
+            "identifier": identifier,
             "gen_page": gen_page,
             "output_image": output_image,
             "output_path": output_path,
@@ -459,7 +460,7 @@ def predict_image(
             # HACK remove traceback to prevent complete halt of program, not sure why this happens
             exception = exception.with_traceback(None)
 
-        return input_args | {"exception": exception}
+        return {"identifier": identifier, "exception": exception}
 
 
 def abort_with_info(
