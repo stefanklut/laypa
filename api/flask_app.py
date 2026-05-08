@@ -116,7 +116,6 @@ class PredictorGenPageWrapper:
             cfg=cfg,
             whitelist={},
             external_processing=True,
-            png_compress_level=output_png_compress_level,
         )
         predictor = Predictor(cfg=cfg)
 
@@ -137,7 +136,6 @@ class PredictorGenPageWrapper:
             cfg=self.cfg,
             whitelist=whitelist,
             external_processing=True,
-            png_compress_level=output_png_compress_level,
         )
 
 
@@ -149,12 +147,6 @@ max_queue_size = max_workers + max_queue_size
 output_workers = int(os.environ.get("LAYPA_OUTPUT_WORKERS", "2"))
 if output_workers < 1:
     raise ValueError("LAYPA_OUTPUT_WORKERS must be at least 1")
-output_png_compress_level_string = os.environ.get("LAYPA_OUTPUT_PNG_COMPRESS_LEVEL", "1")
-output_png_compress_level = (
-    None if output_png_compress_level_string.lower() in {"", "none"} else int(output_png_compress_level_string)
-)
-if output_png_compress_level is not None and not 0 <= output_png_compress_level <= 9:
-    raise ValueError("LAYPA_OUTPUT_PNG_COMPRESS_LEVEL must be between 0 and 9, or 'none'")
 
 # Run a separate thread on which the GPU runs and processes requests put in the queue
 executor = ThreadPoolExecutor(max_workers=max_workers)
