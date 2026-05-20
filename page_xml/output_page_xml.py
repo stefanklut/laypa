@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 import uuid
+from dataclasses import dataclass
 from multiprocessing.pool import Pool
 from pathlib import Path
 from typing import Iterable, Optional
@@ -44,6 +45,24 @@ def get_arguments() -> argparse.Namespace:
 
     args = parser.parse_args()
     return args
+
+
+@dataclass(frozen=True)
+class PreparedExternalPage:
+    image_path: Path
+    old_height: int
+    old_width: int
+    sem_seg_classes: np.ndarray
+    mean_confidence: float
+    confidence_heatmap: Optional[np.ndarray] = None
+
+
+@dataclass(frozen=True)
+class PreparedRawPage:
+    image_path: Path
+    old_height: int
+    old_width: int
+    sem_seg: torch.Tensor
 
 
 class OutputPageXML:
@@ -188,6 +207,96 @@ class OutputPageXML:
 
         return image
 
+    def prepare_external_single_page(
+        self,
+        sem_seg: torch.Tensor,
+        image_path: Path,
+        old_height: int,
+        old_width: int,
+    ) -> PreparedExternalPage:
+        sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
+        confidence_heatmap = None
+        if self.save_confidence_heatmap:
+            confidence_grayscale = (confidence * 255).cpu().numpy().astype(np.uint8)
+            confidence_heatmap = cv2.applyColorMap(confidence_grayscale, cv2.COLORMAP_PLASMA)[..., ::-1]
+
+        return PreparedExternalPage(
+            image_path=image_path,
+            old_height=old_height,
+            old_width=old_width,
+            sem_seg_classes=sem_seg_classes.cpu().numpy(),
+            mean_confidence=torch.mean(confidence).cpu().numpy().item(),
+            confidence_heatmap=confidence_heatmap,
+        )
+
+    def write_prepared_external_page(self, prepared_page: PreparedExternalPage) -> None:
+        if self.output_dir is None:
+            raise TypeError("Output dir is None")
+        if self.page_dir is None:
+            raise TypeError("Page dir is None")
+
+        page_xml_editor = PageXMLEditor()
+        page_xml_editor.add_page(prepared_page.image_path.name, prepared_page.old_height, prepared_page.old_width)
+
+        xml_output_path = self.page_dir.joinpath(prepared_page.image_path.stem + ".xml")
+        sem_seg_output_path = self.page_dir.joinpath(prepared_page.image_path.stem + ".png")
+
+        if self.cfg is not None:
+            page_xml_editor.add_processing_step(
+                get_git_hash(),
+                self.cfg.LAYPA_UUID,
+                self.cfg,
+                self.whitelist,
+                confidence=prepared_page.mean_confidence,
+            )
+
+        colored_image = self.generate_image_from_sem_seg(
+            prepared_page.sem_seg_classes,
+            prepared_page.old_height,
+            prepared_page.old_width,
+        )
+        with AtomicFileName(file_path=sem_seg_output_path) as path:
+            save_image_array_to_path(str(path), colored_image.astype(np.uint8), png_compress_level=1)
+
+        if prepared_page.confidence_heatmap is not None:
+            self.confidence_dir.mkdir(parents=True, exist_ok=True)
+            confidence_output_path = self.confidence_dir.joinpath(prepared_page.image_path.stem + "_confidence.png")
+            with AtomicFileName(file_path=confidence_output_path) as path:
+                save_image_array_to_path(
+                    str(path),
+                    prepared_page.confidence_heatmap,
+                    png_compress_level=1,
+                )
+
+        page_xml_editor.save_xml(xml_output_path)
+
+    def prepare_single_page(
+        self,
+        sem_seg: torch.Tensor,
+        image_path: Path,
+        old_height: Optional[int] = None,
+        old_width: Optional[int] = None,
+    ) -> PreparedExternalPage | PreparedRawPage:
+        if old_height is None or old_width is None:
+            old_height, old_width = sem_seg.shape[-2:]
+
+        if self.external_processing and not self.xml_regions.mode == "region":
+            return self.prepare_external_single_page(sem_seg, image_path, old_height, old_width)
+
+        return PreparedRawPage(image_path=image_path, old_height=old_height, old_width=old_width, sem_seg=sem_seg)
+
+    def write_prepared_single_page(self, prepared_page: PreparedExternalPage | PreparedRawPage) -> None:
+        if isinstance(prepared_page, PreparedExternalPage):
+            self.write_prepared_external_page(prepared_page)
+            return
+
+        self.generate_single_page(
+            prepared_page.sem_seg,
+            prepared_page.image_path,
+            old_height=prepared_page.old_height,
+            old_width=prepared_page.old_width,
+        )
+
     def add_baselines_to_page(
         self,
         page_xml_editor: PageXMLEditor,
@@ -227,8 +336,6 @@ class OutputPageXML:
                 id=f"textregion_{uuid.uuid4()}",
             )
         )
-
-        height, width = sem_seg_tensor.shape[-2:]
 
         height, width = sem_seg_tensor.shape[-2:]
 
@@ -597,24 +704,8 @@ class OutputPageXML:
 
         # TODO This external processing is only done for baselines, not for regions. So exlude regions for now
         if self.external_processing and not self.xml_regions.mode == "region":
-            sem_seg_output_path = self.page_dir.joinpath(image_path.stem + ".png")
-            sem_seg_classes, confidence = self.sem_seg_to_classes_and_confidence(sem_seg, old_height, old_width)
-            if self.save_confidence_heatmap:
-                self.save_heatmap(confidence, image_path)
-            sem_seg_classes = sem_seg_classes.cpu().numpy()
-            mean_confidence = torch.mean(confidence).cpu().numpy().item()
-            if self.cfg is not None:
-                page_xml_editor.add_processing_step(
-                    get_git_hash(),
-                    self.cfg.LAYPA_UUID,
-                    self.cfg,
-                    self.whitelist,
-                    confidence=mean_confidence,
-                )
-            colored_image = self.generate_image_from_sem_seg(sem_seg_classes, old_height, old_width)
-            with AtomicFileName(file_path=sem_seg_output_path) as path:
-                save_image_array_to_path(str(path), colored_image.astype(np.uint8))
-            page_xml_editor.save_xml(xml_output_path)
+            prepared_page = self.prepare_external_single_page(sem_seg, image_path, old_height, old_width)
+            self.write_prepared_external_page(prepared_page)
             return
 
         if self.xml_regions.mode == "region":

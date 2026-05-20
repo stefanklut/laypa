@@ -77,6 +77,7 @@ class Predictor(DefaultPredictor):
 
         self.model = build_model(self.cfg)
         self.model.eval()
+        self._model_device: Optional[str] = None
 
         if len(cfg.DATASETS.TEST):
             self.metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
@@ -159,6 +160,8 @@ class Predictor(DefaultPredictor):
         # Default value of device should be the one in the config
         if device is None:
             device = str(self.cfg.MODEL.DEVICE)
+        device = str(device)
+        device_type = torch.device(device).type
 
         with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
             # Apply pre-processing to image.
@@ -168,7 +171,10 @@ class Predictor(DefaultPredictor):
             assert channels == 3, f"Must be a RBG image, found {channels} channels"
             # In place augmentation
             transform = self.aug(data)
-            image = torch.as_tensor(data.image, dtype=torch.float32, device=device).permute(2, 0, 1)
+            if device_type == "cpu":
+                image = torch.as_tensor(data.image, dtype=torch.float32, device=device).permute(2, 0, 1)
+            else:
+                image = torch.as_tensor(data.image, device=device).permute(2, 0, 1)
 
             if self.cfg.INPUT.FORMAT == "BGR":
                 # whether the model expects BGR inputs or RGB
@@ -177,14 +183,16 @@ class Predictor(DefaultPredictor):
             inputs = {"image": image, "height": image.shape[1], "width": image.shape[2]}
 
             # If we predict on CPU, use full precision
-            precision = self.precision if device != "cpu" else torch.float32
+            precision = self.precision if device_type != "cpu" else torch.float32
 
             with torch.autocast(
-                device_type=device,
-                enabled=self.cfg.MODEL.AMP_TEST.ENABLED,
+                device_type=device_type,
+                enabled=self.cfg.MODEL.AMP_TEST.ENABLED and device_type != "cpu",
                 dtype=precision,
             ):
-                self.model.to(device)
+                if self._model_device != device:
+                    self.model.to(device)
+                    self._model_device = device
 
                 predictions = self.model([inputs])[0]
 

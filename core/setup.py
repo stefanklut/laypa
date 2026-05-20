@@ -4,6 +4,7 @@ import subprocess
 import uuid
 import warnings
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -52,6 +53,7 @@ def setup_logging(cfg: Optional[CfgNode] = None, save_log: bool = True) -> loggi
     return logger
 
 
+@lru_cache(maxsize=1)
 def get_git_hash() -> str:
     version_path = Path("version_info")
 
@@ -59,7 +61,10 @@ def get_git_hash() -> str:
         with version_path.open(mode="r") as file:
             git_hash = file.read().strip()
     else:
-        git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent).strip().decode()
+        try:
+            git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent).strip().decode()
+        except (FileNotFoundError, subprocess.CalledProcessError):
+            git_hash = "unknown"
     return git_hash
 
 
