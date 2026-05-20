@@ -62,7 +62,9 @@ def get_git_hash() -> str:
             git_hash = file.read().strip()
     else:
         try:
-            git_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent).strip().decode()
+            git_hash = (
+                subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parent).strip().decode()
+            )
         except (FileNotFoundError, subprocess.CalledProcessError):
             git_hash = "unknown"
     return git_hash
