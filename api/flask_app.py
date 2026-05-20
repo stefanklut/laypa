@@ -95,7 +95,15 @@ class PredictorGenPageWrapper:
 
         model_path = model_base_path.joinpath(model_name)
         config_path = model_path.joinpath("config.yaml")
-        if not config_path.is_file():
+        for attempt in range(3):
+            if config_path.is_file():
+                break
+            if not model_path.is_dir():
+                raise FileNotFoundError(f"Model directory not found: {model_path}")
+            if attempt < 2:
+                logger.warning("config.yaml not found in %s, retrying in 0.5s (attempt %d/3)...", model_path, attempt + 1)
+                time.sleep(0.5)
+        else:
             raise FileNotFoundError(f"config.yaml not found in {model_path}")
         weights_paths = list(model_path.glob("*.pth"))
         if len(weights_paths) < 1 or not weights_paths[0].is_file():
